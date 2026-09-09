@@ -12,7 +12,7 @@
 //   例: const DEVELOPER_EMAILS = ["merry1023@gmail.com"];
 const DEVELOPER_EMAILS = [
   // ここにメールアドレスを追加
-  "merrynyan1023@gmail.com"
+  "merrynyan1023@gmail.com",
   "2025043@buntoku-h.ed.jp"
 ];
 
