@@ -11,7 +11,8 @@
 //   自分のGoogleアカウントのメールアドレスをここに追加してください（複数可）。
 //   例: const DEVELOPER_EMAILS = ["merry1023@gmail.com"];
 const DEVELOPER_EMAILS = [
-  // ここにメールアドレスを追加
+  "merrynyan1023@gmail.com",
+  "2025043@buntoku-h.ed.jp"
 ];
 
 // ★本体JSファイルの現在のバージョン。コードを更新してこの確認機能を働かせたい時は、
