@@ -574,6 +574,7 @@ function normalizeScenarioProject() {
         //   MONSTER_MASTERが再構築される際（ensureCustomMonstersRegistered）restSkillNameが消えてしまい、
         //   好感度MAXでも魔物図鑑から専用スキル（サキュバスの「サキュバスと休憩♡」等）が使えなくなっていた
         restSkillName: master.restSkillName || "",
+        restSkillBlocks: Array.isArray(master.restSkillBlocks) ? master.restSkillBlocks : [],
         affectionGainRange: Array.isArray(master.affectionGainRange) ? [...master.affectionGainRange] : null,
         // ★要望対応：見逃した/倒した時のセリフを、単純な1行のテキストだけでなく、話のブロックと同じように
         //   複数のセリフ・分岐・フラグ操作などを組み合わせて演出できるようにする
@@ -907,6 +908,7 @@ function ensureCustomMonstersRegistered() {
       //   シナリオデータ読み込みのたびに消えてしまっていた
       restSkillName: enemy.restSkillName || undefined,
       affectionGainRange: Array.isArray(enemy.affectionGainRange) && enemy.affectionGainRange.length === 2 ? enemy.affectionGainRange : undefined,
+      restSkillBlocks: (Array.isArray(enemy.restSkillBlocks) && enemy.restSkillBlocks.length > 0) ? enemy.restSkillBlocks : undefined,
       // ★要望対応：見逃した/倒した時の演出をブロックで組み立てられるようにする
       killBlocks: (Array.isArray(enemy.killBlocks) && enemy.killBlocks.length > 0) ? enemy.killBlocks : undefined,
       spareBlocks: (Array.isArray(enemy.spareBlocks) && enemy.spareBlocks.length > 0) ? enemy.spareBlocks : undefined
@@ -3755,7 +3757,7 @@ function getEnemyManagerConfig() {
       { key: "imagePath", label: "画像パス", type: "text", placeholder: "例：img/敵/goblin.png（空欄なら img/敵/名前.png を使う）" },
       { key: "sizeMultiplier", label: "大きさ倍率", type: "number", placeholder: "1.0（例：1.2で少し大きく、0.8で少し小さく）" }
     ],
-    newEntity: () => ({ id: generateId("enemy"), name: "", description: "", maxHp: 10, atk: 5, exp: 10, imagePath: "", sizeMultiplier: 1, dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], statusImmunities: [], statusResistances: {}, restSkillName: "", affectionGainRange: [5, 10], killBlocks: [], spareBlocks: [] }),
+    newEntity: () => ({ id: generateId("enemy"), name: "", description: "", maxHp: 10, atk: 5, exp: 10, imagePath: "", sizeMultiplier: 1, dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], statusImmunities: [], statusResistances: {}, restSkillName: "", restSkillBlocks: [], affectionGainRange: [5, 10], killBlocks: [], spareBlocks: [] }),
     onChange: ensureCustomMonstersRegistered,
     getDefaultFromMaster: (id) => {
       const master = typeof ENEMY_MASTER !== "undefined" ? ENEMY_MASTER[id] : null;
