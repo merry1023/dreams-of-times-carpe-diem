@@ -1963,17 +1963,44 @@ function evalSkillExpressionNode(node, context) {
         const flagName = node.args[0] && node.args[0].type === "var" ? node.args[0].name : null;
         return (typeof scenarioFlags !== "undefined" && flagName && scenarioFlags[flagName]) ? 1 : 0;
       }
-      if (node.name === "仲間HP割合" || node.name === "仲間SP割合") {
-        // ★要望対応：パーティ内の仲間それぞれのHP・SP割合を式から参照する。
-        //   仲間HP割合(1) のように並び順（1人目・2人目…）で指定するか、
-        //   仲間HP割合(名前) のように名前（引用符なし）で指定するかのどちらでもよい
+      if (node.name === "仲間 HP 割合" || node.name === "仲間 SP 割合") {
+        // ★要望対応：パーティ内の仲間それぞれの HP・SP 割合を式から参照する。
+        //   仲間 HP 割合 (1) のように並び順（1 人目・2 人目…）で指定するか、
+        //   仲間 HP 割合 (名前) のように名前（引用符なし）で指定するかのどちらでもよい
         const companion = resolveSkillExprCompanionArg(node.args[0]);
         if (!companion) return 0;
-        const gaugeKey = node.name === "仲間HP割合" ? "hp" : "sp";
+        const gaugeKey = node.name === "仲間 HP 割合" ? "hp" : "sp";
         const gauge = companion.gauges && companion.gauges[gaugeKey];
         return (gauge && gauge.max) ? gauge.current / gauge.max : 0;
       }
-      console.warn("未対応の関数です:", node.name); // ★未知の関数名は式エラーで技全体を止めない安全側の挙動として0を返す
+      // ★要望対応：仲間の最大 HP/SP、レベル、攻撃力、防御力を式から参照する。
+      //   仲間最大 HP(1) や仲間最大 HP(レト) のように指定可能
+      if (node.name === "仲間最大 HP" || node.name === "仲間最大 SP" ||
+          node.name === "仲間レベル" || node.name === "仲間攻撃力" || node.name === "仲間防御力") {
+        const companion = resolveSkillExprCompanionArg(node.args[0]);
+        if (!companion) return 0;
+        const master = getCompanionMaster(companion);
+        if (!master) return 0;
+        if (node.name === "仲間最大 HP") {
+          const gauge = companion.gauges && companion.gauges.hp;
+          return gauge && gauge.max ? gauge.max : 0;
+        }
+        if (node.name === "仲間最大 SP") {
+          const gauge = companion.gauges && companion.gauges.sp;
+          return gauge && gauge.max ? gauge.max : 0;
+        }
+        if (node.name === "仲間レベル") {
+          return companion.level || master.level || 1;
+        }
+        if (node.name === "仲間攻撃力") {
+          return master.atk || 0;
+        }
+        if (node.name === "仲間防御力") {
+          return master.agi || 0;
+        }
+        return 0;
+      }
+      console.warn("未対応の関数です:", node.name); // ★未知の関数名は式エラーで技全体を止めない安全側の挙動として 0 を返す
       return 0;
     }
     default: return 0;
@@ -2033,7 +2060,9 @@ function buildSkillExprContext(skill, context) {
     "経過日数": (player && player.daysSinceTransfer) || 0,
     // ★要望対応：乱数（0以上100未満の実数）。式を評価するたびに新しく引き直される。
     //   例：「乱数 < 30」で30%の確率、のような使い方ができる
-    "乱数": Math.random() * 100
+    "乱数": Math.random() * 100,
+    // ★要望対応：仲間のステータス参照用（実際の値は関数呼び出しで取得）
+    "_companions": player && Array.isArray(player.companions) ? player.companions : []
   };
   if (context.target && context.target.maxHp) ctx["敵HP割合"] = context.target.hp / context.target.maxHp;
   Object.keys(context.variables || {}).forEach(k => { ctx[k] = context.variables[k]; });
