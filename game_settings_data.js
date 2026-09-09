@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1788967040886,
+  "version": 1788994361631,
   "enemies": [
     {
       "id": "goblin",
@@ -9443,8 +9443,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "area_1788854113373_2",
       "name": "魔導王国 スペル=マ・ギア",
       "type": "country",
-      "x": 200.15867828989778,
-      "y": -56.18848595253853,
+      "x": 213.4818338426993,
+      "y": -55.180805816837875,
       "bgTrack": "",
       "bgImage": "",
       "bossId": "",
