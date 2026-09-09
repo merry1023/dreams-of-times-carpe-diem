@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1788925040828,
+  "version": 1788967040886,
   "enemies": [
     {
       "id": "goblin",
@@ -5837,68 +5837,6 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "全能士_完全支援",
-      "className": "全能士",
-      "skillId": "",
-      "name": "全能なる勇者",
-      "description": "戦闘不能になった味方を蘇生させ、同時に2ターンの間無敵状態を与える。",
-      "type": "heal",
-      "element": "光",
-      "spCost": 170,
-      "unlockLevel": 84,
-      "power": 90,
-      "target": "single",
-      "atkType": "physical",
-      "hitCount": 1,
-      "gauge": "hp",
-      "cleanse": false,
-      "passiveId": "",
-      "randomTarget": false,
-      "wideVariance": false,
-      "partyWide": true,
-      "lifestealRatio": 0,
-      "revives": true,
-      "triggerChance": 1,
-      "statusEffectKind": "",
-      "statusEffectChance": 1,
-      "statusEffectDuration": 1,
-      "statusEffectPower": 0,
-      "statusEffect2Kind": "",
-      "statusEffect2Chance": 1,
-      "statusEffect2Duration": 1,
-      "statusEffect2Power": 0,
-      "selfBuffKind": "",
-      "selfBuffDuration": 1,
-      "selfBuffPower": 0,
-      "selfBuffMode": "add",
-      "selfBuff2Kind": "",
-      "selfBuff2Duration": 1,
-      "selfBuff2Power": 0,
-      "selfBuff2Mode": "add",
-      "builtin": true,
-      "blocks": [
-        {
-          "id": "skillblock_1788923328797_5",
-          "type": "heal",
-          "target": "all",
-          "gauge": "hp",
-          "amount": "100",
-          "amountIsPercent": true
-        },
-        {
-          "id": "skillblock_1788923343739_6",
-          "type": "applyStatus",
-          "targetSide": "allies",
-          "target": "single",
-          "statusId": "immune",
-          "duration": "2",
-          "power": "0",
-          "chance": "1"
-        }
-      ],
-      "variables": {}
-    },
-    {
       "id": "狂戦士_痛快の一太刀（つうかいのひとたち）",
       "className": "狂戦士",
       "skillId": "",
@@ -7133,6 +7071,49 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         }
       ],
       "variables": {}
+    },
+    {
+      "id": "全能士_完全支援",
+      "className": "全能士",
+      "skillId": "",
+      "name": "完全支援",
+      "description": "戦闘不能になった味方を蘇生させ、同時に自身も回復する。",
+      "type": "heal",
+      "element": "光",
+      "spCost": 39,
+      "unlockLevel": 84,
+      "power": 90,
+      "target": "single",
+      "atkType": "physical",
+      "hitCount": 1,
+      "gauge": "hp",
+      "cleanse": false,
+      "passiveId": "",
+      "randomTarget": false,
+      "wideVariance": false,
+      "partyWide": false,
+      "lifestealRatio": 0,
+      "revives": true,
+      "triggerChance": 1,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "builtin": true,
+      "blocks": [],
+      "variables": {}
     }
   ],
   "statusAilments": [
@@ -8106,7 +8087,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "agi": 0.1,
         "skillPower": 1,
         "luck": 0.4,
-        "charm": 0.5
+        "charm": 0.5,
+        "maxSleepiness": 0
       },
       "allowedWeaponTypes": [
         "剣",
@@ -9200,8 +9182,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "unimplemented": true,
       "name": "ガヂル平野(推奨Lv60)",
       "type": "enemy",
-      "x": 98,
-      "y": 48.61553844472609,
+      "x": 307.02874692304687,
+      "y": -46.415983309226434,
       "bgTrack": "heigenn_1",
       "bgImage": "/img/平原.jpg",
       "bossId": "boss_1788595810642_7",
@@ -9272,7 +9254,12 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "examineMessages": [
         "花たちを見つめていると、心が和やかになった。"
       ],
-      "unlockConditions": [],
+      "unlockConditions": [
+        {
+          "type": "daysSinceTransfer",
+          "days": 1000
+        }
+      ],
       "bossTriggerTypes": [
         "step"
       ],
@@ -9627,10 +9614,6 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     ],
     [
       "kaderiku",
-      "kaderiku_n3"
-    ],
-    [
-      "kaderiku",
       "kaderiku_n4"
     ],
     [
@@ -9640,10 +9623,6 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     [
       "kaderiku_n2",
       "custom_area_1788352806681_42"
-    ],
-    [
-      "kaderiku_n3",
-      "kaderiku_n2"
     ],
     [
       "custom_area_1788853853599_1",

@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1788921994201,
+  "version": 1788967040150,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -5282,8 +5282,59 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
             },
             {
               "id": "opt_1788852349969_31",
-              "text": "",
-              "blocks": [],
+              "text": "歴史書",
+              "blocks": [
+                {
+                  "id": "block_1788964445678_1",
+                  "type": "narration",
+                  "text": "この世界の歴史について調べたいので、歴史書を探すことにした。"
+                },
+                {
+                  "id": "block_1788964465564_2",
+                  "type": "telop",
+                  "text": "数分後..."
+                },
+                {
+                  "id": "block_1788964471225_3",
+                  "type": "dialogue",
+                  "speaker": "田中治郎",
+                  "text": "…無いなぁ..."
+                },
+                {
+                  "id": "block_1788964487363_5",
+                  "type": "narration",
+                  "text": "探しても見つからないので店員さんに聞いてみることにする。"
+                },
+                {
+                  "id": "block_1788964481268_4",
+                  "type": "dialogue",
+                  "speaker": "田中治郎",
+                  "text": "すみません、歴史書ってありますか？"
+                },
+                {
+                  "id": "block_1788964514357_6",
+                  "type": "dialogue",
+                  "speaker": "店主",
+                  "text": "あー。歴史書ですか。すみません、この店には置いてないんですよねー。"
+                },
+                {
+                  "id": "block_1788966932419_1",
+                  "type": "dialogue",
+                  "speaker": "店主",
+                  "text": "他の店なら置いてるかもです。\nうちの店は全てのジャンルを網羅しているわけではないので、すみません..."
+                },
+                {
+                  "id": "block_1788966977010_2",
+                  "type": "dialogue",
+                  "speaker": "田中治郎",
+                  "text": "わかりました。\nありがとうございます！"
+                },
+                {
+                  "id": "block_1788966991793_3",
+                  "type": "narration",
+                  "text": "ここにはないようだ..."
+                }
+              ],
               "jumpBlockId": null,
               "loops": true,
               "isCorrect": false
