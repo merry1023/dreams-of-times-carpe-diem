@@ -1420,6 +1420,24 @@ function renderSkillVariableReference(container) {
     container.appendChild(row);
   });
   
+  // ★要望対応：仲間の最大 HP/SP、レベル、攻撃力、防御力を追加
+  [["仲間最大 HP(1 または 名前)", "パーティ内の仲間の最大 HP。仲間最大 HP(1) で 1 人目、仲間最大 HP(レト) のように名前でも指定できる"],
+   ["仲間最大 SP(1 または 名前)", "同じく最大 SP。書き方は仲間最大 HP と同じ"],
+   ["仲間レベル (1 または 名前)", "仲間の現在レベル"],
+   ["仲間攻撃力 (1 または 名前)", "仲間の攻撃力（装備・強化込み）"],
+   ["仲間防御力 (1 または 名前)", "仲間の防御力（素早さパラメータ）"]].forEach(([name, desc]) => {
+    const row = document.createElement("div");
+    row.className = "scenariobuild-condition-row";
+    const nameEl = document.createElement("code");
+    nameEl.className = "scenariobuild-variable-name";
+    nameEl.textContent = name;
+    row.appendChild(nameEl);
+    const descEl = document.createElement("span");
+    descEl.textContent = desc;
+    row.appendChild(descEl);
+    container.appendChild(row);
+  });
+  
   // ★実際に今のシナリオで登録されているフラグも、flag(フラグ名)にそのまま使える名前として一覧に出しておく
   if (Array.isArray(scenarioProject.flagDefs) && scenarioProject.flagDefs.length > 0) {
     buildTable("今のシナリオに登録されているフラグ（flag(フラグ名)にそのまま使えます）",
