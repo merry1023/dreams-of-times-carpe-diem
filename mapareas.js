@@ -745,14 +745,28 @@ function buildMapAreaCard(area, index) {
     previewSvg.appendChild(previewCircle);
     sizeRow.appendChild(previewSvg);
     
-    sizeInput.oninput = updateSizePreview; // ★打つたび（画面から離れなくても）すぐプレビューへ反映する
+    sizeInput.oninput = () => {
+      updateSizePreview();
+      // ★マップ上のノードもリアルタイムで更新
+      if (area.id && typeof renderAdventureMap === "function") {
+        const nodeEl = document.querySelector(`[data-node-id="${area.id}"]`);
+        if (nodeEl) {
+          const raw = sizeInput.value.trim();
+          const defaultSize = area.type === "country" ? 12 : area.type === "city" ? 10 : area.type === "enemy" ? 7 : 9;
+          const size = raw === "" ? defaultSize : Math.max(3, Math.min(20, Math.floor(Number(raw)) || defaultSize));
+          const circle = nodeEl.querySelector("circle");
+          if (circle) circle.setAttribute("r", String(size));
+        }
+      }
+    };
     sizeInput.onchange = () => {
       const num = Number(sizeInput.value);
       area.mapNodeSize = sizeInput.value.trim() === "" ? null : Math.max(3, Math.min(20, Math.floor(num) || 9));
       persist();
-      updateSizePreview(); // ★min/maxでクランプされた最終値に合わせてプレビューも整える
+      updateSizePreview();
+      // ★変更確定後もマップ上を更新
+      if (typeof renderAdventureMap === "function") renderAdventureMap();
     };
-    infoEl.appendChild(sizeRow);
   }
   
   // BGM・背景

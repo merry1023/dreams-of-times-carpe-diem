@@ -286,6 +286,12 @@ function evaluateMapAreaUnlockConditions(area) {
     if (cond.type === "daysSinceTransfer") {
       return !!(player && player.daysSinceTransfer >= (cond.days || 1)); // ★要望対応：経過日数による解放条件
     }
+    if (cond.type === "playerRank") {
+      return !!(player && player.rank >= (cond.rank || 1)); // ★要望対応：ランクによる解放条件
+    }
+    if (cond.type === "playerLevel") {
+      return !!(player && player.level >= (cond.level || 1)); // ★要望対応：レベルによる解放条件
+    }
     return true;
   });
 }
