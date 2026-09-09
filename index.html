@@ -12,6 +12,7 @@
   <!-- ★タイトル画面。ページを開くと必ずここが最初に表示される（script.js） -->
   <div id="title-screen-overlay" class="title-screen-overlay">
     <button id="title-screen-fullscreen-btn" class="title-screen-fullscreen-btn" type="button">⛶ 全画面</button>
+    <button id="title-screen-login-btn" class="title-screen-login-btn" type="button">👤 Googleでログイン</button>
     <div class="title-screen-panel">
       <h1 class="title-screen-logo">時の夢 <span class="title-screen-logo-sub">-Carpe Diem-</span></h1>
       <p class="title-screen-subtitle">異世界転生コメディRPG</p>
@@ -341,6 +342,10 @@
   
 </body>
 
+<!-- ★Googleアカウント認証（Firebase）。auth.jsより前に読み込む必要がある -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="auth.js"></script>
 <script src="items.js"></script>
 <script src="inventory.js"></script>
 <script src="player.js"></script>

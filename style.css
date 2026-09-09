@@ -4160,6 +4160,31 @@ body.screen-monochrome {
   color: #ffc107;
 }
 
+/* ★要望対応：タイトル画面左上のGoogleアカウントログインボタン */
+.title-screen-login-btn {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 2;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #ddd;
+  border: 1px solid #666;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.title-screen-login-btn:hover {
+  border-color: #ffc107;
+  color: #ffc107;
+}
+
 .title-screen-panel {
   position: relative;
   z-index: 1;

@@ -15,6 +15,7 @@ function setupTitleScreen() {
   titleScreenSlotIndex = 0;
   renderTitleScreenMenuCursor();
   setupTitleScreenFullscreenButton(); // ★要望対応：タイトル画面からも全画面表示に切り替えられるようにする
+  if (typeof setupTitleScreenLoginButton === "function") setupTitleScreenLoginButton(); // auth.js（要望対応：Googleアカウントログイン）
   
   const newBtn = document.getElementById("title-screen-new-btn");
   const continueBtn = document.getElementById("title-screen-continue-btn");

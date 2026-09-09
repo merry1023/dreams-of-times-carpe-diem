@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   //   で使われる
   if (typeof loadCustomScenarioData === "function") loadCustomScenarioData(); // ★確認の判定に使うSCENARIOBUILD_LAST_EDITED_KEY等を最新化しておく
   if (typeof checkDataFileVersionAndConfirm === "function") await checkDataFileVersionAndConfirm(); // scenariobuild.js
+  // ★要望対応：本体JSファイルが更新されていた場合の確認（開発者アカウントのみ、はい/いいえ。それ以外は自動で最新を反映）
+  if (typeof checkAppJsVersionAndConfirm === "function") await checkAppJsVersionAndConfirm(); // auth.js
   setupTitleScreen(); // titlescreen.js（「はじめから」「つづきから」の選択を待つ。ゲーム本編はまだ始めない）
 });
 
