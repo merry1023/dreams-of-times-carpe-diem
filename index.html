@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>時の夢 -Carpe Diem-</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <!-- ★タイトル画面。ページを開くと必ずここが最初に表示される（script.js） -->
+  <div id="title-screen-overlay" class="title-screen-overlay">
+    <button id="title-screen-fullscreen-btn" class="title-screen-fullscreen-btn" type="button">⛶ 全画面</button>
+    <div class="title-screen-panel">
+      <h1 class="title-screen-logo">時の夢 <span class="title-screen-logo-sub">-Carpe Diem-</span></h1>
+      <p class="title-screen-subtitle">異世界転生コメディRPG</p>
+      <div class="title-screen-divider"></div>
+      <div id="title-screen-menu" class="title-screen-menu">
+        <button id="title-screen-new-btn" class="title-screen-btn">はじめから</button>
+        <button id="title-screen-continue-btn" class="title-screen-btn">つづきから</button>
+      </div>
+      <div id="title-screen-slots" class="title-screen-slots hidden"></div>
+    </div>
+  </div>
+  
+  <!-- ★はじめから選択時に必ず挟むオープニング演出（注意書き→クレジット→アイコン→本編開始。titlescreen.js） -->
+  <div id="intro-splash-overlay" class="intro-splash-overlay hidden" onclick="event.stopPropagation(); advanceIntroSplash();">
+    <div id="intro-splash-content" class="intro-splash-content"></div>
+    <p class="intro-splash-hint">（クリック / Zキー / Spaceキーで次へ）</p>
+  </div>
+  
+  <!-- ★専用デザインのゲームオーバー画面（シナリオビルドのゲームオーバーブロックから使用） -->
+  <div id="gameover-overlay" class="gameover-overlay hidden">
+    <div class="gameover-panel">
+      <h1 class="gameover-title">GAME OVER</h1>
+      <p id="gameover-message" class="gameover-message"></p>
+      <p id="gameover-ending-name" class="gameover-ending-name hidden"></p>
+      <div class="gameover-buttons">
+        <button id="gameover-retry-btn" class="title-screen-btn">リトライ</button>
+        <button id="gameover-title-btn" class="title-screen-btn">タイトルへ戻る</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="game-container">
+    <!-- ★縦画面（スマホ縦持ちなど）専用：メイン画面／サブ画面を切り替えるボタン。横画面時はCSSで非表示 -->
+    <button id="portrait-switch-btn" class="portrait-switch-btn" onclick="event.stopPropagation(); togglePortraitScreen();">⇄ サブ画面へ<span class="key-badge">A/D</span></button>
+    <!-- ★開発者モード：設定タブでパスワード認証すると解放される、左端の開閉式パネル（devmode.js） -->
+    <button id="devmode-tab-toggle" class="devmode-tab-toggle hidden" onclick="event.stopPropagation(); toggleDevModePanel();">🛠</button>
+    <div id="devmode-panel" class="devmode-panel hidden">
+      <div id="devmode-panel-content" class="devmode-panel-content"></div>
+    </div>
+    <!-- ★開発者モードのパスワード入力欄（window.prompt不使用の方針のため、専用のオーバーレイを用意） -->
+    <div id="devmode-password-overlay" class="devmode-password-overlay hidden">
+      <div class="devmode-password-box">
+        <p>開発者パスワードを入力してください</p>
+        <input type="password" id="devmode-password-input" class="devmode-password-input" autocomplete="off">
+        <p id="devmode-password-error" class="devmode-password-error hidden">パスワードが違います。</p>
+        <div class="devmode-password-buttons">
+          <button id="devmode-password-confirm" class="devmode-password-btn">決定</button>
+          <button id="devmode-password-cancel" class="devmode-password-btn devmode-password-btn-cancel">キャンセル</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ★店の個数選択（town.js pickQuantity）。以前は文章の選択肢だったのを、専用のミニ画面に変更 -->
+    <div id="quantity-picker" class="quantity-picker hidden">
+      <div class="quantity-picker-box">
+        <p id="quantity-picker-label" class="quantity-picker-label"></p>
+        <div class="quantity-picker-controls">
+          <button id="quantity-picker-dec" class="quantity-picker-btn">－<span class="key-badge">←</span></button>
+          <span id="quantity-picker-value" class="quantity-picker-value"></span>
+          <button id="quantity-picker-inc" class="quantity-picker-btn">＋<span class="key-badge">→</span></button>
+        </div>
+        <div class="quantity-picker-footer">
+          <button id="quantity-picker-confirm" class="devmode-btn">決定<span class="key-badge">Z</span></button>
+          <button id="quantity-picker-cancel" class="devmode-btn">やめる<span class="key-badge">X</span></button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="main-screen">
+      <!-- ★冒険の行き先選択：ノードマップ表示（adventuremap.js）。メイン画面だけを覆い、サブ画面はそのまま操作できる -->
+      <div id="adventure-map-overlay" class="adventure-map-overlay hidden">
+        <div class="adventure-map-panel">
+          <h2 class="adventure-map-title">冒険する</h2>
+          <svg id="adventure-map-svg" class="adventure-map-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="adventure-map-footer">
+            <button id="adventure-map-close-btn" class="devmode-btn">戻る</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- ★鍛冶屋・素材合成屋の専用画面（crafting.js）。メイン画面だけを覆い、サブ画面はそのまま操作できる -->
+      <div id="crafting-overlay" class="crafting-overlay hidden">
+        <div class="crafting-panel">
+          <div class="crafting-header">
+            <h2 id="crafting-title" class="crafting-title"></h2>
+            <button id="crafting-close-btn" class="devmode-btn">戻る<span class="key-badge">X</span></button>
+          </div>
+          <div class="crafting-body">
+            <div id="crafting-recipe-list" class="crafting-recipe-list"></div>
+            <div id="crafting-detail-panel" class="crafting-detail-panel"></div>
+          </div>
+          <!-- ★装備を消費するレシピを実行する時、「どの1個を消費するか」をお気に入りを誤って
+               消費しないよう選ばせるピッカー（アイテムタブと同じグリッド形式）。要望対応 -->
+          <div id="crafting-instance-picker" class="crafting-instance-picker hidden">
+            <p id="crafting-instance-picker-label" class="crafting-instance-picker-label"></p>
+            <div id="crafting-instance-picker-grid" class="inventory-grid"></div>
+          </div>
+        </div>
+      </div>
+      <!-- ★立ち絵表示エリア（scenariobuild.jsの「立ち絵表示/非表示」「表情変更」「移動」「動き」ブロックから操作する）。
+           背景より手前、メッセージウィンドウより奥の高さに収まるよう、bottomをメッセージウィンドウの高さぶん空けてある -->
+      <div id="portrait-layer" class="portrait-layer"></div>
+      <div id="battle-enemies" class="battle-enemies"></div>
+      <div id="hit-flash-overlay"></div>
+      <!-- ★設定「メインタブのパラメータ表示」がOFF（デフォルト）の時、常時左上にステータス（status-hud-wrapper、
+           index.html下部で定義）がここへ移動してくる。ONの時はメインタブ側（main-tab-params-slot）へ移動する -->
+      <div id="mini-status-hud" class="mini-status-hud hidden"></div>
+      <div class="message-window">
+        <p id="speaker-name"></p>
+        <p id="message-text"></p>
+      </div>
+      <!-- ★サブ画面でメインタブ以外を見ている間、選択肢が出ていればここへ一時的に移動してくる（mainfunc.jsのrelocateChoiceBoxForActiveTab） -->
+      <div id="choice-box-main-slot" class="choice-box-main-slot"></div>
+      <div id="location-menu" class="location-menu hidden"></div>
+      <div id="battle-hud" class="battle-hud hidden">
+        <p id="battle-enemy-name" class="battle-enemy-name"></p>
+        <div class="gauge-bar"><div class="gauge-fill enemy-hp-fill" id="enemy-hp-fill"></div></div>
+        <span class="gauge-value" id="enemy-hp-value"></span>
+      </div>
+      <!-- ★「なんでも鑑定」の鑑定タイム演出専用のボード（開運なんでも鑑定団風の電光表示）。appraisal.jsが開閉・更新する -->
+      <div id="appraisal-board" class="appraisal-board hidden">
+        <p class="appraisal-board-label">鑑　定　額</p>
+        <div id="appraisal-board-digits" class="appraisal-board-digits"></div>
+      </div>
+      <button id="hide-choices-btn" class="hide-choices-btn" onclick="event.stopPropagation(); toggleHideChoices()" title="選択肢を隠す（キー: V）">👁 非表示<span class="key-badge">V</span></button>
+      <button id="fast-forward-btn" class="fast-forward-btn" onclick="event.stopPropagation(); toggleFastForward()" title="早送り（キー: H）">▶▶ 早送り<span class="key-badge">H</span></button>
+      
+      <div id="quest-board-overlay" class="quest-board-overlay hidden">
+        <div class="quest-board-header">
+          <h2 class="quest-board-title">クエスト掲示板</h2>
+          <div id="quest-rank-filter" class="quest-rank-filter"></div>
+          <button id="quest-board-close-btn" class="quest-board-close-btn">閉じる</button>
+        </div>
+        <div class="quest-board-body">
+          <div id="quest-list" class="quest-list"></div>
+          <div id="quest-detail" class="quest-detail"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="sub-screen">
+      <div class="tab-menu">
+        <span class="key-badge tab-menu-key-hint" title="Qキー/Eキーでタブを左右に切り替え">Q◄ ►E</span>
+        <button class="tab-btn active" onclick="event.stopPropagation(); switchTab('tab-main')">メイン</button>
+        <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-inventory')">インベントリ</button>
+        <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-skill')">スキル</button>
+        <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-companions')">仲間</button>
+        <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-strength')">強さ</button>
+        <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-equipment')">装備</button>
+        <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-convenience')">便利</button>
+        <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-log')">ログ</button>
+        <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-setting')">設定</button>
+      </div>
+      <div id="rankup-banner" class="rankup-banner hidden">
+        <span class="rankup-banner-label">★</span>
+        <span id="rankup-banner-text" class="rankup-banner-text"></span>
+      </div>
+      <div class="tab-content-container">
+        <div id="tab-main" class="tab-content active">
+          <div id="objective-banner" class="objective-banner hidden">
+            <span class="objective-banner-label">目標</span>
+            <span id="objective-banner-text" class="objective-banner-text"></span>
+          </div>
+          
+          <!-- ★転移後日数と所持金は、メインタブの一番上に表示する（要望対応） -->
+          <div class="main-tab-top-row">
+            <span id="days-since-transfer" class="main-tab-top-row-item">転移後 0日</span>
+            <span id="gold-value" class="main-tab-top-row-item gold-value">0陳</span>
+          </div>
+          
+          <!-- ★メインタブの40%くらいの大きさのアナログ時計（針は時針・分針のみ）と、その下にデジタル時計（要望対応）。
+               img/clock/clock.png（文字盤）・img/clock/hour.png（時針）・img/clock/minutes.png（分針）を重ねて表示する。
+               針の画像は、文字盤と同じサイズで、中心を軸に回転させる前提（画像の中心＝時計の針の付け根） -->
+          <div class="main-tab-clock-area">
+            <div id="main-tab-analog-clock" class="main-tab-analog-clock">
+              <img src="img/clock/clock.png" class="main-tab-clock-face-img" alt="">
+              <img id="main-tab-clock-hour-hand" src="img/clock/hour.png" class="main-tab-clock-hand-img" alt="">
+              <img id="main-tab-clock-minute-hand" src="img/clock/minutes.png" class="main-tab-clock-hand-img" alt="">
+            </div>
+            <p id="main-tab-digital-clock" class="main-tab-digital-clock">8:00</p>
+          </div>
+          
+          <!-- ★設定「メインタブのパラメータ表示」がONの時だけ、ここへstatus-hud-wrapperが移動してくる -->
+          <div id="main-tab-params-slot" class="main-tab-params-slot hidden"></div>
+        </div>
+        
+        <!-- ★主人公・仲間のパラメータ本体（可動式）。設定に応じてmini-status-hud（常時左上）か
+             main-tab-params-slot（メインタブ内）のどちらかへ、JS側（applyMainTabParamsDisplayMode）で移動する -->
+        <div id="status-hud-wrapper" class="hidden">
+          <div class="status-hud">
+            <div class="status-top-row">
+              <span id="player-level">Lv.1</span>
+              <span id="game-time">8時</span>
+            </div>
+            <div class="gauge-row">
+              <span class="gauge-label">EXP</span>
+              <div class="gauge-bar"><div class="gauge-fill exp-fill" id="exp-fill"></div></div>
+              <span class="gauge-value" id="exp-value">0 / 100</span>
+            </div>
+            <div class="gauge-row">
+              <span class="gauge-label">体力</span>
+              <div class="gauge-bar"><div class="gauge-fill hp-fill" id="hp-fill"></div></div>
+              <span class="gauge-value" id="hp-value">0 / 0</span>
+              <span id="poison-badge" class="poison-badge hidden">毒</span>
+            </div>
+            <div class="gauge-row">
+              <span class="gauge-label">SP</span>
+              <div class="gauge-bar"><div class="gauge-fill sp-fill" id="sp-fill"></div></div>
+              <span class="gauge-value" id="sp-value">0 / 0</span>
+            </div>
+            <div class="gauge-row">
+              <span class="gauge-label">眠気</span>
+              <div class="gauge-bar"><div class="gauge-fill sleep-fill" id="sleep-fill"></div></div>
+              <span class="gauge-value" id="sleep-value">0 / 0</span>
+            </div>
+            <div class="gauge-row">
+              <span class="gauge-label">疲労度</span>
+              <div class="gauge-bar"><div class="gauge-fill fatigue-fill" id="fatigue-fill"></div></div>
+              <span class="gauge-value" id="fatigue-value">0 / 0</span>
+            </div>
+          </div>
+          <div id="main-tab-companion-params" class="main-tab-companion-params"></div>
+        </div>
+        
+        <div id="tab-inventory" class="tab-content">
+          <div class="inventory-grid" id="inventory-grid"></div>
+          <div id="item-detail-panel" class="item-detail-panel"></div>
+        </div>
+
+        <div id="tab-skill" class="tab-content">
+          <div class="skill-list" id="skill-list"></div>
+        </div>
+
+        <div id="tab-companions" class="tab-content">
+          <div id="companion-list" class="companion-list"></div>
+        </div>
+
+        <div id="tab-strength" class="tab-content">
+          <div class="strength-list" id="strength-list"></div>
+        </div>
+
+        <div id="tab-equipment" class="tab-content">
+          <div id="equipment-slots" class="equipment-slots"></div>
+          <div id="equipment-inventory-list" class="equipment-inventory-list"></div>
+        </div>
+
+        <div id="tab-convenience" class="tab-content">
+          <div id="convenience-icon-grid" class="convenience-icon-grid"></div>
+          <div id="saveload-panel" class="saveload-panel hidden"></div>
+          <div id="monster-codex-panel" class="monster-codex-panel hidden"></div>
+          <div id="progress-panel" class="monster-codex-panel hidden"></div>
+          <div id="credits-panel" class="monster-codex-panel hidden"></div>
+          <div id="tutorial-panel" class="monster-codex-panel hidden"></div>
+        </div>
+
+        <div id="tab-log" class="tab-content">
+          <div id="log-list" class="log-list"></div>
+        </div>
+        
+        <div id="tab-setting" class="tab-content">
+          <div id="settings-list-container"></div>
+          <div id="autosave-panel" class="monster-codex-panel hidden"></div>
+        </div>
+        
+        
+      </div>
+      
+      <div class="choice-box"></div>
+      
+    </div>
+    
+    
+    
+    
+  </div>
+  
+  <div id="special-overlay" class="special-overlay hidden">
+    <div id="special-text" class="special-text"></div>
+  </div>
+  
+  <!-- ランクアップ・試練解放のお知らせポップアップ（入力をブロックしない、自動で消える通知） -->
+  <div id="rank-up-popup" class="rank-up-popup hidden">
+    <p id="rank-up-popup-title" class="rank-up-popup-title"></p>
+    <p id="rank-up-popup-message" class="rank-up-popup-message"></p>
+  </div>
+  
+  <!-- ゲーム内の確認ダイアログ（window.confirmの代わり） -->
+  <div id="confirm-dialog-overlay" class="game-dialog-overlay hidden">
+    <div class="game-dialog-box">
+      <p id="confirm-dialog-message" class="game-dialog-message"></p>
+      <div class="game-dialog-buttons">
+        <button id="confirm-dialog-yes" class="game-dialog-btn">はい</button>
+        <button id="confirm-dialog-no" class="game-dialog-btn">いいえ</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 開発者モード：シナリオビルド（scenariobuild.js）。全画面のエディタ専用モード -->
+  <div id="scenariobuild-overlay" class="scenariobuild-overlay hidden">
+    <div class="scenariobuild-header">
+      <h2>シナリオビルド</h2>
+      <div class="scenariobuild-header-buttons">
+        <button id="scenariobuild-undo-btn" class="devmode-btn" title="元に戻す">↶ 元に戻す</button>
+        <button id="scenariobuild-redo-btn" class="devmode-btn" title="やり直す">↷ やり直す</button>
+        <button id="scenariobuild-save-btn" class="devmode-btn" title="ブラウザに保存する">💾 保存済み</button>
+        <button id="scenariobuild-close-btn" class="devmode-btn">▶ ゲームに戻る</button>
+      </div>
+    </div>
+    <div class="scenariobuild-split">
+      <div id="scenariobuild-main" class="scenariobuild-main"></div>
+      <div class="scenariobuild-sub">
+        <div id="scenariobuild-sub-tabs" class="scenariobuild-tab-row"></div>
+        <div id="scenariobuild-sub-content" class="scenariobuild-sub-content"></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- ゲーム内のアラートダイアログ（window.alertの代わり） -->
+  <div id="alert-dialog-overlay" class="game-dialog-overlay hidden">
+    <div class="game-dialog-box">
+      <p id="alert-dialog-message" class="game-dialog-message"></p>
+      <div class="game-dialog-buttons">
+        <button id="alert-dialog-ok" class="game-dialog-btn">OK</button>
+      </div>
+    </div>
+  </div>
+  
+</body>
+
+<script src="items.js"></script>
+<script src="inventory.js"></script>
+<script src="player.js"></script>
+<script src="appraisal.js"></script>
+<script src="bgm.js"></script>
+<script src="mainfunc.js"></script>
+<script src="convenience.js"></script>
+<script src="titlescreen.js"></script>
+<script src="settings.js"></script>
+<script src="devmode.js"></script>
+<script src="scenariobuild.js"></script>
+<script src="mapareas.js"></script>
+<script src="builtin_chapters_seed.js"></script>
+<script src="scenario_only_data.js"></script>
+<script src="game_settings_data.js"></script>
+<script src="town.js"></script>
+<script src="crafting.js"></script>
+<script src="questboard.js"></script>
+<script src="enemy.js"></script>
+<script src="boss.js"></script>
+<script src="battle.js"></script>
+<script src="adventure.js"></script>
+<script src="adventuremap.js"></script>
+<script src="scenario.js"></script>
+<script src="scenario2.js"></script>
+<script src="script.js"></script>
+
+
+</html>

@@ -1,0 +1,4631 @@
+/* 1. ここでテーマのカラー（変数）を一括管理！ */
+:root {
+    --bg-color-dark: black;       /* 一番奥の背景色 */
+    --bg-main-screen: black;   /* メイン画面の背景色 */
+    --bg-sub-screen: black;    /* サブ画面の背景色 */
+    --bg-window: beige;           /* ステータス枠の中の背景色 */
+    
+    --text-color: white;         /* 全体の文字色 */
+    --border-color: white;        /* 境界線の色 */
+    --window-border: white;       /* ステータス枠の線の色 */
+}
+
+/* 2. 定義した変数を var() を使って呼び出す */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: var(--bg-color-dark); /* 変数を使用 */
+    color: var(--text-color);               /* 変数を使用 */
+    font-family: sans-serif;
+    overflow: hidden;
+}
+
+.game-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    position: relative; /* ★開発者モードのパネルをこの枠の左端に固定するために必要 */
+}
+
+/* ★縦画面切り替えボタン。通常（横長）画面では隠す */
+.portrait-switch-btn {
+    display: none;
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    z-index: 50;
+    background-color: rgba(20, 20, 20, 0.85);
+    color: #ffd700;
+    border: 1px solid #ffd700;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* ★縦画面（スマホ縦持ちなど）対応の詳細は、スタイルシート末尾の@mediaブロックにまとめてある
+   （後方の.main-screen/.sub-screenの基本スタイルより後ろに置かないと、ここで上書きしても負けてしまうため） */
+
+/* ===== 開発者モード ===== */
+.devmode-tab-toggle {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 40;
+    background-color: #b71c1c;
+    color: #fff;
+    border: none;
+    border-radius: 0 8px 8px 0;
+    padding: 12px 6px;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.devmode-panel {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 78%;
+    max-width: 420px;
+    background-color: rgba(10, 10, 10, 0.97);
+    border-right: 3px solid #b71c1c;
+    z-index: 39;
+    overflow-y: auto;
+    padding: 16px;
+    box-sizing: border-box;
+    color: #eee;
+}
+
+.devmode-panel-content h3 {
+    color: #ff5252;
+    margin: 14px 0 6px;
+    font-size: 14px;
+    border-bottom: 1px solid #555;
+    padding-bottom: 4px;
+}
+
+.devmode-panel-content h3:first-child {
+    margin-top: 0;
+}
+
+.devmode-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 12px;
+}
+
+.devmode-row-label {
+    color: #ccc;
+    flex-shrink: 0;
+}
+
+.devmode-row input[type="text"],
+.devmode-row input[type="number"] {
+    width: 90px;
+    background-color: #222;
+    color: #fff;
+    border: 1px solid #666;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 12px;
+}
+
+.devmode-row select {
+    background-color: #222;
+    color: #fff;
+    border: 1px solid #666;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 12px;
+    flex: 1;
+}
+
+.devmode-btn {
+    background-color: #444;
+    color: #fff;
+    border: 1px solid #777;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    margin: 3px 4px 3px 0;
+}
+
+.devmode-btn:hover {
+    background-color: #666;
+}
+
+.devmode-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.devmode-btn:disabled:hover {
+    background-color: #444;
+}
+
+.devmode-btn-danger {
+    background-color: #7a1f1f;
+    border-color: #b71c1c;
+}
+
+/* ★話の一覧で「条件をもう満たしている」ことを示すボタン（scenariobuild.js） */
+.scenariobuild-condition-met-btn {
+    background-color: #1f4d2b;
+    border-color: #3fa15a;
+    color: #baffcf;
+    font-weight: bold;
+}
+
+.scenariobuild-condition-met-btn:hover {
+    background-color: #275f36;
+}
+
+.devmode-note {
+    color: #888;
+    font-size: 11px;
+    margin: 4px 0 10px;
+    line-height: 1.5;
+}
+
+/* ★状態管理タブ：状態異常／状態強化の見出し */
+.scenariobuild-subheading {
+    color: #ffc107;
+    font-size: 14px;
+    margin: 16px 0 6px;
+    border-bottom: 1px solid #555;
+    padding-bottom: 4px;
+}
+
+.devmode-password-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.85);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.devmode-password-box {
+    background-color: #1a1a1a;
+    border: 2px solid #b71c1c;
+    border-radius: 10px;
+    padding: 20px;
+    width: 80%;
+    max-width: 320px;
+    text-align: center;
+    color: #eee;
+}
+
+.devmode-password-input {
+    width: 90%;
+    margin: 10px 0;
+    padding: 8px;
+    font-size: 14px;
+    border-radius: 6px;
+    border: 1px solid #666;
+    background-color: #222;
+    color: #fff;
+    box-sizing: border-box;
+}
+
+.devmode-password-error {
+    color: #ff5252;
+    font-size: 12px;
+    margin: 4px 0;
+}
+
+.devmode-password-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.devmode-password-btn {
+    background-color: #b71c1c;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.devmode-password-btn-cancel {
+    background-color: #444;
+}
+
+.main-screen {
+    flex: 6;
+    background-color: var(--bg-main-screen);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    flex-direction: column;
+    padding-top: 250px;
+    margin: 10px;
+    position: relative; /* 早送りボタンを絶対配置するため */
+    border: 3px solid transparent; /* 操作フォーカス表示のための下地（普段は透明） */
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+
+.sub-screen {
+    flex: 4;
+    background-color: var(--bg-sub-screen);
+    display: flex;
+    flex-direction: column;
+    padding: 0px;
+    box-sizing: border-box;
+    color: white;
+    border: 3px solid transparent; /* 操作フォーカス表示のための下地（普段は透明） */
+    transition: border-color 0.2s ease;
+}
+
+/* ★今どちらの画面をキーボード操作しているか（a/dキーで切り替え）を、金色の枠で示す */
+.main-screen.focus-active,
+.sub-screen.focus-active {
+    border-color: #ffc107;
+}
+
+/* 汎用の非表示ユーティリティ */
+.hidden {
+    display: none !important;
+}
+
+/* 行き先メニュー（町の中で行ける場所のボタン一覧） */
+.location-menu {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 3px solid var(--window-border);
+    border-radius: 8px;
+    padding: 24px 32px;
+    min-width: 320px;
+}
+
+.location-menu-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #fff;
+    margin: 0 0 8px 0;
+}
+
+.location-btn-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+/* ★広場や店の選択肢が5個以上になった時の2列レイアウト（左右キーで列移動） */
+.location-btn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    width: 100%;
+}
+
+.location-btn {
+    width: 100%;
+    padding: 12px 0;
+    font-size: 16px;
+    background-color: #222;
+    color: #eee;
+    border: 2px solid #555;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.location-btn:hover {
+    background-color: #333;
+    border-color: #888;
+    color: #ccc;
+}
+
+.location-btn:focus {
+    background-color: #444;
+    border-color: #ffc107;
+    color: #ffc107;
+    outline: none;
+    box-shadow: 0 0 8px #ffc107;
+}
+
+/* ★JS側のカーソル管理(.cursorクラス)に対応する表示。DOMフォーカスを使わない場面でも
+   「今どれを選んでいるか」が常にはっきり見えるようにする */
+.location-btn.cursor {
+    background-color: #444;
+    border-color: #ffc107;
+    color: #ffc107;
+    outline: none;
+    box-shadow: 0 0 8px #ffc107;
+}
+
+
+.message-window{
+    position: relative; /* ★z-indexを効かせるために必要。position指定の無い要素は
+                            position指定のある要素（立ち絵レイヤー等）より常に奥に描画されてしまうため */
+    z-index: 10; /* ★立ち絵レイヤー(portrait-layer: z-index 1)や敵表示(battle-enemies: z-index 2)、
+                     簡易ステータスHUD(mini-status-hud: z-index 3)より確実に手前に表示する */
+    border: 4px solid var(--window-border);
+    padding: 10px;
+    margin-top: 50px;
+    height: 150px;
+    width: 650px;
+    border-radius: 5px;
+    background-color: black;
+    
+}
+
+/* ===== ステータスHUD（サブ画面「メイン」タブの中：レベル・経過日数・ゲージ） ===== */
+/* ★シナリオエディタで設定した「目標（タスク）」の表示バナー */
+.objective-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: rgba(255, 193, 7, 0.12);
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    font-size: 12px;
+}
+
+.objective-banner.hidden {
+    display: none;
+}
+
+.objective-banner-label {
+    flex-shrink: 0;
+    color: #ffc107;
+    font-weight: bold;
+    background-color: rgba(255, 193, 7, 0.2);
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+.objective-banner-text {
+    color: #fff;
+}
+
+/* ★どのサブ画面タブでも常に見える、ランクアップ可能通知（mainfunc.js） */
+.rankup-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(90deg, rgba(255, 215, 0, 0.22), rgba(255, 215, 0, 0.08));
+    border: 1px solid #ffd700;
+    border-radius: 0;
+    padding: 6px 12px;
+    font-size: 12px;
+    animation: rankup-banner-pulse 2s ease-in-out infinite;
+}
+
+.rankup-banner.hidden {
+    display: none;
+}
+
+.rankup-banner-label {
+    flex-shrink: 0;
+    color: #ffd700;
+    font-weight: bold;
+}
+
+.rankup-banner-text {
+    color: #fff8e1;
+    font-weight: bold;
+}
+
+@keyframes rankup-banner-pulse {
+    0%, 100% { background-color: rgba(255, 215, 0, 0.08); }
+    50% { background-color: rgba(255, 215, 0, 0.28); }
+}
+
+.status-hud {
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.65);
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    padding: 12px;
+    box-sizing: border-box;
+    font-size: 13px;
+}
+
+/* ★メインタブの一番上：転移後日数と所持金（要望対応） */
+.main-tab-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.main-tab-top-row-item {
+    color: #eee;
+}
+
+/* ★メインタブの中央：アナログ時計（40%くらいの大きさ）＋その下にデジタル時計（要望対応） */
+.main-tab-clock-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0 18px;
+}
+
+.main-tab-analog-clock {
+    position: relative;
+    width: 60%;
+    max-width: 280px;
+    min-width: 200px;
+    aspect-ratio: 1 / 1;
+}
+
+/* ★文字盤・針は3枚とも同じ大きさで重ねて表示する。針は画像の中心（付け根）を軸に回転させる */
+.main-tab-clock-face-img,
+.main-tab-clock-hand-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+}
+
+.main-tab-clock-hand-img {
+    transform-origin: 50% 50%;
+}
+
+.main-tab-digital-clock {
+    margin: 0;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    color: #ffc107;
+    text-shadow: 0 0 6px rgba(255, 193, 7, 0.4);
+}
+
+/* ★設定「メインタブのパラメータ表示」がONの時だけ表示される、メインタブ内のパラメータ置き場 */
+.main-tab-params-slot.hidden {
+    display: none !important;
+}
+
+.status-top-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.gauge-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.gauge-row:last-child {
+    margin-bottom: 0;
+}
+
+.gauge-label {
+    width: 46px;
+    flex-shrink: 0;
+    font-size: 12px;
+}
+
+/* 「太めのゲージ」指定なので高さをしっかり取る */
+.gauge-bar {
+    flex: 1;
+    height: 18px;
+    background-color: #111;
+    border: 1px solid #555;
+    border-radius: 9px;
+    overflow: hidden;
+}
+
+.gauge-fill {
+    height: 100%;
+    width: 0%; /* JS側でパーセントをセットする */
+    transition: width 0.3s ease;
+}
+
+.gauge-value {
+    flex-shrink: 0;
+    width: 72px;
+    text-align: right;
+    font-size: 11px;
+    color: #ccc;
+    margin-left: 6px;
+}
+
+.poison-badge {
+    flex-shrink: 0;
+    margin-left: 4px;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #fff;
+    background-color: #7b1fa2;
+    border-radius: 4px;
+}
+
+.poison-badge.hidden {
+    display: none !important;
+}
+
+.status-gold-row {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #444;
+}
+
+.gold-value {
+    font-size: 14px;
+    font-weight: bold;
+    color: #ffc107;
+}
+
+/* ★メインタブ：主人公のパラメータの下に並ぶ、仲間それぞれの簡易パラメータ */
+.main-tab-companion-params {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.main-tab-companion-row {
+    background-color: #1c1c1c;
+    border: 1px solid #3a3a3a;
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+.main-tab-companion-row.main-tab-companion-row-down {
+    border-color: #7a2a2a;
+    background-color: #241a1a;
+}
+
+.main-tab-companion-name {
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.hp-fill { background-color: #e53935; }
+.sp-fill { background-color: #2196f3; }
+.sleep-fill { background-color: #9c27b0; }
+.fatigue-fill { background-color: #ff9800; }
+.exp-fill { background-color: #4caf50; }
+
+#speaker-name{
+    font-size: 20px;
+    margin: 0 0 4px 0; /* ★<p>のデフォルト余白(margin:1em 0)がfitMessageWindowTextの計算に含まれておらず、
+                          実際に使える高さを実際より多く見積もってしまっていたバグの修正 */
+}
+
+#message-text{
+    font-size: 15px;
+    margin: 0; /* ★同上。デフォルト余白が無いことを前提にfitMessageWindowTextが高さを計算している */
+    word-break: break-word; /* ★fitMessageWindowTextで高さ判定する前提として、横にはみ出さず必ず折り返すようにする */
+}
+
+/* 選択肢を囲む箱（少し中央に寄せる） */
+/* 選択肢を囲む箱 */
+.choice-box {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;            /* ボタン同士のすき間 */
+  
+  /* 変更ポイント：固定値と自動調整に変更 */
+  margin-top: auto;      /* 💡これで自動的にサブ画面の「一番下」に張り付きます */
+  margin-bottom: ０;   /* 画面最下部との間に少しだけ隙間を作る */
+  
+  box-sizing: border-box; /* 💡paddingを含めたサイズ計算にするお守り */
+  padding: 10px;         /* %ではなくpxで程よい内側の余白を作る */
+  
+  background-color: black; /* 今設定されている背景色 */
+  border: 5px solid white;
+  border-radius: 5px;
+}
+
+/* ★選択肢が1つも表示されていない（中身が空の）間は、箱ごと非表示にする */
+.choice-box:empty {
+  display: none;
+}
+
+/* ★choice-boxがメイン画面側のスロットに移動している時の置き場所。
+   通常はサブ画面の一番下（margin-top:auto）に張り付くが、ここに来た時はメイン画面内で
+   メッセージウィンドウのすぐ下に収まる（choice-box自体の見た目はそのまま流用する） */
+.choice-box-main-slot {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.choice-box-main-slot .choice-box {
+  margin-top: 10px; /* ★メイン画面側では「一番下に張り付く」auto margin は不要なので上書きする */
+}
+
+/* ★メインタブ以外のサブ画面を見ている間、選択肢は見えるが押せない状態にする */
+.choice-box.choice-box-locked {
+  pointer-events: none;
+  opacity: 0.55;
+  filter: grayscale(40%);
+}
+
+/* 選択肢ボタンの通常状態 */
+.choice-box button {
+  display: block;
+  width: 90%;
+  margin: 0 auto;
+  padding: 12px 20px;
+  
+  background-color: #222;       /* 普段は不気味な薄黒 */
+  color: #ccc;                  /* 文字は少し弱めの白 */
+  font-size: 16px;
+  font-weight: bold;
+  
+  border: 2px solid #444;       /* 渋めの枠線 */
+  border-radius: 6px;           /* 角を少し丸く */
+  text-align: left;             /* 文字を左寄せ（ゲームっぽい） */
+  cursor: pointer;
+  transition: all 0.2s ease;    /* 色の変化をなめらかに */
+}
+
+/* ★マウスを乗せた時（クリックすればこちらが決定される） */
+.choice-box button:hover {
+  background-color: #7a2020;
+  color: #fff;
+  border-color: #999;
+}
+
+/* ★矢印キーで選択（フォーカス）した時（Z/決定キーを押すとこちらが決定される。
+   マウスが別のボタンに乗っていても、キーボードでの選択はこちらで常にはっきり分かるようにする） */
+.choice-box button:focus,
+.choice-box button.cursor {
+  background-color: #d32f2f;    /* レナの怒りに合わせて赤く光る！ */
+  color: #fff;                  /* 文字を真っ白に */
+  border-color: #ffc107;        /* 枠線を金色っぽく */
+  outline: none;                /* ブラウザ標準の青い枠線を消す */
+  transform: scale(1.02);       /* ほんの少しだけボタンを大きくして目立たせる */
+  box-shadow: 0 0 8px #ffc107;  /* 金色のグローで「今ここが決定対象」だと分かるようにする */
+}
+
+/* ★選んでも話が先に進まない（同じ場面に戻ってくる）選択肢。青系の枠にして、
+   進行する選択肢（赤系でハイライト）と見分けやすくする */
+.choice-box button.choice-loop {
+  border-color: #4a7fc9;
+}
+
+.choice-box button.choice-loop:hover {
+  background-color: #1d3a63;
+  border-color: #7ab0ff;
+}
+
+.choice-box button.choice-loop:focus,
+.choice-box button.choice-loop.cursor {
+  background-color: #2f5da8;
+  border-color: #7ab0ff;
+  box-shadow: 0 0 8px #4a7fc9;
+}
+
+/* ★設定で「正解の選択肢を表示」がONの時、正解の選択肢に付く金色のハイライト */
+.choice-box button.choice-correct-hint {
+  border-color: #ffd700;
+}
+
+.choice-box button.choice-correct-hint:hover,
+.choice-box button.choice-correct-hint:focus,
+.choice-box button.choice-correct-hint.cursor {
+  background-color: #4a3f00;
+  border-color: #ffd700;
+  box-shadow: 0 0 8px #ffd700;
+}
+
+.choice-pager {
+  margin: 4px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #ccc;
+}
+
+.choice-pager-btn {
+  background-color: #333;
+  color: #eee;
+  border: 1px solid #666;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.choice-pager-btn:hover,
+.choice-pager-btn:focus {
+  background-color: #ffc107;
+  color: #000;
+  outline: none;
+}
+
+.choice-pager-label {
+  min-width: 3em;
+  text-align: center;
+}
+
+.tab-menu{
+    display: flex;
+    width: 100%;
+    background-color: #111;
+    padding-top: 10px;
+    box-sizing: border-box;
+}
+
+.tab-btn{
+    flex: 1;
+    padding: 8px 0;
+    background-color: #222;
+    color: #888;
+    border: none;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 8px 8px 0 0;
+    margin: 0.1px;
+}
+
+.tab-btn.active{
+    background-color: #333;
+    color: #fff;
+    font-weight: bold;
+}
+
+.tab-content{
+    display: none;
+}
+
+.tab-content.active{
+    display: block;
+}
+
+.tab-content-container{
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-sizing: border-box;
+    background-color: #333;
+    min-height: 0; /* 子要素をスクロールさせるために必要 */
+}
+
+#tab-inventory.active {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative; /* item-detail-panel を重ねて表示するため */
+}
+
+/* ★メインタブ（時計・パラメータ等）が画面の高さに収まりきらない場合に備えて、スクロールできるようにする（要望対応） */
+#tab-main.active {
+    overflow-y: auto;
+}
+
+/* アイテム詳細パネル（Zキー/クリックで開く） */
+.item-detail-panel {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 55%;
+    overflow-y: auto;
+    background-color: rgba(10, 10, 10, 0.95);
+    border: 2px solid #ffc107;
+    border-radius: 8px;
+    padding: 14px;
+    box-sizing: border-box;
+    font-size: 12px;
+    color: #eee;
+    z-index: 5;
+}
+
+.item-detail-panel.active {
+    display: block;
+}
+
+.item-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+}
+
+.item-detail-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffc107;
+}
+
+.item-detail-rank {
+    font-size: 12px;
+    color: #ccc;
+}
+
+.item-detail-category {
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 8px;
+}
+
+.item-detail-description {
+    font-size: 12px;
+    color: #ddd;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.item-detail-prices p,
+.item-detail-quantity,
+.item-detail-params p {
+    margin: 2px 0;
+    font-size: 12px;
+}
+
+.item-detail-params {
+    margin-top: 8px;
+    border-top: 1px solid #444;
+    padding-top: 8px;
+}
+
+/* ★装備ランダム変位が最大値だった時だけ、そのステータス行を黄文字にする */
+.item-stat-max {
+    color: #ffd700 !important;
+    font-weight: bold;
+    text-shadow: 0 0 4px rgba(255, 215, 0, 0.6);
+}
+
+.item-detail-hint {
+    margin-top: 10px;
+    text-align: right;
+    font-size: 11px;
+    color: #888;
+}
+
+/* アイテム詳細パネルの「使う」ボタン */
+.item-detail-use-btn {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #1a1a1a;
+    background: linear-gradient(180deg, #ffd54f, #ffb300);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 2px 0 #b07800;
+    transition: transform 0.05s ease, box-shadow 0.05s ease;
+}
+
+.item-detail-use-btn:hover {
+    background: linear-gradient(180deg, #ffe082, #ffc107);
+}
+
+.item-detail-use-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 0 0 #b07800;
+}
+
+.item-detail-use-btn-disabled {
+    color: #999;
+    background: #444;
+    box-shadow: none;
+    cursor: default;
+}
+
+.item-detail-use-btn-disabled:hover {
+    background: #444;
+}
+
+/* インベントリ：4列×60行のグリッド */
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 56px;
+    gap: 4px;
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 4px;
+}
+
+.inventory-slot {
+    position: relative;
+    background-color: #222;
+    border: 1px solid #444;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2px;
+    overflow: hidden;
+    color: #ccc;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.inventory-slot:hover {
+    border-color: #ffc107;
+}
+
+.inventory-slot.selected {
+    border-color: #ffc107;
+    box-shadow: 0 0 6px #ffc107;
+    background-color: #3a2f00;
+}
+
+.inventory-slot.empty {
+    background-color: #1a1a1a;
+    border-style: dashed;
+    cursor: default;
+}
+
+.inventory-slot.empty:hover {
+    border-color: #444;
+}
+
+.inventory-slot .item-name {
+    line-height: 1.2;
+    word-break: break-all;
+}
+
+.inventory-slot .item-qty {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #ffc107;
+    text-shadow: 0 0 3px #000;
+}
+
+/* ★アイテムタブで、主人公や仲間が今装備しているアイテムに出す「装備中」タグ */
+.inventory-slot .item-equipped-tag {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    font-size: 8px;
+    font-weight: bold;
+    color: #1a1a1a;
+    background-color: #7fdc7f;
+    border-radius: 3px;
+    padding: 1px 3px;
+    line-height: 1.2;
+}
+
+/* ===== スキルタブ・強さタブ共通：縦積みのリスト ===== */
+.skill-list,
+.strength-list,
+.companion-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+#tab-skill.active,
+#tab-strength.active,
+#tab-companions.active {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* ★仲間タブ */
+.companion-card {
+    background-color: #222;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.companion-card.companion-card-down {
+    border-color: #7a2a2a;
+    background-color: #241a1a;
+}
+
+.companion-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.companion-name {
+    color: #fff;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.companion-toggle-icon {
+    color: #999;
+    font-size: 11px;
+}
+
+.companion-gauge-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.companion-mini-gauge {
+    flex: 1;
+    min-width: 0;
+}
+
+.companion-mini-gauge-label {
+    color: #ccc;
+    font-size: 11px;
+}
+
+.companion-mini-gauge-bar {
+    height: 6px;
+    background-color: #111;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 2px;
+}
+
+.companion-mini-gauge-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.2s ease;
+}
+
+.companion-mini-gauge-fill.companion-gauge-hp {
+    background-color: #e05a5a;
+}
+
+.companion-mini-gauge-fill.companion-gauge-sp {
+    background-color: #4fa3e0;
+}
+
+.companion-stats-row {
+    color: #ccc;
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.companion-section-title {
+    color: #7fd1ff;
+    font-size: 12px;
+    font-weight: bold;
+    margin: 10px 0 4px 0;
+}
+
+.companion-equipment-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.companion-equip-btn {
+    text-align: left;
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.companion-equip-btn:hover,
+.companion-equip-btn:focus {
+    background-color: #444;
+}
+
+/* ★仲間タブの詳細（装備枠・アイテム一覧）を矢印キーで辿っている時の、今フォーカス中の項目の強調表示 */
+.companion-focus-cursor {
+    border-color: #ffc107 !important;
+    box-shadow: 0 0 8px #ffc107;
+    background-color: #2a2205 !important;
+}
+
+.companion-equip-btn.companion-equip-btn-open {
+    background-color: #444;
+    border-color: #ffc107;
+}
+
+/* ★仲間タブの装備選択：装備タブ（.equipment-item系）と同じ見た目で、ボタンのすぐ下に展開する */
+.companion-equipment-item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 2px 0 6px 0;
+    padding-left: 8px;
+    border-left: 2px solid #444;
+}
+
+.companion-skill-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.skill-item {
+    background-color: #222;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.skill-item-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.skill-item.locked {
+    opacity: 0.55;
+}
+
+/* ★矢印キーで選んでいるスキルをはっきり示す */
+.skill-item.cursor {
+    border-color: #ffc107;
+    box-shadow: 0 0 8px #ffc107;
+    background-color: #2a2205;
+}
+
+.skill-item .skill-name {
+    font-weight: bold;
+    color: #ffc107;
+    font-size: 14px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.skill-item.locked .skill-name {
+    color: #999;
+}
+
+.skill-item .skill-description {
+    font-size: 12px;
+    color: #ccc;
+}
+
+.skill-item .skill-element-tag {
+    font-size: 10px;
+    color: #7fd1ff;
+    margin-top: 4px;
+}
+
+.skill-use-btn {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: bold;
+    background-color: #ffc107;
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    outline: none;
+}
+
+.skill-use-btn:hover,
+.skill-use-btn:focus {
+    background-color: #ffd54f;
+}
+
+/* ★シナリオ中で使えない時の「使う」ボタン */
+.skill-use-btn.skill-use-btn-disabled {
+    background-color: #444;
+    color: #999;
+}
+
+.skill-use-btn.skill-use-btn-disabled:hover,
+.skill-use-btn.skill-use-btn-disabled:focus {
+    background-color: #444;
+}
+
+/* ★お宝鑑定団などの常時発動スキルON/OFF切り替えボタン */
+.skill-use-btn.skill-passive-toggle-btn {
+    padding: 8px 10px;
+    font-size: 11px;
+}
+
+.skill-use-btn.skill-passive-toggle-btn.skill-passive-on {
+    background-color: #4caf50;
+    color: #fff;
+}
+
+.skill-use-btn.skill-passive-toggle-btn.skill-passive-on:hover,
+.skill-use-btn.skill-passive-toggle-btn.skill-passive-on:focus {
+    background-color: #66bb6a;
+}
+
+.skill-use-btn.skill-passive-toggle-btn.skill-passive-off {
+    background-color: #616161;
+    color: #ddd;
+}
+
+.skill-use-btn.skill-passive-toggle-btn.skill-passive-off:hover,
+.skill-use-btn.skill-passive-toggle-btn.skill-passive-off:focus {
+    background-color: #757575;
+}
+
+.skill-empty {
+    color: #888;
+    font-size: 13px;
+    text-align: center;
+    padding: 20px 0;
+}
+
+.strength-row {
+    display: flex;
+    justify-content: space-between;
+    background-color: #222;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.strength-row .strength-label {
+    color: #aaa;
+}
+
+.strength-row .strength-value {
+    font-weight: bold;
+    color: #fff;
+}
+
+/* ===== 設定タブ ===== */
+#tab-setting.active {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.setting-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #222;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 10px 12px;
+    cursor: pointer;
+}
+
+.setting-row.cursor {
+    border-color: #ffc107;
+    box-shadow: 0 0 8px #ffc107;
+    background-color: #2a2205;
+}
+
+.setting-row .setting-label {
+    color: #ccc;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.setting-row .setting-value {
+    color: #fff;
+    font-size: 13px;
+}
+
+/* ★スマホ対応：タップ範囲（ラベル＋値）と、◀▶タップボタン部分を分離 */
+.setting-row-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 1;
+    gap: 8px;
+    min-width: 0;
+}
+
+.setting-row-arrows {
+    display: flex;
+    gap: 4px;
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.setting-arrow-btn {
+    background-color: #333;
+    border: 1px solid #666;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 13px;
+    padding: 4px 10px;
+    cursor: pointer;
+}
+
+.setting-arrow-btn:active {
+    background-color: #ffc107;
+    color: #222;
+}
+
+.setting-hint {
+    color: #888;
+    font-size: 11px;
+    text-align: center;
+    padding-top: 6px;
+}
+
+/* ===== 装備タブ ===== */
+#tab-equipment.active {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+}
+
+.equipment-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.equipment-slot-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #222;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.equipment-slot-row:hover,
+.equipment-slot-row.cursor {
+    border-color: #ffc107;
+    box-shadow: 0 0 8px #ffc107;
+    background-color: #2a2205;
+}
+
+.equipment-slot-label {
+    flex-shrink: 0;
+    width: 44px;
+    font-weight: bold;
+    color: #ffc107;
+    font-size: 13px;
+}
+
+.equipment-slot-value {
+    flex: 1;
+    color: #eee;
+    font-size: 13px;
+}
+
+.equipment-unequip-btn {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    font-size: 11px;
+    background-color: #333;
+    color: #eee;
+    border: 1px solid #666;
+    border-radius: 6px;
+    cursor: pointer;
+    outline: none;
+}
+
+.equipment-unequip-btn:hover,
+.equipment-unequip-btn:focus {
+    border-color: #ffc107;
+    color: #ffc107;
+}
+
+.equipment-inventory-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.equipment-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: #ddd;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    outline: none;
+}
+
+.equipment-item:hover,
+.equipment-item.cursor {
+    border-color: #ffc107;
+    box-shadow: 0 0 8px #ffc107;
+    background-color: #2a2205;
+}
+
+.equipment-item.equipped {
+    border-color: #4caf50;
+}
+
+.equipment-item.equipment-item-unequip {
+    color: #ff8a80;
+    justify-content: center;
+}
+
+.equipment-item.equipment-item-unequip .equipment-item-name {
+    flex: none;
+    color: #ff8a80;
+}
+
+.equipment-item-name {
+    flex: 1;
+    font-weight: bold;
+    color: #fff;
+}
+
+.equipment-item-bonus {
+    flex-shrink: 0;
+    color: #7fd1ff;
+    font-size: 11px;
+}
+
+.equipment-equipped-tag {
+    flex-shrink: 0;
+    color: #4caf50;
+    font-size: 11px;
+    font-weight: bold;
+    border: 1px solid #4caf50;
+    border-radius: 4px;
+    padding: 1px 6px;
+}
+
+.equipment-empty {
+    color: #888;
+    font-size: 13px;
+    text-align: center;
+    padding: 20px 0;
+}
+
+/* ===== 操作キーのバッジ表示 ===== */
+/* ★どのボタンがどのキーに対応しているか一目で分かるよう、ボタンの隅に小さくキー名を表示する共通パーツ */
+.key-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1.4;
+    color: #000;
+    background-color: #ffc107;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+.tab-menu-key-hint {
+    margin: 0 6px 0 2px;
+    background-color: rgba(255, 193, 7, 0.25);
+    color: #ffc107;
+    align-self: center;
+    cursor: default;
+}
+
+/* ===== 早送り・非表示ボタン（メイン画面左下） ===== */
+.fast-forward-btn {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: #ccc;
+    border: 2px solid #555;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 20;
+}
+
+.fast-forward-btn:hover {
+    border-color: #ffc107;
+    color: #ffc107;
+}
+
+.fast-forward-btn.active {
+    background-color: #ffc107;
+    color: #000;
+    border-color: #ffc107;
+}
+
+.hide-choices-btn {
+    position: absolute;
+    bottom: 12px;
+    left: 112px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: #ccc;
+    border: 2px solid #555;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 20;
+}
+
+.hide-choices-btn:hover {
+    border-color: #ffc107;
+    color: #ffc107;
+}
+
+.hide-choices-btn.active {
+    background-color: #ffc107;
+    color: #000;
+    border-color: #ffc107;
+}
+
+.choice-box.user-hidden {
+    visibility: hidden;
+}
+
+/* ===== 便利タブ：アイコン一覧（スマホのホーム画面のイメージ） ===== */
+#tab-convenience.active {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.convenience-icon-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr); /* ★6列 */
+    grid-template-rows: repeat(7, 1fr); /* ★7行 */
+    gap: 2px;
+    padding: 10px 12px 4px 4px; /* ★バグ修正：バッジが上・右にはみ出す分の余白を確保（見切れ対策） */
+    flex: 1;
+    min-height: 0;
+    overflow: visible; /* ★バッジが枠の外に描画されても隠れないようにする */
+}
+
+.convenience-icon {
+    aspect-ratio: 1 / 1; /* ★当たり判定（マス）を正方形にする */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: none; /* ★当たり判定自体は見えないようにする（アイコンだけ見える） */
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    color: #eee;
+    outline: none;
+    overflow: visible; /* ★同上：バッジ見切れ対策 */
+}
+
+.convenience-icon:hover .convenience-icon-glyph {
+    transform: scale(1.08);
+}
+
+.convenience-icon:focus .convenience-icon-glyph {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 4px #ffc107);
+}
+
+.convenience-icon:hover .convenience-icon-label {
+    color: #ddd;
+}
+
+.convenience-icon:focus .convenience-icon-label {
+    color: #ffc107;
+}
+
+.convenience-icon-glyph {
+    font-size: 26px;
+    line-height: 1;
+    transition: transform 0.15s ease;
+    position: relative; /* ★バッジ（進行度アイコン等）の位置基準にする */
+}
+
+/* ★便利タブのアイコンに表示する小さなバッジ（例：進行度アイコンの「クリア済み話数／全話数」） */
+.convenience-icon-badge {
+    position: absolute;
+    top: -4px;
+    right: -6px; /* ★バグ修正：以前は-10pxで飛び出しすぎて枠外に見切れていたため控えめに */
+    background: #ffc107;
+    color: #1a1a1a;
+    font-size: 9px;
+    font-weight: bold;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 8px;
+    white-space: nowrap;
+    z-index: 1;
+}
+
+.convenience-icon-label {
+    font-size: 10px;
+    text-align: center;
+    color: #ccc;
+    transition: color 0.15s ease;
+}
+
+/* ===== セーブ/ロードパネル ===== */
+.saveload-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.monster-codex-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    background: radial-gradient(ellipse at top, rgba(80, 40, 90, 0.25), transparent 70%), #0d0710;
+    border-radius: 8px;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+/* ★便利タブ「クレジット」の簡単な一覧表示 */
+.monster-codex-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.25));
+    border: 1px solid rgba(255, 215, 107, 0.18);
+    margin-bottom: 6px;
+}
+
+.monster-codex-entry-name {
+    color: #ffc107;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.monster-codex-entry-status {
+    color: #ccc;
+    font-size: 12px;
+    text-align: right;
+}
+
+/* ★便利タブ「クレジット」の本文（改行を含む単純なテキスト） */
+/* ★施設セリフ編集の上下/削除ボタンを横並びにする */
+.scenariobuild-chapter-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.credits-text {
+    white-space: pre-wrap;
+    color: #ddd;
+    font-size: 13px;
+    line-height: 1.8;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 215, 107, 0.18);
+}
+
+/* ★便利タブ「進行度」：話の進行・ランク・名声度を並べて見せる一覧（上部30%のサマリー部分） */
+.progress-panel-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 0 0 30%;
+    overflow-y: auto;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 215, 107, 0.25);
+    margin-bottom: 10px;
+}
+
+/* ★下部70%：話のリスト（矢印キーでカーソル移動、Zキーで詳細表示） */
+.progress-panel-chapter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.progress-panel-chapter-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 215, 107, 0.18);
+    cursor: pointer;
+}
+
+.progress-panel-chapter-row.cursor {
+    border-color: #ffd76b;
+    background: rgba(255, 215, 107, 0.15);
+}
+
+.progress-panel-chapter-status {
+    color: #7fdc7f;
+    font-size: 13px;
+    width: 14px;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.progress-panel-chapter-title {
+    color: #eee;
+    font-size: 13px;
+}
+
+.progress-panel-detail-text {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+
+/* ★便利タブ「チュートリアル」：カテゴリ見出し */
+.tutorial-panel-category-header {
+    margin: 10px 0 4px;
+    font-size: 12px;
+    color: #ffd76b;
+    font-weight: bold;
+}
+.tutorial-panel-list .tutorial-panel-category-header:first-child {
+    margin-top: 0;
+}
+
+.progress-panel-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.progress-panel-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 215, 107, 0.18);
+}
+
+.progress-panel-row-label {
+    color: #ffd76b;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.progress-panel-row-value {
+    color: #eee;
+    font-size: 13px;
+    text-align: right;
+}
+
+.progress-panel-synopsis-title {
+    margin: 14px 0 8px;
+    font-size: 14px;
+    color: #ffd76b;
+}
+
+.progress-panel-synopsis-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+}
+
+.progress-panel-synopsis-entry {
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 215, 107, 0.18);
+}
+
+.progress-panel-synopsis-entry-title {
+    margin: 0 0 6px;
+    color: #ffd76b;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.progress-panel-synopsis-entry-text {
+    margin: 0;
+    color: #ddd;
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+.monster-codex-title {
+    margin: 0 0 10px;
+    font-size: 16px;
+    color: #ffd76b;
+    text-align: center;
+    letter-spacing: 0.12em;
+    text-shadow: 0 0 10px rgba(255, 215, 107, 0.5);
+    border-bottom: 1px solid rgba(255, 215, 107, 0.35);
+    padding-bottom: 8px;
+}
+
+/* ★1体1体を「図鑑カード」として、2列のグリッドで並べる */
+.monster-codex-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.monster-codex-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.25));
+    border: 1px solid rgba(255, 215, 107, 0.18);
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.monster-codex-row:hover {
+    transform: translateY(-2px);
+}
+
+.monster-codex-row.cursor {
+    background: linear-gradient(160deg, rgba(255, 193, 7, 0.22), rgba(0, 0, 0, 0.25));
+    border-color: #ffc107;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.35);
+}
+
+/* ★未発見の魔物は、シルエットっぽく暗く沈めて「？？？」感を強調する */
+.monster-codex-row.monster-codex-row-unknown {
+    opacity: 0.55;
+    filter: grayscale(1);
+}
+
+.monster-codex-unknown {
+    flex: none;
+    font-size: 11px;
+    color: #777;
+    letter-spacing: 0.1em;
+}
+
+.monster-codex-hint {
+    margin: 10px 0 0;
+    font-size: 11px;
+    color: #888;
+    text-align: center;
+}
+
+.monster-codex-detail-image {
+    display: block;
+    max-width: 100%;
+    max-height: 180px;
+    margin: 0 auto 10px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: radial-gradient(ellipse, rgba(255, 215, 107, 0.12), transparent 70%);
+    padding: 6px;
+}
+
+.monster-codex-detail-image.hidden {
+    display: none !important;
+}
+
+.monster-codex-detail-bar {
+    height: 14px;
+    margin-bottom: 6px;
+}
+
+.monster-codex-detail-label {
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: #ffd76b;
+    text-align: center;
+}
+
+.monster-codex-description {
+    margin: 0 0 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #ccc;
+    background: rgba(255, 255, 255, 0.04);
+    border-left: 2px solid rgba(255, 215, 107, 0.4);
+    padding: 8px 10px;
+    border-radius: 0 6px 6px 0;
+}
+
+.monster-codex-name {
+    font-size: 12px;
+    text-align: center;
+}
+
+.monster-codex-thumb {
+    width: 100%;
+    max-height: 64px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.monster-codex-thumb.hidden {
+    display: none !important;
+}
+
+.monster-codex-bar-outer {
+    width: 100%;
+    height: 8px;
+    background-color: #2a222f;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 215, 107, 0.2);
+}
+
+.monster-codex-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, #d32f2f, #ffc107, #ff8fd0);
+    transition: width 0.3s ease;
+}
+
+.monster-codex-label {
+    font-size: 11px;
+    color: #ffd76b;
+    text-align: center;
+}
+
+.monster-codex-rest-btn {
+    margin: 2px 0 6px;
+    padding: 10px;
+    background: linear-gradient(180deg, #f06292, #ad1457);
+    color: #fff;
+    border: 1px solid #ff8fd0;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    width: 100%;
+    box-shadow: 0 0 10px rgba(255, 143, 208, 0.35);
+}
+
+.monster-codex-rest-btn:disabled {
+    background: #444;
+    border-color: #555;
+    color: #888;
+    cursor: default;
+    box-shadow: none;
+}
+
+.monster-codex-back-btn {
+    margin-top: 10px;
+    padding: 8px;
+    background-color: #1c1620;
+    color: #d8b673;
+    border: 1px solid #6a4f30;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.saveload-header {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.saveload-mode-btn,
+.saveload-back-btn {
+    flex: 1;
+    padding: 8px 0;
+    background-color: #222;
+    color: #aaa;
+    border: 1px solid #444;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.saveload-mode-btn.active {
+    background-color: #333;
+    color: #ffc107;
+    border-color: #ffc107;
+    font-weight: bold;
+}
+
+.saveload-back-btn {
+    flex: 0.8;
+}
+
+.saveload-mode-btn:hover,
+.saveload-back-btn:hover {
+    border-color: #999;
+    color: #ccc;
+    outline: none;
+}
+
+/* ★キーボードの左右キーで今選んでいる項目（セーブ/ロード/戻る）を示す。
+   JS側で .cursor クラスを付け外しして管理する（DOMフォーカスは使わない） */
+.saveload-mode-btn.cursor,
+.saveload-back-btn.cursor {
+    border-color: #ffc107;
+    color: #ffc107;
+    outline: none;
+    box-shadow: 0 0 8px #ffc107;
+}
+
+.saveload-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.saveload-slot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #222;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #eee;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+}
+
+.saveload-slot:hover {
+    border-color: #999;
+    background-color: #262626;
+    outline: none;
+}
+
+/* ★キーボードの上下キーで今選んでいるスロットを示す（.cursor、DOMフォーカスは使わない） */
+.saveload-slot.cursor {
+    border-color: #ffc107;
+    background-color: #2a2a2a;
+    outline: none;
+    box-shadow: 0 0 8px #ffc107;
+}
+
+.saveload-slot.empty {
+    color: #777;
+}
+
+.saveload-slot-number {
+    font-weight: bold;
+    color: #ffc107;
+    flex-shrink: 0;
+    margin-right: 10px;
+}
+
+.saveload-slot-info {
+    flex: 1;
+    text-align: right;
+    line-height: 1.4;
+}
+
+.saveload-slot-time {
+    font-size: 10px;
+    color: #999;
+}
+
+/* ===== ログタブ ===== */
+#tab-log.active {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.log-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 4px;
+}
+
+.log-entry {
+    background-color: #222;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.log-speaker {
+    display: block;
+    font-weight: bold;
+    color: #ffc107;
+    font-size: 11px;
+    margin-bottom: 2px;
+}
+
+.log-text {
+    color: #ddd;
+}
+
+/* ★選択した選択肢は、それとひと目でわかるように専用の色・枠にする */
+.log-entry-choice {
+    background-color: #2a1414;
+    border: 1px solid #d32f2f;
+}
+
+.log-choice-label {
+    display: inline-block;
+    color: #ff6b6b;
+    font-weight: bold;
+    font-size: 11px;
+    margin-right: 6px;
+}
+
+.log-choice-text {
+    color: #ffdcdc;
+    font-weight: bold;
+}
+
+.log-empty {
+    color: #888;
+    font-size: 13px;
+    text-align: center;
+    padding: 20px 0;
+}
+
+/* ===== クエスト掲示板（メイン画面いっぱいに表示するオーバーレイ） ===== */
+/* ===== なんでも鑑定：鑑定タイムの電光表示ボード ===== */
+.appraisal-board {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(10, 10, 10, 0.9);
+    z-index: 26;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+}
+
+.appraisal-board-label {
+    color: #ffc107;
+    font-size: 16px;
+    letter-spacing: 8px;
+    margin: 0;
+}
+
+.appraisal-board-digits {
+    background-color: #1a0e00;
+    border: 6px solid #c9a227;
+    border-radius: 10px;
+    padding: 14px 24px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 42px;
+    letter-spacing: 4px;
+    color: #ff3b30;
+    text-shadow: 0 0 8px #ff3b30, 0 0 18px rgba(255, 59, 48, 0.6);
+    box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.85), 0 0 24px rgba(201, 162, 39, 0.4);
+    min-width: 220px;
+    text-align: center;
+    transition: text-shadow 0.2s ease;
+}
+
+/* ★最終確定時にひときわ強く光らせて、当たり演出っぽくする */
+.appraisal-board-digits.settled {
+    text-shadow: 0 0 14px #ff3b30, 0 0 30px #ff3b30, 0 0 40px rgba(255, 59, 48, 0.8);
+}
+
+.quest-board-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(10, 10, 10, 0.95);
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    box-sizing: border-box;
+    color: #eee;
+}
+
+.quest-board-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+.quest-board-title {
+    font-size: 18px;
+    margin: 0;
+    color: #ffc107;
+    flex-shrink: 0;
+}
+
+.quest-rank-filter {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.quest-filter-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+    background-color: #222;
+    color: #aaa;
+    border: 1px solid #555;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    outline: none;
+}
+
+.quest-filter-btn:hover {
+    border-color: #999;
+    color: #ccc;
+}
+
+.quest-filter-btn:focus {
+    border-color: #ffc107;
+    color: #ffc107;
+    outline: none;
+    box-shadow: 0 0 6px #ffc107;
+}
+
+.quest-filter-btn.active {
+    background-color: #ffc107;
+    color: #000;
+    border-color: #ffc107;
+    font-weight: bold;
+}
+
+.quest-board-close-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    background-color: #333;
+    color: #eee;
+    border: 1px solid #666;
+    border-radius: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+    outline: none;
+}
+
+.quest-board-close-btn:hover {
+    border-color: #999;
+    color: #ccc;
+}
+
+.quest-board-close-btn:focus {
+    border-color: #ffc107;
+    color: #ffc107;
+    outline: none;
+    box-shadow: 0 0 6px #ffc107;
+}
+
+.quest-board-body {
+    flex: 1;
+    display: flex;
+    gap: 12px;
+    min-height: 0;
+}
+
+.quest-list {
+    flex: 1;
+    max-width: 260px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.quest-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background-color: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 6px;
+    color: #ddd;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    outline: none;
+}
+
+.quest-list-item:hover {
+    border-color: #999;
+    background-color: #262626;
+}
+
+.quest-list-item:focus,
+.quest-list-item.cursor {
+    border-color: #ffc107;
+    background-color: #2a2a2a;
+    outline: none;
+    box-shadow: 0 0 8px #ffc107;
+}
+
+.quest-list-item.selected {
+    border-color: #ffc107;
+    background-color: #332b00;
+}
+
+.quest-rank-badge {
+    flex-shrink: 0;
+    font-weight: bold;
+    color: #ffc107;
+    background-color: #000;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px;
+}
+
+.quest-rank-badge.locked {
+    color: #888;
+    border-color: #666;
+}
+
+.quest-list-title {
+    flex: 1;
+}
+
+.quest-list-empty,
+.quest-detail-empty {
+    color: #888;
+    font-size: 13px;
+    text-align: center;
+    padding: 20px 0;
+}
+
+.quest-detail {
+    flex: 1.4;
+    background-color: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.quest-detail-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.quest-detail-title {
+    margin: 0;
+    font-size: 16px;
+    color: #fff;
+}
+
+.quest-detail-rank {
+    font-size: 12px;
+    color: #ffc107;
+    flex-shrink: 0;
+}
+
+.quest-detail-description {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #ddd;
+    margin: 0;
+}
+
+.quest-detail-reward {
+    font-size: 13px;
+    color: #ffe08a;
+    margin: 0;
+    font-weight: bold;
+}
+
+.quest-accept-btn {
+    margin-top: auto;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    background-color: #ffc107;
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    outline: none;
+}
+
+.quest-accept-btn:hover {
+    background-color: #f0c93f;
+}
+
+.quest-accept-btn:focus {
+    background-color: #ffd54f;
+    outline: none;
+    box-shadow: 0 0 8px #ffc107;
+}
+
+.quest-accept-btn.disabled,
+.quest-accept-btn:disabled {
+    background-color: #444;
+    color: #999;
+    cursor: not-allowed;
+}
+
+/* ★破棄ボタンだけ、受注ボタンと見分けやすいよう赤系にする */
+.quest-abandon-btn {
+    background-color: #c62828;
+    color: #fff;
+}
+
+.quest-abandon-btn:hover {
+    background-color: #e53935;
+}
+
+.quest-abandon-btn:focus {
+    background-color: #e53935;
+    box-shadow: 0 0 8px #c62828;
+}
+
+/* 演出用オーバーレイ全体 */
+.special-overlay {
+  position: fixed;      /* 画面（ビューポート）に対して固定 */
+  top: 0;
+  left: 0;
+  width: 100vw;         /* 画面幅いっぱい */
+  height: 100vh;        /* 画面高さいっぱい */
+  background-color: black; /* 完全な黒 */
+  
+  /* 💡 display: flex をここから削除するか、以下のように上書きルールを作ります */
+  display: flex;        
+  justify-content: center; /* 横方向の真ん中 */
+  align-items: center;    /* 縦方向の真ん中 */
+  
+  z-index: 9999;        /* 他のどの要素よりも手前に表示する */
+  
+  /* じわっと表示させるためのアニメーション設定 */
+  transition: opacity 0.5s ease;
+  opacity: 1;
+}
+
+
+/* 隠れている状態のクラス */
+.special-overlay.hidden {
+  display: none !important; /* 💡これで普段は「物理的に存在しない状態」になり、裏のゲーム画面を邪魔しません */
+  opacity: 0;           
+  pointer-events: none; 
+}
+
+/* 真ん中に表示される文字のデザイン */
+.special-text {
+  color: white;         /* 白文字 */
+  font-size: 32px;      /* 大きめの文字 */
+  font-weight: bold;    /* 太字 */
+  letter-spacing: 0.1em; /* 文字と文字の間を少し開けて雰囲気を作る */
+  line-height: 1.6;     /* 行間 */
+  text-align: center;   /* 文字自体もセンター寄せ */
+  max-width: 80%;       /* 画面端までいかないように幅を制限 */
+  white-space: pre-wrap; /* ★テキスト中の\nを改行として表示する（message-textと同じ扱いにする） */
+  
+  /* 普段のメッセージウィンドウと同じSans-serifにするなど、フォントはお好みで */
+  font-family: sans-serif;
+}
+
+
+
+/* ===== ランクアップ・試練解放のお知らせポップアップ ===== */
+/* ★special-overlayと違い、画面全体は覆わず、進行を止めない「トースト」型の通知。
+   画面上部から降りてきて、数秒後にJS側（mainfunc.jsのshowRankUpPopup）が自動で隠す */
+.rank-up-popup {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translate(-50%, -140%);
+  
+  min-width: 220px;
+  max-width: 80%;
+  box-sizing: border-box;
+  padding: 14px 22px;
+  
+  background-color: rgba(20, 15, 0, 0.92);
+  border: 3px solid #ffd23f;
+  border-radius: 8px;
+  box-shadow: 0 0 16px rgba(255, 210, 63, 0.6);
+  
+  text-align: center;
+  z-index: 10000; /* special-overlayよりさらに手前 */
+  pointer-events: none; /* ★ゲーム操作の邪魔をしない */
+  
+  transition: transform 0.4s ease, opacity 0.4s ease;
+  opacity: 0;
+}
+
+.rank-up-popup.hidden {
+  display: none !important;
+}
+
+/* ★JS側でこのクラスを付けるとスライドインし、外すとまた上に隠れる */
+.rank-up-popup.rank-up-popup-show {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+
+.rank-up-popup-title {
+  color: #ffd23f;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  margin: 0 0 4px 0;
+}
+
+.rank-up-popup-message {
+  color: white;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* ★眠気・疲労度が限界に達した時の危険警告は、赤系の見た目にする */
+.rank-up-popup.rank-up-popup-danger {
+  border-color: #ff4d4d;
+  box-shadow: 0 0 16px rgba(255, 77, 77, 0.6);
+}
+
+.rank-up-popup.rank-up-popup-danger .rank-up-popup-title {
+  color: #ff4d4d;
+}
+
+.red-large {
+  color: #ff1a1a !important;   /* 鮮烈な赤 */
+  font-size: 1.5em;            /* 通常の1.5倍の大きさ */
+  font-weight: bold;           /* 太字 */
+  text-shadow: 0 0 5px #000;   /* 文字の周りに黒い影をつけて読みやすく */
+  display: inline-block;       /* サイズ変更を綺麗に適用するため */
+}
+
+/* 文字を小さく、青ざめさせるクラス（恐怖・不安演出用） */
+.blue-small {
+  color: #80a0ff !important;   /* 青ざめた色 */
+  font-size: 0.85em;           /* 通常より少し小さく */
+  font-style: italic;          /* 斜体 */
+}
+/* ===== ゲーム内の確認/アラートダイアログ（window.confirm・window.alertの代わり） ===== */
+.game-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 200000; /* ★シナリオビルド画面（50000）・タイトル画面（100000）・オープニング演出（100001）など、
+                     ゲーム内のどの画面の中から呼ばれても、確認・アラートダイアログが必ず一番手前に出るようにする。
+                     以前はタイトル画面（100000）より低い60000だったため、タイトル画面で「はじめから」等を押した時に
+                     確認ダイアログが裏に隠れて見えず、しかも裏で開いたままになるせいで、その後のキー操作も
+                     反応しなくなる（＝ページがスクロールするだけに見える）不具合の原因になっていた。 */
+}
+
+.game-dialog-overlay.hidden {
+  display: none !important;
+  pointer-events: none;
+}
+
+/* ===== 店の個数選択（town.js pickQuantity） ===== */
+.quantity-picker {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 200000; /* ★確認ダイアログ（game-dialog-overlay）と同じく、どの画面の中からでも一番手前に出す */
+}
+
+.quantity-picker.hidden {
+  display: none !important;
+  pointer-events: none;
+}
+
+.quantity-picker-box {
+  width: 280px;
+  max-width: 90vw;
+  background-color: #1a1a1a;
+  border: 3px solid #ffc107;
+  border-radius: 10px;
+  padding: 18px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.quantity-picker-label {
+  color: #eee;
+  font-size: 13px;
+  margin: 0 0 12px 0;
+}
+
+.quantity-picker-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.quantity-picker-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background-color: #b87333;
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.quantity-picker-btn:disabled {
+  background-color: #444;
+  color: #888;
+  cursor: not-allowed;
+}
+
+.quantity-picker-value {
+  color: #ffc107;
+  font-size: 20px;
+  font-weight: bold;
+  min-width: 64px;
+}
+
+.quantity-picker-footer {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+
+.game-dialog-box {
+  width: 420px;
+  max-width: 90vw;
+  background-color: #1a1a1a;
+  border: 3px solid #ffc107;
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 0 20px rgba(255, 193, 7, 0.4);
+}
+
+.game-dialog-message {
+  color: #fff;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0 0 20px 0;
+  white-space: pre-wrap;
+}
+
+.game-dialog-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.game-dialog-btn {
+  flex: 1;
+  padding: 10px 0;
+  background-color: #222;
+  color: #eee;
+  border: 2px solid #555;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.game-dialog-btn:hover {
+  border-color: #999;
+}
+
+/* ★キーボード（左右キー）で今選んでいる方を示す。DOMフォーカスではなくJS側の.cursorクラスで管理する */
+.game-dialog-btn.cursor {
+  border-color: #ffc107;
+  color: #ffc107;
+  outline: none;
+  box-shadow: 0 0 8px #ffc107;
+}
+
+/* ===== 戦闘中の敵HP表示（main-screen右上） ===== */
+.battle-hud {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 240px;
+  background-color: rgba(0, 0, 0, 0.7);
+  border: 2px solid #e53935;
+  border-radius: 6px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+}
+
+.battle-hud.hidden {
+  display: none !important;
+}
+
+.battle-enemy-name {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.battle-enemy-image {
+  display: block;
+  width: 100%;
+  max-height: 140px;
+  object-fit: contain;
+  margin-bottom: 8px;
+  border-radius: 4px;
+}
+
+.battle-enemy-image.hidden {
+  display: none !important;
+}
+
+.enemy-hp-fill {
+  background-color: #e53935;
+}
+
+/* ===== 戦闘中の敵表示（main-screen中央・最大5体・ジグザグ配置） ===== */
+/* ★立ち絵レイヤー：背景より手前、メッセージウィンドウの高さぶんは避けて表示する。
+   複数体同時に表示できるよう、各立ち絵（.portrait-instance）はleft(%)で個別に位置指定する */
+.portrait-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 210px; /* ★メッセージウィンドウ（高さ150px＋margin-top 50px＋余白）と重ならない高さ */
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.portrait-instance {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 300ms ease, left 300ms ease;
+  max-height: 100%;
+}
+
+.portrait-instance.portrait-visible {
+  opacity: 1;
+}
+
+.portrait-instance img {
+  display: block;
+  max-height: 320px;
+  max-width: 280px;
+  object-fit: contain;
+}
+
+.portrait-instance.portrait-motion-jump {
+  animation: portraitJumpMotion 500ms ease;
+}
+
+.portrait-instance.portrait-motion-shake {
+  animation: portraitShakeMotion 400ms ease;
+}
+
+@keyframes portraitJumpMotion {
+  0%, 100% { margin-bottom: 0; }
+  40% { margin-bottom: 24px; }
+  60% { margin-bottom: 24px; }
+}
+
+@keyframes portraitShakeMotion {
+  0%, 100% { margin-left: 0; }
+  20% { margin-left: -10px; }
+  40% { margin-left: 10px; }
+  60% { margin-left: -6px; }
+  80% { margin-left: 6px; }
+}
+
+.battle-enemies {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 640px;
+  z-index: 2;
+  
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+.battle-target-hint {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: #ffd23f;
+  font-size: 12px;
+  text-shadow: 0 0 4px black;
+}
+
+.battle-enemy-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.2s ease, filter 0.2s ease;
+}
+
+/* ★左から2番目・4番目（偶数番目）を少し高い位置にずらして、ジグザグに見せる */
+.battle-enemy-unit:nth-child(even) {
+  margin-bottom: 36px;
+}
+
+.battle-enemy-unit.defeated {
+  opacity: 0.25;
+  filter: grayscale(100%);
+  pointer-events: none;
+}
+
+.battle-enemy-unit-cursor {
+  height: 16px;
+  line-height: 16px;
+  color: #ffd23f;
+  font-size: 14px;
+  text-shadow: 0 0 4px black;
+  opacity: 0; /* ★通常時は透明にしておき、targetedクラスの時だけ見せる（画像が無くても常にこの要素はある） */
+}
+
+.battle-enemy-unit.targeted .battle-enemy-unit-cursor {
+  opacity: 1;
+}
+
+.battle-enemy-unit-image {
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
+  border-radius: 4px;
+}
+
+.battle-enemy-unit-image.hidden {
+  display: none !important;
+}
+
+.battle-enemy-unit.targeted .battle-enemy-unit-image {
+  outline: 3px solid #ffd23f;
+  box-shadow: 0 0 12px #ffd23f;
+  transform: translateY(-6px);
+}
+
+.battle-enemy-unit-name {
+  margin: 4px 0 0 0;
+  color: white;
+  font-size: 12px;
+  text-shadow: 0 0 4px black;
+  white-space: nowrap;
+}
+
+/* ★画像が用意されていない敵でも、名前とHPバーの色だけで「今狙っている相手」がわかるようにする。
+   ★HPバーの中身（減った分）が赤なので、ターゲット表示は金色にして見分けやすくしている */
+.battle-enemy-unit.targeted .battle-enemy-unit-name {
+  color: #ffd23f;
+  font-weight: bold;
+}
+
+.battle-enemy-unit-hp-bar {
+  width: 64px;
+  height: 6px;
+  margin-top: 2px;
+  background-color: #333;
+  border: 1px solid white;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.battle-enemy-unit.targeted .battle-enemy-unit-hp-bar {
+  border-color: #ffd23f;
+  box-shadow: 0 0 6px #ffd23f;
+}
+
+.battle-enemy-unit-hp-fill {
+  height: 100%;
+  background-color: #e53935;
+}
+
+/* サブ画面がメインタブ以外の時、邪魔にならない位置に出す簡易ステータス */
+.mini-status-hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  width: 170px;
+  max-height: min(70vh, 480px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  display: block;
+}
+
+.mini-status-hud.hidden {
+  display: none !important;
+}
+
+/* ★常時左上に出す時は、メインタブ内でのフルサイズ表示よりコンパクトにする */
+.mini-status-hud .status-hud {
+  padding: 8px;
+  font-size: 11px;
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.mini-status-hud .status-top-row {
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.mini-status-hud .gauge-row {
+  margin-bottom: 4px;
+}
+
+.mini-status-hud .gauge-label {
+  width: 32px;
+  font-size: 10px;
+}
+
+.mini-status-hud .gauge-bar {
+  height: 10px;
+}
+
+.mini-status-hud .gauge-value {
+  width: 52px;
+  font-size: 9px;
+}
+
+.mini-status-hud .main-tab-companion-params {
+  margin-top: 6px;
+  gap: 5px;
+}
+
+.mini-status-hud .main-tab-companion-row {
+  padding: 5px 7px;
+}
+
+.mini-status-hud .main-tab-companion-name {
+  font-size: 11px;
+}
+
+.mini-status-level {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: bold;
+  color: #ffc107;
+}
+
+.mini-gauge-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+
+.mini-gauge-row:last-child {
+  margin-bottom: 0;
+}
+
+.mini-gauge-label {
+  width: 1.6em;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: #ccc;
+}
+
+.mini-gauge-bar {
+  flex: 1;
+  height: 6px;
+}
+/* ===== 冒険の行き先マップ（adventuremap.js） ===== */
+/* ★.main-screenの中に置くことで、サブ画面（ステータス等）はそのまま操作できるようにしてある */
+.adventure-map-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  background-color: #fff3cf; /* ★温かい黄色の背景 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.adventure-map-overlay.hidden {
+  display: none !important;
+}
+
+.adventure-map-panel {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.adventure-map-title {
+  color: #6b4a1c;
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  letter-spacing: 0.1em;
+}
+
+.adventure-map-svg {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  background-color: rgba(255, 255, 255, 0.35);
+  border: 1px solid #d8b673;
+  border-radius: 8px;
+  touch-action: none; /* ★ドラッグ操作をこちらで処理するので、ブラウザ標準のスクロール/ズームは無効にする */
+  cursor: grab;
+  overflow: hidden;
+}
+
+.adventure-map-svg:active {
+  cursor: grabbing;
+}
+
+/* ★カメラ移動・ズーム用のグループ（adventuremap.js） */
+#adventure-map-camera {
+  transition: transform 0.35s ease; /* ★フォーカス移動時、カメラがここで滑らかに動く */
+}
+
+#adventure-map-camera.adventure-map-no-transition {
+  transition: none; /* ★指でドラッグしている間は、遅延なく追従させる */
+}
+
+.adventure-map-footer {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.adventure-map-edge {
+  stroke: #a9812f;
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.adventure-map-node {
+  cursor: pointer;
+}
+
+.adventure-map-node-circle {
+  fill: #fffaf0;
+  stroke: #6b4a1c;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.adventure-map-node:hover .adventure-map-node-circle {
+  fill: #ffe9a8;
+  stroke: #d68a00;
+}
+
+/* ★キーボードでフォーカスしているエリア（矢印キーで移動する丸いカーソル） */
+.adventure-map-node-focused .adventure-map-node-circle {
+  fill: #ffe9a8;
+  stroke: #ff7a00;
+  stroke-width: 2;
+}
+
+.adventure-map-node-label {
+  fill: #4a3210;
+  font-size: 3px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
+.adventure-map-node-sublabel {
+  fill: #8a6b3a;
+  font-size: 2.2px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+/* ★現在地（村）は少し目立たせる */
+.adventure-map-node-hub .adventure-map-node-circle {
+  fill: #dff2d0;
+  stroke: #4e9a2f;
+  stroke-width: 1.4;
+}
+
+.adventure-map-node-hub .adventure-map-node-label {
+  fill: #2f6b1c;
+  font-weight: bold;
+}
+
+/* ★カデリクの街のような、名前は判明しているが未実装の場所 */
+.adventure-map-node-placeholder .adventure-map-node-circle {
+  stroke: #d68a00;
+  stroke-width: 1.4;
+}
+
+.adventure-map-node-placeholder .adventure-map-node-label {
+  fill: #a86200;
+  font-weight: bold;
+}
+
+/* ★マップ設定タブで作った独自エリア。種類ごとに枠の色を変える */
+.adventure-map-node-custom-city .adventure-map-node-circle,
+.adventure-map-node-custom-country .adventure-map-node-circle {
+  stroke: #d68a00;
+  stroke-width: 1.2;
+}
+
+.adventure-map-node-custom-village .adventure-map-node-circle {
+  stroke: #4e9a2f;
+  stroke-width: 1.2;
+}
+
+.adventure-map-node-custom-enemy .adventure-map-node-circle {
+  stroke: #c0392b;
+  stroke-width: 1.2;
+}
+
+.adventure-map-node-custom-enemy .adventure-map-node-label {
+  fill: #e57373;
+}
+
+/* ★まだ発見していない場所：破線の丸に「？」だけ */
+.adventure-map-node-unknown .adventure-map-node-circle {
+  stroke-dasharray: 2 1.5;
+  fill: #f5e6c4;
+}
+
+.adventure-map-node-unknown .adventure-map-node-label {
+  fill: #a08650;
+  font-size: 4px;
+}
+
+/* ★条件未達で今は入れない場所（例：まだ解放されていないニョードー街道） */
+.adventure-map-node-locked .adventure-map-node-circle {
+  opacity: 0.5;
+  stroke-dasharray: 2 1.5;
+}
+
+.adventure-map-node-locked .adventure-map-node-label,
+.adventure-map-node-locked .adventure-map-node-sublabel {
+  opacity: 0.5;
+}
+
+/* ===== 鍛冶屋・素材合成屋の専用画面（crafting.js） ===== */
+.crafting-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  background-color: rgba(0, 0, 0, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.crafting-overlay.hidden {
+  display: none !important;
+}
+
+.crafting-panel {
+  width: 100%;
+  height: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  background-color: #1a1a1a;
+  border: 2px solid #b87333; /* ★鍛冶屋らしい銅色の縁取り。素材合成屋でも同じ画面を使い回すが色は共通でよい */
+  border-radius: 10px;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
+.crafting-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.crafting-title {
+  color: #ffc107;
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.05em;
+}
+
+.crafting-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 10px;
+}
+
+/* ★鍛冶屋・素材合成屋：装備を消費する時に「どの個体を使うか」を選ぶピッカー（アイテムタブと同じグリッドを流用） */
+.crafting-instance-picker {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crafting-instance-picker.hidden {
+  display: none !important;
+}
+
+.crafting-instance-picker-label {
+  color: #ffc107;
+  font-size: 13px;
+  margin: 0;
+}
+
+.crafting-instance-picker-bonus {
+  position: absolute;
+  bottom: 2px;
+  left: 4px;
+  font-size: 9px;
+  color: #7fd0ff;
+  text-shadow: 0 0 3px #000;
+}
+
+#crafting-instance-picker-grid.inventory-grid {
+  flex: 1;
+  overflow-y: auto;
+}
+
+#crafting-instance-picker-grid .inventory-slot.selected {
+  border-color: #ffc107;
+  background-color: rgba(255, 193, 7, 0.2);
+}
+
+.crafting-recipe-list {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+}
+
+.crafting-recipe-row {
+  text-align: left;
+  padding: 8px 10px;
+  background-color: #262626;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #eee;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.crafting-recipe-row:hover {
+  border-color: #b87333;
+}
+
+.crafting-recipe-row.crafting-recipe-row-selected {
+  border-color: #ffc107;
+  background-color: #33291a;
+}
+
+.crafting-recipe-row.crafting-recipe-row-disabled {
+  color: #888;
+}
+
+.crafting-recipe-row-name {
+  display: block;
+}
+
+.crafting-recipe-row-status {
+  display: block;
+  font-size: 11px;
+  color: #e57373;
+  margin-top: 2px;
+}
+
+.crafting-detail-panel {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  background-color: #14181a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crafting-detail-empty {
+  color: #888;
+  font-size: 13px;
+}
+
+.crafting-detail-name {
+  color: #ffc107;
+  font-size: 14px;
+  margin: 0;
+}
+
+.crafting-detail-desc {
+  color: #ccc;
+  font-size: 12px;
+  margin: 0;
+}
+
+.crafting-detail-materials {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crafting-detail-materials li {
+  font-size: 12px;
+  color: #ddd;
+}
+
+.crafting-detail-materials li.crafting-material-missing {
+  color: #e57373;
+}
+
+.crafting-craft-btn {
+  margin-top: auto;
+  padding: 10px;
+  background-color: #b87333;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.crafting-craft-btn:disabled {
+  background-color: #444;
+  color: #888;
+  cursor: not-allowed;
+}
+
+/* ★シナリオビルド（シナリオエディタ）全画面オーバーレイ。
+   以前はここのセレクタ（.scenariobuild-overlay）自体が抜け落ちており、
+   position:fixed/z-index等が一切効かないままdiv要素が通常のドキュメントの流れに置かれるだけになっていた。
+   そのためJS側はhiddenクラスを正しく外せていても、画面には何も表示されない（＝開けないように見える）不具合になっていた */
+.scenariobuild-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50000; /* ★エディタ専用モードなので、ゲーム側のどの演出よりも手前に出す */
+  background-color: #17171c;
+  display: flex;
+  flex-direction: column;
+}
+
+.scenariobuild-overlay.hidden {
+  display: none !important;
+}
+
+.scenariobuild-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid #444;
+  flex-shrink: 0;
+  background-color: #1b1b1b;
+}
+
+.scenariobuild-header h2 {
+  color: #fff;
+  font-size: 15px;
+  margin: 0;
+}
+
+.scenariobuild-header-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+/* ★保存ボタン：未保存の変更がある間は目立つ色にして、保存し忘れに気づきやすくする */
+.scenariobuild-save-btn-dirty {
+  background-color: #c0392b !important;
+  color: #fff !important;
+  border-color: #e57373 !important;
+  animation: scenariobuild-save-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes scenariobuild-save-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ★左（メイン：話一覧／ブロックエディタ）＋右（サブ：キャラ・敵・ボス・アイテム・BGM・データ管理）で画面を埋める */
+.scenariobuild-split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.scenariobuild-main {
+  flex: 6;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 14px 16px;
+  border-right: 1px solid #333;
+}
+
+.scenariobuild-sub {
+  flex: 4;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: #1c1c22;
+}
+
+.scenariobuild-sub-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px;
+}
+
+.scenariobuild-add-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.scenariobuild-title-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  background-color: #262626;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 13px;
+}
+
+.scenariobuild-textarea {
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.scenariobuild-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scenariobuild-status-columns {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.scenariobuild-status-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scenariobuild-chapter-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px;
+  background-color: #232323;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+}
+
+.scenariobuild-chapter-number {
+  flex-shrink: 0;
+  color: #ffd23f;
+  font-weight: bold;
+  font-size: 13px;
+  padding-top: 6px;
+}
+
+.scenariobuild-chapter-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scenariobuild-condition {
+  margin: 0 !important;
+  font-size: 12px;
+}
+
+/* ★話の開始条件（第N話クリア／ランク／進行度／経過日数／フラグ）を縦に並べる入れ物 */
+.scenariobuild-condition-multi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0;
+  padding: 8px;
+  background-color: #1c1c22;
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+
+/* ★敵/ボス設定の「レベル別ステータス確認」電卓 */
+.scenariobuild-level-preview {
+  margin: 6px 0;
+  padding: 6px 8px;
+  background-color: #1c1c22;
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+
+/* ★キャラ管理タブなどの「すべて／メインキャラ／話専用キャラ」フィルタボタン列 */
+.scenariobuild-filter-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+
+/* ★種類別の直接追加ボタン（要望対応） */
+.scenariobuild-quick-add-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+.scenariobuild-filter-row .devmode-btn {
+  font-size: 11px;
+  padding: 4px 10px;
+}
+.scenariobuild-filter-active {
+  border-color: #ffc107 !important;
+  color: #ffd23f !important;
+  box-shadow: 0 0 6px #ffc107;
+}
+
+/* ===== マップエディタ（インタラクティブな地図画面。mapareas.js） ===== */
+.mapeditor-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+
+.scenariobuild-variable-name {
+  display: inline-block;
+  min-width: 90px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: rgba(126, 203, 255, 0.15);
+  border: 1px solid rgba(126, 203, 255, 0.4);
+  color: #7ecbff;
+  font-family: monospace;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.mapeditor-size-preview {
+  width: 44px;
+  height: 44px;
+  margin-left: 8px;
+  vertical-align: middle;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background-color: #1a2a1f;
+  flex-shrink: 0;
+}
+
+.mapeditor-wrap {
+  width: 100%;
+  height: min(60vh, 480px);
+  margin: 10px 0;
+  border: 1px solid #444;
+  border-radius: 8px;
+  background-color: #1a2a1f;
+  overflow: hidden;
+  touch-action: none; /* ★ドラッグ操作をこちらで処理するので、ブラウザ標準のスクロール/ズームは無効にする */
+}
+
+.mapeditor-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+}
+
+.mapeditor-svg:active {
+  cursor: grabbing;
+}
+
+#mapeditor-camera {
+  transition: transform 0.35s ease; /* ★矢印キー移動時、カメラがここで滑らかに動く */
+}
+
+#mapeditor-camera.mapeditor-no-transition {
+  transition: none; /* ★指でドラッグしている間は、遅延なく追従させる */
+}
+
+.mapeditor-edge {
+  stroke: #6b8f5a;
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.mapeditor-node-circle {
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.mapeditor-node-hub {
+  fill: #dff2d0;
+  stroke: #4e9a2f;
+  stroke-width: 1.4;
+}
+
+.mapeditor-node-area {
+  fill: #fffaf0;
+  stroke: #6b4a1c;
+}
+
+.mapeditor-node:hover .mapeditor-node-circle {
+  fill: #ffe9a8;
+  stroke: #d68a00;
+}
+
+.mapeditor-node-label {
+  fill: #eee;
+  font-size: 3.2px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: #1a2a1f;
+  stroke-width: 0.6px;
+}
+
+/* ★矢印キー操作用の丸いカーソル */
+.mapeditor-cursor-ring {
+  fill: none;
+  stroke: #ffd23f;
+  stroke-width: 0.8;
+  stroke-dasharray: 2 1.4;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+
+/* ★接続モードで1つ目に選んだノードの目印 */
+.mapeditor-connect-ring {
+  fill: none;
+  stroke: #4fc3f7;
+  stroke-width: 1;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.mapeditor-node-selected .mapeditor-node-circle {
+  filter: drop-shadow(0 0 2px #ffd23f);
+}
+
+.scenariobuild-cleared-label {
+  color: #ccc;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scenariobuild-chapter-buttons {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scenariobuild-chapter-buttons .devmode-btn {
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+/* ★シナリオビルド：組み込みの話（第一話・第二話）の行を少し区別する */
+.scenariobuild-chapter-row-builtin {
+  background-color: #1e2620;
+  border-color: #3a4a3d;
+}
+
+.scenariobuild-condition-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: #ccc;
+  font-size: 12px;
+}
+
+/* ★スキル管理タブ：1つの項目（ラベル＋入力欄）をまとめる小さな単位。paramsRowの中で折り返しつつ並ぶ */
+.scenariobuild-inline-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+/* ★スキル管理タブ：状態異常・自己強化などの詳細項目をまとめる折りたたみ */
+.scenariobuild-skill-details {
+  margin-top: 8px;
+  padding: 6px 8px;
+  background-color: #14181a;
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+
+.scenariobuild-skill-details > summary {
+  cursor: pointer;
+  color: #7fd1ff;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.scenariobuild-skill-details .scenariobuild-condition-row {
+  margin-top: 6px;
+}
+
+/* ★特殊スキル編集でブロックを1つでも登録した技は、固定フィールド（威力等）が無視されるので、
+   グレーアウトして操作もできなくし「ブロックが優先されます」の状態を見た目でも分かるようにする */
+.scenariobuild-skill-fixed-fields-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  filter: grayscale(60%);
+}
+
+/* ★特殊スキル編集：repeatブロックの中身（bodyBlocks）を、少し沈めて枠で囲むことで入れ子とわかるようにする */
+.scenariobuild-skill-repeat-body {
+  margin-top: 8px;
+  padding: 8px;
+  background-color: #14181a;
+  border: 1px dashed #444;
+  border-radius: 6px;
+}
+
+/* ★選択肢ブロックの「↻ループ」「★正解」チェックボックスなど、小さなON/OFFラベル用 */
+.scenariobuild-inline-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: #ccc;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.scenariobuild-inline-checkbox input {
+  cursor: pointer;
+}
+
+/* ★選択肢の「旧方式：直接ジャンプ先」は、通常は「編集」ボタンを使うので目立たせすぎないようにする */
+.scenariobuild-legacy-jump-row {
+  opacity: 0.6;
+  font-size: 11px;
+  margin-bottom: 8px;
+  padding-left: 8px;
+  border-left: 2px solid #444;
+}
+
+.scenariobuild-condition-input {
+  width: 48px;
+  padding: 4px 6px;
+  background-color: #262626;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  text-align: center;
+}
+
+.scenariobuild-textarea {
+  width: 100%;
+  min-height: 54px;
+  padding: 6px 8px;
+  background-color: #262626;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 13px;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.scenariobuild-jump-select {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  background-color: #262626;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+}
+
+.scenariobuild-block-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ★シナリオビルド：サブ画面タブ */
+.scenariobuild-tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.scenariobuild-tab-btn-active {
+  background-color: #ffd23f;
+  color: #000;
+  border-color: #ffd23f;
+}
+
+.scenariobuild-tab-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ★ブロックとブロックの間の「＋」挿入スロット */
+.scenariobuild-block-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.scenariobuild-insert-slot {
+  display: flex;
+  justify-content: center;
+  padding: 3px 0;
+}
+
+.scenariobuild-insert-plus {
+  width: 26px;
+  height: 20px;
+  line-height: 18px;
+  padding: 0;
+  background-color: #333;
+  color: #ffd23f;
+  border: 1px dashed #666;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+.scenariobuild-insert-plus:hover {
+  opacity: 1;
+  background-color: #444;
+}
+
+.scenariobuild-insert-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding: 6px;
+  background-color: #2a2a2a;
+  border: 1px solid #555;
+  border-radius: 6px;
+}
+
+/* ===== 演出ブロック：カメラシェイク・ヒットフラッシュ ===== */
+@keyframes camera-shake-anim {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-6px, 4px); }
+  40% { transform: translate(6px, -4px); }
+  60% { transform: translate(-4px, 6px); }
+  80% { transform: translate(4px, -6px); }
+  100% { transform: translate(0, 0); }
+}
+
+.main-screen.camera-shake {
+  animation: camera-shake-anim 0.4s ease;
+}
+
+#hit-flash-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: #ff0000;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9998;
+  transition: opacity 0.25s ease;
+}
+
+#hit-flash-overlay.hit-flash-active {
+  opacity: 0.35;
+  transition: opacity 0.03s ease;
+}
+
+/* ★要望対応：回想演出などに使う「モノクロ」。effectブロック(monochromeOn/Off)で切り替える */
+body.screen-monochrome {
+  filter: grayscale(1);
+}
+
+/* ★要望対応：「暗転」演出。画面全体を黒くフェードアウトさせる（effectブロックのblackoutOn/Offで切り替える） */
+#screen-blackout-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99997; /* ★メッセージウィンドウ・選択肢より手前、ヒットフラッシュ(9998)より奥 */
+  background-color: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+#screen-blackout-overlay.active {
+  opacity: 1;
+}
+
+/* ===== エンディングブロック：簡易エンドロール ===== */
+.endroll-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: #000;
+  z-index: 20000;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
+.endroll-content {
+  position: absolute;
+  top: 100%;
+  width: 80%;
+  max-width: 480px;
+  color: #fff;
+  white-space: pre-line;
+  text-align: center;
+  font-size: 16px;
+  line-height: 2.2;
+}
+
+.endroll-whiteout {
+  position: absolute;
+  inset: 0;
+  background-color: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1s ease;
+}
+
+.endroll-whiteout.endroll-whiteout-active {
+  opacity: 1;
+}
+
+.endroll-skip-btn {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  padding: 6px 14px;
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #777;
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 20001;
+}
+
+/* ===== タイトル画面 ===== */
+.title-screen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000; /* ★何よりも手前。ページを開いた直後は必ずこれが見えている状態にする */
+  background-color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ★村の背景をぼかして薄く敷き、ゲーム本編と同じ世界観を感じさせる */
+.title-screen-overlay::before {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  background-image: url("img/村.jpeg");
+  background-size: cover;
+  background-position: center;
+  filter: blur(7px) brightness(0.32) saturate(0.9);
+}
+
+.title-screen-overlay.hidden {
+  display: none !important;
+}
+
+/* ★要望対応：タイトル画面右上の全画面表示切替ボタン */
+.title-screen-fullscreen-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #ddd;
+  border: 1px solid #666;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.title-screen-fullscreen-btn:hover {
+  border-color: #ffc107;
+  color: #ffc107;
+}
+
+.title-screen-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: 380px;
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 4px solid white; /* ★メッセージウィンドウと同じ枠の太さ・色に合わせている */
+  border-radius: 5px;
+  padding: 40px 26px 30px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.85);
+}
+
+.title-screen-logo {
+  color: #ffd23f;
+  font-size: 46px;
+  letter-spacing: 0.2em;
+  margin: 0 0 8px 0;
+  text-shadow: 0 0 18px rgba(255, 210, 63, 0.55), 0 2px 3px rgba(0, 0, 0, 0.9);
+}
+
+.title-screen-logo-sub {
+  display: block;
+  font-size: 20px;
+  letter-spacing: 0.12em;
+  margin-top: 4px;
+  color: #ffe9a8;
+}
+
+.title-screen-subtitle {
+  color: #ddd;
+  font-size: 12px;
+  margin: 0 0 4px 0;
+  letter-spacing: 0.18em;
+}
+
+.title-screen-divider {
+  width: 60%;
+  height: 1px;
+  margin: 18px 0 26px 0;
+  background: linear-gradient(to right, transparent, #ffd23f, transparent);
+  opacity: 0.6;
+}
+
+.title-screen-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.title-screen-btn {
+  padding: 13px 20px;
+  background-color: #222;
+  color: #eee;
+  border: 2px solid #555;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.title-screen-btn:hover {
+  background-color: #3a2f0a;
+  color: #ffd23f;
+  border-color: #ffd23f;
+}
+
+.title-screen-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ★キーボード操作（↑↓）でのカーソル位置。セーブ/ロード画面などと同じ配色に合わせている */
+.title-screen-btn.cursor {
+  border-color: #ffc107;
+  background-color: #3a2f0a;
+  color: #ffd23f;
+  box-shadow: 0 0 8px #ffc107;
+}
+
+.title-screen-slots {
+  width: 100%;
+  margin-top: 4px;
+  max-height: 42vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title-screen-slots.hidden {
+  display: none !important;
+}
+
+.title-screen-slot-btn {
+  padding: 11px 14px;
+  background-color: #1c1c1c;
+  color: #ddd;
+  border: 2px solid #444;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.title-screen-slot-btn:hover {
+  background-color: #3a2f0a;
+  color: #ffd23f;
+  border-color: #ffd23f;
+}
+
+.title-screen-slot-btn.empty {
+  color: #777;
+  font-style: italic;
+}
+
+/* ★キーボード操作（↑↓）でのカーソル位置 */
+.title-screen-slot-btn.cursor {
+  border-color: #ffc107;
+  background-color: #2a2a2a;
+  outline: none;
+  box-shadow: 0 0 8px #ffc107;
+}
+
+/* ★前回開いていた（最後にセーブ/ロードした）スロットを強調表示する */
+.title-screen-slot-btn.last-used {
+  border-color: #ffd23f;
+  color: #ffd23f;
+  font-weight: bold;
+}
+
+/* ===== オープニング演出（注意書き→クレジット→アイコン→本編開始。titlescreen.js） ===== */
+.intro-splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100001; /* ★タイトル画面よりさらに手前。ただしタイトルは表示前に必ず隠しているので実質競合しない */
+  background-color: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.intro-splash-overlay.hidden {
+  display: none !important;
+}
+
+.intro-splash-content {
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.intro-splash-text {
+  color: #eee;
+  font-size: 15px;
+  line-height: 1.9;
+  white-space: pre-line; /* ★テキスト内の\nをそのまま改行として表示する */
+  letter-spacing: 0.04em;
+  text-align: center;
+  margin: 0;
+}
+
+.intro-splash-image {
+  max-width: 220px;
+  max-height: 220px;
+  object-fit: contain;
+}
+
+.intro-splash-hint {
+  position: absolute;
+  bottom: 22px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: #777;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+/* ===== ゲームオーバー画面（専用デザイン） ===== */
+.gameover-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: radial-gradient(circle at 50% 40%, #2a0505, #000 75%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.gameover-overlay.hidden {
+  display: none !important;
+}
+
+.gameover-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 360px;
+}
+
+.gameover-title {
+  color: #e63946;
+  font-size: 40px;
+  letter-spacing: 0.2em;
+  margin: 0 0 14px 0;
+  text-shadow: 0 0 24px rgba(230, 57, 70, 0.7);
+}
+
+.gameover-message {
+  color: #ddd;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-line;
+  margin: 0 0 12px 0;
+}
+
+/* ★ゲームオーバーもバッドエンディングの一種として扱うため、設定されていればエンディング名を表示する */
+.gameover-ending-name {
+  color: #ffc9c9;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  font-style: italic;
+  margin: 0 0 32px 0;
+}
+
+.gameover-ending-name.hidden {
+  display: none !important;
+}
+
+.gameover-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+/* ★シナリオビルド：ドラッグ&ドロップでの並び替え */
+.scenariobuild-drag-handle {
+  cursor: grab;
+  color: #888;
+  font-size: 16px;
+  padding: 4px 2px;
+  align-self: center;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.scenariobuild-drag-handle:active {
+  cursor: grabbing;
+}
+
+.scenariobuild-chapter-row.scenariobuild-dragging {
+  opacity: 0.4;
+}
+
+.scenariobuild-chapter-row.scenariobuild-drag-over {
+  border-color: #ffd23f;
+}
+
+/* ===== シナリオビルド：マップ設定（mapareas.js） ===== */
+.mapareas-preview-wrap {
+  width: 100%;
+  max-width: 320px;
+  margin: 10px 0;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.mapareas-preview-svg {
+  width: 100%;
+  height: 200px;
+  display: block;
+}
+
+.mapareas-preview-village {
+  fill: #6fcf6f;
+}
+
+.mapareas-preview-edge {
+  stroke: #666;
+  stroke-width: 0.4;
+}
+
+.mapareas-preview-dot {
+  stroke: #fff;
+  stroke-width: 0.4;
+}
+
+.mapareas-preview-dot.mapareas-preview-city,
+.mapareas-preview-dot.mapareas-preview-country {
+  fill: #ffd23f;
+}
+
+.mapareas-preview-dot.mapareas-preview-village {
+  fill: #6fcf6f;
+}
+
+.mapareas-preview-dot.mapareas-preview-enemy {
+  fill: #e05a5a;
+}
+
+.mapareas-preview-label {
+  fill: #ddd;
+  font-size: 3px;
+  text-anchor: middle;
+}
+
+.mapareas-taglist {
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.mapareas-taglist-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.mapareas-taglist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background-color: #333;
+  border: 1px solid #555;
+  border-radius: 12px;
+  color: #eee;
+  font-size: 12px;
+}
+
+.mapareas-taglist-chip button {
+  background: none;
+  border: none;
+  color: #ff8080;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+}
+
+.mapareas-variations {
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mapareas-variation-card {
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 8px;
+  background-color: rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ==========================================================================
+   縦画面（スマホ縦持ちなど）対応
+   ★必ずファイルの最後に置くこと。.main-screen/.sub-screenの基本スタイル（270行目付近）より
+   後ろに書かないと、display:flexなどが後から上書かれて意図通りに効かなくなる。
+   上半分をメイン画面・下半分をサブ画面にして、同時に両方見えるようにする（切り替え式ではない）
+   ========================================================================== */
+@media (max-aspect-ratio: 4/5) {
+  .game-container {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .main-screen, .sub-screen {
+    flex: 1 1 50%;
+    width: 100%;
+    height: 50%;
+    min-height: 0;
+    margin: 0;
+    box-sizing: border-box;
+  }
+  
+  /* ★元々は横長画面向けに大きく上に余白を取っていたので、縦画面の半分の高さに収まるよう詰める。
+     ★justify-content:centerのままだと、余白が少ない縦画面ではメッセージウィンドウが画面のど真ん中に
+       浮いて見えてしまっていたので、下寄せに変更して見た目の位置を下げる */
+  .main-screen {
+    padding-top: 8px;
+    padding-bottom: 6px;
+    justify-content: flex-end;
+    font-size: 18px;
+  }
+  
+  /* ★縦幅を少しだけ縮める（150px→132px）。
+     ★横幅は元がPC想定の650px固定だったため、スマホ幅では画面からはみ出してしまっていた。
+       画面内に確実に収まるよう、画面幅基準の可変サイズに変更する
+     ★早送り・非表示ボタン（.main-screen左下に絶対配置）とメッセージウィンドウが同じ「下端」に
+       重なってしまい、ウィンドウの左下がボタンで隠れてしまっていたため、ボタンの高さぶん
+       メッセージウィンドウを持ち上げる */
+  .message-window {
+    margin-top: 0;
+    margin-bottom: 38px;
+    height: 132px;
+    width: calc(100% - 24px);
+    max-width: calc(100% - 24px);
+    box-sizing: border-box;
+  }
+  
+  /* ★ボタン自体も、持ち上がったメッセージウィンドウの下に収まるよう少し小さく・低い位置にする */
+  .fast-forward-btn, .hide-choices-btn {
+    bottom: 4px;
+    padding: 3px 6px; /* ★要望対応：スマホでは少し大きく感じたため、さらにひとまわり小さく */
+    font-size: 9px;
+    border-width: 1px;
+  }
+  .hide-choices-btn {
+    left: 72px; /* ★fast-forward-btn自体が小さくなった分、詰めて配置する */
+  }
+  
+  /* ★両方同時に見えるようになったので、切り替えボタンはもう不要 */
+  .portrait-switch-btn {
+    display: none !important;
+  }
+  
+  /* ★半分の高さしか無いので、ボタン類を一回り小さくして収まりやすくする */
+  .game-container button,
+  .game-container select,
+  .game-container input[type="button"] {
+    font-size: 0.75em;
+    padding: 4px 6px;
+  }
+  
+  .tab-menu {
+    flex-wrap: wrap;
+  }
+  
+  /* ★町の行き先メニューなど、ボタンを縦に並べる系のメニューは余白・隙間も詰める */
+  .location-menu {
+    gap: 6px;
+    padding: 14px 18px;
+    min-width: 0;
+    width: 90%;
+  }
+  
+  .location-menu-title {
+    font-size: 16px;
+  }
+  
+  .mini-status-hud {
+    font-size: 12px;
+  }
+}
