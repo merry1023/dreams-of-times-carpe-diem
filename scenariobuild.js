@@ -574,6 +574,7 @@ function normalizeScenarioProject() {
         //   MONSTER_MASTERが再構築される際（ensureCustomMonstersRegistered）restSkillNameが消えてしまい、
         //   好感度MAXでも魔物図鑑から専用スキル（サキュバスの「サキュバスと休憩♡」等）が使えなくなっていた
         restSkillName: master.restSkillName || "",
+        restSkillBlocks: Array.isArray(master.restSkillBlocks) ? master.restSkillBlocks : [],
         affectionGainRange: Array.isArray(master.affectionGainRange) ? [...master.affectionGainRange] : null,
         // ★要望対応：見逃した/倒した時のセリフを、単純な1行のテキストだけでなく、話のブロックと同じように
         //   複数のセリフ・分岐・フラグ操作などを組み合わせて演出できるようにする
@@ -907,6 +908,7 @@ function ensureCustomMonstersRegistered() {
       //   シナリオデータ読み込みのたびに消えてしまっていた
       restSkillName: enemy.restSkillName || undefined,
       affectionGainRange: Array.isArray(enemy.affectionGainRange) && enemy.affectionGainRange.length === 2 ? enemy.affectionGainRange : undefined,
+      restSkillBlocks: (Array.isArray(enemy.restSkillBlocks) && enemy.restSkillBlocks.length > 0) ? enemy.restSkillBlocks : undefined,
       // ★要望対応：見逃した/倒した時の演出をブロックで組み立てられるようにする
       killBlocks: (Array.isArray(enemy.killBlocks) && enemy.killBlocks.length > 0) ? enemy.killBlocks : undefined,
       spareBlocks: (Array.isArray(enemy.spareBlocks) && enemy.spareBlocks.length > 0) ? enemy.spareBlocks : undefined
@@ -1408,6 +1410,24 @@ function renderSkillVariableReference(container) {
   // ★要望対応：仲間HP割合／仲間SP割合の説明を追加
   [["仲間HP割合(1 または 名前)", "パーティ内の仲間のHP割合。仲間HP割合(1)で1人目、仲間HP割合(レト)のように名前でも指定できる"],
    ["仲間SP割合(1 または 名前)", "同じくSP割合。書き方は仲間HP割合と同じ"]].forEach(([name, desc]) => {
+    const row = document.createElement("div");
+    row.className = "scenariobuild-condition-row";
+    const nameEl = document.createElement("code");
+    nameEl.className = "scenariobuild-variable-name";
+    nameEl.textContent = name;
+    row.appendChild(nameEl);
+    const descEl = document.createElement("span");
+    descEl.textContent = desc;
+    row.appendChild(descEl);
+    container.appendChild(row);
+  });
+  
+  // ★要望対応：仲間の最大 HP/SP、レベル、攻撃力、防御力を追加
+  [["仲間最大 HP(1 または 名前)", "パーティ内の仲間の最大 HP。仲間最大 HP(1) で 1 人目、仲間最大 HP(レト) のように名前でも指定できる"],
+   ["仲間最大 SP(1 または 名前)", "同じく最大 SP。書き方は仲間最大 HP と同じ"],
+   ["仲間レベル (1 または 名前)", "仲間の現在レベル"],
+   ["仲間攻撃力 (1 または 名前)", "仲間の攻撃力（装備・強化込み）"],
+   ["仲間防御力 (1 または 名前)", "仲間の防御力（素早さパラメータ）"]].forEach(([name, desc]) => {
     const row = document.createElement("div");
     row.className = "scenariobuild-condition-row";
     const nameEl = document.createElement("code");
@@ -3737,7 +3757,7 @@ function getEnemyManagerConfig() {
       { key: "imagePath", label: "画像パス", type: "text", placeholder: "例：img/敵/goblin.png（空欄なら img/敵/名前.png を使う）" },
       { key: "sizeMultiplier", label: "大きさ倍率", type: "number", placeholder: "1.0（例：1.2で少し大きく、0.8で少し小さく）" }
     ],
-    newEntity: () => ({ id: generateId("enemy"), name: "", description: "", maxHp: 10, atk: 5, exp: 10, imagePath: "", sizeMultiplier: 1, dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], statusImmunities: [], statusResistances: {}, restSkillName: "", affectionGainRange: [5, 10], killBlocks: [], spareBlocks: [] }),
+    newEntity: () => ({ id: generateId("enemy"), name: "", description: "", maxHp: 10, atk: 5, exp: 10, imagePath: "", sizeMultiplier: 1, dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], statusImmunities: [], statusResistances: {}, restSkillName: "", restSkillBlocks: [], affectionGainRange: [5, 10], killBlocks: [], spareBlocks: [] }),
     onChange: ensureCustomMonstersRegistered,
     getDefaultFromMaster: (id) => {
       const master = typeof ENEMY_MASTER !== "undefined" ? ENEMY_MASTER[id] : null;
