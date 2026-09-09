@@ -117,9 +117,9 @@ window.addEventListener("beforeunload", () => autoSaveToSlot("onclose"));
 // ===== 設定タブの描画・操作 =====
 
 let settingsCursorIndex = 0;
-const SETTINGS_ROW_COUNT = 10; // 0:文字送り速度 1:ログ記憶数 2:オートセーブON/OFF 3:オートセーブから再開する
+const SETTINGS_ROW_COUNT = 11; // 0:文字送り速度 1:ログ記憶数 2:オートセーブON/OFF 3:オートセーブから再開する
                                // 4:正解の選択肢を表示 5:Aキーでメインタブに戻す 6:メインタブのパラメータ表示
-                               // 7:全画面表示 8:開発者ボタン 9:メインメニューに戻る
+                               // 7:全画面表示 8:開発者ボタン 9:Googleアカウント（auth.js） 10:メインメニューに戻る
 
 function renderSettingsTab() {
   // ★バグ修正：以前はtab-setting自体のinnerHTMLを毎回まるごと書き換えていたため、
@@ -146,6 +146,7 @@ function renderSettingsTab() {
     { label: "メインタブのパラメータ表示", value: gameSettings.showMainTabParams ? "ON" : "OFF", hint: "◀／▶／決定で切替（OFFだと、主人公・仲間のパラメータは常時左上に表示されます）" },
     { label: "全画面表示", value: isFullscreenActive() ? "ON" : "OFF", hint: "決定／タップで切替（対応していない端末・ブラウザでは反応しません）" },
     { label: "開発者ボタン", value: gameSettings.developerModeUnlocked ? "解除済み" : "未解除", hint: gameSettings.developerModeUnlocked ? "画面左端のタブから開発者モードを開けます" : "決定でパスワードを入力" },
+    (typeof getGoogleAccountSettingsRow === "function") ? getGoogleAccountSettingsRow() : { label: "Googleアカウント", value: "未ログイン", hint: "決定でログイン" }, // auth.js（要望対応）
     { label: "メインメニューに戻る", value: "", hint: "決定で実行（セーブしていない進行状況は失われます）" }
   ];
   
@@ -320,6 +321,8 @@ function executeSettingsDecideAction(index) {
   } else if (index === 8) {
     handleDevModeButtonDecide(); // ★未解除ならパスワード入力を開く。解除済みなら特に何もしない（左端タブから操作する）
   } else if (index === 9) {
+    if (typeof handleGoogleAccountSettingsDecide === "function") handleGoogleAccountSettingsDecide(); // auth.js（要望対応：Googleアカウントログイン/ログアウト）
+  } else if (index === 10) {
     handleReturnToMainMenuFromSettings();
   }
 }
