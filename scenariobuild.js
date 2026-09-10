@@ -2292,7 +2292,7 @@ function renderEnemyFlavorEditor(container) {
 // ===== メイン画面：特殊技のifブロックの条件エディタ（専用全画面。scenarioBuildMainView === "skillIfEditor"） =====
 function renderSkillIfEditor(container) {
   const skill = getEditingSkill();
-  const block = skill && Array.isArray(skill.blocks) ? skill.blocks.find(b => b.id === scenarioBuildEditingSkillIfBlockId) : null;
+  const block = skill ? findSkillBlockDeep(skill, scenarioBuildEditingSkillIfBlockId) : null;
   
   const backBtn = document.createElement("button");
   backBtn.className = "devmode-btn";
@@ -2326,7 +2326,7 @@ function renderSkillIfEditor(container) {
 // ===== メイン画面：特殊技ifブロックの「真/偽の時」の中身エディタ（専用全画面。scenarioBuildMainView === "skillIfBranchEditor"） =====
 function renderSkillIfBranchEditor(container) {
   const skill = getEditingSkill();
-  const block = skill && Array.isArray(skill.blocks) ? skill.blocks.find(b => b.id === scenarioBuildEditingSkillIfBlockId) : null;
+  const block = skill ? findSkillBlockDeep(skill, scenarioBuildEditingSkillIfBlockId) : null;
   const branch = scenarioBuildEditingSkillIfBranch;
   
   const backBtn = document.createElement("button");
@@ -5002,6 +5002,14 @@ function buildSkillBlockJumpSelect(blocksArray, currentBlockId, selectedBlockId,
 
 // ★要望対応（ジャンプブロック用）：技が持つ全ブロックを、ネスト（ifの中身・くり返しの中身）の
 //   深さに関わらずフラットな一覧にする。ifブロックの外や、別の分岐の中身へもジャンプできるようにするため
+// ★バグ修正：以前はskill.blocks.find(...)で直下しか探しておらず、ifブロックの中に
+//   ネストしたifブロックの編集ボタンを押すと見つからず編集画面から弾かれてしまっていた（要望対応）。
+//   ifの中身（trueBlocks/falseBlocks）・くり返しの中身（bodyBlocks）も、何段ネストしていても探し出す
+function findSkillBlockDeep(skill, blockId) {
+  const entry = collectSkillBlocksFlat(skill.blocks).find(e => e.block.id === blockId);
+  return entry ? entry.block : null;
+}
+
 function collectSkillBlocksFlat(blocks, depth) {
   depth = depth || 0;
   let list = [];
