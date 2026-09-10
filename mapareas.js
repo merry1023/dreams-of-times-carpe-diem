@@ -81,6 +81,7 @@ let mapEditorConnectMode = false; // ★ON中は、タップ2回で線をつな�
 let mapEditorConnectFirstId = null; // ★接続モードで1つ目に選んだノード
 let mapEditorPointerState = null; // ★ドラッグ中の情報（パン操作用）
 let mapEditorNodeDragState = null; // ★選択中のエリアをつまんでドラッグし、位置を動かしている間の情報
+let mapEditorSelectedEdgeIndex = null; // ★選択中の経路（線）のインデックス
 
 // ★村（village）＋マップ設定タブにあるエリア（組み込み・自作の両方、「カデリクの街」「？」等の未実装ノードも含む）を、
 //   実際に操作できるノードとして返す
@@ -187,7 +188,7 @@ function renderMapAreaFullList(container) {
   camera.id = "mapeditor-camera";
   svg.appendChild(camera);
   
-  edges.forEach(([fromId, toId]) => {
+  edges.forEach(([fromId, toId], edgeIndex) => {
     const fromNode = nodes.find(n => n.id === fromId);
     const toNode = nodes.find(n => n.id === toId);
     if (!fromNode || !toNode) return;
@@ -198,7 +199,16 @@ function renderMapAreaFullList(container) {
     line.setAttribute("y2", toNode.y);
     line.setAttribute("data-from", fromId); // ★ドラッグ中、このノードにつながる線だけをその場で追従させるための目印
     line.setAttribute("data-to", toId);
-    line.setAttribute("class", "mapeditor-edge");
+    line.setAttribute("data-edge-index", edgeIndex); // ★経路選択用
+    line.setAttribute("class", "mapeditor-edge" + (edgeIndex === mapEditorSelectedEdgeIndex ? " mapeditor-edge-selected" : ""));
+    line.style.cursor = "pointer";
+    line.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (mapEditorPointerState && mapEditorPointerState.moved) return;
+      mapEditorSelectedEdgeIndex = edgeIndex;
+      mapEditorSelectedNodeId = null;
+      renderScenarioBuildPanel();
+    });
     camera.appendChild(line);
   });
   
@@ -694,7 +704,6 @@ function buildMapAreaCard(area, index) {
   
   if (!isHubArea) {
     // 位置
-    // ★要望対応：マップの端を無くして無限に広がるようにする（0〜100の制限を撤廃）
     const posRow = document.createElement("div");
     posRow.className = "scenariobuild-condition-row";
     posRow.appendChild(labelSpan("位置 X："));
@@ -712,62 +721,59 @@ function buildMapAreaCard(area, index) {
     yInput.onchange = () => { area.y = Number(yInput.value) || 0; persist(); renderScenarioBuildPanel(); };
     posRow.appendChild(yInput);
     infoEl.appendChild(posRow);
-    
-    // ★要望対応：マップ上に表示される丸の大きさ（見た目）を指定できるように
-    const sizeRow = document.createElement("div");
-    sizeRow.className = "scenariobuild-condition-row";
-    sizeRow.appendChild(labelSpan("マップ上の大きさ（空欄＝種類ごとの既定値）："));
-    const sizeInput = document.createElement("input");
-    sizeInput.type = "number";
-    sizeInput.min = "3";
-    sizeInput.max = "20";
-    sizeInput.className = "scenariobuild-condition-input";
-    sizeInput.placeholder = "既定";
-    sizeInput.value = (typeof area.mapNodeSize === "number") ? area.mapNodeSize : "";
-    sizeRow.appendChild(sizeInput);
-    
-    // ★要望対応：エリアサイズ変更のリアルタイムプレビュー。入力するたびに（画面を移動しなくても）
-    //   丸の大きさがすぐ横で見て確認できるようにする（実際にマップ上へ反映されるのと同じ半径で描く）
-    const defaultSize = area.type === "country" ? 12 : area.type === "city" ? 10 : area.type === "enemy" ? 7 : 9;
-    const previewSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    previewSvg.setAttribute("viewBox", "0 0 44 44");
-    previewSvg.setAttribute("class", "mapeditor-size-preview");
-    const previewCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    previewCircle.setAttribute("cx", "22");
-    previewCircle.setAttribute("cy", "22");
-    previewCircle.setAttribute("fill", "var(--accent-color, #7ecbff)");
-    const updateSizePreview = () => {
-      const raw = sizeInput.value.trim();
-      const size = raw === "" ? defaultSize : Math.max(3, Math.min(20, Math.floor(Number(raw)) || defaultSize));
-      previewCircle.setAttribute("r", String(size));
-    };
-    updateSizePreview();
-    previewSvg.appendChild(previewCircle);
-    sizeRow.appendChild(previewSvg);
-    
-    sizeInput.oninput = () => {
-      updateSizePreview();
-      // ★マップ上のノードもリアルタイムで更新
-      if (area.id && typeof renderAdventureMap === "function") {
-        const nodeEl = document.querySelector(`[data-node-id="${area.id}"]`);
-        if (nodeEl) {
-          const raw = sizeInput.value.trim();
-          const defaultSize = area.type === "country" ? 12 : area.type === "city" ? 10 : area.type === "enemy" ? 7 : 9;
-          const size = raw === "" ? defaultSize : Math.max(3, Math.min(20, Math.floor(Number(raw)) || defaultSize));
-          const circle = nodeEl.querySelector("circle");
-          if (circle) circle.setAttribute("r", String(size));
-        }
-      }
-    };
-    sizeInput.onchange = () => {
-      const num = Number(sizeInput.value);
-      area.mapNodeSize = sizeInput.value.trim() === "" ? null : Math.max(3, Math.min(20, Math.floor(num) || 9));
-      persist();
-      updateSizePreview();
-      // ★変更確定後もマップ上を更新
-      if (typeof renderAdventureMap === "function") renderAdventureMap();
-    };
   }
+  
+  // マップ上の大きさ（村も含め全エリアで表示）
+  const sizeRow = document.createElement("div");
+  sizeRow.className = "scenariobuild-condition-row";
+  sizeRow.appendChild(labelSpan("マップ上の大きさ（空欄＝種類ごとの既定値）："));
+  const sizeInput = document.createElement("input");
+  sizeInput.type = "number";
+  sizeInput.min = "3";
+  sizeInput.max = "20";
+  sizeInput.className = "scenariobuild-condition-input";
+  sizeInput.placeholder = "既定";
+  sizeInput.value = (typeof area.mapNodeSize === "number") ? area.mapNodeSize : "";
+  sizeRow.appendChild(sizeInput);
+  
+  const defaultSize = area.type === "country" ? 12 : area.type === "city" ? 10 : area.type === "enemy" ? 7 : 9;
+  const previewSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  previewSvg.setAttribute("viewBox", "0 0 44 44");
+  previewSvg.setAttribute("class", "mapeditor-size-preview");
+  const previewCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  previewCircle.setAttribute("cx", "22");
+  previewCircle.setAttribute("cy", "22");
+  previewCircle.setAttribute("fill", "var(--accent-color, #7ecbff)");
+  const updateSizePreview = () => {
+    const raw = sizeInput.value.trim();
+    const size = raw === "" ? defaultSize : Math.max(3, Math.min(20, Math.floor(Number(raw)) || defaultSize));
+    previewCircle.setAttribute("r", String(size));
+  };
+  updateSizePreview();
+  previewSvg.appendChild(previewCircle);
+  sizeRow.appendChild(previewSvg);
+  
+  sizeInput.oninput = () => {
+    updateSizePreview();
+    if (area.id && typeof renderAdventureMap === "function") {
+      const nodeEl = document.querySelector(`[data-node-id="${area.id}"]`);
+      if (nodeEl) {
+        const raw = sizeInput.value.trim();
+        const defaultSize = area.type === "country" ? 12 : area.type === "city" ? 10 : area.type === "enemy" ? 7 : 9;
+        const size = raw === "" ? defaultSize : Math.max(3, Math.min(20, Math.floor(Number(raw)) || defaultSize));
+        const circle = nodeEl.querySelector("circle");
+        if (circle) circle.setAttribute("r", String(size));
+      }
+    }
+  };
+  sizeInput.onchange = () => {
+    const num = Number(sizeInput.value);
+    area.mapNodeSize = sizeInput.value.trim() === "" ? null : Math.max(3, Math.min(20, Math.floor(num) || 9));
+    persist();
+    updateSizePreview();
+    if (typeof renderAdventureMap === "function") renderAdventureMap();
+  };
+  infoEl.appendChild(sizeRow);
   
   // BGM・背景
   if (!isHubArea) infoEl.appendChild(buildMapAreaUnlockConditionsEditor(area, persist));

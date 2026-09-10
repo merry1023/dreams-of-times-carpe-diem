@@ -1,0 +1,11 @@
+# ★Cloudflare Workersへのデプロイ時に、静的アセットとしてアップロードしないファイル/フォルダ。
+#   .gitフォルダが誤ってアセット扱いされ、中の巨大なパックファイル(25MiB上限超過)でデプロイが
+#   失敗していたための対応。.gitignoreと同じ書式。
+.git
+.git/**
+node_modules
+node_modules/**
+wrangler.jsonc
+.assetsignore
+.wrangler
+.wrangler/**
