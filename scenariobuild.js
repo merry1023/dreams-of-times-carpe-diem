@@ -104,6 +104,7 @@ function loadCustomScenarioData() {
   runScenarioBuildStepSafely("ensureCustomQuestsRegistered", ensureCustomQuestsRegistered);
   if (typeof applyBuiltinMapAreaOverrides === "function") runScenarioBuildStepSafely("applyBuiltinMapAreaOverrides", applyBuiltinMapAreaOverrides); // adventure.js（マップ設定タブでの編集内容を反映）
   runScenarioBuildStepSafely("loadScenarioFlags", loadScenarioFlags);
+  runScenarioBuildStepSafely("loadScenarioVariables", loadScenarioVariables);
 }
 
 // ★loadCustomScenarioDataの各ステップを1つずつ安全に実行する。失敗しても他のステップやこの関数の
@@ -143,6 +144,7 @@ function applyImportedScenarioFileIfUpdated(force) {
   scenarioProject.chapters = data.chapters || [];
   scenarioProject.characters = data.characters || [];
   if (Array.isArray(data.flagDefs)) scenarioProject.flagDefs = data.flagDefs; // ★フラグは話の中でしか使わないため、シナリオ側のファイルに含める
+  if (Array.isArray(data.variableDefs)) scenarioProject.variableDefs = data.variableDefs; // ★ゲーム変数の定義も同様にシナリオ側のファイルに含める
   if (!scenarioProject.deletedBuiltinIds) scenarioProject.deletedBuiltinIds = {};
   if (data.deletedBuiltinIds) {
     scenarioProject.deletedBuiltinIds.chapters = data.deletedBuiltinIds.chapters || [];
@@ -364,6 +366,7 @@ function normalizeScenarioProject() {
   if (!Array.isArray(scenarioProject.statusAilments)) scenarioProject.statusAilments = [];
   if (!Array.isArray(scenarioProject.statusBuffs)) scenarioProject.statusBuffs = [];
   if (!Array.isArray(scenarioProject.flagDefs)) scenarioProject.flagDefs = []; // [{ name, description }, ...]（フラグ管理タブ）
+  if (!Array.isArray(scenarioProject.variableDefs)) scenarioProject.variableDefs = []; // [{ name, description }, ...]（ゲーム変数管理タブ。値自体はscenarioVariablesに保存される）
   if (!Array.isArray(scenarioProject.recipes)) scenarioProject.recipes = []; // [{ id, name, shopType, mode, materials, baseItemId, resultItemId, resultCount, cost, description }, ...]（レシピ管理タブ）
   // ★状態異常・状態強化の「種類」を、状態管理タブから追加・編集できるようにする。
   //   実際の動作（mechanic）は決まった仕組みの中からしか選べないが、id・表示名・説明・
@@ -1143,6 +1146,41 @@ function setScenarioFlag(name, value) {
   saveScenarioFlags();
 }
 
+// ===== ゲーム変数（要望対応：好感度スキル等の話ブロックで、フラグ（on/off）だけでなく
+//   数値の「変数」も参照・比較・設定できるようにする。特殊スキル編集のskill.variablesとは別物で、
+//   話の中でフラグと同じ感覚で自由な名前を付けて使える、話全体で共有の数値ストレージ） =====
+const SCENARIOBUILD_VARIABLES_KEY = "demoge_scenario_variables";
+let scenarioVariables = {};
+
+function loadScenarioVariables() {
+  try {
+    const raw = localStorage.getItem(SCENARIOBUILD_VARIABLES_KEY);
+    scenarioVariables = raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    scenarioVariables = {};
+  }
+}
+
+function saveScenarioVariables() {
+  try {
+    localStorage.setItem(SCENARIOBUILD_VARIABLES_KEY, JSON.stringify(scenarioVariables));
+  } catch (e) {
+    console.error("変数の保存に失敗しました", e);
+  }
+}
+
+function getScenarioVariable(name) {
+  if (!name) return 0;
+  const v = scenarioVariables[name];
+  return typeof v === "number" ? v : 0; // ★まだ一度も設定されていない変数は0扱い
+}
+
+function setScenarioVariable(name, value) {
+  if (!name) return;
+  scenarioVariables[name] = Number(value) || 0;
+  saveScenarioVariables();
+}
+
 // ===== モードの開閉 =====
 // ★要望対応：シナリオエディタを開いている間、裏で本編（広場の選択肢・マップ選択など）が
 //   キー操作に反応して動いてしまわないようにするためのフラグ。
@@ -1232,6 +1270,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "skills", label: "スキル管理" },
   { view: "statuses", label: "状態管理" },
   { view: "flags", label: "フラグ管理" },
+  { view: "gamevars", label: "ゲーム変数管理" }, // ★要望対応：話ブロックのifで参照できる数値変数の管理タブ（システム変数一覧の「変数一覧」とは別物）
   { view: "recipes", label: "レシピ管理" },
   { view: "companions", label: "仲間編集" },
   { view: "classes", label: "職業編集" },
@@ -1335,6 +1374,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
   else if (scenarioBuildSubView === "statuses") renderStatusManager(bodyEl);
   else if (scenarioBuildSubView === "flags") renderFlagManager(bodyEl);
+  else if (scenarioBuildSubView === "gamevars") renderVariableManager(bodyEl);
   else if (scenarioBuildSubView === "recipes") renderRecipeManager(bodyEl);
   else if (scenarioBuildSubView === "companions") renderCompanionManager(bodyEl);
   else if (scenarioBuildSubView === "classes") renderClassStatsManager(bodyEl);
@@ -1938,6 +1978,8 @@ const SCENARIO_BLOCK_TYPES = {
   bgm: "BGM切り替え",
   se: "効果音",
   flag: "フラグ",
+  setvar: "変数を設定（数値）",
+  changeparam: "パラメータ変更（HP/SP等）",
   give: "ギヴ（アイテム付与）",
   takeitem: "アイテム消費",
   battle: "通常戦闘",
@@ -2042,6 +2084,35 @@ function findBlockDeepInChapter(chapter, blockId) {
   return search(chapter.blocks);
 }
 
+// ★バグ修正：好感度スキル等（敵の演出ブロック。restSkillBlocks／killBlocks／spareBlocks）の中にあるifブロックの
+//   「編集」を押しても、renderIfConditionsEditor／renderIfBranchEditorがscenarioProject.chaptersの中からしか
+//   チャプターを探しておらず、敵の演出ブロックは仮のチャプターID（"enemyflavor_"+敵ID）を使っているため
+//   見つからず、即座に画面が閉じてしまっていた（話の中のif・選択肢の中のifはチャプター本体のIDを使い回す
+//   作りなので影響なし。敵の演出ブロックだけがこの抜け穴に該当していた）。
+//   ここでscenarioBuildEditingIfRef.chapterIdから、話の本体だけでなく敵の演出ブロックも辿れるようにする
+function resolveIfEditorContext(ref) {
+  if (!ref || !ref.chapterId) return null;
+  const realChapter = scenarioProject.chapters.find(c => c.id === ref.chapterId);
+  if (realChapter) {
+    const block = findBlockDeepInChapter(realChapter, ref.blockId);
+    if (block) return { chapter: realChapter, block };
+  }
+  if (ref.chapterId.indexOf("enemyflavor_") === 0) {
+    const entityId = ref.chapterId.slice("enemyflavor_".length);
+    const entity = (scenarioProject.enemies || []).find(e => e.id === entityId);
+    if (entity) {
+      const flavorKeys = ["killBlocks", "spareBlocks", "restSkillBlocks"];
+      for (const key of flavorKeys) {
+        if (!Array.isArray(entity[key])) continue;
+        const fakeChapter = { id: ref.chapterId, blocks: entity[key] };
+        const block = findBlockDeepInChapter(fakeChapter, ref.blockId);
+        if (block) return { chapter: fakeChapter, block };
+      }
+    }
+  }
+  return null;
+}
+
 // ★要望対応（ジャンプブロック用）：話が持つ全ブロックを、ネスト（ifの中身・選択肢の中身）の
 //   深さに関わらずフラットな一覧にする。ifブロックの外や、別の分岐の中身へもジャンプできるようにするため
 function collectScenarioBlocksFlat(blocks, depth) {
@@ -2138,8 +2209,9 @@ function renderChoiceOptionEditor(container) {
 // ★選択肢の内容エディタと同じ考え方で、ifブロックの条件一覧をブロック一覧から切り離して編集できるようにする（要望対応）
 function renderIfConditionsEditor(container) {
   const ref = scenarioBuildEditingIfRef;
-  const chapter = ref && scenarioProject.chapters.find(c => c.id === ref.chapterId);
-  const block = chapter && findBlockDeepInChapter(chapter, ref.blockId);
+  const resolved = resolveIfEditorContext(ref);
+  const chapter = resolved && resolved.chapter;
+  const block = resolved && resolved.block;
   
   const backBtn = document.createElement("button");
   backBtn.className = "devmode-btn";
@@ -2175,8 +2247,9 @@ function renderIfConditionsEditor(container) {
 //   会話・分岐・戦闘などを自由に組み立てられ、最後まで実行し終えるとifブロックの次へ自然に進む
 function renderIfBranchEditor(container) {
   const ref = scenarioBuildEditingIfRef;
-  const chapter = ref && scenarioProject.chapters.find(c => c.id === ref.chapterId);
-  const block = chapter && findBlockDeepInChapter(chapter, ref.blockId);
+  const resolved = resolveIfEditorContext(ref);
+  const chapter = resolved && resolved.chapter;
+  const block = resolved && resolved.block;
   
   const backBtn = document.createElement("button");
   backBtn.className = "devmode-btn";
@@ -2426,6 +2499,8 @@ function createBlock(type) {
   if (type === "bgm") return { ...base, track: "" };
   if (type === "se") return { ...base, path: "" };
   if (type === "flag") return { ...base, flagName: "", mode: "on" }; // mode: "on" | "off" | "toggle"
+  if (type === "setvar") return { ...base, varName: "", mode: "set", amount: 0 }; // mode: "set" | "add" | "subtract"
+  if (type === "changeparam") return { ...base, target: "player", companionId: "", gauge: "hp", mode: "add", amount: 0 }; // target: "player"|"companion"|"allCompanions"／gauge: "hp"|"sp"|"sleepiness"|"fatigue"／mode: "add"|"set"|"full"|"empty"
   if (type === "give") return { ...base, itemId: "", quantity: 1 };
   if (type === "takeitem") return { ...base, itemId: "", quantity: 1 };
   if (type === "battle") return { ...base, enemies: [], winJumpBlockId: null, defeatJumpBlockId: null, defeatMessage: "", level: null }; // enemies: 敵ID（重複可・最大5）の配列
@@ -2487,6 +2562,19 @@ function blockPreviewText(block) {
   if (block.type === "bgm") return block.track;
   if (block.type === "se") return block.path;
   if (block.type === "flag") return block.flagName;
+  if (block.type === "setvar") {
+    if (!block.varName) return "（未設定）";
+    const modeLabel = block.mode === "add" ? `+${block.amount || 0}` : block.mode === "subtract" ? `-${block.amount || 0}` : `${block.amount || 0}にする`;
+    return `${block.varName}を${modeLabel}`;
+  }
+  if (block.type === "changeparam") {
+    const GAUGE_LABELS = { hp: "HP", sp: "SP", sleepiness: "眠気", fatigue: "疲労度" };
+    const targetLabel = block.target === "companion"
+      ? (((scenarioProject.companions || []).find(c => c.id === block.companionId) || {}).name || block.companionId || "（仲間未選択）")
+      : block.target === "allCompanions" ? "仲間全員" : "主人公";
+    const modeLabel = block.mode === "full" ? "全回復" : block.mode === "empty" ? "0にする" : block.mode === "set" ? `${block.amount || 0}にする` : `${(block.amount || 0) >= 0 ? "+" : ""}${block.amount || 0}`;
+    return `${targetLabel}の${GAUGE_LABELS[block.gauge] || "HP"}を${modeLabel}`;
+  }
   if (block.type === "give") return block.itemId;
   if (block.type === "takeitem") return block.itemId;
   if (block.type === "battle") return (block.enemies || []).filter(Boolean).join("＋");
@@ -2609,7 +2697,7 @@ function dropScenarioBlock(chapter, fromIndex, toIndex) {
 function buildIfConditionEditorFields(chapter, block, wrap, persist) {
     const noteEl = document.createElement("p");
     noteEl.className = "devmode-note scenariobuild-condition";
-    noteEl.textContent = "条件を左右で比較します。左右それぞれ「フラグ／主人公のレベル／体力／職業／指定アイテムを持っているか／数字／文字列／t-f」から選べます。「&」は全ての条件を満たす、「Ⅱ」はいずれか1つでも満たせば成立にする、という切り替えです。各条件の「！」は、その条件だけを反転（満たさない時に成立）させます。";
+    noteEl.textContent = "条件を左右で比較します。左右それぞれ「フラグ／変数（数値）／主人公のレベル／体力／職業／指定アイテムを持っているか／数字／文字列／t-f」から選べます。「&」は全ての条件を満たす、「Ⅱ」はいずれか1つでも満たせば成立にする、という切り替えです。各条件の「！」は、その条件だけを反転（満たさない時に成立）させます。";
     wrap.appendChild(noteEl);
     
     if (!Array.isArray(block.conditions)) block.conditions = [];
@@ -2631,7 +2719,7 @@ function buildIfConditionEditorFields(chapter, block, wrap, persist) {
     wrap.appendChild(combineRow);
     
     const IF_VALUE_KINDS = {
-      flag: "フラグ", level: "主人公のレベル", hp: "主人公の体力", class: "主人公の職業",
+      flag: "フラグ", variable: "変数（数値）", level: "主人公のレベル", hp: "主人公の体力", class: "主人公の職業",
       hasItem: "指定アイテムを持っているか", random: "乱数（0〜100、判定のたびに引き直す）", number: "数字", string: "文字列", bool: "t/f"
     };
     const IF_OPERATORS = { "=": "=（等しい）", "!=": "≠（等しくない）", "<": "<", ">": ">", "<=": "<=", ">=": ">=" };
@@ -2694,7 +2782,7 @@ function buildIfConditionEditorFields(chapter, block, wrap, persist) {
         const valueInput = document.createElement("input");
         valueInput.type = cond[kindKey] === "number" ? "number" : "text";
         valueInput.className = "scenariobuild-condition-input";
-        valueInput.placeholder = cond[kindKey] === "flag" ? "フラグ名" : (cond[kindKey] === "number" ? "数字" : "文字列");
+        valueInput.placeholder = cond[kindKey] === "flag" ? "フラグ名" : (cond[kindKey] === "variable" ? "変数名" : (cond[kindKey] === "number" ? "数字" : "文字列"));
         valueInput.value = cond[valueKey] != null ? cond[valueKey] : "";
         valueInput.onchange = () => { cond[valueKey] = valueInput.value; persist(); };
         frag.appendChild(valueInput);
@@ -2897,6 +2985,140 @@ function buildBlockFormFields(chapter, block) {
     modeSelect.onchange = () => { block.mode = modeSelect.value; persist(); };
     modeRow.appendChild(modeSelect);
     wrap.appendChild(modeRow);
+    return wrap;
+  }
+  
+  if (block.type === "setvar") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note scenariobuild-condition";
+    noteEl.textContent = "フラグと違い、数字を代入したり増減させたりできる変数です。IF条件の「変数（数値）」でこの名前を指定すれば、今の値を条件に使えます。";
+    wrap.appendChild(noteEl);
+    
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "scenariobuild-title-input";
+    nameInput.placeholder = "変数名（例：ハーピーとの思い出）";
+    nameInput.value = block.varName || "";
+    nameInput.onchange = () => { block.varName = nameInput.value.trim(); persist(); };
+    wrap.appendChild(nameInput);
+    
+    const modeRow = document.createElement("div");
+    modeRow.className = "scenariobuild-condition-row";
+    modeRow.appendChild(labelSpan("設定内容："));
+    const modeSelect = document.createElement("select");
+    modeSelect.className = "scenariobuild-jump-select";
+    [["set", "指定した数にする"], ["add", "指定した数だけ加算する"], ["subtract", "指定した数だけ減算する"]].forEach(([value, label]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      modeSelect.appendChild(option);
+    });
+    modeSelect.value = block.mode || "set";
+    modeSelect.onchange = () => { block.mode = modeSelect.value; persist(); };
+    modeRow.appendChild(modeSelect);
+    wrap.appendChild(modeRow);
+    
+    const amountRow = document.createElement("div");
+    amountRow.className = "scenariobuild-condition-row";
+    amountRow.appendChild(labelSpan("数値："));
+    const amountInput = document.createElement("input");
+    amountInput.type = "number";
+    amountInput.className = "scenariobuild-condition-input";
+    amountInput.value = block.amount != null ? block.amount : 0;
+    amountInput.onchange = () => { block.amount = Number(amountInput.value) || 0; persist(); };
+    amountRow.appendChild(amountInput);
+    wrap.appendChild(amountRow);
+    return wrap;
+  }
+  
+  if (block.type === "changeparam") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note scenariobuild-condition";
+    noteEl.textContent = "主人公または仲間のHP・SP・眠気・疲労度を増減させます（0〜最大値の範囲でクランプされます）。";
+    wrap.appendChild(noteEl);
+    
+    const targetRow = document.createElement("div");
+    targetRow.className = "scenariobuild-condition-row";
+    targetRow.appendChild(labelSpan("対象："));
+    const targetSelect = document.createElement("select");
+    targetSelect.className = "scenariobuild-jump-select";
+    [["player", "主人公"], ["companion", "仲間（1人指定）"], ["allCompanions", "仲間全員"]].forEach(([value, label]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      targetSelect.appendChild(option);
+    });
+    targetSelect.value = block.target || "player";
+    targetSelect.onchange = () => { block.target = targetSelect.value; persist(); renderScenarioBuildPanel(); };
+    targetRow.appendChild(targetSelect);
+    wrap.appendChild(targetRow);
+    
+    if (block.target === "companion") {
+      const companionRow = document.createElement("div");
+      companionRow.className = "scenariobuild-condition-row";
+      companionRow.appendChild(labelSpan("仲間："));
+      const companionSelect = document.createElement("select");
+      companionSelect.className = "scenariobuild-jump-select";
+      const emptyOpt = document.createElement("option");
+      emptyOpt.value = "";
+      emptyOpt.textContent = "（選択してください）";
+      companionSelect.appendChild(emptyOpt);
+      (scenarioProject.companions || []).forEach(c => {
+        const option = document.createElement("option");
+        option.value = c.id;
+        option.textContent = c.name || c.id;
+        companionSelect.appendChild(option);
+      });
+      companionSelect.value = block.companionId || "";
+      companionSelect.onchange = () => { block.companionId = companionSelect.value; persist(); };
+      companionRow.appendChild(companionSelect);
+      wrap.appendChild(companionRow);
+    }
+    
+    const gaugeRow = document.createElement("div");
+    gaugeRow.className = "scenariobuild-condition-row";
+    gaugeRow.appendChild(labelSpan("パラメータ："));
+    const gaugeSelect = document.createElement("select");
+    gaugeSelect.className = "scenariobuild-jump-select";
+    [["hp", "HP"], ["sp", "SP"], ["sleepiness", "眠気"], ["fatigue", "疲労度"]].forEach(([value, label]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      gaugeSelect.appendChild(option);
+    });
+    gaugeSelect.value = block.gauge || "hp";
+    gaugeSelect.onchange = () => { block.gauge = gaugeSelect.value; persist(); };
+    gaugeRow.appendChild(gaugeSelect);
+    wrap.appendChild(gaugeRow);
+    
+    const modeRow2 = document.createElement("div");
+    modeRow2.className = "scenariobuild-condition-row";
+    modeRow2.appendChild(labelSpan("増減方法："));
+    const modeSelect2 = document.createElement("select");
+    modeSelect2.className = "scenariobuild-jump-select";
+    [["add", "指定した数だけ増減させる"], ["set", "指定した数にする"], ["full", "最大値まで全回復させる"], ["empty", "0にする"]].forEach(([value, label]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      modeSelect2.appendChild(option);
+    });
+    modeSelect2.value = block.mode || "add";
+    modeSelect2.onchange = () => { block.mode = modeSelect2.value; persist(); renderScenarioBuildPanel(); };
+    modeRow2.appendChild(modeSelect2);
+    wrap.appendChild(modeRow2);
+    
+    if (block.mode === "add" || block.mode === "set" || !block.mode) {
+      const amountRow2 = document.createElement("div");
+      amountRow2.className = "scenariobuild-condition-row";
+      amountRow2.appendChild(labelSpan(block.mode === "set" ? "設定する値：" : "増減量（マイナスで減少）："));
+      const amountInput2 = document.createElement("input");
+      amountInput2.type = "number";
+      amountInput2.className = "scenariobuild-condition-input";
+      amountInput2.value = block.amount != null ? block.amount : 0;
+      amountInput2.onchange = () => { block.amount = Number(amountInput2.value) || 0; persist(); };
+      amountRow2.appendChild(amountInput2);
+      wrap.appendChild(amountRow2);
+    }
     return wrap;
   }
   
@@ -4304,6 +4526,144 @@ function scanUsedFlagNames() {
     walk(chapter.blocks);
   });
   return names;
+}
+
+// ===================================================================
+// ===== サブ画面：ゲーム変数管理（話の中で使う数値の変数を一覧・登録・手動操作） =====
+// ===================================================================
+// ★要望対応：好感度スキル等の話ブロックのifで、特殊スキル編集と同じように「変数」を参照・比較できるように
+//   してほしいという要望を受けて追加。フラグ（on/off）と全く同じ考え方で、名前を自由に付けられる数値の入れ物。
+//   フラグ管理タブ（renderFlagManager）と同じ構成なので、変更する時はそちらも合わせて確認すること
+function scanUsedVariableNames() {
+  const names = new Set();
+  const walk = (blocksArray) => {
+    (blocksArray || []).forEach(block => {
+      if (block.type === "setvar" && block.varName) names.add(block.varName);
+      if (block.type === "if" && Array.isArray(block.conditions)) {
+        block.conditions.forEach(cond => {
+          if (cond.leftKind === "variable" && cond.leftValue) names.add(cond.leftValue);
+          if (cond.rightKind === "variable" && cond.rightValue) names.add(cond.rightValue);
+        });
+        walk(block.trueBlocks);
+        walk(block.falseBlocks);
+      }
+      if (block.type === "choice" && Array.isArray(block.options)) {
+        block.options.forEach(opt => walk(opt.blocks));
+      }
+    });
+  };
+  (scenarioProject.chapters || []).forEach(chapter => walk(chapter.blocks));
+  (scenarioProject.enemies || []).forEach(enemy => walk(enemy.restSkillBlocks)); // ★好感度MAX時スキルの中身も見る
+  return names;
+}
+
+function renderVariableManager(container) {
+  const introEl = document.createElement("p");
+  introEl.className = "devmode-note";
+  introEl.textContent = "話のブロックエディタ（変数を設定ブロック・IF条件）で使える数値の変数の一覧です。フラグ（on/off）と違い、数字を自由に増減・代入できます。説明を残しておいたり、現在値をここから直接テストで書き換えたりできます。";
+  container.appendChild(introEl);
+  
+  const registeredNames = new Set(scenarioProject.variableDefs.map(d => d.name));
+  
+  scenarioProject.variableDefs.forEach((def) => {
+    container.appendChild(buildVariableDefRow(def));
+  });
+  
+  const addBtn = document.createElement("button");
+  addBtn.className = "devmode-btn";
+  addBtn.textContent = "＋ 変数を新しく登録";
+  addBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioProject.variableDefs.push({ name: "", description: "" });
+    markScenarioBuildDirty();
+    renderScenarioBuildPanel();
+  };
+  container.appendChild(addBtn);
+  
+  const usedNames = scanUsedVariableNames();
+  const unregistered = [...usedNames].filter(name => !registeredNames.has(name));
+  if (unregistered.length > 0) {
+    const header = document.createElement("h4");
+    header.className = "scenariobuild-subheading";
+    header.textContent = "話の中で使われているが、まだ登録されていない変数";
+    container.appendChild(header);
+    
+    unregistered.forEach(name => {
+      const row = document.createElement("div");
+      row.className = "scenariobuild-chapter-row";
+      const label = document.createElement("span");
+      label.textContent = `「${name}」（現在値：${getScenarioVariable(name)}）`;
+      row.appendChild(label);
+      const registerBtn = document.createElement("button");
+      registerBtn.className = "devmode-btn";
+      registerBtn.textContent = "登録する";
+      registerBtn.onclick = (event) => {
+        event.stopPropagation();
+        scenarioProject.variableDefs.push({ name, description: "" });
+        markScenarioBuildDirty();
+        renderScenarioBuildPanel();
+      };
+      row.appendChild(registerBtn);
+      container.appendChild(row);
+    });
+  }
+}
+
+function buildVariableDefRow(def) {
+  const row = document.createElement("div");
+  row.className = "scenariobuild-chapter-row";
+  
+  const infoEl = document.createElement("div");
+  infoEl.className = "scenariobuild-chapter-info";
+  
+  const nameRow = document.createElement("div");
+  nameRow.className = "scenariobuild-condition-row";
+  nameRow.appendChild(labelSpan("変数名（ブロックエディタで指定する名前と完全一致させること）："));
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.className = "scenariobuild-title-input";
+  nameInput.value = def.name || "";
+  nameInput.onchange = () => { def.name = nameInput.value.trim(); markScenarioBuildDirty(); renderScenarioBuildPanel(); };
+  nameRow.appendChild(nameInput);
+  infoEl.appendChild(nameRow);
+  
+  const descRow = document.createElement("div");
+  descRow.className = "scenariobuild-condition-row";
+  descRow.appendChild(labelSpan("説明（どんな時に増減するか、メモしておく）："));
+  const descInput = document.createElement("input");
+  descInput.type = "text";
+  descInput.className = "scenariobuild-title-input";
+  descInput.value = def.description || "";
+  descInput.onchange = () => { def.description = descInput.value; markScenarioBuildDirty(); };
+  descRow.appendChild(descInput);
+  infoEl.appendChild(descRow);
+  
+  const valueRow = document.createElement("div");
+  valueRow.className = "scenariobuild-condition-row";
+  valueRow.appendChild(labelSpan(`現在値：${def.name ? getScenarioVariable(def.name) : 0}（テスト用に手動で書き換えられます）：`));
+  const valueInput = document.createElement("input");
+  valueInput.type = "number";
+  valueInput.className = "scenariobuild-condition-input";
+  valueInput.value = def.name ? getScenarioVariable(def.name) : 0;
+  valueInput.disabled = !def.name;
+  valueInput.onchange = () => { setScenarioVariable(def.name, Number(valueInput.value) || 0); renderScenarioBuildPanel(); };
+  valueRow.appendChild(valueInput);
+  infoEl.appendChild(valueRow);
+  
+  row.appendChild(infoEl);
+  
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "devmode-btn devmode-btn-danger";
+  deleteBtn.textContent = "削除";
+  deleteBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioProject.variableDefs.splice(scenarioProject.variableDefs.indexOf(def), 1);
+    markScenarioBuildDirty();
+    renderScenarioBuildPanel();
+  };
+  row.appendChild(deleteBtn);
+  
+  return row;
 }
 
 // ===================================================================
@@ -8762,7 +9122,7 @@ function renderDataManager(container) {
   
   const statsEl = document.createElement("p");
   statsEl.className = "devmode-note";
-  statsEl.textContent = `現在：話${scenarioProject.chapters.length}件／キャラ${scenarioProject.characters.length}件／敵${scenarioProject.enemies.length}件／ボス${scenarioProject.bosses.length}件／アイテム${scenarioProject.items.length}件／技${scenarioProject.skills.length}件／仲間${scenarioProject.companions.length}件／マップ${scenarioProject.mapAreas.length}件／フラグ${scenarioProject.flagDefs.length}件／レシピ${scenarioProject.recipes.length}件`;
+  statsEl.textContent = `現在：話${scenarioProject.chapters.length}件／キャラ${scenarioProject.characters.length}件／敵${scenarioProject.enemies.length}件／ボス${scenarioProject.bosses.length}件／アイテム${scenarioProject.items.length}件／技${scenarioProject.skills.length}件／仲間${scenarioProject.companions.length}件／マップ${scenarioProject.mapAreas.length}件／フラグ${scenarioProject.flagDefs.length}件／変数${scenarioProject.variableDefs.length}件／レシピ${scenarioProject.recipes.length}件`;
   container.appendChild(statsEl);
 }
 
@@ -8787,6 +9147,7 @@ function exportScenarioOnlyAsJsFile() {
     chapters: scenarioProject.chapters,
     characters: scenarioProject.characters,
     flagDefs: scenarioProject.flagDefs,
+    variableDefs: scenarioProject.variableDefs,
     deletedBuiltinIds: {
       chapters: scenarioProject.deletedBuiltinIds.chapters || [],
       characters: scenarioProject.deletedBuiltinIds.characters || []
@@ -8959,6 +9320,9 @@ function resolveIfBlockValue(kind, rawValue) {
   if (kind === "flag") {
     const v = (typeof scenarioFlags !== "undefined") ? scenarioFlags[rawValue] : undefined;
     return v === undefined ? false : v; // ★まだ一度も設定されていないフラグは false 扱い
+  }
+  if (kind === "variable") {
+    return (typeof getScenarioVariable === "function") ? getScenarioVariable(rawValue) : 0;
   }
   if (kind === "level") return (typeof player !== "undefined" && player) ? player.level : 0;
   if (kind === "hp") return (typeof player !== "undefined" && player && player.gauges && player.gauges.hp) ? player.gauges.hp.current : 0;
@@ -9317,6 +9681,46 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     return nextDefaultId;
   }
   
+  if (block.type === "setvar") {
+    if (block.varName) {
+      const current = getScenarioVariable(block.varName);
+      let nextValue;
+      if (block.mode === "add") nextValue = current + (Number(block.amount) || 0);
+      else if (block.mode === "subtract") nextValue = current - (Number(block.amount) || 0);
+      else nextValue = Number(block.amount) || 0; // "set"
+      setScenarioVariable(block.varName, nextValue);
+    }
+    return nextDefaultId;
+  }
+  
+  if (block.type === "changeparam") {
+    const gaugeName = block.gauge || "hp";
+    const applyToGauge = (unit) => {
+      if (!unit || !unit.gauges || !unit.gauges[gaugeName]) return;
+      const gauge = unit.gauges[gaugeName];
+      let next;
+      if (block.mode === "full") next = gauge.max;
+      else if (block.mode === "empty") next = 0;
+      else if (block.mode === "set") next = Number(block.amount) || 0;
+      else next = gauge.current + (Number(block.amount) || 0); // "add"
+      gauge.current = Math.max(0, Math.min(gauge.max, next));
+    };
+    if (typeof player !== "undefined" && player) {
+      if (block.target === "allCompanions") {
+        (player.companions || []).forEach(applyToGauge);
+      } else if (block.target === "companion") {
+        if (block.companionId) {
+          const c = (player.companions || []).find(cc => cc.companionId === block.companionId);
+          applyToGauge(c);
+        }
+      } else {
+        applyToGauge(player);
+      }
+    }
+    if (typeof renderStatusHUD === "function") renderStatusHUD();
+    return nextDefaultId;
+  }
+  
   if (block.type === "if") {
     const result = evaluateIfBlockConditions(block);
     // ★要望対応：選択肢ブロック（option.blocks）と同じ考え方で、trueの時／falseの時それぞれの
@@ -9630,7 +10034,7 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
 
 // ★要望対応：好感度 MAX 時の専用スキル（restSkillBlocks）を魔物図鑑から実行できるように、
 //   runBlockSequence と runSingleScenarioBlock をグローバル公開する
-if (typeof window !== \"undefined\") {
+if (typeof window !== "undefined") {
   window.runBlockSequence = runBlockSequence;
   window.runSingleScenarioBlock = runSingleScenarioBlock;
 }
