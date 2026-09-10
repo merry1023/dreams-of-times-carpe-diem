@@ -146,7 +146,7 @@ function createNewMapArea() {
     battleVariations: [], enemyLevel: null
   };
   scenarioProject.mapAreas.push(newArea);
-  scenarioProject.mapEdges.push(["village", "custom_" + newArea.id]); // ★作った直後は、ひとまず村とつなげておく（あとで自由に線を切ったりつなぎ直せる）
+  scenarioProject.mapEdges.push(["village", "custom_" + newArea.id, 5]); // ★作った直後は、ひとまず村とつなげておく（あとで自由に線を切ったりつなぎ直せる）
   markScenarioBuildDirty();
   scenarioBuildEditingMapAreaId = newArea.id; // ★作ってすぐ詳細設定に入れるようにする
   scenarioBuildMainView = "mapEditor";
