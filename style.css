@@ -26,6 +26,24 @@ html, body {
     width: 100%;
     height: 100%;
     position: relative; /* ★開発者モードのパネルをこの枠の左端に固定するために必要 */
+    /* ★要望対応：スマホで長押しした時にテキスト選択・コピーメニューが出てしまうのを防ぐ */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none; /* iOS Safariの長押しメニュー(共有/コピー等)を防ぐ */
+}
+
+/* ★開発者モードのシナリオ編集フォームなど、実際に文字を入力・編集する欄では
+   選択やコピペができないと不便なので、ここだけ選択禁止を解除する */
+.game-container input,
+.game-container textarea,
+.game-container [contenteditable="true"] {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
 }
 
 /* ★縦画面切り替えボタン。通常（横長）画面では隠す */
@@ -4583,6 +4601,15 @@ body.screen-monochrome {
     min-height: 0;
     margin: 0;
     box-sizing: border-box;
+    /* ★要望対応：スマホで内容が画面に収まりきらない時に、上下スクロールできるようにする */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y; /* ★地図など個別にtouch-action:noneを指定している要素の操作は引き続き優先される */
+  }
+  
+  /* ★要望対応：メイン画面（会話・演出側）だけ表示を一回り小さくする（現在の75%程度） */
+  .main-screen {
+    zoom: 0.75;
   }
   
   /* ★元々は横長画面向けに大きく上に余白を取っていたので、縦画面の半分の高さに収まるよう詰める。
