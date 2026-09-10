@@ -428,7 +428,8 @@ function toggleMapEdge(idA, idB) {
   if (existingIndex !== -1) {
     scenarioProject.mapEdges.splice(existingIndex, 1);
   } else {
-    scenarioProject.mapEdges.push([idA, idB]);
+    // ★新規エッジ作成時はデフォルト幅 5px を付与
+    scenarioProject.mapEdges.push([idA, idB, 5]);
   }
   markScenarioBuildDirty();
 }
