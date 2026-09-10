@@ -81,6 +81,7 @@ let mapEditorConnectMode = false; // ★ON中は、タップ2回で線をつな�
 let mapEditorConnectFirstId = null; // ★接続モードで1つ目に選んだノード
 let mapEditorPointerState = null; // ★ドラッグ中の情報（パン操作用）
 let mapEditorNodeDragState = null; // ★選択中のエリアをつまんでドラッグし、位置を動かしている間の情報
+let mapEditorSelectedEdgeIndex = null; // ★選択中の経路（線）のインデックス
 
 // ★村（village）＋マップ設定タブにあるエリア（組み込み・自作の両方、「カデリクの街」「？」等の未実装ノードも含む）を、
 //   実際に操作できるノードとして返す
@@ -187,7 +188,7 @@ function renderMapAreaFullList(container) {
   camera.id = "mapeditor-camera";
   svg.appendChild(camera);
   
-  edges.forEach(([fromId, toId]) => {
+  edges.forEach(([fromId, toId], edgeIndex) => {
     const fromNode = nodes.find(n => n.id === fromId);
     const toNode = nodes.find(n => n.id === toId);
     if (!fromNode || !toNode) return;
@@ -198,7 +199,16 @@ function renderMapAreaFullList(container) {
     line.setAttribute("y2", toNode.y);
     line.setAttribute("data-from", fromId); // ★ドラッグ中、このノードにつながる線だけをその場で追従させるための目印
     line.setAttribute("data-to", toId);
-    line.setAttribute("class", "mapeditor-edge");
+    line.setAttribute("data-edge-index", edgeIndex); // ★経路選択用
+    line.setAttribute("class", "mapeditor-edge" + (edgeIndex === mapEditorSelectedEdgeIndex ? " mapeditor-edge-selected" : ""));
+    line.style.cursor = "pointer";
+    line.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (mapEditorPointerState && mapEditorPointerState.moved) return;
+      mapEditorSelectedEdgeIndex = edgeIndex;
+      mapEditorSelectedNodeId = null;
+      renderScenarioBuildPanel();
+    });
     camera.appendChild(line);
   });
   
