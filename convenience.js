@@ -979,6 +979,16 @@ async function useSuccubusRestSkill() {
     return;
   }
   
+  const master = MONSTER_MASTER["succubus"];
+  if (master && Array.isArray(master.restSkillBlocks) && master.restSkillBlocks.length > 0 && typeof window.runBlockSequence === "function") {
+    // ★要望対応：ブロック編集された演出を実行する
+    await window.runBlockSequence({ id: "restSkill_succubus", blocks: master.restSkillBlocks }, master.restSkillBlocks, []);
+    player.lastSuccubusRestDay = player.daysSinceTransfer;
+    renderMonsterCodex();
+    return;
+  }
+  
+  // フォールバック：従来のハードコード済み演出
   changeSpeaker("サキュバス");
   await displayMessage("「ふふ、今日は特別に癒やしてあげる♡……フッ、バカねッ」");
   
