@@ -146,7 +146,7 @@ function createNewMapArea() {
     battleVariations: [], enemyLevel: null
   };
   scenarioProject.mapAreas.push(newArea);
-  scenarioProject.mapEdges.push(["village", "custom_" + newArea.id]); // ★作った直後は、ひとまず村とつなげておく（あとで自由に線を切ったりつなぎ直せる）
+  scenarioProject.mapEdges.push(["village", "custom_" + newArea.id, 5]); // ★作った直後は、ひとまず村とつなげておく（あとで自由に線を切ったりつなぎ直せる）
   markScenarioBuildDirty();
   scenarioBuildEditingMapAreaId = newArea.id; // ★作ってすぐ詳細設定に入れるようにする
   scenarioBuildMainView = "mapEditor";
@@ -428,7 +428,8 @@ function toggleMapEdge(idA, idB) {
   if (existingIndex !== -1) {
     scenarioProject.mapEdges.splice(existingIndex, 1);
   } else {
-    scenarioProject.mapEdges.push([idA, idB]);
+    // ★新規エッジ作成時はデフォルト幅 5px を付与
+    scenarioProject.mapEdges.push([idA, idB, 5]);
   }
   markScenarioBuildDirty();
 }

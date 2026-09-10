@@ -2265,10 +2265,19 @@ async function runSingleSkillBlock(block, skill, context) {
     if (Array.isArray(branchBlocks) && branchBlocks.length > 0) {
       const nested = await runSkillBlockList(branchBlocks, skill, context);
       if (nested === "END") return "END";
+      // ★要望対応：中身の中にジャンプブロックがあり、その行き先がこのif内（trueBlocks/falseBlocks）に
+      //   無かった場合、そのままさらに外側へジャンプ要求を伝える（ifの外や別の分岐へもジャンプできる）
+      if (typeof nested === "string" && nested.startsWith("JUMP:")) return nested;
       return null;
     }
     // ★後方互換：中身が無い（旧データ）の間だけ、従来のジャンプ先方式を使う
     return result ? (block.trueJumpBlockId || null) : (block.falseJumpBlockId || null);
+  }
+  
+  if (block.type === "jump") {
+    // ★要望対応：指定したブロックへ直接ジャンプする。行き先が見つかるまでrunSkillBlockList側で
+    //   外側の配列へ次々と伝播していくので、ifの中から外・別の分岐先など、技の中のどこへでも移動できる
+    return block.targetBlockId ? ("JUMP:" + block.targetBlockId) : null;
   }
   
   if (block.type === "damage") {
@@ -2386,6 +2395,9 @@ async function runSingleSkillBlock(block, skill, context) {
     for (let i = 0; i < count; i++) {
       const outcome = await runSkillBlockList(block.bodyBlocks || [], skill, context);
       if (outcome === "END") return "END"; // ★くり返しの中で「end」ブロックに達したら、技全体をそこで打ち切る
+      // ★要望対応：くり返しの中のジャンプブロックの行き先がこのくり返しの中に無かった場合、
+      //   そのまま外側へジャンプ要求を伝える（くり返しの外へジャンプで抜けられるようにする）
+      if (typeof outcome === "string" && outcome.startsWith("JUMP:")) return outcome;
     }
     return null;
   }
@@ -2404,6 +2416,14 @@ async function runSkillBlockList(blocks, skill, context) {
     const block = blocks[index];
     const jumpId = await runSingleSkillBlock(block, skill, context);
     if (jumpId === "END") return "END";
+    if (typeof jumpId === "string" && jumpId.startsWith("JUMP:")) {
+      // ★要望対応：ジャンプ先がこのブロック配列の中に無い場合（ifブロックの外や、別の分岐の中身など）は、
+      //   一段外側の呼び出し元へジャンプ要求をそのまま伝える（if・repeatの処理がさらに外側へ伝播させる）
+      const targetId = jumpId.slice(5);
+      const jumpIndex = blocks.findIndex(b => b.id === targetId);
+      if (jumpIndex >= 0) { index = jumpIndex; continue; }
+      return jumpId;
+    }
     if (jumpId) {
       const jumpIndex = blocks.findIndex(b => b.id === jumpId);
       index = jumpIndex >= 0 ? jumpIndex : index + 1;
@@ -2432,7 +2452,8 @@ async function runSkillBlocksForPlayerTurn(skill) {
   }
   
   const context = { variables: { ...(skill.variables || {}) }, target, caster: player };
-  await runSkillBlockList(skill.blocks, skill, context);
+  const outcome = await runSkillBlockList(skill.blocks, skill, context);
+  if (typeof outcome === "string" && outcome.startsWith("JUMP:")) console.warn(`ジャンプブロックの行き先ブロック（id: ${outcome.slice(5)}）が技「${skill.name}」の中に見つかりませんでした`);
   
   renderStatusHUD();
   updateBattleHud();
@@ -2456,7 +2477,8 @@ async function runSkillBlocksForCompanionTurn(companion, skill) {
   }
   
   const context = { variables: { ...(skill.variables || {}) }, target, caster: companion };
-  await runSkillBlockList(skill.blocks, skill, context);
+  const outcome = await runSkillBlockList(skill.blocks, skill, context);
+  if (typeof outcome === "string" && outcome.startsWith("JUMP:")) console.warn(`ジャンプブロックの行き先ブロック（id: ${outcome.slice(5)}）が技「${skill.name}」の中に見つかりませんでした`);
   return true;
 }
 

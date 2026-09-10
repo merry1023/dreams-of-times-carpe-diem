@@ -3763,7 +3763,7 @@ html, body {
 
 .mapeditor-edge {
   stroke: #6b8f5a;
-  stroke-width: 0.5;
+  /* ★stroke-width は JS で動的に設定（デフォルト 5px、スライダーで 0.5-30px） */
   vector-effect: non-scaling-stroke;
 }
 

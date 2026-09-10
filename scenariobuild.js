@@ -226,6 +226,16 @@ async function checkOneDataFileVersionAndConfirm(data, decidedKey, label, forceA
   if (Number(data.version) === lastEditedAt) return; // ★既に一致している（同じ内容）なら確認不要
   if (localStorage.getItem(decidedKey) === String(data.version)) return; // ★このバージョンについては既に確認済み
   
+  // ★要望対応：管理者（開発者）アカウント以外は、確認なしで自動的に最新のデータを反映する
+  if (typeof authReadyPromise !== "undefined") await authReadyPromise; // auth.js：ログイン状態が確定するまで待つ
+  if (typeof isDeveloperAccount !== "function" || !isDeveloperAccount()) { // auth.js
+    localStorage.setItem(decidedKey, String(data.version));
+    forceApplyFn();
+    localStorage.setItem(SCENARIOBUILD_LAST_EDITED_KEY, String(data.version));
+    if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
+    return;
+  }
+  
   const isNewer = Number(data.version) > lastEditedAt;
   const message = `${label}が、今このブラウザに保存されている内容と異なっています（ファイルの方が${isNewer ? "新しい" : "古い"}バージョンです）。\nこのデータファイルを読み込みますか？\n（「いいえ」を選ぶと、今のブラウザのデータをそのまま使い続けます）`;
   const ok = (typeof showGameConfirm === "function") ? await showGameConfirm(message) : false; // mainfunc.js
@@ -1941,6 +1951,7 @@ const SCENARIO_BLOCK_TYPES = {
   ending: "エンディング",
   clearchapter: "話クリア設定",
   if: "IF（条件分岐）",
+  jump: "指定ブロックへジャンプ",
   addcompanion: "仲間追加",
   removecompanion: "仲間離脱",
   portrait_show: "立ち絵表示/非表示",
@@ -2029,6 +2040,48 @@ function findBlockDeepInChapter(chapter, blockId) {
     return null;
   }
   return search(chapter.blocks);
+}
+
+// ★要望対応（ジャンプブロック用）：話が持つ全ブロックを、ネスト（ifの中身・選択肢の中身）の
+//   深さに関わらずフラットな一覧にする。ifブロックの外や、別の分岐の中身へもジャンプできるようにするため
+function collectScenarioBlocksFlat(blocks, depth) {
+  depth = depth || 0;
+  let list = [];
+  (blocks || []).forEach(b => {
+    list.push({ block: b, depth });
+    if (b.type === "if") {
+      list = list.concat(collectScenarioBlocksFlat(b.trueBlocks, depth + 1));
+      list = list.concat(collectScenarioBlocksFlat(b.falseBlocks, depth + 1));
+    } else if (b.type === "choice") {
+      (b.options || []).forEach(opt => {
+        list = list.concat(collectScenarioBlocksFlat(opt.blocks, depth + 1));
+      });
+    }
+  });
+  return list;
+}
+
+function buildScenarioJumpTargetSelect(chapter, excludeBlockId, selectedBlockId, onChange) {
+  const select = document.createElement("select");
+  select.className = "scenariobuild-jump-select";
+  
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = "（未設定）";
+  select.appendChild(defaultOption);
+  
+  collectScenarioBlocksFlat(chapter.blocks).forEach(({ block, depth }) => {
+    if (block.id === excludeBlockId) return;
+    const option = document.createElement("option");
+    option.value = block.id;
+    const preview = blockPreviewText(block);
+    option.textContent = `${"　".repeat(depth)}${SCENARIO_BLOCK_TYPES[block.type] || block.type}${preview ? "：" + preview : ""}`;
+    select.appendChild(option);
+  });
+  
+  select.value = selectedBlockId || "";
+  select.onchange = () => onChange(select.value || null);
+  return select;
 }
 
 function renderChoiceOptionEditor(container) {
@@ -2239,7 +2292,7 @@ function renderEnemyFlavorEditor(container) {
 // ===== メイン画面：特殊技のifブロックの条件エディタ（専用全画面。scenarioBuildMainView === "skillIfEditor"） =====
 function renderSkillIfEditor(container) {
   const skill = getEditingSkill();
-  const block = skill && Array.isArray(skill.blocks) ? skill.blocks.find(b => b.id === scenarioBuildEditingSkillIfBlockId) : null;
+  const block = skill ? findSkillBlockDeep(skill, scenarioBuildEditingSkillIfBlockId) : null;
   
   const backBtn = document.createElement("button");
   backBtn.className = "devmode-btn";
@@ -2273,7 +2326,7 @@ function renderSkillIfEditor(container) {
 // ===== メイン画面：特殊技ifブロックの「真/偽の時」の中身エディタ（専用全画面。scenarioBuildMainView === "skillIfBranchEditor"） =====
 function renderSkillIfBranchEditor(container) {
   const skill = getEditingSkill();
-  const block = skill && Array.isArray(skill.blocks) ? skill.blocks.find(b => b.id === scenarioBuildEditingSkillIfBlockId) : null;
+  const block = skill ? findSkillBlockDeep(skill, scenarioBuildEditingSkillIfBlockId) : null;
   const branch = scenarioBuildEditingSkillIfBranch;
   
   const backBtn = document.createElement("button");
@@ -2401,6 +2454,7 @@ function createBlock(type) {
   if (type === "portrait_move") return { ...base, instanceId: "", position: 50, durationMs: 500 };
   if (type === "portrait_motion") return { ...base, instanceId: "", motionType: "jump" }; // motionType: "jump" | "shake"
   if (type === "increment_area_visit") return { ...base, areaKey: "" };
+  if (type === "jump") return { ...base, targetBlockId: null }; // ★要望対応：ifの中/外を問わず、話の中のどのブロックへも直接ジャンプできる
   return base;
 }
 
@@ -2449,6 +2503,7 @@ function blockPreviewText(block) {
   if (block.type === "ending") return block.title;
   if (block.type === "clearchapter") return "タイトルには戻らない";
   if (block.type === "if") return `条件${(block.conditions || []).length}個（${block.combineMode === "OR" ? "Ⅱ" : "&"}）`;
+  if (block.type === "jump") return block.targetBlockId ? "→ 指定ブロックへ" : "（未設定）";
   if (block.type === "addcompanion") {
     const c = (scenarioProject.companions || []).find(c => c.id === block.companionId);
     return block.companionId ? `${c ? c.name : block.companionId}（Lv.${block.initialLevel || 1}）` : "（未選択）";
@@ -2933,6 +2988,20 @@ function buildBlockFormFields(chapter, block) {
       renderScenarioBuildPanel();
     };
     wrap.appendChild(editBtn);
+    return wrap;
+  }
+  
+  if (block.type === "jump") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note scenariobuild-condition";
+    noteEl.textContent = "指定したブロックへ直接ジャンプします。ifブロックの中からでも、外側や別の分岐のブロックを指定できます（このジャンプブロックより前のブロックを指定すると、ループになります）。";
+    wrap.appendChild(noteEl);
+    const realChapter = scenarioProject.chapters.find(c => c.id === chapter.id) || chapter; // ★要望対応：fakeChapter（ifの中身等）越しでも、話全体からジャンプ先を選べるようにする
+    wrap.appendChild(buildScenarioJumpTargetSelect(realChapter, block.id, block.targetBlockId, (val) => {
+      block.targetBlockId = val;
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    }));
     return wrap;
   }
   
@@ -4842,6 +4911,7 @@ function getSkillSelfBuffKindOptions() {
 //   skill.blocksが1件以上あれば「ブロック実行モード」になり、固定フィールド（power等）は無視される（battle.js側）。
 const SKILL_BLOCK_TYPES = {
   if: "条件分岐（if）",
+  jump: "指定ブロックへジャンプ",
   flag: "フラグの読み書き",
   message: "セリフ・地の文",
   damage: "ダメージを与える",
@@ -4861,6 +4931,7 @@ const SKILL_BLOCK_TYPES = {
 function createSkillBlock(type) {
   const base = { id: generateId("skillblock"), type };
   if (type === "if") return { ...base, expression: "", trueBlocks: [], falseBlocks: [], trueJumpBlockId: null, falseJumpBlockId: null };
+  if (type === "jump") return { ...base, targetBlockId: null }; // ★要望対応：ifの中/外を問わず、技の中のどのブロックへも直接ジャンプできる
   if (type === "flag") return { ...base, flagName: "", mode: "on" };
   if (type === "message") return { ...base, speaker: "", text: "" };
   if (type === "damage") return { ...base, target: "single", powerMultiplier: "1", atkType: "physical" };
@@ -4879,6 +4950,7 @@ function createSkillBlock(type) {
 
 function skillBlockPreviewText(block) {
   if (block.type === "if") return block.expression || "（式未入力）";
+  if (block.type === "jump") return block.targetBlockId ? "→ 指定ブロックへ" : "（未設定）";
   if (block.type === "flag") return block.flagName ? `${block.flagName}を${block.mode === "off" ? "OFF" : block.mode === "toggle" ? "反転" : "ON"}に` : "";
   if (block.type === "message") return (block.text || "").slice(0, 12);
   if (block.type === "damage") return `${block.target === "all" ? "全体" : block.target === "random" ? "ランダム" : "単体"}に威力${block.powerMultiplier}`;
@@ -4928,8 +5000,53 @@ function buildSkillBlockJumpSelect(blocksArray, currentBlockId, selectedBlockId,
   return select;
 }
 
-// ★挿入メニューを今どの位置（どの配列の何番目）で開いているか。blocksArrayの参照＋indexで識別する
-let scenarioBuildSkillInsertMenuTarget = null;
+// ★要望対応（ジャンプブロック用）：技が持つ全ブロックを、ネスト（ifの中身・くり返しの中身）の
+//   深さに関わらずフラットな一覧にする。ifブロックの外や、別の分岐の中身へもジャンプできるようにするため
+// ★バグ修正：以前はskill.blocks.find(...)で直下しか探しておらず、ifブロックの中に
+//   ネストしたifブロックの編集ボタンを押すと見つからず編集画面から弾かれてしまっていた（要望対応）。
+//   ifの中身（trueBlocks/falseBlocks）・くり返しの中身（bodyBlocks）も、何段ネストしていても探し出す
+function findSkillBlockDeep(skill, blockId) {
+  const entry = collectSkillBlocksFlat(skill.blocks).find(e => e.block.id === blockId);
+  return entry ? entry.block : null;
+}
+
+function collectSkillBlocksFlat(blocks, depth) {
+  depth = depth || 0;
+  let list = [];
+  (blocks || []).forEach(b => {
+    list.push({ block: b, depth });
+    if (b.type === "if") {
+      list = list.concat(collectSkillBlocksFlat(b.trueBlocks, depth + 1));
+      list = list.concat(collectSkillBlocksFlat(b.falseBlocks, depth + 1));
+    } else if (b.type === "repeat") {
+      list = list.concat(collectSkillBlocksFlat(b.bodyBlocks, depth + 1));
+    }
+  });
+  return list;
+}
+
+function buildSkillJumpTargetSelect(skill, excludeBlockId, selectedBlockId, onChange) {
+  const select = document.createElement("select");
+  select.className = "scenariobuild-jump-select";
+  
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = "（未設定）";
+  select.appendChild(defaultOption);
+  
+  collectSkillBlocksFlat(skill.blocks).forEach(({ block, depth }) => {
+    if (block.id === excludeBlockId) return;
+    const option = document.createElement("option");
+    option.value = block.id;
+    const preview = skillBlockPreviewText(block);
+    option.textContent = `${"　".repeat(depth)}${SKILL_BLOCK_TYPES[block.type] || block.type}${preview ? "：" + preview : ""}`;
+    select.appendChild(option);
+  });
+  
+  select.value = selectedBlockId || "";
+  select.onchange = () => onChange(select.value || null);
+  return select;
+}
 
 function buildSkillBlockInsertSlot(blocksArray, insertIndex, skill, persist) {
   const slot = document.createElement("div");
@@ -5101,6 +5218,16 @@ function buildSkillBlockFormFields(blocksArray, block, skill, persist) {
       renderScenarioBuildPanel();
     };
     wrap.appendChild(editBtn);
+    
+  } else if (block.type === "jump") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note";
+    noteEl.textContent = "指定したブロックへ直接ジャンプします。ifブロックの中からでも、外側や別の分岐のブロックを指定できます（このジャンプブロックより前のブロックを指定すると、ループになります）。";
+    wrap.appendChild(noteEl);
+    wrap.appendChild(buildSkillJumpTargetSelect(skill, block.id, block.targetBlockId, (val) => {
+      block.targetBlockId = val;
+      persist();
+    }));
     
   } else if (block.type === "damage") {
     const row = document.createElement("div");
@@ -9008,6 +9135,13 @@ async function runScenarioChapterBlocksForReal(chapter, startBlockId) {
   //   まずcurrentLocationKey（話が始まった時点のまま、話の中身では変わらない）を見て、
   //   拠点・施設ならそこへ戻す。該当しない（村・酒場・敵エリアなど）場合だけ、
   //   元の第一話・第二話と同じく村の行き先メニューに戻る（タイトルへ戻った場合は、そちらの画面のままにしておく）
+  // ★要望対応：ジャンプブロックの行き先が話のどこにも見つからなかった場合（IDが不正など）、
+  //   デバッグしやすいよう警告だけ出しておく。実行そのものは静かに終了として扱う
+  if (typeof result === "string" && result.startsWith("JUMP:")) {
+    console.warn(`ジャンプブロックの行き先ブロック（id: ${result.slice(5)}）が話「${chapter.title || chapter.id}」の中に見つかりませんでした`);
+    result = undefined;
+  }
+  
   if (result !== "TITLE") {
     const returnedToSpecificLocation = typeof resumeLocationDynamic === "function" && resumeLocationDynamic(currentLocationKey); // convenience.js
     if (!returnedToSpecificLocation && typeof openTownMenu === "function") {
@@ -9044,6 +9178,9 @@ async function runChoiceBlockWithOptions(chapter, block, choiceStack) {
       if (Array.isArray(selected.blocks) && selected.blocks.length > 0) {
         const result = await runBlockSequence(chapter, selected.blocks, choiceStack);
         if (result === "TITLE") return "TITLE";
+        // ★要望対応：選択肢の中身にあるジャンプブロックの行き先がこの選択肢の中に無かった場合、
+        //   そのまま外側へジャンプ要求を伝える（選択肢の外や、他の分岐へもジャンプできる）
+        if (typeof result === "string" && result.startsWith("JUMP:")) return result;
         if (selected.loops) continue; // ★内容を最後まで実行し終えたら、また同じ選択肢に戻る
         return undefined; // ★選択肢ブロックの次へ進む
       }
@@ -9068,11 +9205,24 @@ async function runBlockSequence(chapter, blocksArray, choiceStack, startBlockId)
   while (blockId && safetyCounter < 1000) {
     safetyCounter++;
     const index = blocksArray.findIndex(b => b.id === blockId);
-    if (index === -1) break;
+    if (index === -1) {
+      // ★要望対応：ジャンプ先がこの配列の中に無い場合（ifブロックの外や、別の分岐の中身など）は、
+      //   一段外側の呼び出し元へジャンプ要求をそのまま伝える。runSingleScenarioBlock側の
+      //   「if」「choice」の処理が、この戻り値を見てさらに外側へ伝播させる
+      return "JUMP:" + blockId;
+    }
     const block = blocksArray[index];
     const nextDefaultId = blocksArray[index + 1] ? blocksArray[index + 1].id : null;
     const result = await runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack);
     if (result === "TITLE") return "TITLE";
+    if (typeof result === "string" && result.startsWith("JUMP:")) {
+      const targetId = result.slice(5);
+      if (blocksArray.some(b => b.id === targetId)) {
+        blockId = targetId; // ★ジャンプ先がこの配列の中にあったので、そのままここで処理を続ける
+        continue;
+      }
+      return result; // ★この配列の中には無いので、さらに外側へ伝える
+    }
     blockId = result;
   }
   return undefined;
@@ -9097,6 +9247,9 @@ async function runScenarioChapterTestPlay(chapter) {
   }
   
   if (result === "TITLE") return; // ★タイトルへ戻った場合、テストプレイ終了処理はせずここで抜ける
+  if (typeof result === "string" && result.startsWith("JUMP:")) {
+    console.warn(`ジャンプブロックの行き先ブロック（id: ${result.slice(5)}）が見つかりませんでした（テストプレイ）`);
+  }
   
   changeSpeaker("");
   await displayMessage("（テストプレイ終了）");
@@ -9173,10 +9326,19 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     if (Array.isArray(branchBlocks) && branchBlocks.length > 0) {
       const seqResult = await runBlockSequence(chapter, branchBlocks, choiceStack);
       if (seqResult === "TITLE") return "TITLE";
+      // ★要望対応：中身の中にジャンプブロックがあり、その行き先がこのif内（trueBlocks/falseBlocks）に
+      //   無かった場合、そのままさらに外側へジャンプ要求を伝える（ifの外や別の分岐へもジャンプできる）
+      if (typeof seqResult === "string" && seqResult.startsWith("JUMP:")) return seqResult;
       return nextDefaultId;
     }
     // ★後方互換：まだ中身が書かれていない（旧データのジャンプ先だけがある）場合は、従来通りジャンプする
     return (result ? block.trueJumpBlockId : block.falseJumpBlockId) || nextDefaultId;
+  }
+  
+  if (block.type === "jump") {
+    // ★要望対応：指定したブロックへ直接ジャンプする。行き先が見つかるまでrunBlockSequence側で
+    //   外側の配列へ次々と伝播していくので、ifの中から外・別の分岐先など、話の中のどこへでも移動できる
+    return block.targetBlockId ? ("JUMP:" + block.targetBlockId) : nextDefaultId;
   }
   
   if (block.type === "addcompanion") {

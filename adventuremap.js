@@ -259,8 +259,27 @@ function getCombinedAdventureMapNodes() {
 function getCombinedAdventureMapEdges() {
   const nodes = getCombinedAdventureMapNodes();
   const nodeIds = new Set(nodes.map(n => n.id));
-  const edges = (typeof scenarioProject !== "undefined" && scenarioProject.mapEdges) ? scenarioProject.mapEdges : [];
-  return edges.filter(([fromId, toId]) => nodeIds.has(fromId) && nodeIds.has(toId));
+  
+  // ビルトインエッジ（デフォルト幅 5px を付与）
+  const builtinEdges = ADVENTURE_MAP_EDGES
+    .filter(([fromId, toId]) => nodeIds.has(fromId) && nodeIds.has(toId))
+    .map(([fromId, toId]) => [fromId, toId, 5]);
+  
+  // カスタムエッジ（マップ設定タブで作成・編集されたもの）
+  const customEdges = (typeof scenarioProject !== "undefined" && scenarioProject.mapEdges) ? scenarioProject.mapEdges : [];
+  
+  // カスタムエッジで上書き：fromId+toId の組み合わせが重複していたらカスタム側を優先
+  const edgeMap = new Map();
+  builtinEdges.forEach(([fromId, toId, width]) => {
+    const key = fromId < toId ? fromId + "|" + toId : toId + "|" + fromId;
+    edgeMap.set(key, [fromId, toId, width]);
+  });
+  customEdges.forEach(([fromId, toId, width]) => {
+    const key = fromId < toId ? fromId + "|" + toId : toId + "|" + fromId;
+    edgeMap.set(key, [fromId, toId, width || 5]);
+  });
+  
+  return Array.from(edgeMap.values());
 }
 
 // ★マップ設定タブで指定した、エリアの解放条件（unlockConditions）を全て満たしているか判定する。
@@ -308,7 +327,7 @@ function renderAdventureMap() {
   svg.appendChild(camera);
   
   // ★先に線を描いてから丸を描く（丸が線の上に重なって見えるように）
-  edges.forEach(([fromId, toId]) => {
+  edges.forEach(([fromId, toId, edgeWidth]) => {
     const from = nodes.find(n => n.id === fromId);
     const to = nodes.find(n => n.id === toId);
     if (!from || !to) return;
@@ -319,6 +338,7 @@ function renderAdventureMap() {
     line.setAttribute("x2", to.x);
     line.setAttribute("y2", to.y);
     line.setAttribute("class", "adventure-map-edge");
+    line.setAttribute("stroke-width", edgeWidth || 5); // ★エディタで設定した線の幅を反映（デフォルト 5px）
     camera.appendChild(line);
   });
   

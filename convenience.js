@@ -221,7 +221,9 @@ function closeSaveLoadPanel() {
 }
 
 // 指定スロットのセーブデータを取得する（無ければnull）
+// ★要望対応：ログイン中はクラウド(Firestore)、未ログイン時は今まで通りlocalStorageから取得する
 function getSaveSlotData(slotIndex) {
+  if (typeof isCloudSaveActive === "function" && isCloudSaveActive()) return cloudGetSaveSlotData(slotIndex); // cloudsave.js
   const raw = localStorage.getItem(SAVE_KEY_PREFIX + slotIndex);
   if (!raw) return null;
   try {
@@ -243,13 +245,28 @@ function getLastUsedSaveSlot() {
   return (Number.isInteger(n) && n >= 1 && n <= MAX_SAVE_SLOTS) ? n : null;
 }
 
+// ★要望対応：セーブスロットへの書き込み処理を共通化。ログイン中はクラウド(Firestore)のみ、
+//   未ログイン時はlocalStorageのみに保存する（両方には保存しない）。成功したかどうかをboolで返す
+async function saveDataToSlot(slotIndex, data) {
+  if (typeof isCloudSaveActive === "function" && isCloudSaveActive()) {
+    return await cloudSetSaveSlotData(slotIndex, data); // cloudsave.js（成否をboolで返す）
+  }
+  try {
+    localStorage.setItem(SAVE_KEY_PREFIX + slotIndex, JSON.stringify(data));
+    return true;
+  } catch (e) {
+    console.error("ローカルへのセーブに失敗しました", e);
+    return false;
+  }
+}
+
 // ★エンディングに到達した時、直前に使っていたスロットへ静かに自動保存する（無ければNo.1を使う）。
 //   これが無いと、「エンディング直前に戻るか村に戻るか選べる」という記録がどこにも残らず、
 //   次回タイトル画面から「つづきから」を選んでも再現できないため
 async function autoSaveAfterEnding() {
   try {
     const slotIndex = getLastUsedSaveSlot() || 1;
-    localStorage.setItem(SAVE_KEY_PREFIX + slotIndex, JSON.stringify(buildSaveData()));
+    await saveDataToSlot(slotIndex, buildSaveData());
     setLastUsedSaveSlot(slotIndex);
   } catch (e) {
     console.error("エンディング時の自動保存に失敗しました", e);
@@ -1497,7 +1514,11 @@ async function handleSaveToSlot(slotIndex, existingData) {
     return;
   }
   
-  localStorage.setItem(SAVE_KEY_PREFIX + slotIndex, JSON.stringify(buildSaveData()));
+  const ok = await saveDataToSlot(slotIndex, buildSaveData());
+  if (!ok) {
+    await showGameAlert("セーブに失敗しました。通信状態を確認してもう一度お試しください。");
+    return;
+  }
   setLastUsedSaveSlot(slotIndex); // ★タイトル画面で「前回のデータ」として強調表示するための記録
   await showGameAlert(`No.${slotIndex} にセーブしました。`);
   renderSaveLoadPanel();
