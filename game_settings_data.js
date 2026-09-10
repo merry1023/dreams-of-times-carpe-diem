@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789043614155,
+  "version": 1789083530032,
   "enemies": [
     {
       "id": "goblin",
@@ -9728,7 +9728,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     [
       "village",
       "kaderiku",
-      1.5
+      6
     ],
     [
       "kaderiku",
@@ -9737,7 +9737,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     [
       "kaderiku",
       "kaderiku_n2",
-      1.5
+      7
     ],
     [
       "kaderiku",
@@ -9749,12 +9749,13 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     ],
     [
       "kaderiku_n2",
-      "custom_area_1788352806681_42"
+      "custom_area_1788352806681_42",
+      5
     ],
     [
       "custom_area_1788853853599_1",
       "kaderiku_n2",
-      2
+      7
     ],
     [
       "custom_area_1788854113373_2",
@@ -9772,7 +9773,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     [
       "custom_area_1789004846928_1",
       "custom_area_1788854113373_2",
-      2.5
+      20
     ]
   ],
   "trialGuardianOverrides": {
