@@ -308,7 +308,7 @@ function renderAdventureMap() {
   svg.appendChild(camera);
   
   // ★先に線を描いてから丸を描く（丸が線の上に重なって見えるように）
-  edges.forEach(([fromId, toId]) => {
+  edges.forEach(([fromId, toId, edgeWidth]) => {
     const from = nodes.find(n => n.id === fromId);
     const to = nodes.find(n => n.id === toId);
     if (!from || !to) return;
@@ -319,6 +319,7 @@ function renderAdventureMap() {
     line.setAttribute("x2", to.x);
     line.setAttribute("y2", to.y);
     line.setAttribute("class", "adventure-map-edge");
+    line.setAttribute("stroke-width", edgeWidth || 5); // ★エディタで設定した線の幅を反映（デフォルト 5px）
     camera.appendChild(line);
   });
   
