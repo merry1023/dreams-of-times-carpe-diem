@@ -226,6 +226,17 @@ async function checkOneDataFileVersionAndConfirm(data, decidedKey, label, forceA
   if (Number(data.version) === lastEditedAt) return; // ★既に一致している（同じ内容）なら確認不要
   if (localStorage.getItem(decidedKey) === String(data.version)) return; // ★このバージョンについては既に確認済み
   
+  // ★バグ修正：ブラウザ側の方がファイルより新しく編集されている場合（＝まだ書き出していない
+  //   自分の編集がある場合）は、古いファイルの内容で上書きしてしまわないよう、ここでは何もしない。
+  //   以前はここを見ておらず、開発者アカウント以外は無条件に・開発者アカウントも「はい」を選ぶと
+  //   新しい自分の編集が古いファイルの内容で消えてしまっていた（例：マップの経路の幅を変更して
+  //   保存した直後に、別件で書き出された古いgame_settings_data.jsに巻き込まれて上書きされる）
+  const isNewer = Number(data.version) > lastEditedAt;
+  if (!isNewer) {
+    localStorage.setItem(decidedKey, String(data.version)); // ★このバージョンは「ブラウザ側の方が新しい」と確認済みにし、以後は毎回のチェックをスキップする
+    return;
+  }
+  
   // ★要望対応：管理者（開発者）アカウント以外は、確認なしで自動的に最新のデータを反映する
   if (typeof authReadyPromise !== "undefined") await authReadyPromise; // auth.js：ログイン状態が確定するまで待つ
   if (typeof isDeveloperAccount !== "function" || !isDeveloperAccount()) { // auth.js
@@ -236,8 +247,7 @@ async function checkOneDataFileVersionAndConfirm(data, decidedKey, label, forceA
     return;
   }
   
-  const isNewer = Number(data.version) > lastEditedAt;
-  const message = `${label}が、今このブラウザに保存されている内容と異なっています（ファイルの方が${isNewer ? "新しい" : "古い"}バージョンです）。\nこのデータファイルを読み込みますか？\n（「いいえ」を選ぶと、今のブラウザのデータをそのまま使い続けます）`;
+  const message = `${label}が、今このブラウザに保存されている内容と異なっています（ファイルの方が新しいバージョンです）。\nこのデータファイルを読み込みますか？\n（「いいえ」を選ぶと、今のブラウザのデータをそのまま使い続けます）`;
   const ok = (typeof showGameConfirm === "function") ? await showGameConfirm(message) : false; // mainfunc.js
   localStorage.setItem(decidedKey, String(data.version)); // ★読み込む/読み込まない、どちらを選んでも「このバージョンは確認済み」として記録する
   if (ok) {
@@ -9630,7 +9640,7 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
 
 // ★要望対応：好感度 MAX 時の専用スキル（restSkillBlocks）を魔物図鑑から実行できるように、
 //   runBlockSequence と runSingleScenarioBlock をグローバル公開する
-if (typeof window !== \"undefined\") {
+if (typeof window !== "undefined") {
   window.runBlockSequence = runBlockSequence;
   window.runSingleScenarioBlock = runSingleScenarioBlock;
 }
