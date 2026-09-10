@@ -78,16 +78,23 @@ function canAutoSaveNow() {
 }
 
 // ★slotType: "timer" | "prechapter" | "onclose"
-function autoSaveToSlot(slotType) {
+// ★要望対応：ログイン中はクラウド(Firestore)のみ、未ログイン時は今まで通りlocalStorageのみに保存する
+async function autoSaveToSlot(slotType) {
   if (!canAutoSaveNow()) return;
   try {
-    localStorage.setItem(AUTOSAVE_KEYS[slotType], JSON.stringify(buildSaveData())); // convenience.js
+    if (typeof isCloudSaveActive === "function" && isCloudSaveActive()) {
+      await cloudSetAutoSaveSlotData(slotType, buildSaveData()); // cloudsave.js（convenience.jsのbuildSaveDataを使う）
+    } else {
+      localStorage.setItem(AUTOSAVE_KEYS[slotType], JSON.stringify(buildSaveData())); // convenience.js
+    }
   } catch (e) {
     console.error(`オートセーブ（${AUTOSAVE_SLOT_LABELS[slotType] || slotType}）に失敗しました`, e);
   }
 }
 
 function getAutoSaveSlotData(slotType) {
+  // ★要望対応：ログイン中はクラウド(Firestore)から取得する（ローカルの旧データ移行は未ログイン時のみ考慮すればよい）
+  if (typeof isCloudSaveActive === "function" && isCloudSaveActive()) return cloudGetAutoSaveSlotData(slotType); // cloudsave.js
   // ★1枠目（timer）がまだ無く、旧・単一オートセーブ枠にだけデータが残っている場合は、
   //   互換のためそちらを表示する（何もかも消えたように見えてしまうのを防ぐ）
   const key = (slotType === "timer" && !localStorage.getItem(AUTOSAVE_KEYS.timer) && localStorage.getItem(LEGACY_AUTOSAVE_KEY))
