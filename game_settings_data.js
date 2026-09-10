@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1788994361631,
+  "version": 1789043614155,
   "enemies": [
     {
       "id": "goblin",
@@ -34,7 +34,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         10
       ],
       "statusImmunities": [],
-      "statusResistances": {}
+      "statusResistances": {},
+      "restSkillBlocks": []
     },
     {
       "id": "bat",
@@ -242,7 +243,64 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "killBlocks": [],
       "spareBlocks": [],
       "statusImmunities": [],
-      "statusResistances": {}
+      "statusResistances": {},
+      "restSkillBlocks": [
+        {
+          "id": "block_1789025551677_1",
+          "type": "narration",
+          "text": "サキュバスちゃんと休憩することにした。"
+        },
+        {
+          "id": "block_1789043186807_1",
+          "type": "dialogue",
+          "speaker": "サキュバス",
+          "text": "....どう...？"
+        },
+        {
+          "id": "block_1789043231187_2",
+          "type": "narration",
+          "text": "耳元でサキュバスちゃんが囁く..."
+        },
+        {
+          "id": "block_1789043252346_3",
+          "type": "dialogue",
+          "speaker": "サキュバス",
+          "text": "きもちぃ...？"
+        },
+        {
+          "id": "block_1789043268847_4",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "は、はひぃぃ！\nぎもぢぃぃぃぃ！！"
+        },
+        {
+          "id": "block_1789043357880_6",
+          "type": "telop",
+          "text": "数分後..."
+        },
+        {
+          "id": "block_1789043376981_7",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "おかげで身体のコリがかなり取れました！！\nありがとうございます！"
+        },
+        {
+          "id": "block_1789043284664_5",
+          "type": "narration",
+          "text": "サキュバスちゃんに全身をゴリゴリとほぐしてもらったので、血行が良くなり身体が軽やかになった。"
+        },
+        {
+          "id": "block_1789043465046_8",
+          "type": "dialogue",
+          "speaker": "サキュバス",
+          "text": "よかった...\nまた呼んでね...？"
+        },
+        {
+          "id": "block_1789043496554_9",
+          "type": "narration",
+          "text": "そう言うとサキュバスちゃんは背中の小さな羽をぱたぱたと羽ばたかせ、巣へと帰っていった。"
+        }
+      ]
     },
     {
       "id": "forest_boar",
@@ -7114,6 +7172,43 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "builtin": true,
       "blocks": [],
       "variables": {}
+    },
+    {
+      "id": "skill_1789019984617_2",
+      "className": "陰騎士",
+      "skillId": "",
+      "name": "陰炎(かげろう)",
+      "description": "",
+      "type": "attack",
+      "element": "無",
+      "spCost": 5,
+      "unlockLevel": 4,
+      "power": 10,
+      "target": "single",
+      "hitCount": 1,
+      "atkType": "physical",
+      "gauge": "",
+      "cleanse": false,
+      "passiveId": "",
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "builtin": false,
+      "blocks": [],
+      "variables": {}
     }
   ],
   "statusAilments": [
@@ -9577,6 +9672,36 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "facilityIds": [],
       "mapNodeSize": 10
+    },
+    {
+      "id": "area_1789004846928_1",
+      "name": "クネバ大橋",
+      "type": "village",
+      "x": 135.5030501671568,
+      "y": -128.70163118711028,
+      "bgTrack": "",
+      "bgImage": "",
+      "bossId": "",
+      "bossTriggerTypes": [
+        "step"
+      ],
+      "bossStepChance": 0.08,
+      "bossExamineChance": 0.15,
+      "enemyIds": [],
+      "items": [],
+      "goldRewards": [],
+      "facilitySpawns": [],
+      "examineMessage": "",
+      "examineMessages": [],
+      "battleVariations": [],
+      "enemyLevel": null,
+      "unlockConditions": [
+        {
+          "type": "chapterCleared",
+          "chapterId": "custom_1788854370721_3"
+        }
+      ],
+      "facilityIds": []
     }
   ],
   "mapEdges": [
@@ -9602,7 +9727,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     ],
     [
       "village",
-      "kaderiku"
+      "kaderiku",
+      1.5
     ],
     [
       "kaderiku",
@@ -9610,7 +9736,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     ],
     [
       "kaderiku",
-      "kaderiku_n2"
+      "kaderiku_n2",
+      1.5
     ],
     [
       "kaderiku",
@@ -9626,11 +9753,13 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     ],
     [
       "custom_area_1788853853599_1",
-      "kaderiku_n2"
+      "kaderiku_n2",
+      2
     ],
     [
       "custom_area_1788854113373_2",
-      "custom_area_1788853853599_1"
+      "custom_area_1788853853599_1",
+      20.5
     ],
     [
       "custom_area_1788854418149_4",
@@ -9639,6 +9768,11 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     [
       "custom_area_1788853853599_1",
       "custom_area_1788878118939_1"
+    ],
+    [
+      "custom_area_1789004846928_1",
+      "custom_area_1788854113373_2",
+      2.5
     ]
   ],
   "trialGuardianOverrides": {

@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1789007747021,
+  "version": 1789043614756,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -5526,7 +5526,8 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
       "objectiveText": "進行度を50にし、12日生き延び、ランクをDにしてセドレイの酒場の店主に話しかけよう！",
       "requiredChapterId": "custom_1788530652975_1",
       "requiredRank": "D",
-      "enabled": false
+      "enabled": false,
+      "synopsis": "セドレイの街で酒場を訪れた治郎たちは、元近衛騎士隊長のコリスギウスと出会う。彼は40歳を過ぎてもDTであることを理由に自暴自棄となり、騎士隊長を辞めていた。治郎と意気投合した翌日、三人は街を散策し、本屋でいろんな本を見て回る。その後、奴隷売買に関わる富豪の情報を得て、奴隷を解放し奴隷商を探すことを決意する。"
     },
     {
       "id": "custom_1788854370721_3",
