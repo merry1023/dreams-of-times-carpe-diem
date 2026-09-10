@@ -82,6 +82,8 @@ function renderMapAreaManager(container) {
       edgeWidth = val;
       scenarioProject.mapEdges[mapEditorSelectedEdgeIndex][2] = edgeWidth;
       markScenarioBuildDirty();
+      saveCustomScenarioData(); // ★バグ修正：保存ボタンを押す前に本編（冒険マップ）を開くと、
+                                 //   読み込み直し処理でこの変更が消えて反映されなかったため、その場で保存する
       renderScenarioBuildPanel();
     };
     inputRow.appendChild(numberInput);
@@ -99,6 +101,9 @@ function renderMapAreaManager(container) {
       scenarioProject.mapEdges[mapEditorSelectedEdgeIndex][2] = edgeWidth;
       markScenarioBuildDirty();
       renderScenarioBuildPanel();
+    };
+    slider.onchange = () => {
+      saveCustomScenarioData(); // ★バグ修正：スライダーから指を離した時点で保存する（ドラッグ中に毎回保存すると重いため）
     };
     inputRow.appendChild(slider);
     

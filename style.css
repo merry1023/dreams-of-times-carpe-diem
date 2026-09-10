@@ -3189,7 +3189,9 @@ html, body {
 
 .adventure-map-edge {
   stroke: #a9812f;
-  stroke-width: 0.5;
+  /* ★バグ修正：ここでstroke-widthを固定していたせいで、CSSの優先度の関係でJS側
+     （マップ管理で設定した経路ごとの幅）が常に上書きされ、見た目に反映されなかった。
+     幅は各<line>要素側のstroke-width属性（renderAdventureMap内）で個別に指定する */
   vector-effect: non-scaling-stroke;
 }
 
