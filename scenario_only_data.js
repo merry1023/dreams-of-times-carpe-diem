@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1788994360961,
+  "version": 1789007747021,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -5332,14 +5332,191 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1788966991793_3",
                   "type": "narration",
-                  "text": "ここにはないようだ..."
+                  "text": "ここにはないようだ...\n仕方ない、他の本を探そう。"
                 }
               ],
               "jumpBlockId": null,
               "loops": true,
               "isCorrect": false
+            },
+            {
+              "id": "opt_1789006202525_2",
+              "text": "もう一通り見た。",
+              "blocks": [],
+              "jumpBlockId": "block_1789006383142_9",
+              "loops": false,
+              "isCorrect": false
             }
           ]
+        },
+        {
+          "id": "block_1789006383142_9",
+          "type": "narration",
+          "text": "よし、街も散策できたしもう帰ろうか。"
+        },
+        {
+          "id": "block_1789006483699_11",
+          "type": "narration",
+          "text": "ツァナとロリルがほくほくとした顔で店の前で待っていた。"
+        },
+        {
+          "id": "block_1789006471870_10",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "いい本は見つかった？"
+        },
+        {
+          "id": "block_1789006533937_13",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "そういう君はジョn...\nいい本が見つかったのか。"
+        },
+        {
+          "id": "block_1789006636582_14",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "ええ、宿に戻ったら見るつもりよ。"
+        },
+        {
+          "id": "block_1789006698950_15",
+          "type": "narration",
+          "text": "なにやら分厚い本を抱えているようだ。\nタイトルは、、、\n「神の造りし神器について」"
+        },
+        {
+          "id": "block_1789006755713_16",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "なんか、難しそうな本を見るとは意外だな..."
+        },
+        {
+          "id": "block_1789006775732_17",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "別にどんな本を見ようと勝手でしょ。"
+        },
+        {
+          "id": "block_1789006798760_18",
+          "type": "narration",
+          "text": "頬を膨らませて答えるツァナ"
+        },
+        {
+          "id": "block_1789006824712_19",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "そうだ、ロリルはなにか欲しい本あったか？"
+        },
+        {
+          "id": "block_1789006861126_21",
+          "type": "narration",
+          "text": "その問いかけに対してロリルは首を横にぶんぶんと振った。"
+        },
+        {
+          "id": "block_1789006895886_22",
+          "type": "narration",
+          "text": "そうだ、忘れてたことが一つあった。\nもう一度店に入り店員さんのところへ向かう。"
+        },
+        {
+          "id": "block_1789006935853_23",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "すみません、店員さん。\nこの街の富豪について聞きたいのですが、なにか知っていることがあれば教えてくれませんか？"
+        },
+        {
+          "id": "block_1789006986987_25",
+          "type": "narration",
+          "text": "店員さんは驚いたように少し目を見開いた後、口を開いた。"
+        },
+        {
+          "id": "block_1789006982801_24",
+          "type": "dialogue",
+          "speaker": "店員",
+          "text": "もしかして、この街で一番の屋敷に住んでいる「ミタメ」氏のことですか？\n余りかかわらないほうが良いと思いますよ...\nなんでも裏の商人や闇取引をしているって「ウワサ」があるんですよ..."
+        },
+        {
+          "id": "block_1789007215813_27",
+          "type": "narration",
+          "text": "なるほど、ということは奴隷商とも繋がっている富豪はその「ミタメ」というやつで合っているようだな。"
+        },
+        {
+          "id": "block_1789007210645_26",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "ちなみに、どこに屋敷があるんですか？"
+        },
+        {
+          "id": "block_1789007291547_28",
+          "type": "dialogue",
+          "speaker": "店員",
+          "text": "...え？なぜそんなことを聞くんですか...？"
+        },
+        {
+          "id": "block_1789007320696_29",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "い、いえ、、気になっただけです！"
+        },
+        {
+          "id": "block_1789007339503_30",
+          "type": "dialogue",
+          "speaker": "店員",
+          "text": "、、まあ良いですが、\nこの街の東門を抜ければすぐ見えます。\nかなり大きい屋敷なのですぐ分かると思いますよ。"
+        },
+        {
+          "id": "block_1789007383691_32",
+          "type": "narration",
+          "text": "店員さんは念を押すように言う。"
+        },
+        {
+          "id": "block_1789007380714_31",
+          "type": "dialogue",
+          "speaker": "店員",
+          "text": "しかし、あの富豪と絡むのはやめたほうが良いです。\nどうなっても知りませんからね。"
+        },
+        {
+          "id": "block_1789007494873_33",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "わ、分かりました。\nありがとうございます..."
+        },
+        {
+          "id": "block_1789007509584_34",
+          "type": "narration",
+          "text": "店員さんにお礼を言って外で待つ二人と合流する。"
+        },
+        {
+          "id": "block_1789007541233_35",
+          "type": "telop",
+          "text": "宿へ戻り、二人と情報を共有し、今日はもう寝ることにした。"
+        },
+        {
+          "id": "block_1789007580165_36",
+          "type": "telop",
+          "text": "東門を抜けてすぐ。\n必ず富豪から奴隷を解放する。"
+        },
+        {
+          "id": "block_1789007650371_37",
+          "type": "telop",
+          "text": "そして、奴隷商を見つける。"
+        },
+        {
+          "id": "block_1789007683457_38",
+          "type": "telop",
+          "text": "そう誓ったのである。"
+        },
+        {
+          "id": "block_1789007694495_39",
+          "type": "telop",
+          "text": "第四話:ウホッ！いい日常…"
+        },
+        {
+          "id": "block_1789007724066_40",
+          "type": "telop",
+          "text": "おわり。"
+        },
+        {
+          "id": "block_1789007736802_41",
+          "type": "clearchapter",
+          "resetProgress": true
         }
       ],
       "startTriggerTavernKey": "facility_facility_1788351639721_33",
