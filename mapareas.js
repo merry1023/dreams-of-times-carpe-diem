@@ -41,6 +41,88 @@ function renderMapAreaManager(container) {
   countEl.textContent = `現在：自作エリア${customCount}件／既存マップ${builtinCount}件`;
   container.appendChild(countEl);
   
+  // ★経路選択時の幅編集UIを表示
+  if (mapEditorSelectedEdgeIndex !== null && scenarioProject.mapEdges[mapEditorSelectedEdgeIndex]) {
+    const edgeWrap = document.createElement("div");
+    edgeWrap.className = "scenariobuild-list";
+    edgeWrap.style.marginTop = "16px";
+    edgeWrap.style.padding = "12px";
+    edgeWrap.style.background = "#f0f8ff";
+    edgeWrap.style.borderRadius = "8px";
+    
+    const edgeTitle = document.createElement("h4");
+    edgeTitle.textContent = "経路の幅を編集";
+    edgeTitle.style.marginBottom = "8px";
+    edgeWrap.appendChild(edgeTitle);
+    
+    const edge = scenarioProject.mapEdges[mapEditorSelectedEdgeIndex];
+    let edgeWidth = edge[2] || 1; // デフォルト幅は1
+    
+    const inputRow = document.createElement("div");
+    inputRow.style.display = "flex";
+    inputRow.style.alignItems = "center";
+    inputRow.style.gap = "8px";
+    inputRow.style.marginBottom = "8px";
+    
+    const label = document.createElement("span");
+    label.textContent = "幅:";
+    inputRow.appendChild(label);
+    
+    const numberInput = document.createElement("input");
+    numberInput.type = "number";
+    numberInput.min = "0.5";
+    numberInput.max = "10";
+    numberInput.step = "0.5";
+    numberInput.value = edgeWidth;
+    numberInput.style.width = "80px";
+    numberInput.onchange = (e) => {
+      let val = parseFloat(e.target.value);
+      if (isNaN(val) || val < 0.5) val = 0.5;
+      if (val > 10) val = 10;
+      edgeWidth = val;
+      scenarioProject.mapEdges[mapEditorSelectedEdgeIndex][2] = edgeWidth;
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    inputRow.appendChild(numberInput);
+    
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = "0.5";
+    slider.max = "10";
+    slider.step = "0.5";
+    slider.value = edgeWidth;
+    slider.style.flex = "1";
+    slider.oninput = (e) => {
+      edgeWidth = parseFloat(e.target.value);
+      numberInput.value = edgeWidth;
+      scenarioProject.mapEdges[mapEditorSelectedEdgeIndex][2] = edgeWidth;
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    inputRow.appendChild(slider);
+    
+    edgeWrap.appendChild(inputRow);
+    
+    const previewNote = document.createElement("p");
+    previewNote.className = "devmode-note";
+    previewNote.textContent = "左のマップ画面で線の太さがリアルタイムに変わります。";
+    edgeWrap.appendChild(previewNote);
+    
+    const deselectBtn = document.createElement("button");
+    deselectBtn.className = "devmode-btn";
+    deselectBtn.textContent = "経路の選択を解除";
+    deselectBtn.style.marginTop = "8px";
+    deselectBtn.onclick = (e) => {
+      e.stopPropagation();
+      mapEditorSelectedEdgeIndex = null;
+      renderScenarioBuildPanel();
+    };
+    edgeWrap.appendChild(deselectBtn);
+    
+    container.appendChild(edgeWrap);
+  }
+  
   if (scenarioProject.mapAreas.length === 0) return;
   
   const listEl = document.createElement("div");
@@ -192,16 +274,36 @@ function renderMapAreaFullList(container) {
     const fromNode = nodes.find(n => n.id === fromId);
     const toNode = nodes.find(n => n.id === toId);
     if (!fromNode || !toNode) return;
+    const edgeWidth = scenarioProject.mapEdges[edgeIndex]?.[2] || 1; // ★経路の幅を取得（デフォルト 1）
     const line = document.createElementNS(svg.namespaceURI, "line");
     line.setAttribute("x1", fromNode.x);
     line.setAttribute("y1", fromNode.y);
     line.setAttribute("x2", toNode.x);
     line.setAttribute("y2", toNode.y);
-    line.setAttribute("data-from", fromId); // ★ドラッグ中、このノードにつながる線だけをその場で追従させるための目印
+    line.setAttribute("stroke-width", edgeWidth); // ★幅を SVG に反映
+    line.setAttribute("data-from", fromId);
     line.setAttribute("data-to", toId);
-    line.setAttribute("data-edge-index", edgeIndex); // ★経路選択用
+    line.setAttribute("data-edge-index", edgeIndex);
     line.setAttribute("class", "mapeditor-edge" + (edgeIndex === mapEditorSelectedEdgeIndex ? " mapeditor-edge-selected" : ""));
     line.style.cursor = "pointer";
+    
+    const hitLine = document.createElementNS(svg.namespaceURI, "line");
+    hitLine.setAttribute("x1", fromNode.x);
+    hitLine.setAttribute("y1", fromNode.y);
+    hitLine.setAttribute("x2", toNode.x);
+    hitLine.setAttribute("y2", toNode.y);
+    hitLine.setAttribute("stroke-width", Math.max(edgeWidth + 8, 12));
+    hitLine.setAttribute("stroke", "transparent");
+    hitLine.style.cursor = "pointer";
+    hitLine.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (mapEditorPointerState && mapEditorPointerState.moved) return;
+      mapEditorSelectedEdgeIndex = edgeIndex;
+      mapEditorSelectedNodeId = null;
+      renderScenarioBuildPanel();
+    });
+    camera.appendChild(hitLine);
+    
     line.addEventListener("click", (event) => {
       event.stopPropagation();
       if (mapEditorPointerState && mapEditorPointerState.moved) return;
