@@ -50,8 +50,12 @@ let authReadyResolved = false;
   } catch (e) {
     console.error("Firebaseの初期化に失敗しました", e);
   }
-  firebase.auth().onAuthStateChanged(user => {
+  firebase.auth().onAuthStateChanged(async user => {
     currentUser = user;
+    // ★要望対応：ログイン状態が確定したら、クラウドのセーブ/オートセーブデータを読み込んでおく
+    //   （読み込み完了を待ってからauthReadyPromiseを解決するので、タイトル画面の「つづきから」等が
+    //   クラウドのデータをちゃんと参照できる）
+    if (typeof refreshCloudSaveCache === "function") await refreshCloudSaveCache(); // cloudsave.js
     if (typeof updateTitleScreenLoginButton === "function") updateTitleScreenLoginButton();
     // ★今まさに設定タブを見ている場合だけ再描画する（他のタブを見ている時に勝手に切り替えないため）
     const activeTab = document.querySelector('.tab-content.active');
