@@ -9627,3 +9627,10 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
   
   return nextDefaultId;
 }
+
+// ★要望対応：好感度 MAX 時の専用スキル（restSkillBlocks）を魔物図鑑から実行できるように、
+//   runBlockSequence と runSingleScenarioBlock をグローバル公開する
+if (typeof window !== \"undefined\") {
+  window.runBlockSequence = runBlockSequence;
+  window.runSingleScenarioBlock = runSingleScenarioBlock;
+}
