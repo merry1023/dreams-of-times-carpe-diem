@@ -47,7 +47,7 @@ function renderMapAreaManager(container) {
     edgeWrap.className = "scenariobuild-list";
     edgeWrap.style.marginTop = "16px";
     edgeWrap.style.padding = "12px";
-    edgeWrap.style.background = "#f0f8ff";
+    edgeWrap.style.background = "#232323";
     edgeWrap.style.borderRadius = "8px";
     
     const edgeTitle = document.createElement("h4");
@@ -56,7 +56,7 @@ function renderMapAreaManager(container) {
     edgeWrap.appendChild(edgeTitle);
     
     const edge = scenarioProject.mapEdges[mapEditorSelectedEdgeIndex];
-    let edgeWidth = edge[2] || 1; // デフォルト幅は1
+    let edgeWidth = edge[2] || 5; // デフォルト幅は5
     
     const inputRow = document.createElement("div");
     inputRow.style.display = "flex";
@@ -71,14 +71,14 @@ function renderMapAreaManager(container) {
     const numberInput = document.createElement("input");
     numberInput.type = "number";
     numberInput.min = "0.5";
-    numberInput.max = "10";
+    numberInput.max = "30";
     numberInput.step = "0.5";
     numberInput.value = edgeWidth;
     numberInput.style.width = "80px";
     numberInput.onchange = (e) => {
       let val = parseFloat(e.target.value);
       if (isNaN(val) || val < 0.5) val = 0.5;
-      if (val > 10) val = 10;
+      if (val > 30) val = 30;
       edgeWidth = val;
       scenarioProject.mapEdges[mapEditorSelectedEdgeIndex][2] = edgeWidth;
       markScenarioBuildDirty();
@@ -89,7 +89,7 @@ function renderMapAreaManager(container) {
     const slider = document.createElement("input");
     slider.type = "range";
     slider.min = "0.5";
-    slider.max = "10";
+    slider.max = "30";
     slider.step = "0.5";
     slider.value = edgeWidth;
     slider.style.flex = "1";
@@ -274,7 +274,7 @@ function renderMapAreaFullList(container) {
     const fromNode = nodes.find(n => n.id === fromId);
     const toNode = nodes.find(n => n.id === toId);
     if (!fromNode || !toNode) return;
-    const edgeWidth = scenarioProject.mapEdges[edgeIndex]?.[2] || 1; // ★経路の幅を取得（デフォルト 1）
+    const edgeWidth = scenarioProject.mapEdges[edgeIndex]?.[2] || 5; // ★経路の幅を取得（デフォルト 5）
     const line = document.createElementNS(svg.namespaceURI, "line");
     line.setAttribute("x1", fromNode.x);
     line.setAttribute("y1", fromNode.y);

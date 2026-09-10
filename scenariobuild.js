@@ -7818,6 +7818,8 @@ function buildMonsterDetailEditor(entity, persist, category) {
   //   useSuccubusRestSkill()のようにモンスターIDで振り分けるコードが別途必要（今のところ汎用化はしていない）
   textField("好感度MAX時の専用スキル名（空欄なら無し）", "restSkillName", "例：サキュバスと休憩♡");
   
+  wrap.appendChild(buildEnemyFlavorBlockEditorRow("好感度MAX時スキル演出", entity, "restSkillBlocks", persist));
+  
   const affectionRow = document.createElement("div");
   affectionRow.className = "scenariobuild-condition-row";
   affectionRow.appendChild(labelSpan("見逃した時の好感度上昇量（最小～最大）："));
