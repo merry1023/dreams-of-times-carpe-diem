@@ -228,18 +228,10 @@ async function checkOneDataFileVersionAndConfirm(data, decidedKey, label, forceA
   if (Number(data.version) === lastEditedAt) return; // ★既に一致している（同じ内容）なら確認不要
   if (localStorage.getItem(decidedKey) === String(data.version)) return; // ★このバージョンについては既に確認済み
   
-  // ★バグ修正：ブラウザ側の方がファイルより新しく編集されている場合（＝まだ書き出していない
-  //   自分の編集がある場合）は、古いファイルの内容で上書きしてしまわないよう、ここでは何もしない。
-  //   以前はここを見ておらず、開発者アカウント以外は無条件に・開発者アカウントも「はい」を選ぶと
-  //   新しい自分の編集が古いファイルの内容で消えてしまっていた（例：マップの経路の幅を変更して
-  //   保存した直後に、別件で書き出された古いgame_settings_data.jsに巻き込まれて上書きされる）
   const isNewer = Number(data.version) > lastEditedAt;
-  if (!isNewer) {
-    localStorage.setItem(decidedKey, String(data.version)); // ★このバージョンは「ブラウザ側の方が新しい」と確認済みにし、以後は毎回のチェックをスキップする
-    return;
-  }
   
   // ★要望対応：管理者（開発者）アカウント以外は、確認なしで自動的に最新のデータを反映する
+  //   （旧新は問わない。ゲーム設定・シナリオデータはファイルの内容を常に正として扱う）
   if (typeof authReadyPromise !== "undefined") await authReadyPromise; // auth.js：ログイン状態が確定するまで待つ
   if (typeof isDeveloperAccount !== "function" || !isDeveloperAccount()) { // auth.js
     localStorage.setItem(decidedKey, String(data.version));
@@ -249,7 +241,7 @@ async function checkOneDataFileVersionAndConfirm(data, decidedKey, label, forceA
     return;
   }
   
-  const message = `${label}が、今このブラウザに保存されている内容と異なっています（ファイルの方が新しいバージョンです）。\nこのデータファイルを読み込みますか？\n（「いいえ」を選ぶと、今のブラウザのデータをそのまま使い続けます）`;
+  const message = `${label}が、今このブラウザに保存されている内容と異なっています（ファイルの方が${isNewer ? "新しい" : "古い"}バージョンです）。\nこのデータファイルを読み込みますか？\n（「いいえ」を選ぶと、今のブラウザのデータをそのまま使い続けます）`;
   const ok = (typeof showGameConfirm === "function") ? await showGameConfirm(message) : false; // mainfunc.js
   localStorage.setItem(decidedKey, String(data.version)); // ★読み込む/読み込まない、どちらを選んでも「このバージョンは確認済み」として記録する
   if (ok) {
@@ -9587,7 +9579,9 @@ async function runBlockSequence(chapter, blocksArray, choiceStack, startBlockId)
     }
     const block = blocksArray[index];
     const nextDefaultId = blocksArray[index + 1] ? blocksArray[index + 1].id : null;
+    if (chapter && chapter.id === "restSkill_succubus") console.log("[好感度スキル調査] ブロック実行開始:", block.type, block.id); // ★調査用
     const result = await runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack);
+    if (chapter && chapter.id === "restSkill_succubus") console.log("[好感度スキル調査] ブロック実行完了:", block.type, block.id, "→", result); // ★調査用
     if (result === "TITLE") return "TITLE";
     if (typeof result === "string" && result.startsWith("JUMP:")) {
       const targetId = result.slice(5);
@@ -9646,18 +9640,18 @@ async function handleScriptedBattleDefeatReturnToTown(customMessage) {
 async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack) {
   if (block.type === "dialogue") {
     changeSpeaker(block.speaker || "");
-    await displayMessage(block.text || "（本文未入力）");
+    await displayMessage(block.text || "（本文未入力）", { allowSubFocus: !!chapter.allowSubFocus }); // ★バグ修正：サブ画面（魔物図鑑等）から実行した時、サブ画面を見たままだと進められず止まってしまっていた
     return nextDefaultId;
   }
   
   if (block.type === "narration") {
     changeSpeaker("");
-    await displayMessage(block.text || "（本文未入力）");
+    await displayMessage(block.text || "（本文未入力）", { allowSubFocus: !!chapter.allowSubFocus });
     return nextDefaultId;
   }
   
   if (block.type === "telop") {
-    await showSpecialScene(block.text || ""); // mainfunc.js（黒背景に大きく文字を出す既存の演出）
+    await showSpecialScene(block.text || "", !!chapter.allowSubFocus); // mainfunc.js（黒背景に大きく文字を出す既存の演出）
     return nextDefaultId;
   }
   

@@ -837,6 +837,7 @@ function changeSpeaker(name) {
 //   開いたままでもこのメッセージだけは読み進められる（スキル・アイテム使用時の結果メッセージ等の例外用）
 async function displayMessage(text, options = {}) {
   const allowSubFocus = !!options.allowSubFocus;
+  if (allowSubFocus) console.log("[好感度スキル調査] displayMessage開始 text:", text, "controlFocus:", typeof controlFocus !== "undefined" ? controlFocus : "(未定義)"); // ★調査用
   isTextDisplaying = true;
   const myToken = activeSessionToken;
   
@@ -857,10 +858,13 @@ async function displayMessage(text, options = {}) {
   currentMessageAllowsSubFocus = allowSubFocus;
   
   // 古い 1文字ずつ足す処理を削除し、タグ対応の typeText を呼び出す
+  if (allowSubFocus) console.log("[好感度スキル調査] typeText開始"); // ★調査用
   await typeText(textVar, text, myToken);
+  if (allowSubFocus) console.log("[好感度スキル調査] typeText完了、入力待ちへ"); // ★調査用
   
   // 読み終わったらクリック・キー入力を待つ
   await waitForAdvance(myToken, allowSubFocus);
+  if (allowSubFocus) console.log("[好感度スキル調査] 入力待ち完了"); // ★調査用
   
   currentMessageAllowsSubFocus = previousAllowSubFocus;
   isTextDisplaying = false;
@@ -1370,7 +1374,7 @@ window.addEventListener("keydown", (event) => {
 
 
 // 演出画面を表示する関数
-async function showSpecialScene(text) {
+async function showSpecialScene(text, allowSubFocus = false) {
   return new Promise(async (resolve) => {
     isTextDisplaying = true;
     const myToken = activeSessionToken;
@@ -1392,7 +1396,7 @@ async function showSpecialScene(text) {
     await typeText(specialText, text, myToken);
     
     // 3. 決定キー（またはクリック）を待つ
-    await waitForAdvance(myToken);
+    await waitForAdvance(myToken, allowSubFocus);
     
     // 4. キーが押されたら、文字を消して演出画面を隠す
     specialText.textContent = "";
