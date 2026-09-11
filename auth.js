@@ -15,11 +15,22 @@ const DEVELOPER_EMAILS = [
   "2025043@buntoku-h.ed.jp"
 ];
 
-// ★本体JSファイルの現在のバージョン。コードを更新してこの確認機能を働かせたい時は、
-//   このバージョン文字列を（数字を1増やす、日付にする、など何でもいいので）書き換えてください。
-//   これを書き換えない限り「更新された」とは判定されません。
-const APP_JS_VERSION = "1";
-const APP_JS_VERSION_SEEN_KEY = "demoge_app_js_version_seen"; // ★このブラウザが最後に確認・反映したバージョン
+// ★要望対応：本体JSファイルの変更検知を、手動でのバージョン番号更新に頼らず自動化する。
+//   script.jsをキャッシュを無視して取得し、サーバーが返すETag（無ければLast-Modified）を
+//   「今のファイルの指紋」として使う。デプロイのたびにCloudflare側が自動的に新しい値を
+//   返すため、こちらで何かを書き換える必要はない
+const APP_JS_VERSION_SEEN_KEY = "demoge_app_js_fingerprint_seen"; // ★このブラウザが最後に確認・反映した本体JSの指紋
+
+async function getCurrentAppJsFingerprint() {
+  try {
+    const res = await fetch("script.js", { cache: "no-store" });
+    if (!res.ok) return null;
+    return res.headers.get("etag") || res.headers.get("last-modified") || null;
+  } catch (e) {
+    console.error("本体JSファイルのバージョン確認に失敗しました（通信エラー）", e);
+    return null;
+  }
+}
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAlvzIrzg8mpcVpser24-MxLFcfdDL5oGQ",
@@ -143,25 +154,27 @@ function handleGoogleAccountSettingsDecide() {
 
 async function checkAppJsVersionAndConfirm() {
   await authReadyPromise; // ★ログイン状態が確定するまで待つ
+  const current = await getCurrentAppJsFingerprint();
+  if (!current) return; // ★取得できなかった（通信エラー等）場合は、判断材料が無いので何もしない
   const seen = localStorage.getItem(APP_JS_VERSION_SEEN_KEY);
-  if (seen === APP_JS_VERSION) return; // ★既にこのバージョンを認識済み
+  if (seen === current) return; // ★既にこの内容を認識済み
 
   if (seen === null) {
     // ★このブラウザで初めて開いた時は、比較対象が無いので確認なしでそのまま記録する
-    localStorage.setItem(APP_JS_VERSION_SEEN_KEY, APP_JS_VERSION);
+    localStorage.setItem(APP_JS_VERSION_SEEN_KEY, current);
     return;
   }
 
   if (!isDeveloperAccount()) {
     // ★開発者アカウントでない/未ログイン：確認なしで自動的に最新を強制反映する
-    localStorage.setItem(APP_JS_VERSION_SEEN_KEY, APP_JS_VERSION);
-    location.href = location.pathname + "?_v=" + Date.now(); // ★キャッシュを避けて確実に最新を取得し直す
+    localStorage.setItem(APP_JS_VERSION_SEEN_KEY, current);
+    location.href = location.pathname + "?_v=" + Date.now(); // ★キャッシュを避けて確実に取得し直す
     return;
   }
 
   // ★開発者アカウント：はい/いいえの確認を挟む
-  const message = `本体のJSファイルが更新されています（バージョン ${seen} → ${APP_JS_VERSION}）。\n最新の内容を読み込みますか？\n（「いいえ」を選ぶと、今回はこのまま続けます）`;
+  const message = `本体のJSファイルが更新されています。\n最新の内容を読み込みますか？\n（「いいえ」を選ぶと、今回はこのまま続けます）`;
   const ok = (typeof showGameConfirm === "function") ? await showGameConfirm(message) : false; // mainfunc.js
-  localStorage.setItem(APP_JS_VERSION_SEEN_KEY, APP_JS_VERSION); // ★はい/いいえどちらでも「確認済み」として記録し、毎回聞かれないようにする
+  localStorage.setItem(APP_JS_VERSION_SEEN_KEY, current); // ★はい/いいえどちらでも「確認済み」として記録し、毎回聞かれないようにする
   if (ok) location.href = location.pathname + "?_v=" + Date.now();
 }
