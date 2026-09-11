@@ -4,6 +4,10 @@
 //   （adventuremap.js側でカリの村と結んで表示、adventure.js側でADVENTURE_LOCATIONSへ動的登録して
 //   既存の「前に進む／調べる」の仕組みをそのまま使う）。
 
+// ★要望対応：経路（つなぐ線）の既定色。CSS(.mapeditor-edge / .adventure-map-edge)の
+//   既定のstrokeと合わせてある。エディタ・本編どちらの描画からも参照する
+const DEFAULT_MAP_EDGE_COLOR = "#a9812f";
+
 const MAP_AREA_TYPES = {
   city: "街",
   village: "村",
@@ -108,6 +112,100 @@ function renderMapAreaManager(container) {
     inputRow.appendChild(slider);
     
     edgeWrap.appendChild(inputRow);
+    
+    // ★要望対応：経路の色をカラーサークルで、透明度込みで指定できるようにする
+    const colorRow = document.createElement("div");
+    colorRow.style.display = "flex";
+    colorRow.style.alignItems = "center";
+    colorRow.style.gap = "8px";
+    colorRow.style.marginBottom = "8px";
+    
+    const colorLabel = document.createElement("span");
+    colorLabel.textContent = "色:";
+    colorRow.appendChild(colorLabel);
+    
+    const colorInput = document.createElement("input");
+    colorInput.type = "color"; // ★ブラウザ標準のカラーピッカー（多くのブラウザでカラーサークル/ホイールのUIが出る）
+    colorInput.value = edge[3] || DEFAULT_MAP_EDGE_COLOR;
+    const applyEdgeColor = () => {
+      scenarioProject.mapEdges[mapEditorSelectedEdgeIndex][3] = colorInput.value;
+      markScenarioBuildDirty();
+      saveCustomScenarioData();
+      renderScenarioBuildPanel();
+    };
+    colorInput.oninput = () => { scenarioProject.mapEdges[mapEditorSelectedEdgeIndex][3] = colorInput.value; markScenarioBuildDirty(); };
+    colorInput.onchange = applyEdgeColor;
+    colorRow.appendChild(colorInput);
+    
+    const resetColorBtn = document.createElement("button");
+    resetColorBtn.className = "devmode-btn";
+    resetColorBtn.style.padding = "4px 10px";
+    resetColorBtn.style.fontSize = "12px";
+    resetColorBtn.textContent = "既定の色に戻す";
+    resetColorBtn.onclick = (event) => {
+      event.stopPropagation();
+      scenarioProject.mapEdges[mapEditorSelectedEdgeIndex][3] = null;
+      markScenarioBuildDirty();
+      saveCustomScenarioData();
+      renderScenarioBuildPanel();
+    };
+    colorRow.appendChild(resetColorBtn);
+    
+    edgeWrap.appendChild(colorRow);
+    
+    const opacityRow = document.createElement("div");
+    opacityRow.style.display = "flex";
+    opacityRow.style.alignItems = "center";
+    opacityRow.style.gap = "8px";
+    opacityRow.style.marginBottom = "8px";
+    
+    const opacityLabel = document.createElement("span");
+    opacityLabel.textContent = "透明度:";
+    opacityRow.appendChild(opacityLabel);
+    
+    let edgeOpacity = (typeof edge[4] === "number") ? edge[4] : 1;
+    const opacityNumberInput = document.createElement("input");
+    opacityNumberInput.type = "number";
+    opacityNumberInput.min = "0";
+    opacityNumberInput.max = "100";
+    opacityNumberInput.step = "1";
+    opacityNumberInput.value = Math.round(edgeOpacity * 100);
+    opacityNumberInput.style.width = "60px";
+    
+    const opacitySlider = document.createElement("input");
+    opacitySlider.type = "range";
+    opacitySlider.min = "0";
+    opacitySlider.max = "100";
+    opacitySlider.step = "1";
+    opacitySlider.value = Math.round(edgeOpacity * 100);
+    opacitySlider.style.flex = "1";
+    
+    const applyEdgeOpacity = () => {
+      scenarioProject.mapEdges[mapEditorSelectedEdgeIndex][4] = edgeOpacity;
+      markScenarioBuildDirty();
+      saveCustomScenarioData();
+      renderScenarioBuildPanel();
+    };
+    opacityNumberInput.onchange = (e) => {
+      let val = parseInt(e.target.value, 10);
+      if (isNaN(val) || val < 0) val = 0;
+      if (val > 100) val = 100;
+      edgeOpacity = val / 100;
+      opacitySlider.value = val;
+      applyEdgeOpacity();
+    };
+    opacitySlider.oninput = (e) => {
+      edgeOpacity = parseInt(e.target.value, 10) / 100;
+      opacityNumberInput.value = e.target.value;
+      scenarioProject.mapEdges[mapEditorSelectedEdgeIndex][4] = edgeOpacity;
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    opacitySlider.onchange = () => { saveCustomScenarioData(); };
+    
+    opacityRow.appendChild(opacityNumberInput);
+    opacityRow.appendChild(opacitySlider);
+    edgeWrap.appendChild(opacityRow);
     
     const previewNote = document.createElement("p");
     previewNote.className = "devmode-note";
@@ -279,13 +377,18 @@ function renderMapAreaFullList(container) {
     const fromNode = nodes.find(n => n.id === fromId);
     const toNode = nodes.find(n => n.id === toId);
     if (!fromNode || !toNode) return;
-    const edgeWidth = scenarioProject.mapEdges[edgeIndex]?.[2] || 5; // ★経路の幅を取得（デフォルト 5）
+    const edgeData = scenarioProject.mapEdges[edgeIndex] || [];
+    const edgeWidth = edgeData[2] || 5; // ★経路の幅を取得（デフォルト 5）
+    const edgeColor = edgeData[3] || null; // ★要望対応：経路ごとの色（未設定ならCSSの既定色を使う）
+    const edgeOpacity = (typeof edgeData[4] === "number") ? edgeData[4] : 1; // ★要望対応：経路ごとの透明度
     const line = document.createElementNS(svg.namespaceURI, "line");
     line.setAttribute("x1", fromNode.x);
     line.setAttribute("y1", fromNode.y);
     line.setAttribute("x2", toNode.x);
     line.setAttribute("y2", toNode.y);
     line.setAttribute("stroke-width", edgeWidth); // ★幅を SVG に反映
+    if (edgeColor) line.style.stroke = edgeColor; // ★インラインstyleにすることで、CSS側の既定色（.mapeditor-edge）より優先させる
+    line.style.opacity = edgeOpacity;
     line.setAttribute("data-from", fromId);
     line.setAttribute("data-to", toId);
     line.setAttribute("data-edge-index", edgeIndex);
