@@ -274,9 +274,9 @@ function getCombinedAdventureMapEdges() {
     const key = fromId < toId ? fromId + "|" + toId : toId + "|" + fromId;
     edgeMap.set(key, [fromId, toId, width]);
   });
-  customEdges.forEach(([fromId, toId, width]) => {
+  customEdges.forEach(([fromId, toId, width, color, opacity]) => {
     const key = fromId < toId ? fromId + "|" + toId : toId + "|" + fromId;
-    edgeMap.set(key, [fromId, toId, width || 5]);
+    edgeMap.set(key, [fromId, toId, width || 5, color || null, (typeof opacity === "number") ? opacity : 1]); // ★要望対応：色・透明度も引き継ぐ
   });
   
   return Array.from(edgeMap.values());
@@ -327,7 +327,7 @@ function renderAdventureMap() {
   svg.appendChild(camera);
   
   // ★先に線を描いてから丸を描く（丸が線の上に重なって見えるように）
-  edges.forEach(([fromId, toId, edgeWidth]) => {
+  edges.forEach(([fromId, toId, edgeWidth, edgeColor, edgeOpacity]) => {
     const from = nodes.find(n => n.id === fromId);
     const to = nodes.find(n => n.id === toId);
     if (!from || !to) return;
@@ -339,6 +339,8 @@ function renderAdventureMap() {
     line.setAttribute("y2", to.y);
     line.setAttribute("class", "adventure-map-edge");
     line.setAttribute("stroke-width", edgeWidth || 5); // ★エディタで設定した線の幅を反映（デフォルト 5px）
+    if (edgeColor) line.style.stroke = edgeColor; // ★要望対応：エディタで設定した色を反映（インラインstyleでCSSの既定色より優先させる）
+    line.style.opacity = (typeof edgeOpacity === "number") ? edgeOpacity : 1; // ★要望対応：透明度を反映
     camera.appendChild(line);
   });
   
