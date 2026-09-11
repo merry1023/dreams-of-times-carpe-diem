@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789083530032,
+  "version": 1789098057577,
   "enemies": [
     {
       "id": "goblin",
@@ -283,6 +283,42 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "type": "dialogue",
           "speaker": "田中治郎",
           "text": "おかげで身体のコリがかなり取れました！！\nありがとうございます！"
+        },
+        {
+          "id": "block_1789083841664_1",
+          "type": "changeparam",
+          "target": "player",
+          "companionId": "",
+          "gauge": "hp",
+          "mode": "full",
+          "amount": 0
+        },
+        {
+          "id": "block_1789083854107_2",
+          "type": "changeparam",
+          "target": "player",
+          "companionId": "",
+          "gauge": "sp",
+          "mode": "full",
+          "amount": 0
+        },
+        {
+          "id": "block_1789083862456_3",
+          "type": "changeparam",
+          "target": "player",
+          "companionId": "",
+          "gauge": "sleepiness",
+          "mode": "empty",
+          "amount": 0
+        },
+        {
+          "id": "block_1789083871405_4",
+          "type": "changeparam",
+          "target": "player",
+          "companionId": "",
+          "gauge": "fatigue",
+          "mode": "empty",
+          "amount": 0
         },
         {
           "id": "block_1789043284664_5",
@@ -9491,7 +9527,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "unlockConditions": [
         {
           "type": "chapterCleared",
-          "chapterId": "custom_1787801187995_1"
+          "chapterId": "custom_1788780588914_1"
         }
       ],
       "facilityIds": [],
@@ -9707,73 +9743,129 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
   "mapEdges": [
     [
       "village",
-      "highway"
+      "highway",
+      null,
+      null,
+      0.2
     ],
     [
       "village",
-      "forest"
+      "forest",
+      null,
+      null,
+      0.2
     ],
     [
       "village",
-      "grassland"
+      "grassland",
+      null,
+      null,
+      0.2
     ],
     [
       "village",
-      "cave"
+      "cave",
+      null,
+      null,
+      0.2
     ],
     [
       "highway",
-      "highway_beyond"
+      "highway_beyond",
+      null,
+      null,
+      0.2
     ],
     [
       "village",
       "kaderiku",
-      6
+      6,
+      null,
+      0.2
     ],
     [
       "kaderiku",
-      "kaderiku_n1"
+      "kaderiku_n1",
+      null,
+      null,
+      0.2
     ],
     [
       "kaderiku",
       "kaderiku_n2",
-      7
+      7,
+      null,
+      0.2
     ],
     [
       "kaderiku",
-      "kaderiku_n4"
+      "kaderiku_n4",
+      null,
+      null,
+      0.2
     ],
     [
       "village",
-      "custom_area_1788134850971_2"
+      "custom_area_1788134850971_2",
+      null,
+      null,
+      0.2
     ],
     [
       "kaderiku_n2",
       "custom_area_1788352806681_42",
-      5
+      5,
+      null,
+      0.2
     ],
     [
       "custom_area_1788853853599_1",
       "kaderiku_n2",
-      7
+      7,
+      null,
+      0.2
     ],
     [
       "custom_area_1788854113373_2",
       "custom_area_1788853853599_1",
-      20.5
+      20.5,
+      null,
+      0.2
     ],
     [
       "custom_area_1788854418149_4",
-      "custom_area_1788853853599_1"
+      "custom_area_1788853853599_1",
+      null,
+      null,
+      0.2
     ],
     [
       "custom_area_1788853853599_1",
-      "custom_area_1788878118939_1"
+      "custom_area_1788878118939_1",
+      null,
+      null,
+      0.2
     ],
     [
       "custom_area_1789004846928_1",
       "custom_area_1788854113373_2",
-      20
+      20,
+      null,
+      0.2
+    ],
+    [
+      "kaderiku_n3",
+      "custom_area_1788854113373_2",
+      5,
+      null,
+      0.2
+    ],
+    [
+      "kaderiku_n3",
+      "kaderiku",
+      0.5,
+      null,
+      0
     ]
   ],
   "trialGuardianOverrides": {
