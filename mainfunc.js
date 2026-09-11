@@ -1370,7 +1370,7 @@ window.addEventListener("keydown", (event) => {
 
 
 // 演出画面を表示する関数
-async function showSpecialScene(text) {
+async function showSpecialScene(text, allowSubFocus = false) {
   return new Promise(async (resolve) => {
     isTextDisplaying = true;
     const myToken = activeSessionToken;
@@ -1392,7 +1392,7 @@ async function showSpecialScene(text) {
     await typeText(specialText, text, myToken);
     
     // 3. 決定キー（またはクリック）を待つ
-    await waitForAdvance(myToken);
+    await waitForAdvance(myToken, allowSubFocus);
     
     // 4. キーが押されたら、文字を消して演出画面を隠す
     specialText.textContent = "";

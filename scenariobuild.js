@@ -9646,18 +9646,18 @@ async function handleScriptedBattleDefeatReturnToTown(customMessage) {
 async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack) {
   if (block.type === "dialogue") {
     changeSpeaker(block.speaker || "");
-    await displayMessage(block.text || "（本文未入力）");
+    await displayMessage(block.text || "（本文未入力）", { allowSubFocus: !!chapter.allowSubFocus }); // ★バグ修正：サブ画面（魔物図鑑等）から実行した時、サブ画面を見たままだと進められず止まってしまっていた
     return nextDefaultId;
   }
   
   if (block.type === "narration") {
     changeSpeaker("");
-    await displayMessage(block.text || "（本文未入力）");
+    await displayMessage(block.text || "（本文未入力）", { allowSubFocus: !!chapter.allowSubFocus });
     return nextDefaultId;
   }
   
   if (block.type === "telop") {
-    await showSpecialScene(block.text || ""); // mainfunc.js（黒背景に大きく文字を出す既存の演出）
+    await showSpecialScene(block.text || "", !!chapter.allowSubFocus); // mainfunc.js（黒背景に大きく文字を出す既存の演出）
     return nextDefaultId;
   }
   
