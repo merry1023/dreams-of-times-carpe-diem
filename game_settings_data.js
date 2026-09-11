@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789098057577,
+  "version": 1789108600895,
   "enemies": [
     {
       "id": "goblin",
@@ -1059,7 +1059,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "trueValue": 120,
       "builtin": true,
       "params": {
-        "SP回復量": 25,
+        "SP回復量": 35,
         "対象": "SP"
       }
     },
@@ -1087,9 +1087,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "trueValue": 60,
       "builtin": true,
       "params": {
-        "回復量": 15,
+        "回復量": 55,
         "疲労回復量": 20,
-        "対象": "HP・疲労度"
+        "対象": "HP・疲労度",
+        "SP回復量": 15
       }
     },
     {
@@ -1367,7 +1368,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "builtin": true,
       "params": {
         "curesStatus": []
-      }
+      },
+      "unsellable": true
     },
     {
       "id": "item_1786969067304_4",
@@ -1742,6 +1744,53 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "params": {
         "希少度": 3,
         "用途": "鍛冶素材"
+      }
+    },
+    {
+      "id": "item_1789108102427_1",
+      "name": "魔力草",
+      "category": "herb",
+      "description": "摂取すると魔力を少し回復する。",
+      "rank": "F",
+      "listedPrice": 15,
+      "trueValue": 15,
+      "unsellable": false,
+      "params": {
+        "希少度": 1,
+        "SP回復量": 15
+      }
+    },
+    {
+      "id": "item_1789108214910_2",
+      "name": "魔力の瓶",
+      "category": "potion",
+      "description": "魔力を回復する液体が詰められた瓶",
+      "rank": "F",
+      "listedPrice": 200,
+      "trueValue": 200,
+      "unsellable": false,
+      "params": {
+        "希少度": 1,
+        "SP回復量": 55,
+        "回復量": 0
+      }
+    },
+    {
+      "id": "item_1789108283549_3",
+      "name": "蘇生草",
+      "category": "herb",
+      "description": "戦闘不能になった仲間を復活でき、とてつもない回復量を誇る。",
+      "rank": "F",
+      "listedPrice": 16000,
+      "trueValue": 16000,
+      "unsellable": false,
+      "params": {
+        "希少度": 10,
+        "回復量": 500,
+        "蘇生": true,
+        "SP回復量": 500,
+        "疲労回復量": 1000,
+        "眠気軽減割合": 1
       }
     }
   ],
@@ -8342,12 +8391,20 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "price": 30
         },
         {
+          "itemId": "item_1789108102427_1",
+          "price": 15
+        },
+        {
           "itemId": "potion_001",
           "price": 50
         },
         {
           "itemId": "potion_003",
           "price": 120
+        },
+        {
+          "itemId": "item_1789108214910_2",
+          "price": 200
         },
         {
           "itemId": "tool_001",
@@ -9679,7 +9736,11 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "herb_004",
         "potion_003",
         "weapon_001",
-        "weapon_003"
+        "weapon_003",
+        "item_1789108283549_3",
+        "herb_004",
+        "herb_003",
+        "herb_004"
       ],
       "goldRewards": [
         {
