@@ -9587,7 +9587,9 @@ async function runBlockSequence(chapter, blocksArray, choiceStack, startBlockId)
     }
     const block = blocksArray[index];
     const nextDefaultId = blocksArray[index + 1] ? blocksArray[index + 1].id : null;
+    if (chapter && chapter.id === "restSkill_succubus") console.log("[好感度スキル調査] ブロック実行開始:", block.type, block.id); // ★調査用
     const result = await runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack);
+    if (chapter && chapter.id === "restSkill_succubus") console.log("[好感度スキル調査] ブロック実行完了:", block.type, block.id, "→", result); // ★調査用
     if (result === "TITLE") return "TITLE";
     if (typeof result === "string" && result.startsWith("JUMP:")) {
       const targetId = result.slice(5);
