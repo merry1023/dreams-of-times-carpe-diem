@@ -1001,7 +1001,7 @@ async function useSuccubusRestSkill() {
     if (player.lastSuccubusRestDay === player.daysSinceTransfer) {
       console.log("[好感度スキル] 本日は使用済みのため、メッセージだけ表示します");
       changeSpeaker("");
-      await displayMessage("今日はもう十分癒やしてもらった。また明日にしよう。");
+      await displayMessage("今日はもう十分癒やしてもらった。また明日にしよう。", { allowSubFocus: true }); // ★バグ修正：便利タブを見たままでも進められるように
       return;
     }
     
@@ -1012,7 +1012,7 @@ async function useSuccubusRestSkill() {
     if (master && Array.isArray(master.restSkillBlocks) && master.restSkillBlocks.length > 0 && typeof window.runBlockSequence === "function") {
       // ★要望対応：ブロック編集された演出を実行する
       console.log("[好感度スキル] ブロック演出を実行します");
-      await window.runBlockSequence({ id: "restSkill_succubus", blocks: master.restSkillBlocks }, master.restSkillBlocks, []);
+      await window.runBlockSequence({ id: "restSkill_succubus", blocks: master.restSkillBlocks, allowSubFocus: true }, master.restSkillBlocks, []); // ★バグ修正：便利タブ（サブ画面）から実行するため、サブ画面を見たままでも進行できるようにする
       console.log("[好感度スキル] ブロック演出が終了しました");
       player.lastSuccubusRestDay = player.daysSinceTransfer;
       renderMonsterCodex();
@@ -1022,7 +1022,7 @@ async function useSuccubusRestSkill() {
     console.log("[好感度スキル] フォールバック（従来のハードコード済み演出）を実行します");
     // フォールバック：従来のハードコード済み演出
     changeSpeaker("サキュバス");
-    await displayMessage("「ふふ、今日は特別に癒やしてあげる♡……フッ、バカねッ」");
+    await displayMessage("「ふふ、今日は特別に癒やしてあげる♡……フッ、バカねッ」", { allowSubFocus: true });
     
     changeGauge("fatigue", -player.gauges.fatigue.max);
     changeGauge("hp", Math.round(player.gauges.hp.max * 0.6));
@@ -1030,7 +1030,7 @@ async function useSuccubusRestSkill() {
     renderStatusHUD();
     
     changeSpeaker("");
-    await displayMessage("疲労度が全回復し、体力も大きく回復した。");
+    await displayMessage("疲労度が全回復し、体力も大きく回復した。", { allowSubFocus: true });
     
     renderMonsterCodex();
   } catch (e) {
