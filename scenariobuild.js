@@ -58,6 +58,10 @@ let scenarioBuildEditingEnemyFlavorRef = null; // ★見逃した/倒した時�
 let scenarioBuildInsertMenuIndex = null; // ★ブロック挿入用の「＋」を今どの位置で開いているか（nullなら閉じている）
 let scenarioBuildEditingStatusRef = null; // ★状態管理の専用全画面エディタで、今どの状態異常/状態強化を編集中か（{ category: "statusAilments"|"statusBuffs", id }）
 let scenarioBuildEditingSkillId = null; // ★特殊スキル編集（ブロック）の専用全画面エディタで、今どの技を編集中か
+// ★バグ修正：この変数がどこにも宣言されておらず、特殊スキル編集を開いた瞬間に
+//   buildSkillBlockInsertSlot内の読み取りでReferenceErrorが発生し、ブロック一覧と「＋」ボタンが
+//   一切描画されなくなっていた（データ自体は保存されていても表示側で毎回落ちていた）
+let scenarioBuildSkillInsertMenuTarget = null; // ★特殊スキルのブロック挿入用「＋」を今どの位置で開いているか（nullなら閉じている）
 
 // ===== データの読み書き（自動保存） =====
 // ★JSファイルとして書き出した「シナリオのみ」「ゲームの基本設定のみ」データを、
