@@ -928,10 +928,16 @@ function renderMonsterCodexDetail(panel) {
   // ★サキュバスだけ、好感度MAXになると専用スキルのボタンが出る
   if (key === "succubus" && tier >= 3 && master.restSkillName) {
     const restBtn = document.createElement("button");
+    restBtn.id = "succubus-rest-skill-btn"; // ★要望対応：Zキーからも押せるようにするため、idで参照できるようにする
     restBtn.className = "monster-codex-rest-btn";
     const usedToday = player && player.lastSuccubusRestDay === player.daysSinceTransfer;
-    restBtn.textContent = usedToday ? `${master.restSkillName}（本日は使用済み）` : `${master.restSkillName}を使う`;
-    restBtn.disabled = usedToday;
+    // ★要望対応：実行中の二重押下防止／他のメッセージ・戦闘・選択肢が出ている間は使えないようにする
+    const unavailableReason = succubusRestSkillRunning ? "実行中"
+      : usedToday ? "本日は使用済み"
+      : !isSuccubusRestSkillUsableNow() ? "他の画面を閉じてから"
+      : null;
+    restBtn.textContent = unavailableReason ? `${master.restSkillName}（${unavailableReason}）` : `${master.restSkillName}を使う`;
+    restBtn.disabled = !!unavailableReason;
     restBtn.onclick = (event) => {
       event.stopPropagation();
       useSuccubusRestSkill();
@@ -967,7 +973,18 @@ function handleMonsterCodexKeyDown(event) {
     return;
   }
   
-  if (codexViewMode === "detail") return; // ★詳細画面ではカーソル移動はしない
+  if (codexViewMode === "detail") {
+    // ★要望対応：詳細画面でZキー（決定キー）を押した時も、好感度スキルのボタンと同じ動作にする
+    if (KEY_CONFIG.decideKeys.includes(event.key)) {
+      const key = SPAREABLE_KEYS[codexCursorIndex];
+      const master = MONSTER_MASTER[key];
+      if (key === "succubus" && getAffectionTier(key) >= 3 && master && master.restSkillName) {
+        event.preventDefault();
+        useSuccubusRestSkill();
+      }
+    }
+    return; // ★詳細画面ではカーソル移動はしない
+  }
   
   if (event.key === "ArrowDown") {
     event.preventDefault();
@@ -987,9 +1004,28 @@ function handleMonsterCodexKeyDown(event) {
   }
 }
 
+// ★要望対応：実行中の二重押下防止フラグ
+let succubusRestSkillRunning = false;
+
+// ★要望対応：シナリオ中・戦闘中・選択肢表示中など、他のメッセージウィンドウが使われている
+//   間はこのスキルを使わせない（メッセージが競合して壊れるのを防ぐ）
+function isSuccubusRestSkillUsableNow() {
+  if (succubusRestSkillRunning) return false;
+  if (typeof isTextDisplaying !== "undefined" && isTextDisplaying) return false; // ★他のセリフ・ナレーションが表示中
+  if (typeof currentChoiceList !== "undefined" && currentChoiceList.length > 0) return false; // ★選択肢（店・シナリオの分岐等）が表示中
+  if (typeof battleState !== "undefined" && battleState) return false; // ★戦闘中
+  return true;
+}
+
 // サキュバスの固有スキル「サキュバスと休憩♡」：好感度MAX限定・1日1回。疲労度全回復＋HP大回復
 async function useSuccubusRestSkill() {
   console.log("[好感度スキル] ボタンが押されました");
+  if (!isSuccubusRestSkillUsableNow()) {
+    console.log("[好感度スキル] 現在使用できない状態のため終了しました（実行中／他のメッセージ表示中／戦闘中など）");
+    return;
+  }
+  succubusRestSkillRunning = true; // ★要望対応：ここから終わるまで、ボタンを押しても反応しないようにする
+  renderMonsterCodex(); // ★ボタンを即座に「実行中」表示に切り替える
   try {
     const tier = getAffectionTier("succubus");
     console.log("[好感度スキル] 現在の好感度ランク:", tier, "（好感度値:", getMonsterAffection("succubus"), "）");
@@ -999,51 +1035,50 @@ async function useSuccubusRestSkill() {
     }
     console.log("[好感度スキル] lastSuccubusRestDay:", player.lastSuccubusRestDay, " daysSinceTransfer:", player.daysSinceTransfer);
     
-    // ★バグ修正：村の広場の選択肢画面など、会話ウィンドウが意図的に非表示(hideMessageWindow)に
-    //   されている場面から実行すると、テキストは書き込まれても画面には一切表示されなかったため、
-    //   ここで強制的に表示状態に戻す
-    if (typeof showMessageWindow === "function") showMessageWindow();
-    
-    if (player.lastSuccubusRestDay === player.daysSinceTransfer) {
-      console.log("[好感度スキル] 本日は使用済みのため、メッセージだけ表示します");
-      changeSpeaker("");
-      await displayMessage("今日はもう十分癒やしてもらった。また明日にしよう。", { allowSubFocus: true }); // ★バグ修正：便利タブを見たままでも進められるように
-      return;
-    }
-    
-    const master = MONSTER_MASTER["succubus"];
-    console.log("[好感度スキル] MONSTER_MASTER['succubus']:", master ? "取得できました" : "取得できませんでした（undefined）",
-      "restSkillBlocks件数:", master && Array.isArray(master.restSkillBlocks) ? master.restSkillBlocks.length : "配列ではない/無し",
-      "runBlockSequence:", typeof window.runBlockSequence);
-    if (master && Array.isArray(master.restSkillBlocks) && master.restSkillBlocks.length > 0 && typeof window.runBlockSequence === "function") {
-      // ★要望対応：ブロック編集された演出を実行する
-      console.log("[好感度スキル] ブロック演出を実行します");
-      await window.runBlockSequence({ id: "restSkill_succubus", blocks: master.restSkillBlocks, allowSubFocus: true }, master.restSkillBlocks, []); // ★バグ修正：便利タブ（サブ画面）から実行するため、サブ画面を見たままでも進行できるようにする
-      console.log("[好感度スキル] ブロック演出が終了しました");
+    // ★要望対応：村の広場の選択肢（メイン画面）が表示されている場合、メッセージと重なって
+    //   見えてしまわないよう、演出中だけ一時的に隠す（終わったら自動的に元に戻る）
+    await runWithLocationMenuHidden(async () => {
+      if (player.lastSuccubusRestDay === player.daysSinceTransfer) {
+        console.log("[好感度スキル] 本日は使用済みのため、メッセージだけ表示します");
+        changeSpeaker("");
+        await displayMessage("今日はもう十分癒やしてもらった。また明日にしよう。", { allowSubFocus: true }); // ★バグ修正：便利タブを見たままでも進められるように
+        return;
+      }
+      
+      const master = MONSTER_MASTER["succubus"];
+      console.log("[好感度スキル] MONSTER_MASTER['succubus']:", master ? "取得できました" : "取得できませんでした（undefined）",
+        "restSkillBlocks件数:", master && Array.isArray(master.restSkillBlocks) ? master.restSkillBlocks.length : "配列ではない/無し",
+        "runBlockSequence:", typeof window.runBlockSequence);
+      if (master && Array.isArray(master.restSkillBlocks) && master.restSkillBlocks.length > 0 && typeof window.runBlockSequence === "function") {
+        // ★要望対応：ブロック編集された演出を実行する
+        console.log("[好感度スキル] ブロック演出を実行します");
+        await window.runBlockSequence({ id: "restSkill_succubus", blocks: master.restSkillBlocks, allowSubFocus: true }, master.restSkillBlocks, []); // ★バグ修正：便利タブ（サブ画面）から実行するため、サブ画面を見たままでも進行できるようにする
+        console.log("[好感度スキル] ブロック演出が終了しました");
+        player.lastSuccubusRestDay = player.daysSinceTransfer;
+        return;
+      }
+      
+      console.log("[好感度スキル] フォールバック（従来のハードコード済み演出）を実行します");
+      // フォールバック：従来のハードコード済み演出
+      changeSpeaker("サキュバス");
+      await displayMessage("「ふふ、今日は特別に癒やしてあげる♡……フッ、バカねッ」", { allowSubFocus: true });
+      
+      changeGauge("fatigue", -player.gauges.fatigue.max);
+      changeGauge("hp", Math.round(player.gauges.hp.max * 0.6));
       player.lastSuccubusRestDay = player.daysSinceTransfer;
-      renderMonsterCodex();
-      return;
-    }
-    
-    console.log("[好感度スキル] フォールバック（従来のハードコード済み演出）を実行します");
-    // フォールバック：従来のハードコード済み演出
-    changeSpeaker("サキュバス");
-    await displayMessage("「ふふ、今日は特別に癒やしてあげる♡……フッ、バカねッ」", { allowSubFocus: true });
-    
-    changeGauge("fatigue", -player.gauges.fatigue.max);
-    changeGauge("hp", Math.round(player.gauges.hp.max * 0.6));
-    player.lastSuccubusRestDay = player.daysSinceTransfer;
-    renderStatusHUD();
-    
-    changeSpeaker("");
-    await displayMessage("疲労度が全回復し、体力も大きく回復した。", { allowSubFocus: true });
-    
-    renderMonsterCodex();
+      renderStatusHUD();
+      
+      changeSpeaker("");
+      await displayMessage("疲労度が全回復し、体力も大きく回復した。", { allowSubFocus: true });
+    });
   } catch (e) {
     // ★バグ調査用：エラーが起きても画面上は「何も起きない」ように見えてしまっていたため、
     //   コンソールと画面上の両方にエラー内容を出すようにする
     console.error("[好感度スキル] エラーが発生しました", e);
     if (typeof showGameAlert === "function") showGameAlert("エラーが発生しました：" + (e && e.message ? e.message : e));
+  } finally {
+    succubusRestSkillRunning = false; // ★要望対応：何が起きても最後は必ずボタンを再度押せる状態に戻す
+    renderMonsterCodex();
   }
 }
 
