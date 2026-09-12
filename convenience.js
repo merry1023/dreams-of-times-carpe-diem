@@ -998,6 +998,12 @@ async function useSuccubusRestSkill() {
       return;
     }
     console.log("[好感度スキル] lastSuccubusRestDay:", player.lastSuccubusRestDay, " daysSinceTransfer:", player.daysSinceTransfer);
+    
+    // ★バグ修正：村の広場の選択肢画面など、会話ウィンドウが意図的に非表示(hideMessageWindow)に
+    //   されている場面から実行すると、テキストは書き込まれても画面には一切表示されなかったため、
+    //   ここで強制的に表示状態に戻す
+    if (typeof showMessageWindow === "function") showMessageWindow();
+    
     if (player.lastSuccubusRestDay === player.daysSinceTransfer) {
       console.log("[好感度スキル] 本日は使用済みのため、メッセージだけ表示します");
       changeSpeaker("");
