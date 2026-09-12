@@ -5282,6 +5282,7 @@ const SKILL_BLOCK_TYPES = {
   message: "セリフ・地の文",
   damage: "ダメージを与える",
   heal: "HP/SPを回復する",
+  revive: "戦闘不能から蘇生させる", // ★要望対応：HP/SP回復ブロックとは別に、蘇生専用のブロックを追加
   adjustGauge: "HP/SPを増減する（マイナス指定で消費・減少にも使える）",
   selfDamage: "自分にダメージ（代償）",
   applyStatus: "状態異常/強化を付与",
@@ -5302,6 +5303,7 @@ function createSkillBlock(type) {
   if (type === "message") return { ...base, speaker: "", text: "" };
   if (type === "damage") return { ...base, target: "single", powerMultiplier: "1", atkType: "physical" };
   if (type === "heal") return { ...base, target: "self", gauge: "hp", amount: "0" };
+  if (type === "revive") return { ...base, target: "self", companionId: "", amount: "50", amountIsPercent: true };
   if (type === "adjustGauge") return { ...base, target: "self", gauge: "sp", amount: "0" }; // ★amountの式がマイナスなら減少、プラスなら回復として扱う（敵は対象にできない）
   if (type === "selfDamage") return { ...base, amount: "0" };
   if (type === "applyStatus") return { ...base, targetSide: "enemy", target: "single", statusId: "", duration: "3", power: "0", chance: "1" };
@@ -5674,6 +5676,63 @@ function buildSkillBlockFormFields(blocksArray, block, skill, persist) {
     modeLabel.append(" 上の数値を「最大値に対する割合(%)」として扱う（例：50なら50%回復。対象ごとの最大値を見て計算します）");
     modeRow.appendChild(modeLabel);
     wrap.appendChild(modeRow);
+    
+  } else if (block.type === "revive") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note";
+    noteEl.textContent = "戦闘不能になった仲間を、HPを回復させながら復活させます（回復ブロックと違い、戦闘不能状態でも効果があります）。生きている対象に使った場合は、通常の回復として働きます。";
+    wrap.appendChild(noteEl);
+    
+    const targetRow = document.createElement("div");
+    targetRow.className = "scenariobuild-condition-row";
+    targetRow.appendChild(labelSpan("対象："));
+    const targetSelect = document.createElement("select");
+    targetSelect.className = "scenariobuild-jump-select";
+    [["self", "自分だけ"], ["companion", "仲間（1人指定）"], ["all", "自分＋仲間全員"]].forEach(([v, l]) => {
+      const opt = document.createElement("option"); opt.value = v; opt.textContent = l; targetSelect.appendChild(opt);
+    });
+    targetSelect.value = block.target || "self";
+    targetSelect.onchange = () => { block.target = targetSelect.value; persist(); renderScenarioBuildPanel(); };
+    targetRow.appendChild(targetSelect);
+    wrap.appendChild(targetRow);
+    
+    if (block.target === "companion") {
+      const companionRow = document.createElement("div");
+      companionRow.className = "scenariobuild-condition-row";
+      companionRow.appendChild(labelSpan("仲間："));
+      const companionSelect = document.createElement("select");
+      companionSelect.className = "scenariobuild-jump-select";
+      const emptyOpt = document.createElement("option");
+      emptyOpt.value = "";
+      emptyOpt.textContent = "（選択してください）";
+      companionSelect.appendChild(emptyOpt);
+      (scenarioProject.companions || []).forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = c.name || c.id;
+        companionSelect.appendChild(opt);
+      });
+      companionSelect.value = block.companionId || "";
+      companionSelect.onchange = () => { block.companionId = companionSelect.value; persist(); };
+      companionRow.appendChild(companionSelect);
+      wrap.appendChild(companionRow);
+    }
+    
+    const amountRow = document.createElement("div");
+    amountRow.className = "scenariobuild-condition-row";
+    amountRow.appendChild(labelSpan("復活後のHP（式）："));
+    amountRow.appendChild(buildSkillExpressionInput(block, "amount", "例：50　／　自分レベル*2", persist));
+    wrap.appendChild(amountRow);
+    
+    const percentLabel = document.createElement("label");
+    percentLabel.className = "scenariobuild-inline-checkbox";
+    const percentCheckbox = document.createElement("input");
+    percentCheckbox.type = "checkbox";
+    percentCheckbox.checked = block.amountIsPercent === true;
+    percentCheckbox.onchange = () => { block.amountIsPercent = percentCheckbox.checked; persist(); };
+    percentLabel.appendChild(percentCheckbox);
+    percentLabel.append(" 上の数値を「最大HPに対する割合(%)」として扱う（例：50なら最大HPの50%で復活。対象ごとの最大HPを見て計算します）");
+    wrap.appendChild(percentLabel);
     
   } else if (block.type === "adjustGauge") {
     const noteEl = document.createElement("p");
