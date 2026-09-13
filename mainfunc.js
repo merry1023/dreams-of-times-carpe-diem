@@ -1347,6 +1347,14 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
     event.stopImmediatePropagation();
     decideInventorySelection();
+    return;
+  }
+  
+  // ★要望対応：Fキーでインベントリの並び替えモードを切り替える（入手順→名前順→装備優先→アイテム優先→…）
+  if (event.key === "f" || event.key === "F") {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    cycleInventorySortMode();
   }
 });
 
@@ -2669,6 +2677,76 @@ function renderStrengthTab() {
 // 現在カーソルが乗っているインベントリのマス番号
 let selectedInventoryIndex = 0;
 
+// ★要望対応：インベントリの並び替えモード。Fキーでこの順番に切り替わる
+const INVENTORY_SORT_MODES = ["acquired", "name", "equip_first", "item_first"];
+const INVENTORY_SORT_MODE_LABELS = {
+  acquired: "入手順",
+  name: "名前順",
+  equip_first: "装備優先",
+  item_first: "アイテム優先"
+};
+let inventorySortMode = "acquired";
+
+function cycleInventorySortMode() {
+  const currentIndex = INVENTORY_SORT_MODES.indexOf(inventorySortMode);
+  inventorySortMode = INVENTORY_SORT_MODES[(currentIndex + 1) % INVENTORY_SORT_MODES.length];
+  renderInventory();
+}
+
+// ★要望対応：常に「選ばれた並び順」になるよう、描画のたびにinventorySlotsそのものを並び替える。
+//   あわせて、スタックできるアイテムで複数のスタックに分かれてしまっているもの（かつ100個未満のもの）を
+//   同じスタックへまとめ直す
+function reorganizeInventory() {
+  const items = inventorySlots.filter(s => s !== null);
+  
+  // 1. スタック可能なアイテムは、同じアイテムIDごとにできるだけ100個単位でまとめ直す
+  const stackableGroups = new Map(); // itemId -> スロットの配列
+  const nonStackable = [];
+  items.forEach(slot => {
+    const master = ITEM_MASTER[slot.itemId];
+    if (isStackable(master)) { // inventory.js
+      if (!stackableGroups.has(slot.itemId)) stackableGroups.set(slot.itemId, []);
+      stackableGroups.get(slot.itemId).push(slot);
+    } else {
+      nonStackable.push(slot);
+    }
+  });
+  
+  const merged = [];
+  stackableGroups.forEach((slots, itemId) => {
+    slots.sort((a, b) => (a.acquiredSeq || 0) - (b.acquiredSeq || 0)); // ★一番古いスタックの入手順を代表として引き継ぐ
+    let totalQty = slots.reduce((sum, s) => sum + s.quantity, 0);
+    const baseSeq = slots[0].acquiredSeq;
+    const appraised = slots.some(s => s.appraised); // ★どれか1つでも鑑定済みなら鑑定済み扱いにする
+    while (totalQty > 0) {
+      const qty = Math.min(MAX_STACK, totalQty);
+      merged.push({ itemId, quantity: qty, appraised, acquiredSeq: baseSeq });
+      totalQty -= qty;
+    }
+  });
+  
+  const all = merged.concat(nonStackable);
+  
+  // 2. 選ばれた並び順に沿って並び替える
+  const masterOf = (slot) => ITEM_MASTER[slot.itemId] || {};
+  const compareByName = (a, b) => (masterOf(a).name || "").localeCompare(masterOf(b).name || "", "ja");
+  const compareByAcquired = (a, b) => (a.acquiredSeq || 0) - (b.acquiredSeq || 0);
+  const isEquip = (slot) => masterOf(slot).category === "weapon" || masterOf(slot).category === "armor";
+  
+  if (inventorySortMode === "name") {
+    all.sort(compareByName);
+  } else if (inventorySortMode === "equip_first") {
+    all.sort((a, b) => (isEquip(a) === isEquip(b) ? compareByName(a, b) : (isEquip(a) ? -1 : 1)));
+  } else if (inventorySortMode === "item_first") {
+    all.sort((a, b) => (isEquip(a) === isEquip(b) ? compareByName(a, b) : (isEquip(a) ? 1 : -1)));
+  } else {
+    all.sort(compareByAcquired);
+  }
+  
+  inventorySlots.fill(null);
+  all.forEach((slot, i) => { inventorySlots[i] = slot; });
+}
+
 // カーソルを上下左右に移動する（グリッドの端では止まる）
 function moveInventorySelection(key) {
   const row = Math.floor(selectedInventoryIndex / GRID_COLS);
@@ -3027,6 +3105,11 @@ function renderInventory() {
   const grid = document.getElementById("inventory-grid");
   if (!grid) return;
   
+  reorganizeInventory(); // ★要望対応：表示のたびに、選ばれた並び順・スタックのまとめ直しを適用する
+  
+  const sortLabel = document.getElementById("inventory-sort-label");
+  if (sortLabel) sortLabel.textContent = `並び替え：${INVENTORY_SORT_MODE_LABELS[inventorySortMode]}（Fキーで変更）`;
+  
   grid.innerHTML = "";
   
   for (let i = 0; i < GRID_SIZE; i++) {
@@ -3038,7 +3121,12 @@ function renderInventory() {
       const master = getEffectiveItemMaster(slot); // player.js（サビ取り等の個体ごとの上書きも反映）
       
       const nameSpan = document.createElement("span");
-      nameSpan.className = "item-name";
+      // ★要望対応：種類ごとに名前の文字色を変える（武器=赤、防具=茶、道具系=緑、その他=白）
+      const categoryColorClass = master && master.category === "weapon" ? "item-name-weapon"
+        : master && master.category === "armor" ? "item-name-armor"
+        : master && ["herb", "potion", "material", "tool"].includes(master.category) ? "item-name-tool"
+        : "item-name-misc";
+      nameSpan.className = "item-name " + categoryColorClass;
       // 鑑定済みでなければ名前を「？」でぼかす、みたいな演出もここに足せる
       nameSpan.textContent = master ? master.name : "？？？";
       slotDiv.appendChild(nameSpan);
