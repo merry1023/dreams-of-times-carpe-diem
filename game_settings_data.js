@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789265705330,
+  "version": 1789268559515,
   "enemies": [
     {
       "id": "goblin",
@@ -5083,7 +5083,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "skillId": "",
       "name": "課金召喚",
       "description": "回復・攻撃・状態異常のいずれかがランダムに発動する。",
-      "type": "special",
+      "type": "attack",
       "element": "混沌",
       "spCost": 15,
       "unlockLevel": 34,
@@ -5295,7 +5295,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "variables": {
         "syoukann": 0
-      }
+      },
+      "useBlocks": true
     },
     {
       "id": "ニート_惰眠からの覚醒",
@@ -5363,11 +5364,11 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "ニート_ichikabachika",
       "className": "ニート",
       "skillId": "ichikabachika",
-      "name": "一か八か（いちかばちか）",
+      "name": "一か八か",
       "description": "ランダムな敵単体に中〜大ダメージを与える、当たり外れの大きい一撃。",
       "type": "attack",
       "element": "混沌",
-      "spCost": 29,
+      "spCost": 45,
       "unlockLevel": 54,
       "power": 55,
       "target": "single",
@@ -7303,7 +7304,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "description": "自身を戦闘不能にする代わりに仲間全員を万全の状態まで回復させる。",
       "type": "heal",
       "element": "闇",
-      "spCost": 5,
+      "spCost": 75,
       "unlockLevel": 65,
       "power": 10,
       "target": "all",
@@ -7334,7 +7335,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "partyWide": true,
       "revives": true,
       "blocks": [],
-      "variables": {}
+      "variables": {},
+      "useBlocks": true
     },
     {
       "id": "skill_1789136993486_1",
@@ -9586,8 +9588,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "unimplemented": true,
       "name": "セドレイの街",
       "type": "city",
-      "x": 98,
-      "y": 17.97468499580779,
+      "x": 69.95813527482565,
+      "y": 3.986240791578478,
       "bgTrack": "",
       "bgImage": "/img/街2.jpeg",
       "bossId": "",
@@ -9816,14 +9818,15 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "battleVariations": [],
       "enemyLevel": 5,
       "unlockConditions": [],
-      "facilityIds": []
+      "facilityIds": [],
+      "facilitySpawns": []
     },
     {
       "id": "area_1788352806681_42",
       "name": "富豪の屋敷",
       "type": "scenario",
-      "x": 76.37508679578244,
-      "y": 2,
+      "x": 47.56929478554126,
+      "y": -16.26451262879224,
       "bgTrack": "",
       "bgImage": "/img/豪邸.jpg",
       "bossId": "",
@@ -9855,8 +9858,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "area_1788853853599_1",
       "name": "ルアナ村",
       "type": "village",
-      "x": 129.95815855038873,
-      "y": -6.7809183094488645,
+      "x": 176.09589364120774,
+      "y": 85.65180893561416,
       "bgTrack": "",
       "bgImage": "",
       "bossId": "",
