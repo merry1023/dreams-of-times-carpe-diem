@@ -341,7 +341,7 @@ function openAdventureMenu() {
   if (mustRetrace) {
     options.push({ label: `引き返す（残り${customAreaForwardSteps}歩）`, action: () => adventureRetreatStep() });
   } else {
-    options.push({ label: "村へ戻る", action: () => leaveAdventure() });
+    options.push({ label: "拠点へ戻る", action: () => leaveAdventure() });
   }
   
   showLocationMenu(options, loc.name);
@@ -383,8 +383,13 @@ async function adventureRetreatStep() {
 async function leaveAdventure() {
   hideLocationMenu();
   changeSpeaker("");
-  await displayMessage("村へと戻ることにした。");
-  openTownMenu();
+  await displayMessage("拠点へと戻ることにした。");
+  // ★要望対応：以前は必ずカリの村（openTownMenu）へ戻していたが、直前に立ち寄った拠点
+  //   （player.lastVisitedBaseKey。敗北時の強制送還と同じ記録）へ戻すように変更。
+  //   記録が無い・見つからない場合だけ、従来通りカリの村へ戻す
+  const returnedToBase = typeof resumeLocationDynamic === "function" && player.lastVisitedBaseKey
+    && resumeLocationDynamic(player.lastVisitedBaseKey); // convenience.js
+  if (!returnedToBase) openTownMenu();
 }
 
 // ★冒険中の行動で力尽きた（HPが0になった）場合の共通処理。true を返したら、

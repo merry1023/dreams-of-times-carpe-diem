@@ -2322,6 +2322,24 @@ async function runSingleSkillBlock(block, skill, context) {
     return null;
   }
   
+  if (block.type === "revive") {
+    const rawAmount = evaluateSkillExpression(block.amount, buildSkillExprContext(skill, context));
+    const targets = block.target === "all"
+      ? [player, ...(player.companions || [])] // ★蘇生ブロックなので、生死問わず対象に含める
+      : block.target === "companion"
+        ? [(player.companions || []).find(c => c.companionId === block.companionId)].filter(Boolean)
+        : [context.caster || player];
+    for (const unit of targets) {
+      const wasDown = unit !== player && !unit.alive;
+      const amount = Math.max(0, Math.round(block.amountIsPercent ? unit.gauges.hp.max * (rawAmount / 100) : rawAmount));
+      const healed = applyHealToUnit(unit, "hp", amount, false, true); // player.js（revives:trueで戦闘不能からも復活させる）
+      const who = unit === player ? "自分" : (getHealTargetDisplayName ? getHealTargetDisplayName(unit) : "仲間");
+      if (wasDown && unit.alive) await displayMessage(`${who}は戦闘不能から蘇生した！`, { allowSubFocus: true });
+      else if (healed > 0) await displayMessage(`${who}のHPが${healed}回復した！`, { allowSubFocus: true });
+    }
+    return null;
+  }
+  
   if (block.type === "adjustGauge") {
     const delta = Math.round(evaluateSkillExpression(block.amount, buildSkillExprContext(skill, context)));
     const gauge = block.gauge === "sp" ? "sp" : "hp";
