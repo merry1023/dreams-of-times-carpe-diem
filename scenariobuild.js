@@ -1999,6 +1999,11 @@ const SCENARIO_BLOCK_TYPES = {
   flag: "フラグ",
   setvar: "変数を設定（数値）",
   changeparam: "パラメータ変更（HP/SP等）",
+  bossRemoveInvincibility: "【ボス演出】無敵を解除する",
+  bossChangeForm: "【ボス演出】第2形態になる（名前変更・攻撃力アップ・HP回復）",
+  bossSummonAlly: "【ボス演出】仲間を呼ぶ（魔物を1体増援参戦させる）",
+  bossHeal: "【ボス演出】自分のHPを回復する（割合指定）",
+  bossUseSkill: "【ボス演出】特定の技を撃つ",
   give: "ギヴ（アイテム付与）",
   takeitem: "アイテム消費",
   battle: "通常戦闘",
@@ -2532,6 +2537,11 @@ function createBlock(type) {
   if (type === "flag") return { ...base, flagName: "", mode: "on" }; // mode: "on" | "off" | "toggle"
   if (type === "setvar") return { ...base, varName: "", mode: "set", amount: 0 }; // mode: "set" | "add" | "subtract"
   if (type === "changeparam") return { ...base, target: "player", companionId: "", gauge: "hp", mode: "add", amount: 0 }; // target: "player"|"companion"|"allCompanions"／gauge: "hp"|"sp"|"sleepiness"|"fatigue"／mode: "add"|"set"|"full"|"empty"
+  if (type === "bossRemoveInvincibility") return { ...base, messageText: "" };
+  if (type === "bossChangeForm") return { ...base, messageText: "", formName: "", formAtkMultiplier: 1.3, formHealRatio: 0 };
+  if (type === "bossSummonAlly") return { ...base, messageText: "", allyMonsterKey: "" };
+  if (type === "bossHeal") return { ...base, messageText: "", healRatio: 0.3 };
+  if (type === "bossUseSkill") return { ...base, skillName: "", skillMultiplier: 1.5 };
   if (type === "give") return { ...base, itemId: "", quantity: 1 };
   if (type === "takeitem") return { ...base, itemId: "", quantity: 1 };
   if (type === "battle") return { ...base, enemies: [], winJumpBlockId: null, defeatJumpBlockId: null, defeatMessage: "", level: null }; // enemies: 敵ID（重複可・最大5）の配列
@@ -2606,6 +2616,11 @@ function blockPreviewText(block) {
     const modeLabel = block.mode === "full" ? "全回復" : block.mode === "empty" ? "0にする" : block.mode === "set" ? `${block.amount || 0}にする` : `${(block.amount || 0) >= 0 ? "+" : ""}${block.amount || 0}`;
     return `${targetLabel}の${GAUGE_LABELS[block.gauge] || "HP"}を${modeLabel}`;
   }
+  if (block.type === "bossRemoveInvincibility") return "ボスの無敵を解除する";
+  if (block.type === "bossChangeForm") return `第2形態にする（${block.formName || "名前そのまま"}）`;
+  if (block.type === "bossSummonAlly") return `仲間を呼ぶ：${block.allyMonsterKey || "（未指定）"}`;
+  if (block.type === "bossHeal") return `ボスのHPを回復（最大HPの${Math.round((block.healRatio || 0) * 100)}%）`;
+  if (block.type === "bossUseSkill") return `ボスが技を撃つ：${block.skillName || "（未指定）"}`;
   if (block.type === "give") return block.itemId;
   if (block.type === "takeitem") return block.itemId;
   if (block.type === "battle") return (block.enemies || []).filter(Boolean).join("＋");
@@ -3151,6 +3166,162 @@ function buildBlockFormFields(chapter, block) {
       amountRow2.appendChild(amountInput2);
       wrap.appendChild(amountRow2);
     }
+    return wrap;
+  }
+  
+  if (block.type === "bossRemoveInvincibility") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note scenariobuild-condition";
+    noteEl.textContent = "ボスの戦闘イベント（演出ブロック）実行中にのみ効果があります。ボスの無敵を解除します。";
+    wrap.appendChild(noteEl);
+    const msgRow = document.createElement("div");
+    msgRow.className = "scenariobuild-condition-row";
+    msgRow.appendChild(labelSpan("セリフ・メッセージ："));
+    const msgInput = document.createElement("input");
+    msgInput.type = "text";
+    msgInput.className = "scenariobuild-title-input";
+    msgInput.placeholder = "空欄でもOK（既定の文言が使われます）";
+    msgInput.value = block.messageText || "";
+    msgInput.onchange = () => { block.messageText = msgInput.value; persist(); };
+    msgRow.appendChild(msgInput);
+    wrap.appendChild(msgRow);
+    return wrap;
+  }
+  
+  if (block.type === "bossChangeForm") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note scenariobuild-condition";
+    noteEl.textContent = "ボスの戦闘イベント（演出ブロック）実行中にのみ効果があります。名前を変え、攻撃力を上げ、HPを回復させます。";
+    wrap.appendChild(noteEl);
+    const msgRow = document.createElement("div");
+    msgRow.className = "scenariobuild-condition-row";
+    msgRow.appendChild(labelSpan("セリフ・メッセージ："));
+    const msgInput = document.createElement("input");
+    msgInput.type = "text";
+    msgInput.className = "scenariobuild-title-input";
+    msgInput.placeholder = "空欄でもOK（既定の文言が使われます）";
+    msgInput.value = block.messageText || "";
+    msgInput.onchange = () => { block.messageText = msgInput.value; persist(); };
+    msgRow.appendChild(msgInput);
+    wrap.appendChild(msgRow);
+    const formRow = document.createElement("div");
+    formRow.className = "scenariobuild-condition-row";
+    formRow.appendChild(labelSpan("変身後の名前："));
+    const formNameInput = document.createElement("input");
+    formNameInput.type = "text";
+    formNameInput.className = "scenariobuild-title-input";
+    formNameInput.placeholder = "空欄なら名前はそのまま";
+    formNameInput.value = block.formName || "";
+    formNameInput.onchange = () => { block.formName = formNameInput.value; persist(); };
+    formRow.appendChild(formNameInput);
+    wrap.appendChild(formRow);
+    const formRow2 = document.createElement("div");
+    formRow2.className = "scenariobuild-condition-row";
+    formRow2.appendChild(labelSpan("攻撃力倍率："));
+    const formAtkInput = document.createElement("input");
+    formAtkInput.type = "number";
+    formAtkInput.step = "0.1";
+    formAtkInput.className = "scenariobuild-condition-input";
+    formAtkInput.value = block.formAtkMultiplier != null ? block.formAtkMultiplier : 1.3;
+    formAtkInput.onchange = () => { block.formAtkMultiplier = Number(formAtkInput.value) || 1; persist(); };
+    formRow2.appendChild(formAtkInput);
+    formRow2.appendChild(labelSpan("HP回復割合(0〜1)："));
+    const formHealInput = document.createElement("input");
+    formHealInput.type = "number";
+    formHealInput.min = "0"; formHealInput.max = "1"; formHealInput.step = "0.05";
+    formHealInput.className = "scenariobuild-condition-input";
+    formHealInput.value = block.formHealRatio != null ? block.formHealRatio : 0;
+    formHealInput.onchange = () => { block.formHealRatio = Math.max(0, Math.min(1, Number(formHealInput.value) || 0)); persist(); };
+    formRow2.appendChild(formHealInput);
+    wrap.appendChild(formRow2);
+    return wrap;
+  }
+  
+  if (block.type === "bossSummonAlly") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note scenariobuild-condition";
+    noteEl.textContent = "ボスの戦闘イベント（演出ブロック）実行中にのみ効果があります。指定した魔物を1体、増援として参戦させます。";
+    wrap.appendChild(noteEl);
+    const msgRow = document.createElement("div");
+    msgRow.className = "scenariobuild-condition-row";
+    msgRow.appendChild(labelSpan("セリフ・メッセージ："));
+    const msgInput = document.createElement("input");
+    msgInput.type = "text";
+    msgInput.className = "scenariobuild-title-input";
+    msgInput.placeholder = "空欄でもOK（既定の文言が使われます）";
+    msgInput.value = block.messageText || "";
+    msgInput.onchange = () => { block.messageText = msgInput.value; persist(); };
+    msgRow.appendChild(msgInput);
+    wrap.appendChild(msgRow);
+    const allyRow = document.createElement("div");
+    allyRow.className = "scenariobuild-condition-row";
+    allyRow.appendChild(labelSpan("呼び出す魔物ID："));
+    const allyInput = document.createElement("input");
+    allyInput.type = "text";
+    allyInput.className = "scenariobuild-title-input";
+    allyInput.placeholder = "例：goblin";
+    allyInput.setAttribute("list", "scenariobuild-monster-datalist");
+    allyInput.value = block.allyMonsterKey || "";
+    allyInput.onchange = () => { block.allyMonsterKey = allyInput.value.trim(); persist(); };
+    allyRow.appendChild(allyInput);
+    wrap.appendChild(allyRow);
+    return wrap;
+  }
+  
+  if (block.type === "bossHeal") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note scenariobuild-condition";
+    noteEl.textContent = "ボスの戦闘イベント（演出ブロック）実行中にのみ効果があります。ボス自身のHPを、最大HPに対する割合で回復させます。";
+    wrap.appendChild(noteEl);
+    const msgRow = document.createElement("div");
+    msgRow.className = "scenariobuild-condition-row";
+    msgRow.appendChild(labelSpan("セリフ・メッセージ："));
+    const msgInput = document.createElement("input");
+    msgInput.type = "text";
+    msgInput.className = "scenariobuild-title-input";
+    msgInput.placeholder = "空欄でもOK（既定の文言が使われます）";
+    msgInput.value = block.messageText || "";
+    msgInput.onchange = () => { block.messageText = msgInput.value; persist(); };
+    msgRow.appendChild(msgInput);
+    wrap.appendChild(msgRow);
+    const healRow = document.createElement("div");
+    healRow.className = "scenariobuild-condition-row";
+    healRow.appendChild(labelSpan("回復割合（最大HPの、0〜1）："));
+    const healInput = document.createElement("input");
+    healInput.type = "number";
+    healInput.min = "0"; healInput.max = "1"; healInput.step = "0.05";
+    healInput.className = "scenariobuild-condition-input";
+    healInput.value = block.healRatio != null ? block.healRatio : 0.3;
+    healInput.onchange = () => { block.healRatio = Math.max(0, Math.min(1, Number(healInput.value) || 0)); persist(); };
+    healRow.appendChild(healInput);
+    wrap.appendChild(healRow);
+    return wrap;
+  }
+  
+  if (block.type === "bossUseSkill") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note scenariobuild-condition";
+    noteEl.textContent = "ボスの戦闘イベント（演出ブロック）実行中にのみ効果があります。専用スキル（uniqueSkill）と同じ仕組みで技を撃たせます。";
+    wrap.appendChild(noteEl);
+    const skillRow = document.createElement("div");
+    skillRow.className = "scenariobuild-condition-row";
+    skillRow.style.flexWrap = "wrap";
+    skillRow.appendChild(labelSpan("技名："));
+    const skillNameInput = document.createElement("input");
+    skillNameInput.type = "text";
+    skillNameInput.className = "scenariobuild-title-input";
+    skillNameInput.value = block.skillName || "";
+    skillNameInput.onchange = () => { block.skillName = skillNameInput.value; persist(); };
+    skillRow.appendChild(skillNameInput);
+    skillRow.appendChild(labelSpan("威力倍率："));
+    const skillMultInput = document.createElement("input");
+    skillMultInput.type = "number";
+    skillMultInput.step = "0.1";
+    skillMultInput.className = "scenariobuild-condition-input";
+    skillMultInput.value = block.skillMultiplier != null ? block.skillMultiplier : 1.5;
+    skillMultInput.onchange = () => { block.skillMultiplier = Number(skillMultInput.value) || 1; persist(); };
+    skillRow.appendChild(skillMultInput);
+    wrap.appendChild(skillRow);
     return wrap;
   }
   
@@ -10010,6 +10181,74 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
       }
     }
     if (typeof renderStatusHUD === "function") renderStatusHUD();
+    return nextDefaultId;
+  }
+  
+  if (block.type === "bossRemoveInvincibility") {
+    // ★要望対応：ボスの戦闘イベント（演出ブロック）実行中だけセットされるcurrentBossEventEnemy（battle.js）を使う
+    const enemy = (typeof currentBossEventEnemy !== "undefined") ? currentBossEventEnemy : null;
+    if (enemy) {
+      enemy.invincibilityBroken = true;
+      changeSpeaker("");
+      await displayMessage(block.messageText || `${enemy.displayName}の様子が変わった……！`);
+      if (typeof updateBattleHud === "function") updateBattleHud();
+    }
+    return nextDefaultId;
+  }
+  
+  if (block.type === "bossChangeForm") {
+    const enemy = (typeof currentBossEventEnemy !== "undefined") ? currentBossEventEnemy : null;
+    if (enemy) {
+      changeSpeaker("");
+      await displayMessage(block.messageText || `${enemy.displayName}の様子が変わった……！`);
+      if (block.formName) enemy.displayName = block.formName;
+      const atkMultiplier = Number(block.formAtkMultiplier) || 1;
+      enemy.atk = Math.round(enemy.atk * atkMultiplier);
+      const healRatio = Number(block.formHealRatio) || 0;
+      if (healRatio > 0) enemy.hp = Math.min(enemy.maxHp, enemy.hp + Math.round(enemy.maxHp * healRatio));
+      if (typeof updateBattleHud === "function") updateBattleHud();
+    }
+    return nextDefaultId;
+  }
+  
+  if (block.type === "bossSummonAlly") {
+    const enemy = (typeof currentBossEventEnemy !== "undefined") ? currentBossEventEnemy : null;
+    if (enemy) {
+      changeSpeaker(enemy.displayName);
+      await displayMessage(block.messageText || "……仲間を呼んだ！");
+      if (block.allyMonsterKey && typeof MONSTER_MASTER !== "undefined" && MONSTER_MASTER[block.allyMonsterKey] && typeof createEnemyUnit === "function" && typeof battleState !== "undefined" && battleState) {
+        const ally = createEnemyUnit(block.allyMonsterKey, enemy.level || (typeof player !== "undefined" ? player.level : 1));
+        battleState.enemies.push(ally);
+        if (typeof assignDisplayNames === "function") assignDisplayNames(battleState.enemies);
+        if (typeof updateBattleHud === "function") updateBattleHud();
+      }
+    }
+    return nextDefaultId;
+  }
+  
+  if (block.type === "bossHeal") {
+    const enemy = (typeof currentBossEventEnemy !== "undefined") ? currentBossEventEnemy : null;
+    if (enemy) {
+      const healRatio = Number(block.healRatio) || 0.3;
+      const healAmount = Math.round(enemy.maxHp * healRatio);
+      enemy.hp = Math.min(enemy.maxHp, enemy.hp + healAmount);
+      changeSpeaker(enemy.displayName);
+      await displayMessage(block.messageText || `${enemy.displayName}は体力を回復した！（${healAmount}）`);
+      if (typeof updateBattleHud === "function") updateBattleHud();
+    }
+    return nextDefaultId;
+  }
+  
+  if (block.type === "bossUseSkill") {
+    const enemy = (typeof currentBossEventEnemy !== "undefined") ? currentBossEventEnemy : null;
+    if (enemy && typeof executeMonsterUniqueSkill === "function") {
+      await executeMonsterUniqueSkill(enemy, {
+        name: block.skillName || "強力な一撃",
+        flavor: "",
+        multiplier: Number(block.skillMultiplier) || 1.5,
+        kind: block.skillKind || undefined
+      });
+    }
     return nextDefaultId;
   }
   
