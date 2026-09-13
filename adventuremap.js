@@ -109,9 +109,22 @@ async function handleAdventureMapKeyDown(event) {
   }
   if (!current) return;
   
-  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+  // ★要望対応：ノードに紐づくエリア設定（上下左右の移動先を指定できる）を取り出す
+function getAreaConfigForNode(node) {
+  return node.area || node.customArea || null;
+}
+
+if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
     event.preventDefault();
-    const next = findNearestAdventureMapNodeInDirection(current, nodes, event.key);
+    // ★要望対応：エリア編集で「この方向へはこのエリアへ飛ぶ」が指定されていればそれを優先し、
+    //   空欄（未指定）なら今まで通り座標から一番近いエリアを自動で選ぶ
+    const dirField = { ArrowUp: "upTarget", ArrowDown: "downTarget", ArrowLeft: "leftTarget", ArrowRight: "rightTarget" }[event.key];
+    const config = getAreaConfigForNode(current);
+    let next = null;
+    if (config && config[dirField]) {
+      next = nodes.find(n => n.id === config[dirField]);
+    }
+    if (!next) next = findNearestAdventureMapNodeInDirection(current, nodes, event.key);
     if (!next) return;
     adventureMapFocusedNodeId = next.id;
     updateAdventureMapFocusVisual(next.id);

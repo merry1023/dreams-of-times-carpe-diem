@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789268909872,
+  "version": 1789317130920,
   "enemies": [
     {
       "id": "goblin",
@@ -683,7 +683,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "multiplier": 1.5,
         "flavor": "空に向かって不気味に遠吠えすると、鋭い目つきで攻撃してきた！"
       },
-      "level": null,
+      "level": 7,
       "fixedStats": "",
       "builtin": true,
       "statusInflictions": [],
