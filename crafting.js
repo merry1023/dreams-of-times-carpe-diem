@@ -14,11 +14,11 @@ function getEquipmentConsumptionSpecs(recipe) {
   const specs = [];
   if (recipe.mode === "upgrade" && recipe.baseItemId) {
     const master = ITEM_MASTER[recipe.baseItemId];
-    if (master && !isStackable(master.category)) specs.push({ itemId: recipe.baseItemId, count: 1, label: "強化元" });
+    if (master && !isStackable(master)) specs.push({ itemId: recipe.baseItemId, count: 1, label: "強化元" });
   }
   (recipe.materials || []).forEach(mat => {
     const master = ITEM_MASTER[mat.itemId];
-    if (master && !isStackable(master.category)) specs.push({ itemId: mat.itemId, count: mat.count, label: "材料" });
+    if (master && !isStackable(master)) specs.push({ itemId: mat.itemId, count: mat.count, label: "材料" });
   });
   return specs;
 }

@@ -1010,7 +1010,10 @@ function ensureCustomItemsRegistered() {
       // ★武器・防具の「個体差の範囲」。以前はここで反映されておらず、編集しても実際のゲームに一切反映されないバグがあった
       statBonusRange: (item.statBonusRange && typeof item.statBonusRange.min === "number" && typeof item.statBonusRange.max === "number")
         ? item.statBonusRange : existing.statBonusRange,
-      unsellable: !!item.unsellable // ★アイテム管理の「売れない」チェック（town.jsの買取屋で参照する）
+      unsellable: !!item.unsellable, // ★アイテム管理の「売れない」チェック（town.jsの買取屋で参照する）
+      // ★要望対応：インベントリでのスタック可否（装備以外）。未指定ならカテゴリ既定値にお任せするため、
+      //   明示的にtrue/falseが設定されている時だけ上書きする
+      stackable: (typeof item.stackable === "boolean") ? item.stackable : existing.stackable
     };
   });
 }
@@ -4368,7 +4371,8 @@ function getItemManagerConfig() {
       if (!master) return null;
       return {
         name: master.name, category: master.category, description: master.description,
-        rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue, unsellable: !!master.unsellable
+        rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue, unsellable: !!master.unsellable,
+        stackable: master.stackable
       };
     }
   };
@@ -8100,6 +8104,27 @@ function buildRustySeriesEditor(item, persist) {
   return wrap;
 }
 
+// ★要望対応：インベントリで自動的にスタックしてまとめられるアイテムかどうか（装備以外）
+//   未指定の場合は今まで通りカテゴリ既定値（薬草・ポーション・魔物素材・道具＝スタックする）に従う
+function buildItemStackableEditor(item, persist) {
+  const wrap = document.createElement("div");
+  const row = document.createElement("div");
+  row.className = "scenariobuild-condition-row";
+  
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  const categoryDefault = ["herb", "potion", "material", "tool"].includes(item.category);
+  checkbox.checked = (typeof item.stackable === "boolean") ? item.stackable : categoryDefault;
+  checkbox.onchange = () => {
+    item.stackable = checkbox.checked;
+    persist();
+  };
+  row.appendChild(checkbox);
+  row.appendChild(labelSpan("スタックできるアイテムにする（インベントリで自動的に同じアイテムをまとめる）"));
+  wrap.appendChild(row);
+  return wrap;
+}
+
 function buildItemStatBonusRangeEditor(item, persist) {
   const wrap = document.createElement("div");
   const noteEl = document.createElement("p");
@@ -8811,6 +8836,9 @@ function renderEntityDetailEditor(container) {
     if (entity.category === "weapon" || entity.category === "armor") {
       fieldsWrap.appendChild(buildItemStatBonusRangeEditor(entity, persist));
       fieldsWrap.appendChild(buildRustySeriesEditor(entity, persist));
+    } else {
+      // ★要望対応：装備（武器・防具）以外のアイテムに、スタックできるかどうかのチェックを追加
+      fieldsWrap.appendChild(buildItemStackableEditor(entity, persist));
     }
   }
   if (ref.category === "enemies" || ref.category === "bosses") fieldsWrap.appendChild(buildMonsterDetailEditor(entity, persist, ref.category));
