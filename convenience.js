@@ -624,6 +624,23 @@ function renderProgressSummary(container) {
   container.appendChild(buildProgressRow("進行度", `${player.progressPoints || 0}`));
 }
 
+// ★要望対応：話（scenario2.js等）の中の全ブロックから、セリフ・ナレーション・テロップ・選択肢の
+//   文字数を合計する。ifブロックの中身・選択肢の中身も、深さに関わらず数える
+function getChapterTotalCharCount(chapter) {
+  if (!chapter || !Array.isArray(chapter.blocks)) return 0;
+  const flat = (typeof collectScenarioBlocksFlat === "function") ? collectScenarioBlocksFlat(chapter.blocks) : []; // scenariobuild.js
+  let total = 0;
+  flat.forEach(({ block }) => {
+    if (block.type === "dialogue" || block.type === "narration" || block.type === "telop") {
+      total += (block.text || "").length;
+    } else if (block.type === "choice") {
+      total += (block.prompt || "").length;
+      (block.options || []).forEach(opt => { total += (opt.text || "").length; });
+    }
+  });
+  return total;
+}
+
 // ★下部70%：話のリスト。矢印キーでカーソルを動かし、Zキーで選んでいる話のあらすじを全画面表示する
 function renderProgressChapterList(container) {
   container.innerHTML = "";
@@ -653,6 +670,12 @@ function renderProgressChapterList(container) {
     titleEl.className = "progress-panel-chapter-title";
     titleEl.textContent = chapter.isInterlude ? `閑話：${chapter.title}` : chapter.title;
     row.appendChild(titleEl);
+    
+    // ★要望対応：話ごとの総文字数を表示する
+    const charCountEl = document.createElement("span");
+    charCountEl.className = "progress-panel-chapter-charcount";
+    charCountEl.textContent = `${getChapterTotalCharCount(chapter).toLocaleString()}文字`;
+    row.appendChild(charCountEl);
     
     row.onclick = (event) => {
       event.stopPropagation();
