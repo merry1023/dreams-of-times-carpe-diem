@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789108600896,
+  "version": 1789265705330,
   "enemies": [
     {
       "id": "goblin",
@@ -1780,15 +1780,15 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "蘇生草",
       "category": "herb",
       "description": "戦闘不能になった仲間を復活でき、とてつもない回復量を誇る。",
-      "rank": "F",
+      "rank": "A",
       "listedPrice": 16000,
       "trueValue": 16000,
       "unsellable": false,
       "params": {
         "希少度": 10,
-        "回復量": 500,
+        "回復量": 5000,
         "蘇生": true,
-        "SP回復量": 500,
+        "SP回復量": 5000,
         "疲労回復量": 1000,
         "眠気軽減割合": 1
       }
@@ -7263,12 +7263,90 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "className": "陰騎士",
       "skillId": "",
       "name": "陰炎(かげろう)",
-      "description": "",
+      "description": "ぼんやりと浮かぶ陰のような存在感で敵の裏から斬る。また、確実に攻撃力低下を与える。",
       "type": "attack",
-      "element": "無",
-      "spCost": 5,
+      "element": "闇",
+      "spCost": 10,
       "unlockLevel": 4,
       "power": 10,
+      "target": "single",
+      "hitCount": 1,
+      "atkType": "physical",
+      "gauge": "",
+      "cleanse": false,
+      "passiveId": "",
+      "statusEffectKind": "defDown",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 3,
+      "statusEffectPower": 15,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "builtin": false,
+      "blocks": [],
+      "variables": {}
+    },
+    {
+      "id": "skill_1789125376253_2",
+      "className": "陰騎士",
+      "skillId": "",
+      "name": "陰贄の対価(かげにえのたいか)",
+      "description": "自身を戦闘不能にする代わりに仲間全員を万全の状態まで回復させる。",
+      "type": "heal",
+      "element": "闇",
+      "spCost": 5,
+      "unlockLevel": 65,
+      "power": 10,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "physical",
+      "gauge": "",
+      "cleanse": false,
+      "passiveId": "",
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "builtin": false,
+      "randomTarget": false,
+      "wideVariance": false,
+      "partyWide": true,
+      "revives": true,
+      "blocks": [],
+      "variables": {}
+    },
+    {
+      "id": "skill_1789136993486_1",
+      "className": "陰騎士",
+      "skillId": "",
+      "name": "陰癒術(シェイド・ヒーリング)",
+      "description": "傷口を陰で覆い軽く治癒する。",
+      "type": "heal",
+      "element": "闇",
+      "spCost": 35,
+      "unlockLevel": 7,
+      "power": 45,
       "target": "single",
       "hitCount": 1,
       "atkType": "physical",
@@ -7293,6 +7371,144 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "selfBuff2Mode": "add",
       "builtin": false,
       "blocks": [],
+      "variables": {}
+    },
+    {
+      "id": "skill_1789143222139_67",
+      "className": "陰騎士",
+      "skillId": "",
+      "name": "陰憑き",
+      "description": "陰と同化することで自由に動き回れる。また、陰の中にいると姿が見えないので攻撃が当たりにくくなる。",
+      "type": "buff",
+      "element": "闇",
+      "spCost": 30,
+      "unlockLevel": 13,
+      "power": 0,
+      "target": "all",
+      "hitCount": 0,
+      "atkType": "physical",
+      "gauge": "",
+      "cleanse": false,
+      "passiveId": "",
+      "statusEffectKind": "accDown",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 5,
+      "statusEffectPower": 30,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "statusImmune",
+      "selfBuffDuration": 5,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "builtin": false,
+      "blocks": [],
+      "variables": {}
+    },
+    {
+      "id": "skill_1789143623598_71",
+      "className": "陰騎士",
+      "skillId": "",
+      "name": "曠劫の瞬打(こうごうのしゅんだ)",
+      "description": "受けた痛みをかなり長い時間引き延ばす攻撃で叩き斬る。",
+      "type": "attack",
+      "element": "無",
+      "spCost": 35,
+      "unlockLevel": 19,
+      "power": 17,
+      "target": "single",
+      "hitCount": 2,
+      "atkType": "physical",
+      "gauge": "",
+      "cleanse": false,
+      "passiveId": "",
+      "statusEffectKind": "atkDown",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 3,
+      "statusEffectPower": 27,
+      "statusEffect2Kind": "dullPain",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 10,
+      "statusEffect2Power": 15,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "builtin": false,
+      "blocks": [],
+      "variables": {}
+    },
+    {
+      "id": "skill_1789143973617_72",
+      "className": "陰騎士",
+      "skillId": "",
+      "name": "陰操獣・廻獄",
+      "description": "陰から出でし陰操獣を操り複数の敵を屠る技。",
+      "type": "attack",
+      "element": "無",
+      "spCost": 5,
+      "unlockLevel": 84,
+      "power": 67,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "physical",
+      "gauge": "",
+      "cleanse": false,
+      "passiveId": "",
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "builtin": false,
+      "blocks": [
+        {
+          "id": "skillblock_1789176919865_2",
+          "type": "message",
+          "speaker": "コリスギウス",
+          "text": "ゆけ！陰操獣！"
+        },
+        {
+          "id": "skillblock_1789176979029_3",
+          "type": "message",
+          "speaker": "陰操獣",
+          "text": "グァァァアアアッ！！"
+        },
+        {
+          "id": "skillblock_1789177060141_4",
+          "type": "repeat",
+          "countExpression": "10",
+          "bodyBlocks": [
+            {
+              "id": "skillblock_1789177086571_6",
+              "type": "damage",
+              "target": "random",
+              "powerMultiplier": "5.4",
+              "atkType": "magical"
+            }
+          ]
+        }
+      ],
       "variables": {}
     }
   ],
@@ -7666,6 +7882,43 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "鎌",
         "その他",
         "拳"
+      ]
+    },
+    {
+      "id": "companion_1789144270926_76",
+      "name": "コリスギウス",
+      "description": "40過ぎてもDTという激しい自己嫌悪に苛まれ、王国騎士部隊長を辞職した陰騎士(シェイド・ナイト)",
+      "class": "陰騎士",
+      "initialWeaponId": "",
+      "initialArmorId": "",
+      "initialShieldId": "",
+      "baseStats": {
+        "maxHp": 70,
+        "maxSp": 15,
+        "atk": 11,
+        "agi": 5,
+        "skillPower": 7,
+        "luck": 10,
+        "charm": 10
+      },
+      "growthPerLevel": {
+        "maxHp": 6,
+        "maxSp": 4.5,
+        "atk": 1.1,
+        "agi": 0.1,
+        "skillPower": 1,
+        "luck": 0.4,
+        "charm": 0.5
+      },
+      "builtin": false,
+      "allowedWeaponTypes": [
+        "その他",
+        "剣",
+        "大剣",
+        "盾",
+        "拳",
+        "槍",
+        "斧"
       ]
     }
   ],
@@ -8675,7 +8928,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "type": "tavern",
       "name": "カデリク酒場",
       "bgTrack": "",
-      "bgImage": "/img/酒場2.jpg",
+      "bgImage": "/img/酒場.jpg",
       "ownerDialogue": "いらっし◯せー",
       "price": 20,
       "sleepinessRecovery": 40,
@@ -8688,7 +8941,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "type": "tavern",
       "name": "セドレイの酒場",
       "bgTrack": "",
-      "bgImage": "/img/酒場.jpg",
+      "bgImage": "/img/酒場2.jpg",
       "ownerDialogue": "よお兄ちゃん！あんたもすっかり常連さんだな！",
       "price": 20,
       "sleepinessRecovery": 40,
@@ -9038,6 +9291,12 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "field_kaderiku_n3",
       "name": "field_kaderiku_n3",
       "path": "冒険/平原/16. Dachs - 春のきざし",
+      "builtin": true
+    },
+    {
+      "id": "field_custom_area_1788878118939_1",
+      "name": "field_custom_area_1788878118939_1",
+      "path": "/bgm/冒険/草原/月明かりの草原ループ",
       "builtin": true
     }
   ],
@@ -9589,7 +9848,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "facilityIds": [],
       "nonScenarioMessage": "鍵がかかっている。当然入れないようだ。",
-      "visitCountMode": "manual",
+      "visitCountMode": "auto",
       "mapNodeSize": 7
     },
     {
@@ -9616,7 +9875,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "enemyLevel": null,
       "unlockConditions": [
         {
-          "type": "chapterCleared"
+          "type": "chapterCleared",
+          "chapterId": "custom_1788854370721_3"
         }
       ],
       "facilityIds": [
@@ -9664,8 +9924,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "area_1788854418149_4",
       "name": "クスカルファの洞窟",
       "type": "enemy",
-      "x": 158.93808715469748,
-      "y": 11.402597104995564,
+      "x": 164.06450704036183,
+      "y": 10.145609711257613,
       "bgTrack": "field_cave",
       "bgImage": "/img/洞窟.jpg",
       "bossId": "cave_boss",
@@ -9700,7 +9960,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "unlockConditions": [
         {
           "type": "chapterCleared",
-          "chapterId": "custom_1788780588914_1"
+          "chapterId": "custom_1788854370721_3"
         }
       ],
       "facilityIds": [],
@@ -9764,7 +10024,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "unlockConditions": [
         {
           "type": "chapterCleared",
-          "chapterId": "custom_1788780588914_1"
+          "chapterId": "custom_1788854370721_3"
         }
       ],
       "facilityIds": [],

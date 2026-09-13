@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1789043614756,
+  "version": 1789265704777,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -4251,7 +4251,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
     {
       "id": "custom_1788780588914_1",
       "title": "第四話:ウホッ！いい日常…",
-      "cleared": false,
+      "cleared": true,
       "builtin": false,
       "requiredChapterNumber": 5,
       "blocks": [
@@ -4341,7 +4341,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788781448280_19",
           "type": "narration",
-          "text": "ロリルは、俺ら以外対しては拙い丁寧語を使っている。\n俺らは信頼されているってことなのか？"
+          "text": "ロリルは、俺ら以外対しては拙い丁寧語を使っている。\nつまり、俺らは信頼されているってことなのか？"
         },
         {
           "id": "block_1788781578117_20",
@@ -4977,7 +4977,13 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788787650417_67",
           "type": "background",
-          "path": "/img/宿3.jpg"
+          "path": "/img/宿部屋2.png"
+        },
+        {
+          "id": "block_1789123854992_1",
+          "type": "flag",
+          "flagName": "echichi",
+          "mode": "off"
         },
         {
           "id": "block_1788787666147_68",
@@ -5430,7 +5436,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1789006982801_24",
           "type": "dialogue",
           "speaker": "店員",
-          "text": "もしかして、この街で一番の屋敷に住んでいる「ミタメ」氏のことですか？\n余りかかわらないほうが良いと思いますよ...\nなんでも裏の商人や闇取引をしているって「ウワサ」があるんですよ..."
+          "text": "もしかして、この街で一番の屋敷に住んでいる「ミタメ」氏のことですか？\nあまりかかわらないほうが良いと思いますよ...\nなんでも裏の商人と繋がっているだとか、闇取引をしているって「ウワサ」があるんですよ..."
         },
         {
           "id": "block_1789007215813_27",
@@ -5526,22 +5532,580 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
       "objectiveText": "進行度を50にし、12日生き延び、ランクをDにしてセドレイの酒場の店主に話しかけよう！",
       "requiredChapterId": "custom_1788530652975_1",
       "requiredRank": "D",
-      "enabled": false,
-      "synopsis": "セドレイの街で酒場を訪れた治郎たちは、元近衛騎士隊長のコリスギウスと出会う。彼は40歳を過ぎてもDTであることを理由に自暴自棄となり、騎士隊長を辞めていた。治郎と意気投合した翌日、三人は街を散策し、本屋でいろんな本を見て回る。その後、奴隷売買に関わる富豪の情報を得て、奴隷を解放し奴隷商を探すことを決意する。"
+      "enabled": true,
+      "synopsis": "セドレイの街で酒場を訪れた治郎たちは、元近衛騎士隊長のコリスギウスと出会う。彼は40歳を過ぎてもDTであることを理由に自暴自棄となり、騎士隊長を辞めていた。治郎と意気投合した翌日、三人は街を散策し、本屋でいろんな本を見て回る。その後、奴隷売買に関わる富豪の情報を得て、奴隷を解放し奴隷商を探すことを決意する。",
+      "started": true
     },
     {
       "id": "custom_1788854370721_3",
       "title": "第五話:紅の愚豚",
-      "cleared": false,
+      "cleared": true,
       "builtin": false,
       "requiredChapterNumber": 6,
-      "blocks": [],
+      "blocks": [
+        {
+          "id": "block_1789139331917_3",
+          "type": "background",
+          "path": "/img/酒場2.jpg"
+        },
+        {
+          "id": "block_1789125124614_1",
+          "type": "telop",
+          "text": "俺とツァナ、ロリルの三人は酒場にて明日、富豪「ミタメ」の屋敷を襲撃するための作戦を立てていた。"
+        },
+        {
+          "id": "block_1789137148610_2",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "...それで、どうやって富豪に復讐するつもりなの？"
+        },
+        {
+          "id": "block_1789139439718_4",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "フッフッフッ....\nこれを見たまえ！"
+        },
+        {
+          "id": "block_1789139468546_5",
+          "type": "narration",
+          "text": "とあるポスターをテーブルに勢いよく叩きつけた。"
+        },
+        {
+          "id": "block_1789139529588_6",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "...これは..."
+        },
+        {
+          "id": "block_1789139538962_7",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "私...？"
+        },
+        {
+          "id": "block_1789139622861_9",
+          "type": "narration",
+          "text": "その紙にはロリルの顔が大きく写されていた。\n「捜索願：ローブを着た少女、名はロリル。」報奨金300000陳\nと書かれている。"
+        },
+        {
+          "id": "block_1789139547168_8",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "そう！街を散策しているときに見つけたんだが、実はミタメとかいう富豪、ロリルの捜索ポスターを店の壁とかに貼り付けてやがったんだ。"
+        },
+        {
+          "id": "block_1789139734383_10",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "つまりどうするの？"
+        },
+        {
+          "id": "block_1789139745364_11",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "これを逆手に取るんだ。"
+        },
+        {
+          "id": "block_1789139763665_13",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "なるほど..."
+        },
+        {
+          "id": "block_1789139775120_14",
+          "type": "narration",
+          "text": "さすが、感の良いガk...じゃなくてロリルが気づいたようだ。"
+        },
+        {
+          "id": "block_1789139760156_12",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "俺達がロリルを捕まえてミタメに渡しに行くっていう体で屋敷に侵入するんだよ。\nそうすれば怪しまれないし、直接ミタメと会える確率が高い。"
+        },
+        {
+          "id": "block_1789139949486_16",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "なるほどそういうことね。\nたしかにそれが最適みたいね。"
+        },
+        {
+          "id": "block_1789139920592_15",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "ただし、そこからが問題なんだ..."
+        },
+        {
+          "id": "block_1789140003108_17",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "問題...？"
+        },
+        {
+          "id": "block_1789140011417_18",
+          "type": "narration",
+          "text": "そう、問題なのだ。"
+        },
+        {
+          "id": "block_1789140021471_19",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "ロリルを助けてくれたという\"奴隷のお姉さん\"がどうなっているかだ。\n仮に生きていたとして、どうやって救出するかなんだ。"
+        },
+        {
+          "id": "block_1789140074382_20",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "そうね...\nそこが難しいところね。\nミタメを脅して吐かせるってのは駄目なの？"
+        },
+        {
+          "id": "block_1789140130365_22",
+          "type": "narration",
+          "text": "たしかにそれもアリだ、しかし。"
+        },
+        {
+          "id": "block_1789140128277_21",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "ああ、それも考えはしたんだが、脅して吐かせる間に奴隷のお姉さんに危険が及んだらまずい。"
+        },
+        {
+          "id": "block_1789140240265_23",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "た、たしかに、、、"
+        },
+        {
+          "id": "block_1789140296053_24",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "そうだロリル、奴隷のお姉さんについてなにか知っていることはあるか？たとえば名前とか。"
+        },
+        {
+          "id": "block_1789140326080_25",
+          "type": "narration",
+          "text": "奴隷のお姉さんを探す以前にどういう人なのかを知っておかないといけないので、聞いてみる。"
+        },
+        {
+          "id": "block_1789141264798_26",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "名前は知らない。\nお互いに言ってなかったし、前の主には名前で呼ばれてなかったから。"
+        },
+        {
+          "id": "block_1789141361377_27",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "なら、どういうふうに呼ばれていたんだ？"
+        },
+        {
+          "id": "block_1789141388066_29",
+          "type": "narration",
+          "text": "ロリルは少し怒ったような顔で話してくれた。"
+        },
+        {
+          "id": "block_1789141383222_28",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "私のことは「ロリメス」っていってた。\nお姉さんには「はらませにゃんこ」って。"
+        },
+        {
+          "id": "block_1789141521302_30",
+          "type": "narration",
+          "text": "うそだろ。\n典型的なクソカスじゃねーか。\nなんだよ「はらませにゃんこ」って。フリーフォントか！！"
+        },
+        {
+          "id": "block_1789141688756_31",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "酷いわね...\nいくら奴隷だからって、人の受けて良い扱いではないわ。"
+        },
+        {
+          "id": "block_1789141883850_37",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "あ、あと、身長は結構高くて、治郎と同じくらい。\nそして、胸がおっきい。"
+        },
+        {
+          "id": "block_1789141942417_38",
+          "type": "narration",
+          "text": "まじか。俺、172cmだからまあまああるな...\nん？でっかいのか。そうか。なるほど。ﾑﾎﾎ"
+        },
+        {
+          "id": "block_1789142129217_40",
+          "type": "narration",
+          "text": "俺の顔を見てツァナが少し睨んできたように見えた。"
+        },
+        {
+          "id": "block_1789141746939_32",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "それでね。\nお姉さんはいつも優しくて私のことをいつも気遣ってくれた。"
+        },
+        {
+          "id": "block_1789141990579_39",
+          "type": "narration",
+          "text": "すこし嬉しそうに話すロリル。"
+        },
+        {
+          "id": "block_1789141799874_33",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "....そうか。\n絶対に俺がお姉さんを助けるからな。"
+        },
+        {
+          "id": "block_1789141831278_34",
+          "type": "narration",
+          "text": "そう言うとロリルは安心したように身を寄せてきた。"
+        },
+        {
+          "id": "block_1789141857789_36",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "さて、どうしたものか。\n結局お姉さんの特徴は分かったものの、肝心な「確実に助ける作戦」が思いつかない。"
+        },
+        {
+          "id": "block_1789141853160_35",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "困ったわね...\nせめてもう一人いれば、、、"
+        },
+        {
+          "id": "block_1789142179138_41",
+          "type": "narration",
+          "text": "すると、後ろの方から誰かが近づいてくる気配がした。\n気になって後ろを振り向いてみる。"
+        },
+        {
+          "id": "block_1789142231731_42",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "よお。\n治郎。"
+        },
+        {
+          "id": "block_1789142243789_43",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "あ、兄貴！"
+        },
+        {
+          "id": "block_1789142275480_45",
+          "type": "narration",
+          "text": "驚くことに後ろの気配の正体は先日知り合った元王国直属部隊長の\"シ・コリスギウス\"だった。"
+        },
+        {
+          "id": "block_1789142271171_44",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "さっきの話、聞いてたぞ。\nその作戦について、いい案がある。"
+        },
+        {
+          "id": "block_1789142393655_46",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "本当なの？\n誰か知らないけど、聞かせて。"
+        },
+        {
+          "id": "block_1789142418076_47",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "ああ、二人には言ってなかったな。\nつい先日知り合った「シ・コリスギウス」さんだ。元王国騎士部隊長だったらしい。"
+        },
+        {
+          "id": "block_1789142487227_49",
+          "type": "narration",
+          "text": "それを聞いた途端、ツァナは思い出したように言う。"
+        },
+        {
+          "id": "block_1789142466624_48",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "聞いたことがあるわ！\nつい最近突然隊長をやめて国中が大騒ぎになったっていう..."
+        },
+        {
+          "id": "block_1789142594088_50",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "知ってるのか。"
+        },
+        {
+          "id": "block_1789142602090_51",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "当たり前よ。\nかなりの大国だから月刊魔法記事に大々的に取り上げられてたわ。"
+        },
+        {
+          "id": "block_1789142666572_52",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "どうしていきなりやめたりしたの？"
+        },
+        {
+          "id": "block_1789142685725_53",
+          "type": "narration",
+          "text": "うう、それは禁句な気がする..."
+        },
+        {
+          "id": "block_1789142800275_56",
+          "type": "narration",
+          "text": "するとやはりコリスギウスは頭を抱えて叫んだ。"
+        },
+        {
+          "id": "block_1789142704629_54",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "ああああ！\n思い出すだけでも嫌になる...！！"
+        },
+        {
+          "id": "block_1789142737089_55",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "えっ！？\nお、落ち着いて！\n聞いてはいけないことを聞いたようね...謝るわ..."
+        },
+        {
+          "id": "block_1789142841041_57",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "す、すまなかった、、、\nつい取り乱してしまったよ...."
+        },
+        {
+          "id": "block_1789142871090_58",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "そ、それで、その奴隷のお姉さんの救出についてだが。"
+        },
+        {
+          "id": "block_1789142896741_59",
+          "type": "narration",
+          "text": "やっと本題に入れる。"
+        },
+        {
+          "id": "block_1789142906355_60",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "俺に任せてはくれないか。"
+        },
+        {
+          "id": "block_1789142919514_61",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "え！いいんですか？"
+        },
+        {
+          "id": "block_1789143002848_62",
+          "type": "narration",
+          "text": "反射的な速度でロリルが立ち上がって言う。\nあまり知らない人に対しては丁寧語なんだよなこいつ..."
+        },
+        {
+          "id": "block_1789143061555_63",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "ちょっとまって、いきなりそんな話、都合が良すぎない？"
+        },
+        {
+          "id": "block_1789143083081_64",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "まぁ、そう思うのも無理ないか。\n俺は隊長を辞めてからずっと底辺で生活してきた。\nこれを機にそんな俺から脱却したいんだよ。"
+        },
+        {
+          "id": "block_1789143191482_65",
+          "type": "narration",
+          "text": "するとおもむろに俺の方を組んできた。"
+        },
+        {
+          "id": "block_1789143220086_66",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "治郎とは良い友人になれそうだしな...！"
+        },
+        {
+          "id": "block_1789143247622_68",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "どうだ？俺を作戦に入れてはくれないか？"
+        },
+        {
+          "id": "block_1789143274860_69",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "こちらとしても助かります！\nぜひ俺達に協力してください！"
+        },
+        {
+          "id": "block_1789143335885_70",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "そうね。とりあえず一人増えたのなら出来ることも広がるわ。"
+        },
+        {
+          "id": "block_1789144227483_74",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "ぐっどさいん👍️"
+        },
+        {
+          "id": "block_1789144756168_80",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "よろしく。私はケツァナよ。ツァナと呼んで。"
+        },
+        {
+          "id": "block_1789144773985_81",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "私はロリル。治郎の奴隷。よろしく。"
+        },
+        {
+          "id": "block_1789144219717_73",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "よろしくな。"
+        },
+        {
+          "id": "block_1789144813792_82",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "..."
+        },
+        {
+          "id": "block_1789144820708_83",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "え。こいつの奴隷だったの！？"
+        },
+        {
+          "id": "block_1789144845300_84",
+          "type": "telop",
+          "text": "数分後、事情を説明しやっと本題へ。"
+        },
+        {
+          "id": "block_1789144549709_77",
+          "type": "addcompanion",
+          "companionId": "companion_1789144270926_76",
+          "initialLevel": 25
+        },
+        {
+          "id": "block_1789144665242_78",
+          "type": "narration",
+          "text": "コリスギウスが作戦の内容を俺達に提案してくれた。"
+        },
+        {
+          "id": "block_1789144711991_79",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "つまりこうだ。\n君たちがミタメにロリルを引き渡す直前に、なんとか話を繋いで時間を稼いでくれ。\nその間に俺が能力を使って奴隷のお姉さんを探す。"
+        },
+        {
+          "id": "block_1789144930120_85",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "そして奴隷のお姉さんを保護して合流した後、ミタメに必要な情報を吐かせて殺す。というわけですね。"
+        },
+        {
+          "id": "block_1789145003641_86",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "良いわね。それで行きましょう。"
+        },
+        {
+          "id": "block_1789145110423_87",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "よし、じゃあ準備して明日実行だ...！"
+        },
+        {
+          "id": "block_1789145142352_88",
+          "type": "narration",
+          "text": "おー！\nと、活の入る声で全員で返事をする。いよいよ明日は決戦だ。"
+        },
+        {
+          "id": "block_1789145214295_91",
+          "type": "background",
+          "path": "/img/豪邸.jpg"
+        },
+        {
+          "id": "block_1789145197099_89",
+          "type": "telop",
+          "text": "翌日"
+        },
+        {
+          "id": "block_1789145240395_92",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "ここが、ミタメの屋敷か。\nかなり大きいな..."
+        },
+        {
+          "id": "block_1789145281763_93",
+          "type": "narration",
+          "text": "門の警備に話しかける。"
+        },
+        {
+          "id": "block_1789145295153_94",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "ポスターを見て、ロリルを捕まえて来たのですが、ここがミタメ氏の屋敷で合っていますか？"
+        },
+        {
+          "id": "block_1789145389956_96",
+          "type": "narration",
+          "text": "二人の警備がこちらを鋭い目つきで見てくる。"
+        },
+        {
+          "id": "block_1789145387985_95",
+          "type": "dialogue",
+          "speaker": "門番A",
+          "text": "おぉ。主人の奴隷を連れ戻してくれたのであるな。\n感謝を申し上げる。\n奴隷の身柄引き渡しのため、主人に確認を取ってまいる。"
+        },
+        {
+          "id": "block_1789145538543_97",
+          "type": "narration",
+          "text": "数分後、警備がてくてくと戻ってきた。"
+        },
+        {
+          "id": "block_1789145562808_98",
+          "type": "dialogue",
+          "speaker": "門番A",
+          "text": "主人が通せとのことだ。\nくれぐれも無礼がないように。"
+        },
+        {
+          "id": "block_1789145720675_99",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "ナイスね治郎！"
+        },
+        {
+          "id": "block_1789145748073_100",
+          "type": "telop",
+          "text": "長い廊下を歩く。\n小汚いい豚のような外見の身なりだけはやたらと清潔な主人が大部屋のソファに座って待っていた。"
+        },
+        {
+          "id": "block_1789145856963_101",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "私の大切なロリルを見つけてくれたのだな。\n礼を言うぞ。さて、私に引き渡せ。"
+        },
+        {
+          "id": "block_1789145943685_104",
+          "type": "narration",
+          "text": "ここでどれだけ時間を稼げるかが勝負だ。\nお姉さんを探しに行ってくれとコリスギウスに合図を送る。"
+        },
+        {
+          "id": "block_1789145938533_103",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "了解。"
+        },
+        {
+          "id": "block_1789146077074_106",
+          "type": "narration",
+          "text": "するとコリスギウスの身体が陰に消えていった。"
+        }
+      ],
       "enabled": false,
       "requiredChapterId": "custom_1788780588914_1",
       "requiredRank": null,
       "requiredProgress": null,
       "requiredDays": null,
-      "requiredFlag": null
+      "requiredFlag": null,
+      "isInterlude": false
     }
   ],
   "characters": [
@@ -5645,6 +6209,12 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
       "name": "コリスギウス",
       "note": "",
       "kind": "main"
+    },
+    {
+      "id": "char_1789145866073_102",
+      "name": "ミタメ",
+      "note": "",
+      "kind": "chapter"
     }
   ],
   "flagDefs": [
@@ -5653,6 +6223,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
       "description": ""
     }
   ],
+  "variableDefs": [],
   "deletedBuiltinIds": {
     "chapters": [],
     "characters": [
