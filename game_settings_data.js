@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789268559515,
+  "version": 1789268909872,
   "enemies": [
     {
       "id": "goblin",
@@ -1454,7 +1454,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "params": {
         "希少度": 3,
         "用途": "強化素材"
-      }
+      },
+      "stackable": true
     },
     {
       "id": "item_1787883570169_6",
@@ -1466,7 +1467,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "trueValue": 30,
       "params": {
         "希少度": 4
-      }
+      },
+      "stackable": true
     },
     {
       "id": "item_1788073451922_3",
@@ -1500,7 +1502,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "params": {
         "希少度": 4,
         "用途": "売ろうぜ"
-      }
+      },
+      "stackable": true
     },
     {
       "id": "item_1788135780001_5",
@@ -1514,7 +1517,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "params": {
         "希少度": 5,
         "用途": "売ってくれ。"
-      }
+      },
+      "stackable": true
     },
     {
       "id": "item_1788268842982_4",
@@ -1566,7 +1570,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "希少度": 2,
         "用途": "素材",
         "？？？": "ちゃんと着けようね。"
-      }
+      },
+      "stackable": true
     },
     {
       "id": "item_1788350175210_27",
@@ -1594,7 +1599,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "params": {
         "希少度": 3,
         "用途": "素材"
-      }
+      },
+      "stackable": true
     },
     {
       "id": "item_1788350425965_30",
@@ -1730,7 +1736,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "params": {
         "希少度": 7,
         "用途": "素材"
-      }
+      },
+      "stackable": true
     },
     {
       "id": "item_1788879332369_4",
