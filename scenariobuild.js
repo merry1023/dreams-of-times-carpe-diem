@@ -55,6 +55,7 @@ let scenarioBuildEditingIfRef = null; // ★ifブロックの専用全画面エ�
 let scenarioBuildEditingSkillIfBlockId = null; // ★特殊技のifブロック専用全画面エディタで、今編集中のブロックid（対象の技はscenarioBuildEditingSkillIdから分かる）
 let scenarioBuildEditingSkillIfBranch = null; // ★特殊技ifブロックの中身エディタで、今"true"/"false"のどちらの中身を編集中か
 let scenarioBuildEditingEnemyFlavorRef = null; // ★見逃した/倒した時の演出専用全画面エディタで、今どの敵の何を編集中か（{ entityId, key, label }）
+let scenarioBuildEditingBossEventRef = null; // ★要望対応：ボスの戦闘イベント（演出ブロック）専用全画面エディタで、今どのボスのどのイベントを編集中か（{ bossId, eventId }）
 let scenarioBuildInsertMenuIndex = null; // ★ブロック挿入用の「＋」を今どの位置で開いているか（nullなら閉じている）
 let scenarioBuildEditingStatusRef = null; // ★状態管理の専用全画面エディタで、今どの状態異常/状態強化を編集中か（{ category: "statusAilments"|"statusBuffs", id }）
 let scenarioBuildEditingSkillId = null; // ★特殊スキル編集（ブロック）の専用全画面エディタで、今どの技を編集中か
@@ -1328,6 +1329,10 @@ function renderScenarioBuildMain() {
     renderSkillIfBranchEditor(container);
   } else if (scenarioBuildMainView === "enemyFlavorEditor") {
     renderEnemyFlavorEditor(container);
+  } else if (scenarioBuildMainView === "bossEventListEditor") {
+    renderBossEventListEditor(container);
+  } else if (scenarioBuildMainView === "bossEventBlockEditor") {
+    renderBossEventBlockEditor(container);
   } else if (scenarioBuildMainView === "entityEditor") {
     renderEntityDetailEditor(container);
   } else if (scenarioBuildMainView === "statuses") {
@@ -2112,6 +2117,18 @@ function resolveIfEditorContext(ref) {
       }
     }
   }
+  if (ref.chapterId.indexOf("bossevent::") === 0) {
+    // ★要望対応：ボスの戦闘イベント（演出ブロック）内のifブロックも、専用画面で編集できるようにする
+    const parts = ref.chapterId.split("::");
+    const boss = (scenarioProject.bosses || []).find(b => b.id === parts[1]);
+    const event = boss && Array.isArray(boss.battleEvents) ? boss.battleEvents.find(e => e.id === parts[2]) : null;
+    if (event) {
+      if (!Array.isArray(event.blocks)) event.blocks = [];
+      const fakeChapter = { id: ref.chapterId, blocks: event.blocks };
+      const block = findBlockDeepInChapter(fakeChapter, ref.blockId);
+      if (block) return { chapter: fakeChapter, block };
+    }
+  }
   return null;
 }
 
@@ -2699,7 +2716,7 @@ function dropScenarioBlock(chapter, fromIndex, toIndex) {
 function buildIfConditionEditorFields(chapter, block, wrap, persist) {
     const noteEl = document.createElement("p");
     noteEl.className = "devmode-note scenariobuild-condition";
-    noteEl.textContent = "条件を左右で比較します。左右それぞれ「フラグ／変数（数値）／主人公のレベル／体力／職業／指定アイテムを持っているか／数字／文字列／t-f」から選べます。「&」は全ての条件を満たす、「Ⅱ」はいずれか1つでも満たせば成立にする、という切り替えです。各条件の「！」は、その条件だけを反転（満たさない時に成立）させます。";
+    noteEl.textContent = "条件を左右で比較します。左右それぞれ「フラグ／変数（数値）／主人公のレベル／体力／SP／ボスの体力(%)／経過ターン数／職業／指定アイテムを持っているか／数字／文字列／t-f」から選べます。「&」は全ての条件を満たす、「Ⅱ」はいずれか1つでも満たせば成立にする、という切り替えです。各条件の「！」は、その条件だけを反転（満たさない時に成立）させます。「ボスの体力」「経過ターン数」は戦闘中（ボスの戦闘イベント演出ブロック）でのみ意味を持ち、戦闘外では0として扱われます。";
     wrap.appendChild(noteEl);
     
     if (!Array.isArray(block.conditions)) block.conditions = [];
@@ -2721,7 +2738,8 @@ function buildIfConditionEditorFields(chapter, block, wrap, persist) {
     wrap.appendChild(combineRow);
     
     const IF_VALUE_KINDS = {
-      flag: "フラグ", variable: "変数（数値）", level: "主人公のレベル", hp: "主人公の体力", class: "主人公の職業",
+      flag: "フラグ", variable: "変数（数値）", level: "主人公のレベル", hp: "主人公の体力", sp: "主人公のSP", class: "主人公の職業",
+      bossHp: "ボスの体力（%、戦闘中のみ）", turnCount: "経過ターン数（戦闘中のみ）",
       hasItem: "指定アイテムを持っているか", random: "乱数（0〜100、判定のたびに引き直す）", number: "数字", string: "文字列", bool: "t/f"
     };
     const IF_OPERATORS = { "=": "=（等しい）", "!=": "≠（等しくない）", "<": "<", ">": ">", "<=": "<=", ">=": ">=" };
@@ -2741,8 +2759,8 @@ function buildIfConditionEditorFields(chapter, block, wrap, persist) {
       kindSelect.onchange = () => { cond[kindKey] = kindSelect.value; persist(); renderScenarioBuildPanel(); };
       frag.appendChild(kindSelect);
       
-      if (cond[kindKey] === "level" || cond[kindKey] === "hp" || cond[kindKey] === "random") {
-        // ★プレイヤーの今の値・乱数を自動的に見に行くので、入力欄自体が不要（比較する側の数字だけ指定すればよい）
+      if (cond[kindKey] === "level" || cond[kindKey] === "hp" || cond[kindKey] === "sp" || cond[kindKey] === "random" || cond[kindKey] === "bossHp" || cond[kindKey] === "turnCount") {
+        // ★プレイヤー/ボスの今の値・乱数・ターン数を自動的に見に行くので、入力欄自体が不要（比較する側の数字だけ指定すればよい）
         const infoSpan = document.createElement("span");
         infoSpan.className = "devmode-note";
         infoSpan.textContent = cond[kindKey] === "random" ? "（毎回0〜100の乱数）" : "（現在値を自動参照）";
@@ -4162,7 +4180,7 @@ function ensureCustomFameThresholdsRegistered() {
 
 function getBossManagerConfig() {
   return {
-    note: "既にいるボス（boss.js）も一覧に出ており、直接編集・削除できます（実際のゲームデータそのものが変わります）。戦闘ブロックの魔物IDにこのIDを入れると、ボス扱い（専用BGM込み）でテストプレイできます。BGM欄はBGM設定タブで登録した曲名、または直接ファイルパスを貼り付けられます。「レベル」を設定すると、エリアの固定レベル設定や主人公のレベルに関わらず、必ずそのレベルで出現します（空欄ならエリア設定または主人公基準）。「ステータスを固定する」をONにすると、レベルによる自動計算はせず、HP・攻撃力・経験値をここで入力した数値そのままで戦えます（レベルは表示だけに使われます）。「無敵解除アイテムID」を指定すると、そのボスは最初ダメージが一切通らない無敵状態になり、戦闘中にプレイヤーがそのアイテムを実際に「使う」まで攻撃が効きません（空欄なら今まで通り最初からダメージが通ります。持っているだけでは解除されず、道具コマンドから使う必要があります）。詳細設定の一番下にある「戦闘イベント」では、ボスの体力/主人公のHP・SP/経過ターン数を条件に、戦闘中セリフ・無敵解除・第2形態・仲間を呼ぶ・回復・特定の技、を組み合わせて演出できます（1つのイベントは戦闘中1回だけ発火します）。",
+    note: "既にいるボス（boss.js）も一覧に出ており、直接編集・削除できます（実際のゲームデータそのものが変わります）。戦闘ブロックの魔物IDにこのIDを入れると、ボス扱い（専用BGM込み）でテストプレイできます。BGM欄はBGM設定タブで登録した曲名、または直接ファイルパスを貼り付けられます。「レベル」を設定すると、エリアの固定レベル設定や主人公のレベルに関わらず、必ずそのレベルで出現します（空欄ならエリア設定または主人公基準）。「ステータスを固定する」をONにすると、レベルによる自動計算はせず、HP・攻撃力・経験値をここで入力した数値そのままで戦えます（レベルは表示だけに使われます）。「無敵解除アイテムID」を指定すると、そのボスは最初ダメージが一切通らない無敵状態になり、戦闘中にプレイヤーがそのアイテムを実際に「使う」まで攻撃が効きません（空欄なら今まで通り最初からダメージが通ります。持っているだけでは解除されず、道具コマンドから使う必要があります）。詳細設定の「戦闘イベント」欄の「編集」ボタンから開く専用画面では、ボスの体力/主人公のHP・SP/経過ターン数を条件に、戦闘中セリフ・無敵解除・第2形態・仲間を呼ぶ・回復・特定の技、または「演出ブロックで自由に組む」（if・変数操作・パラメータ変更なども使える、話のブロックと同じ仕組み）を組み合わせて演出できます（1つのイベントは戦闘中1回だけ発火します）。",
     category: "bosses",
     useDetailEditor: true,
     showLevelPreview: true,
@@ -8323,7 +8341,26 @@ function buildMonsterDetailEditor(entity, persist, category) {
   wrap.appendChild(buildStatusResistanceEditor(entity, persist)); // ★要望対応：この魔物自身の、状態異常への耐性・無効
   
   // ★戦闘イベント（ifブロック的な演出・行動）は、ボス専用の機能（要望対応）
-  if (category === "bosses") wrap.appendChild(buildBossBattleEventEditor(entity, persist));
+  if (category === "bosses") {
+    const eventRow = document.createElement("div");
+    eventRow.className = "scenariobuild-condition-row";
+    if (!Array.isArray(entity.battleEvents)) entity.battleEvents = [];
+    const summaryEl = document.createElement("span");
+    summaryEl.className = "devmode-note";
+    summaryEl.textContent = entity.battleEvents.length > 0 ? `戦闘イベント：${entity.battleEvents.length}件設定中` : "戦闘イベント：未設定";
+    eventRow.appendChild(summaryEl);
+    const eventEditBtn = document.createElement("button");
+    eventEditBtn.className = "devmode-btn";
+    eventEditBtn.textContent = "編集";
+    eventEditBtn.onclick = (evt) => {
+      evt.stopPropagation();
+      scenarioBuildEditingBossEventRef = { bossId: entity.id };
+      scenarioBuildMainView = "bossEventListEditor";
+      renderScenarioBuildPanel();
+    };
+    eventRow.appendChild(eventEditBtn);
+    wrap.appendChild(eventRow);
+  }
   
   return wrap;
 }
@@ -8499,7 +8536,8 @@ const BOSS_EVENT_ACTION_OPTIONS = [
   { value: "changeForm", label: "第2形態になる（名前変更・攻撃力アップ・HP回復）" },
   { value: "summonAlly", label: "仲間を呼ぶ（指定した魔物が1体増援参戦する）" },
   { value: "heal", label: "自分のHPを回復する" },
-  { value: "useSkill", label: "特定の技を撃つ" }
+  { value: "useSkill", label: "特定の技を撃つ" },
+  { value: "blocks", label: "演出ブロックで自由に組む（セリフ・演出・if・変数操作・パラメータ変更など）" }
 ];
 
 // ★ボスの「戦闘イベント」：ifブロック的に、ボス/主人公のHP割合やターン数を条件に、
@@ -8654,6 +8692,38 @@ function buildBossBattleEventEditor(entity, persist) {
       skillMultInput.onchange = () => { event.skillMultiplier = Number(skillMultInput.value) || 1; persist(); };
       skillRow.appendChild(skillMultInput);
       box.appendChild(skillRow);
+      
+    } else if (event.action === "blocks") {
+      // ★要望対応：ボスのHP割合・経過ターン数などをifブロックで参照しながら、話のブロックと同じ仕組みで
+      //   セリフ・演出・変数操作・パラメータ変更などを自由に組み合わせられる
+      if (!Array.isArray(event.blocks)) event.blocks = [];
+      const blockSummaryRow = document.createElement("div");
+      blockSummaryRow.className = "scenariobuild-condition-row";
+      const blockSummary = document.createElement("span");
+      blockSummary.className = "devmode-note";
+      blockSummary.textContent = event.blocks.length > 0 ? `演出ブロック：${event.blocks.length}個を設定中` : "演出ブロック：未設定";
+      blockSummaryRow.appendChild(blockSummary);
+      const blockEditBtn = document.createElement("button");
+      blockEditBtn.className = "devmode-btn";
+      blockEditBtn.textContent = "編集";
+      blockEditBtn.onclick = (evt) => {
+        evt.stopPropagation();
+        scenarioBuildEditingBossEventRef = { bossId: entity.id, eventId: event.id };
+        scenarioBuildMainView = "bossEventBlockEditor";
+        renderScenarioBuildPanel();
+      };
+      blockSummaryRow.appendChild(blockEditBtn);
+      box.appendChild(blockSummaryRow);
+      
+      const consumeLabel = document.createElement("label");
+      consumeLabel.className = "scenariobuild-inline-checkbox";
+      const consumeCheckbox = document.createElement("input");
+      consumeCheckbox.type = "checkbox";
+      consumeCheckbox.checked = event.blocksConsumesTurn === true;
+      consumeCheckbox.onchange = () => { event.blocksConsumesTurn = consumeCheckbox.checked; persist(); };
+      consumeLabel.appendChild(consumeCheckbox);
+      consumeLabel.append(" この演出の後、通常攻撃はしない（この演出だけでこのターンを終える）");
+      box.appendChild(consumeLabel);
     }
     
     const removeBtn = document.createElement("button");
@@ -8685,6 +8755,86 @@ function buildBossBattleEventEditor(entity, persist) {
   wrap.appendChild(addBtn);
   
   return wrap;
+}
+
+// ===== メイン画面：ボスの戦闘イベント一覧エディタ（専用全画面。scenarioBuildMainView === "bossEventListEditor"） =====
+// ★要望対応：以前はボスの詳細設定の中に直接ずらっと表示されていたが、話編集・特殊スキル編集と同じように
+//   「編集」ボタンから専用の全画面に移動できるようにした
+function renderBossEventListEditor(container) {
+  const ref = scenarioBuildEditingBossEventRef;
+  const boss = ref && (scenarioProject.bosses || []).find(b => b.id === ref.bossId);
+  
+  const backBtn = document.createElement("button");
+  backBtn.className = "devmode-btn";
+  backBtn.textContent = "← ボス編集に戻る";
+  backBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioBuildMainView = "entityEditor";
+    scenarioBuildEditingBossEventRef = null;
+    renderScenarioBuildPanel();
+  };
+  container.appendChild(backBtn);
+  
+  if (!boss) {
+    scenarioBuildMainView = "editor";
+    scenarioBuildSubView = "bosses";
+    scenarioBuildEditingBossEventRef = null;
+    renderScenarioBuildPanel();
+    return;
+  }
+  
+  const titleEl = document.createElement("h3");
+  titleEl.textContent = `「${boss.name || "（名称未設定）"}」の戦闘イベント`;
+  container.appendChild(titleEl);
+  
+  container.appendChild(buildBossBattleEventEditor(boss, () => { markScenarioBuildDirty(); ensureCustomMonstersRegistered(); }));
+}
+
+// ===== メイン画面：ボスの戦闘イベント演出ブロックエディタ（専用全画面。scenarioBuildMainView === "bossEventBlockEditor"） =====
+function renderBossEventBlockEditor(container) {
+  const ref = scenarioBuildEditingBossEventRef;
+  const boss = ref && (scenarioProject.bosses || []).find(b => b.id === ref.bossId);
+  const event = boss && Array.isArray(boss.battleEvents) ? boss.battleEvents.find(e => e.id === ref.eventId) : null;
+  
+  const backBtn = document.createElement("button");
+  backBtn.className = "devmode-btn";
+  backBtn.textContent = "← 戦闘イベント一覧に戻る";
+  backBtn.onclick = (evt) => {
+    evt.stopPropagation();
+    scenarioBuildMainView = "bossEventListEditor";
+    scenarioBuildEditingBossEventRef = { bossId: ref.bossId };
+    renderScenarioBuildPanel();
+  };
+  container.appendChild(backBtn);
+  
+  if (!boss || !event) {
+    scenarioBuildMainView = "editor";
+    scenarioBuildSubView = "bosses";
+    scenarioBuildEditingBossEventRef = null;
+    renderScenarioBuildPanel();
+    return;
+  }
+  if (!Array.isArray(event.blocks)) event.blocks = [];
+  
+  const titleEl = document.createElement("h3");
+  titleEl.textContent = `「${boss.name || "（名称未設定）"}」の演出ブロック`;
+  container.appendChild(titleEl);
+  
+  const introEl = document.createElement("p");
+  introEl.className = "devmode-note";
+  introEl.textContent = "話のブロックと同じように、セリフ・演出・if（ボスの体力％・経過ターン数・変数なども参照可）・変数操作・パラメータ変更などを自由に組み立てられます。";
+  container.appendChild(introEl);
+  
+  const fakeChapter = { id: "bossevent::" + boss.id + "::" + event.id, blocks: event.blocks };
+  
+  const listEl = document.createElement("div");
+  listEl.className = "scenariobuild-block-list";
+  listEl.appendChild(buildBlockInsertSlot(fakeChapter, 0));
+  event.blocks.forEach((b, index) => {
+    listEl.appendChild(buildScenarioBlockRow(fakeChapter, b, index));
+    listEl.appendChild(buildBlockInsertSlot(fakeChapter, index + 1));
+  });
+  container.appendChild(listEl);
 }
 
 // ★カテゴリ名から、対応するgetXManagerConfig()を呼び出す（詳細編集画面で使う）
@@ -9328,6 +9478,16 @@ function resolveIfBlockValue(kind, rawValue) {
   }
   if (kind === "level") return (typeof player !== "undefined" && player) ? player.level : 0;
   if (kind === "hp") return (typeof player !== "undefined" && player && player.gauges && player.gauges.hp) ? player.gauges.hp.current : 0;
+  if (kind === "sp") return (typeof player !== "undefined" && player && player.gauges && player.gauges.sp) ? player.gauges.sp.current : 0;
+  if (kind === "bossHp") {
+    // ★要望対応：ボスの戦闘イベント演出ブロック（if）から、今のボスのHP割合を参照できるように。
+    //   battle.js側でボスの戦闘イベントを実行する直前に currentBossEventEnemy を差し込んでおいてもらう
+    const enemy = (typeof currentBossEventEnemy !== "undefined") ? currentBossEventEnemy : null;
+    return (enemy && enemy.maxHp > 0) ? Math.round((enemy.hp / enemy.maxHp) * 100) : 0;
+  }
+  if (kind === "turnCount") {
+    return (typeof battleState !== "undefined" && battleState) ? (battleState.turnCount || 0) : 0;
+  }
   if (kind === "class") return (typeof player !== "undefined" && player) ? player.class : "";
   if (kind === "hasItem") return (typeof getTotalItemCount === "function" && rawValue) ? getTotalItemCount(rawValue) > 0 : false;
   if (kind === "random") return Math.random() * 100; // ★要望対応：0以上100未満の乱数。判定のたびに新しく引き直す（例：「乱数」<= 30 で30%判定）

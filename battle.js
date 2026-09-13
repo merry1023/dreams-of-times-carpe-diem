@@ -15,6 +15,8 @@ const MONSTER_MASTER = Object.assign({}, ENEMY_MASTER, BOSS_MASTER);
 
 // 今の戦闘の状態（戦闘中でなければ null）
 let battleState = null;
+let currentBossEventEnemy = null; // ★要望対応：ボスの戦闘イベント（演出ブロック）実行中だけ、そのボスのenemyを入れておく。
+                                   //   scenariobuild.jsのresolveIfBlockValueが「ボスの体力」条件を見る時に参照する
 let lastHitWasCritical = false; // ★直前の一撃がクリティカルだったかどうか（会心の一撃！のメッセージ用）
 
 // ★敗北時にいくら所持金を失ったかを記録しておく（adventure.jsの帰還メッセージから参照する）
@@ -1588,6 +1590,20 @@ async function executeBossBattleEvent(enemy, event) {
       kind: event.skillKind || undefined
     });
     return true;
+    
+  } else if (event.action === "blocks") {
+    // ★要望対応：ボスの体力割合・経過ターン数などをifブロックで参照しながら、話のブロックと同じ仕組みで
+    //   セリフ・演出・変数操作・パラメータ変更などを自由に組み合わせられる（scenariobuild.js参照）
+    currentBossEventEnemy = enemy; // ★resolveIfBlockValueの「ボスの体力」条件がこれを見る
+    try {
+      if (Array.isArray(event.blocks) && event.blocks.length > 0 && typeof runBlockSequence === "function") {
+        await runBlockSequence({ id: "bossevent::" + enemy.monsterKey + "::" + event.id, blocks: event.blocks }, event.blocks, []);
+      }
+    } finally {
+      currentBossEventEnemy = null;
+    }
+    updateBattleHud();
+    return event.blocksConsumesTurn === true;
   }
   
   return false;
