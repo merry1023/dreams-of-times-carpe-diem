@@ -1010,7 +1010,10 @@ function ensureCustomItemsRegistered() {
       // ★武器・防具の「個体差の範囲」。以前はここで反映されておらず、編集しても実際のゲームに一切反映されないバグがあった
       statBonusRange: (item.statBonusRange && typeof item.statBonusRange.min === "number" && typeof item.statBonusRange.max === "number")
         ? item.statBonusRange : existing.statBonusRange,
-      unsellable: !!item.unsellable // ★アイテム管理の「売れない」チェック（town.jsの買取屋で参照する）
+      unsellable: !!item.unsellable, // ★アイテム管理の「売れない」チェック（town.jsの買取屋で参照する）
+      // ★要望対応：インベントリでのスタック可否（装備以外）。未指定ならカテゴリ既定値にお任せするため、
+      //   明示的にtrue/falseが設定されている時だけ上書きする
+      stackable: (typeof item.stackable === "boolean") ? item.stackable : existing.stackable
     };
   });
 }
@@ -1061,8 +1064,13 @@ function ensureCustomSkillsRegistered() {
         skill.selfBuff2 = { kind: s.selfBuff2Kind, duration: Number(s.selfBuff2Duration) || 1, power: Number(s.selfBuff2Power) || 0, mode: s.selfBuff2Mode === "multiply" ? "multiply" : "add" };
       }
       // ★特殊スキル編集でブロックを組んだ技は、そのブロック列（と専用変数の初期値）をそのまま持たせる。
-      //   battle.js側は skill.blocks.length > 0 を見て、固定フィールドの代わりにこちらを実行する
-      if (Array.isArray(s.blocks) && s.blocks.length > 0) {
+      //   battle.js側は skill.blocks.length > 0 を見て、固定フィールドの代わりにこちらを実行する。
+      //   要望対応：以前はブロックを1件でも登録すると自動的にブロックモードへ切り替わり、固定フィールドへ
+      //   二度と戻せなくなっていた。s.useBlocksで明示的にどちらを使うか選べるようにし、falseの時は
+      //   ブロックが残っていても無視して固定フィールドの技として動くようにする（ブロック自体は消さずに
+      //   保持するので、後でまた「ブロックで組む」に戻せば編集内容は失われない）
+      const useBlockMode = s.useBlocks === true || (s.useBlocks == null && Array.isArray(s.blocks) && s.blocks.length > 0);
+      if (useBlockMode && Array.isArray(s.blocks) && s.blocks.length > 0) {
         skill.blocks = s.blocks;
         skill.variables = (s.variables && typeof s.variables === "object") ? s.variables : {};
       }
@@ -4368,7 +4376,8 @@ function getItemManagerConfig() {
       if (!master) return null;
       return {
         name: master.name, category: master.category, description: master.description,
-        rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue, unsellable: !!master.unsellable
+        rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue, unsellable: !!master.unsellable,
+        stackable: master.stackable
       };
     }
   };
@@ -6276,9 +6285,35 @@ function buildSkillSlotRow(className, level, levels) {
   buildSkillTextInput(entry, "description", "説明", descRow);
   infoEl.appendChild(descRow);
   
-  // ★特殊スキル編集（ブロック実行モード）の入り口。ブロックを1つでも登録すると、下の固定フィールドは
-  //   無視される（battle.js側）ため、それが分かるようバッジを出し、固定フィールド一式をグレーアウトする
-  const isBlockMode = Array.isArray(entry.blocks) && entry.blocks.length > 0;
+  // ★特殊スキル編集（ブロック実行モード）の入り口。要望対応：以前はブロックを1つでも登録すると
+  //   自動的にブロックモードへ切り替わり、下の固定フィールドが二度と編集できなくなっていた。
+  //   entry.useBlocksで「固定フィールド」と「ブロックで組む」のどちらを使うか明示的に選べるようにし、
+  //   「固定フィールド」を選んだ時は、ブロックが残っていてもそれを無視して固定フィールド通りに動く
+  //   （ブロックの中身自体は消さないので、後で「ブロックで組む」に戻せば編集内容はそのまま残っている）
+  const hasBlocks = Array.isArray(entry.blocks) && entry.blocks.length > 0;
+  const isBlockMode = entry.useBlocks === true || (entry.useBlocks == null && hasBlocks);
+  
+  const modeToggleRow = document.createElement("div");
+  modeToggleRow.className = "scenariobuild-condition-row";
+  modeToggleRow.appendChild(labelSpan("この技の動作："));
+  const modeToggleSelect = document.createElement("select");
+  modeToggleSelect.className = "scenariobuild-jump-select";
+  [["fixed", "固定フィールド（下の威力・種類などの設定欄）"], ["blocks", "ブロックで組む（特殊スキル編集）"]].forEach(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    modeToggleSelect.appendChild(option);
+  });
+  modeToggleSelect.value = isBlockMode ? "blocks" : "fixed";
+  modeToggleSelect.onchange = () => {
+    entry.useBlocks = modeToggleSelect.value === "blocks";
+    markScenarioBuildDirty();
+    ensureCustomSkillsRegistered();
+    renderScenarioBuildPanel();
+  };
+  modeToggleRow.appendChild(modeToggleSelect);
+  infoEl.appendChild(modeToggleRow);
+  
   const blockModeRow = document.createElement("div");
   blockModeRow.className = "scenariobuild-condition-row";
   const blockEditBtn = document.createElement("button");
@@ -6296,6 +6331,12 @@ function buildSkillSlotRow(className, level, levels) {
     badge.className = "devmode-note";
     badge.style.margin = "0";
     badge.textContent = `⚡ブロックで動作中（${entry.blocks.length}件）：下の固定フィールドは無視されます`;
+    blockModeRow.appendChild(badge);
+  } else if (hasBlocks) {
+    const badge = document.createElement("span");
+    badge.className = "devmode-note";
+    badge.style.margin = "0";
+    badge.textContent = `固定フィールドで動作中（登録済みのブロック${entry.blocks.length}件は今は使われていません）`;
     blockModeRow.appendChild(badge);
   }
   infoEl.appendChild(blockModeRow);
@@ -8100,6 +8141,27 @@ function buildRustySeriesEditor(item, persist) {
   return wrap;
 }
 
+// ★要望対応：インベントリで自動的にスタックしてまとめられるアイテムかどうか（装備以外）
+//   未指定の場合は今まで通りカテゴリ既定値（薬草・ポーション・魔物素材・道具＝スタックする）に従う
+function buildItemStackableEditor(item, persist) {
+  const wrap = document.createElement("div");
+  const row = document.createElement("div");
+  row.className = "scenariobuild-condition-row";
+  
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  const categoryDefault = ["herb", "potion", "material", "tool"].includes(item.category);
+  checkbox.checked = (typeof item.stackable === "boolean") ? item.stackable : categoryDefault;
+  checkbox.onchange = () => {
+    item.stackable = checkbox.checked;
+    persist();
+  };
+  row.appendChild(checkbox);
+  row.appendChild(labelSpan("スタックできるアイテムにする（インベントリで自動的に同じアイテムをまとめる）"));
+  wrap.appendChild(row);
+  return wrap;
+}
+
 function buildItemStatBonusRangeEditor(item, persist) {
   const wrap = document.createElement("div");
   const noteEl = document.createElement("p");
@@ -8811,6 +8873,9 @@ function renderEntityDetailEditor(container) {
     if (entity.category === "weapon" || entity.category === "armor") {
       fieldsWrap.appendChild(buildItemStatBonusRangeEditor(entity, persist));
       fieldsWrap.appendChild(buildRustySeriesEditor(entity, persist));
+    } else {
+      // ★要望対応：装備（武器・防具）以外のアイテムに、スタックできるかどうかのチェックを追加
+      fieldsWrap.appendChild(buildItemStackableEditor(entity, persist));
     }
   }
   if (ref.category === "enemies" || ref.category === "bosses") fieldsWrap.appendChild(buildMonsterDetailEditor(entity, persist, ref.category));

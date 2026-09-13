@@ -1020,6 +1020,20 @@ html, body {
     word-break: break-all;
 }
 
+/* ★要望対応：アイテムの種類ごとに名前の文字色を変える（武器=赤、防具=茶、道具系=緑、その他=白） */
+.inventory-slot .item-name.item-name-weapon { color: #ff6b6b; }
+.inventory-slot .item-name.item-name-armor { color: #b5834a; }
+.inventory-slot .item-name.item-name-tool { color: #7ed957; }
+.inventory-slot .item-name.item-name-misc { color: #fff; }
+
+/* ★要望対応：今の並び替えモードを表示する小さなラベル */
+.inventory-sort-label {
+    font-size: 11px;
+    color: #ccc;
+    margin: 2px 4px 4px;
+    text-align: right;
+}
+
 .inventory-slot .item-qty {
     position: absolute;
     bottom: 2px;

@@ -21,8 +21,15 @@ let gold = 0; // 所持金（陳）（初期所持金は0。序盤はクエス�
 // ★装備品ごとの個体識別ID。武器・防具・貴重品を1個拾うたびに、これをインクリメントして払い出す
 let nextEquipmentInstanceId = 1;
 
-function isStackable(category) {
-  return STACKABLE_CATEGORIES.includes(category);
+// ★要望対応：インベントリの「入手順」並び替え用の連番。addItemで新しいスタック/個体ができるたびに払い出す
+let nextInventoryAcquiredSeq = 1;
+
+function isStackable(master) {
+  if (!master) return false;
+  if (master.category === "weapon" || master.category === "armor") return false; // ★装備は常にスタックしない
+  // ★要望対応：アイテム管理で個別に指定されていればそれを優先し、無指定ならカテゴリの既定値に従う
+  if (typeof master.stackable === "boolean") return master.stackable;
+  return STACKABLE_CATEGORIES.includes(master.category);
 }
 
 // ★古いセーブデータ（instanceId導入前）を読み込んだ時のため：
@@ -31,17 +38,28 @@ function isStackable(category) {
 //   （そうしないと、ロード後に新しく拾ったアイテムのIDが、セーブ内の既存IDと衝突してしまう）
 function sanitizeInventoryInstanceIds() {
   let maxSeenId = 0;
+  let maxSeenSeq = 0;
   inventorySlots.forEach(slot => {
     if (slot && slot.instanceId !== undefined) {
       maxSeenId = Math.max(maxSeenId, slot.instanceId);
+    }
+    if (slot && typeof slot.acquiredSeq === "number") {
+      maxSeenSeq = Math.max(maxSeenSeq, slot.acquiredSeq);
     }
   });
   if (nextEquipmentInstanceId <= maxSeenId) {
     nextEquipmentInstanceId = maxSeenId + 1;
   }
+  if (nextInventoryAcquiredSeq <= maxSeenSeq) {
+    nextInventoryAcquiredSeq = maxSeenSeq + 1;
+  }
   inventorySlots.forEach(slot => {
     if (slot && slot.instanceId === undefined) {
       slot.instanceId = nextEquipmentInstanceId++;
+    }
+    // ★要望対応：古いセーブデータ（acquiredSeq導入前）には、今並んでいる順番のまま連番を振っておく
+    if (slot && typeof slot.acquiredSeq !== "number") {
+      slot.acquiredSeq = nextInventoryAcquiredSeq++;
     }
   });
 }
@@ -59,7 +77,7 @@ function addItem(itemId, quantity = 1, options = {}) {
     return false;
   }
   
-  if (isStackable(master.category)) {
+  if (isStackable(master)) {
     let remaining = quantity;
     
     // 1. 既存のスタックに空きがあれば、そこから埋めていく
@@ -81,7 +99,7 @@ function addItem(itemId, quantity = 1, options = {}) {
         return false;
       }
       const add = Math.min(MAX_STACK, remaining);
-      inventorySlots[emptyIndex] = { itemId, quantity: add, appraised: false };
+      inventorySlots[emptyIndex] = { itemId, quantity: add, appraised: false, acquiredSeq: nextInventoryAcquiredSeq++ }; // ★要望対応：入手順並び替え用
       remaining -= add;
     }
     return true;
@@ -101,6 +119,7 @@ function addItem(itemId, quantity = 1, options = {}) {
         quantity: 1,
         appraised: false,
         instanceId: nextEquipmentInstanceId++,
+        acquiredSeq: nextInventoryAcquiredSeq++, // ★要望対応：入手順並び替え用
         // ★店で「買った」装備は、個体差の当たり外れが無いよう±0にする（options.noStatBonus）。
         //   冒険で拾った・敵が落とした装備だけ、掘り出し物のランダムな個体差がつく
         statBonus: options.noStatBonus ? null : rollEquipmentStatBonus(master)
