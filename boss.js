@@ -25,6 +25,7 @@ const BOSS_MASTER = {
   },
   grassland_miniboss: {
     name: "縄張り持ちの大狼",
+    level: 7, // ★要望対応：このボスは常にLv.7固定で出現する
     maxHp: 33,
     atk: 9,
     exp: 40,

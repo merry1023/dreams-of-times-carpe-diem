@@ -1047,6 +1047,23 @@ function buildMapAreaCard(area, index) {
     bossInput.onchange = () => { area.bossId = bossInput.value.trim(); persist(); };
     infoEl.appendChild(bossInput);
     
+    // ★要望対応：エリアのボスのレベルを固定で指定できるようにする（空欄なら今まで通り主人公基準）
+    const bossLevelRow = document.createElement("div");
+    bossLevelRow.style.display = "flex";
+    bossLevelRow.style.alignItems = "center";
+    bossLevelRow.style.gap = "6px";
+    bossLevelRow.style.margin = "4px 0 8px";
+    bossLevelRow.appendChild(labelSpan("ボスのレベル："));
+    const bossLevelInput = document.createElement("input");
+    bossLevelInput.type = "number";
+    bossLevelInput.min = "1";
+    bossLevelInput.className = "scenariobuild-condition-input";
+    bossLevelInput.placeholder = "空欄＝主人公基準";
+    bossLevelInput.value = area.bossLevel != null ? area.bossLevel : "";
+    bossLevelInput.onchange = () => { area.bossLevel = bossLevelInput.value ? Math.max(1, Number(bossLevelInput.value) || 1) : null; persist(); };
+    bossLevelRow.appendChild(bossLevelInput);
+    infoEl.appendChild(bossLevelRow);
+    
     // ★エリアボスの出現方式（歩数進んだら確率で／調べた時に、複数選択可）と、それぞれの確率。
     //   要望対応：アヌスの洞窟のような「歩数」方式と、ガマジルの草原のような「調べた時」方式を選べるようにする
     infoEl.appendChild(buildBossTriggerTypeEditor(area, persist));
