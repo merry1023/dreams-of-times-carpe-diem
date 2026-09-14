@@ -925,6 +925,8 @@ function ensureCustomMonstersRegistered() {
       imagePath: enemy.imagePath || undefined,
       sizeMultiplier: (typeof enemy.sizeMultiplier === "number" && enemy.sizeMultiplier > 0) ? enemy.sizeMultiplier : undefined,
       statusInflictions: (Array.isArray(enemy.statusInflictions) && enemy.statusInflictions.length > 0) ? enemy.statusInflictions : undefined,
+      // ★要望対応：通常攻撃命中時に付ける状態異常（専用スキル発動時のstatusInflictionsとは別設定）
+      normalAttackStatusInflictions: (Array.isArray(enemy.normalAttackStatusInflictions) && enemy.normalAttackStatusInflictions.length > 0) ? enemy.normalAttackStatusInflictions : undefined,
       // ★要望対応：この魔物自身の状態異常耐性・無効
       statusImmunities: (Array.isArray(enemy.statusImmunities) && enemy.statusImmunities.length > 0) ? enemy.statusImmunities : undefined,
       statusResistances: (enemy.statusResistances && typeof enemy.statusResistances === "object" && Object.keys(enemy.statusResistances).length > 0) ? enemy.statusResistances : undefined,
@@ -969,6 +971,8 @@ function ensureCustomMonstersRegistered() {
       level: (typeof boss.level === "number" && boss.level > 0) ? boss.level : undefined, // ★空欄ならundefined＝エリア設定 or 主人公基準のレベルになる（battle.js）
       fixedStats: boss.fixedStats === "on", // ★ONなら、レベルによる自動計算をせず上記のHP・攻撃力・経験値をそのまま使う（battle.js）
       statusInflictions: (Array.isArray(boss.statusInflictions) && boss.statusInflictions.length > 0) ? boss.statusInflictions : undefined,
+      // ★要望対応：通常攻撃命中時に付ける状態異常（専用スキル発動時のstatusInflictionsとは別設定）
+      normalAttackStatusInflictions: (Array.isArray(boss.normalAttackStatusInflictions) && boss.normalAttackStatusInflictions.length > 0) ? boss.normalAttackStatusInflictions : undefined,
       // ★要望対応：この魔物自身の状態異常耐性・無効
       statusImmunities: (Array.isArray(boss.statusImmunities) && boss.statusImmunities.length > 0) ? boss.statusImmunities : undefined,
       statusResistances: (boss.statusResistances && typeof boss.statusResistances === "object" && Object.keys(boss.statusResistances).length > 0) ? boss.statusResistances : undefined,
@@ -4263,7 +4267,7 @@ function getEnemyManagerConfig() {
       { key: "imagePath", label: "画像パス", type: "text", placeholder: "例：img/敵/goblin.png（空欄なら img/敵/名前.png を使う）" },
       { key: "sizeMultiplier", label: "大きさ倍率", type: "number", placeholder: "1.0（例：1.2で少し大きく、0.8で少し小さく）" }
     ],
-    newEntity: () => ({ id: generateId("enemy"), name: "", description: "", maxHp: 10, atk: 5, exp: 10, imagePath: "", sizeMultiplier: 1, dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], statusImmunities: [], statusResistances: {}, restSkillName: "", restSkillBlocks: [], affectionGainRange: [5, 10], killBlocks: [], spareBlocks: [] }),
+    newEntity: () => ({ id: generateId("enemy"), name: "", description: "", maxHp: 10, atk: 5, exp: 10, imagePath: "", sizeMultiplier: 1, dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], normalAttackStatusInflictions: [], statusImmunities: [], statusResistances: {}, restSkillName: "", restSkillBlocks: [], affectionGainRange: [5, 10], killBlocks: [], spareBlocks: [] }),
     onChange: ensureCustomMonstersRegistered,
     getDefaultFromMaster: (id) => {
       const master = typeof ENEMY_MASTER !== "undefined" ? ENEMY_MASTER[id] : null;
@@ -4274,8 +4278,10 @@ function getEnemyManagerConfig() {
         dropItemId: master.dropItemId || null, dropRate: master.dropRate || 0,
         killFlavor: master.killFlavor || "", spareFlavor: master.spareFlavor || "", giftItemId: master.giftItemId || null,
         uniqueSkill: master.uniqueSkill ? { ...master.uniqueSkill } : null,
-        // ★古いpoisonChanceだけのデータも、開いたら自動的に「状態異常」欄の1件として引き継ぐ
-        statusInflictions: Array.isArray(master.statusInflictions) ? master.statusInflictions.map(s => ({ ...s }))
+        // ★要望対応：statusInflictionsは専用スキル発動時の状態異常として使うため、既存データのみそのまま引き継ぐ。
+        //   古いpoisonChanceだけのデータ（従来ずっと通常攻撃で毒になっていた）は、通常攻撃用の欄に引き継ぐ
+        statusInflictions: Array.isArray(master.statusInflictions) ? master.statusInflictions.map(s => ({ ...s })) : [],
+        normalAttackStatusInflictions: Array.isArray(master.normalAttackStatusInflictions) ? master.normalAttackStatusInflictions.map(s => ({ ...s }))
           : (master.poisonChance ? [{ kind: "poison", chance: master.poisonChance, duration: 3, power: 0 }] : []),
         // ★要望対応：この魔物自身の状態異常耐性・無効
         statusImmunities: Array.isArray(master.statusImmunities) ? [...master.statusImmunities] : [],
@@ -4395,7 +4401,7 @@ function getBossManagerConfig() {
       { key: "sizeMultiplier", label: "大きさ倍率", type: "number", placeholder: "1.0（例：1.5で大きく、ボスらしく強調できます）" },
       { key: "invincibilityBreakItemId", label: "無敵解除アイテムID", type: "text", placeholder: "空欄＝最初からダメージが通る", list: "scenariobuild-item-datalist" }
     ],
-    newEntity: () => ({ id: generateId("boss"), name: "", description: "", level: null, fixedStats: "", maxHp: 50, atk: 10, exp: 50, bgmTrack: "", bgmFinalTrack: "", bgmCrisisTrack: "", imagePath: "", sizeMultiplier: 1, invincibilityBreakItemId: "", dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], statusImmunities: [], statusResistances: {}, battleEvents: [] }),
+    newEntity: () => ({ id: generateId("boss"), name: "", description: "", level: null, fixedStats: "", maxHp: 50, atk: 10, exp: 50, bgmTrack: "", bgmFinalTrack: "", bgmCrisisTrack: "", imagePath: "", sizeMultiplier: 1, invincibilityBreakItemId: "", dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], normalAttackStatusInflictions: [], statusImmunities: [], statusResistances: {}, battleEvents: [] }),
     onChange: ensureCustomMonstersRegistered,
     getDefaultFromMaster: (id) => {
       const master = typeof BOSS_MASTER !== "undefined" ? BOSS_MASTER[id] : null;
@@ -4408,7 +4414,10 @@ function getBossManagerConfig() {
         dropItemId: master.dropItemId || null, dropRate: master.dropRate || 0,
         killFlavor: master.killFlavor || "", spareFlavor: master.spareFlavor || "", giftItemId: master.giftItemId || null,
         uniqueSkill: master.uniqueSkill ? { ...master.uniqueSkill } : null,
-        statusInflictions: Array.isArray(master.statusInflictions) ? master.statusInflictions.map(s => ({ ...s }))
+        // ★要望対応：statusInflictionsは専用スキル発動時の状態異常として使うため、既存データのみそのまま引き継ぐ。
+        //   古いpoisonChanceだけのデータ（従来ずっと通常攻撃で毒になっていた）は、通常攻撃用の欄に引き継ぐ
+        statusInflictions: Array.isArray(master.statusInflictions) ? master.statusInflictions.map(s => ({ ...s })) : [],
+        normalAttackStatusInflictions: Array.isArray(master.normalAttackStatusInflictions) ? master.normalAttackStatusInflictions.map(s => ({ ...s }))
           : (master.poisonChance ? [{ kind: "poison", chance: master.poisonChance, duration: 3, power: 0 }] : []),
         // ★要望対応：この魔物自身の状態異常耐性・無効
         statusImmunities: Array.isArray(master.statusImmunities) ? [...master.statusImmunities] : [],
@@ -8725,7 +8734,11 @@ function buildMonsterDetailEditor(entity, persist, category) {
     wrap.appendChild(skillRow6);
   }
   
-  wrap.appendChild(buildStatusInflictionEditor(entity, persist));
+  // ★要望対応：状態異常は「専用スキル発動時」と「通常攻撃命中時」を別々に設定できるようにした
+  wrap.appendChild(buildStatusInflictionEditor(entity, persist, "statusInflictions",
+    "専用スキル発動時にプレイヤーへ与える状態異常（複数設定可。既に同じ状態異常にかかっている間は上書きしません）："));
+  wrap.appendChild(buildStatusInflictionEditor(entity, persist, "normalAttackStatusInflictions",
+    "通常攻撃が命中した時にプレイヤーへ与える状態異常（複数設定可。既に同じ状態異常にかかっている間は上書きしません）："));
   wrap.appendChild(buildStatusResistanceEditor(entity, persist)); // ★要望対応：この魔物自身の、状態異常への耐性・無効
   
   // ★戦闘イベント（ifブロック的な演出・行動）は、ボス専用の機能（要望対応）
@@ -8831,17 +8844,20 @@ function buildStatusResistanceEditor(entity, persist) {
 }
 
 // ★敵/ボスの攻撃が命中した時に、プレイヤーへ与える状態異常（複数追加可）。
-//   スキルの状態異常編集と同じ考え方：種類・確率・ターン数・効果量を指定できる
-function buildStatusInflictionEditor(entity, persist) {
+//   スキルの状態異常編集と同じ考え方：種類・確率・ターン数・効果量を指定できる。
+//   ★要望対応：以前は「通常攻撃が命中した時」専用だったが、通常攻撃と専用スキルとで別々に設定できるよう、
+//   fieldName（entityのどのプロパティを使うか）とnoteText（説明文）を引数で受け取る形に汎用化した
+function buildStatusInflictionEditor(entity, persist, fieldName, noteText) {
   const wrap = document.createElement("div");
   const noteEl = document.createElement("p");
   noteEl.className = "devmode-note scenariobuild-condition";
-  noteEl.textContent = "攻撃命中時にプレイヤーへ与える状態異常（複数設定可。既に同じ状態異常にかかっている間は上書きしません）：";
+  noteEl.textContent = noteText;
   wrap.appendChild(noteEl);
   
-  if (!Array.isArray(entity.statusInflictions)) entity.statusInflictions = [];
+  if (!Array.isArray(entity[fieldName])) entity[fieldName] = [];
+  const list = entity[fieldName];
   
-  entity.statusInflictions.forEach((infliction, index) => {
+  list.forEach((infliction, index) => {
     const row = document.createElement("div");
     row.className = "scenariobuild-condition-row";
     
@@ -8889,7 +8905,7 @@ function buildStatusInflictionEditor(entity, persist) {
     removeBtn.textContent = "×";
     removeBtn.onclick = (event) => {
       event.stopPropagation();
-      entity.statusInflictions.splice(index, 1);
+      list.splice(index, 1);
       persist();
       renderScenarioBuildPanel();
     };
@@ -8903,7 +8919,7 @@ function buildStatusInflictionEditor(entity, persist) {
   addBtn.textContent = "＋状態異常を追加";
   addBtn.onclick = (event) => {
     event.stopPropagation();
-    entity.statusInflictions.push({ kind: "poison", chance: 0.3, duration: 3, power: 0 });
+    list.push({ kind: "poison", chance: 0.3, duration: 3, power: 0 });
     persist();
     renderScenarioBuildPanel();
   };

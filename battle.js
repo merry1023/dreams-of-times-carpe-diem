@@ -1792,11 +1792,23 @@ async function runSingleEnemyTurn(enemy) {
   
   await displayMessage(`${enemy.displayName}の攻撃！ ${damage}のダメージを受けた！`);
   
-  // ★魔物ごとに設定した状態異常（マップ設定タブの敵設定・ボス設定で編集可能）を、攻撃が当たった時に確率判定つきで付与する。
-  //   古いpoisonChanceのみの魔物データも、そのまま毒として扱われる（後方互換）
-  const inflictions = (master && Array.isArray(master.statusInflictions) && master.statusInflictions.length > 0)
-    ? master.statusInflictions
+  // ★要望対応：以前はここ（通常攻撃）でmaster.statusInflictionsを直接付与していたが、
+  //   専用スキル発動時に確率で付く状態異常に変更した。通常攻撃で付ける状態異常は
+  //   normalAttackStatusInflictionsという別設定で、マップ設定タブから個別に編集できるようにした。
+  //   古いpoisonChanceのみの魔物データは、これまで通り通常攻撃で毒になる（後方互換）
+  const normalAttackInflictions = (master && Array.isArray(master.normalAttackStatusInflictions) && master.normalAttackStatusInflictions.length > 0)
+    ? master.normalAttackStatusInflictions
     : (master && master.poisonChance ? [{ kind: "poison", chance: master.poisonChance, duration: 3, power: 0 }] : []);
+  await applyMonsterAttackStatusInflictions(normalAttackInflictions);
+  
+  // ★「大いなる光芒状態」は、ここまでで敵の攻撃を1回受け終えた＝1ターン経過とみなして消費する
+  if (battleState.playerStatusImmuneTurns > 0) battleState.playerStatusImmuneTurns--;
+}
+
+// ★魔物の攻撃（通常攻撃・専用スキルのどちらでも）が命中した時、設定されている状態異常を
+//   確率判定つきで主人公へ付与する共通処理（マップ設定タブの敵設定・ボス設定で編集可能）
+async function applyMonsterAttackStatusInflictions(inflictions) {
+  if (!Array.isArray(inflictions) || inflictions.length === 0) return;
   for (const infliction of inflictions) {
     if (!infliction.kind) continue;
     // ★バグ修正：状態異常タブで作ったカスタムの状態異常は、id（見た目上の種類）とmechanic（実際の動作）が
@@ -1814,9 +1826,6 @@ async function runSingleEnemyTurn(enemy) {
       await displayMessage(`${(def && def.label) || STATUS_EFFECT_LABELS[infliction.kind] || infliction.kind}状態になってしまった……！`);
     }
   }
-  
-  // ★「大いなる光芒状態」は、ここまでで敵の攻撃を1回受け終えた＝1ターン経過とみなして消費する
-  if (battleState.playerStatusImmuneTurns > 0) battleState.playerStatusImmuneTurns--;
 }
 
 // 魔物固有スキルの実行本体。通常攻撃より威力の倍率(multiplier)が高いものが多く、
@@ -1851,6 +1860,11 @@ async function executeMonsterUniqueSkill(enemy, skill) {
   await displayMessage(messageParts.join("、") + "……！");
   renderStatusHUD();
   updateBattleHud();
+  
+  // ★要望対応：以前は通常攻撃の時だけ状態異常が付いていたが、専用スキル発動時に確率で付くように変更。
+  //   マップ設定タブの「状態異常」欄（statusInflictions）は、これ以降はこの専用スキル発動時に使われる
+  const skillMaster = MONSTER_MASTER[enemy.monsterKey];
+  await applyMonsterAttackStatusInflictions(skillMaster && skillMaster.statusInflictions);
 }
 
 // ===== 特殊スキル・ブロックシステム（式パーサー） =====
