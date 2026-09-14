@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789268909872,
+  "version": 1789346087014,
   "enemies": [
     {
       "id": "goblin",
@@ -683,7 +683,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "multiplier": 1.5,
         "flavor": "空に向かって不気味に遠吠えすると、鋭い目つきで攻撃してきた！"
       },
-      "level": null,
+      "level": 7,
       "fixedStats": "",
       "builtin": true,
       "statusInflictions": [],
@@ -1799,6 +1799,30 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "疲労回復量": 1000,
         "眠気軽減割合": 1
       }
+    },
+    {
+      "id": "item_1789345576131_1",
+      "name": "魔導剣・緑",
+      "category": "weapon",
+      "description": "魔力、攻撃力共に頼れる緑の魔導の剣。少量だが回復する効果がある。",
+      "rank": "D",
+      "listedPrice": 14000,
+      "trueValue": 14000,
+      "unsellable": false,
+      "params": {
+        "希少度": 4,
+        "武器種類": "剣",
+        "攻撃力": 30,
+        "魔力": 30,
+        "HP自動回復": 25,
+        "装備部位": "武器"
+      },
+      "statBonusRange": {
+        "min": -5,
+        "max": 4
+      },
+      "isRustySeries": true,
+      "rustyRankOutcomes": {}
     }
   ],
   "skills": [
@@ -9441,7 +9465,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "facilityId": "facility_1788247863308_16",
           "chance": 0.2
         }
-      ]
+      ],
+      "downTarget": "village"
     },
     {
       "id": "builtinarea_1786777141727_81",
@@ -9512,7 +9537,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "goldRewards": [],
       "facilitySpawns": [],
-      "mapNodeSize": 10
+      "mapNodeSize": 10,
+      "upTarget": "kaderiku_n2",
+      "downTarget": "village",
+      "leftTarget": "kaderiku_n1"
     },
     {
       "id": "builtinarea_1786777141727_83",
@@ -9586,7 +9614,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "max": 350
         }
       ],
-      "facilitySpawns": []
+      "facilitySpawns": [],
+      "rightTarget": "kaderiku"
     },
     {
       "id": "builtinarea_1786777141727_84",
@@ -9629,7 +9658,11 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "goldRewards": [],
       "facilitySpawns": [],
-      "mapNodeSize": 17
+      "mapNodeSize": 17,
+      "upTarget": "custom_area_1788352806681_42",
+      "leftTarget": "kaderiku_n1",
+      "rightTarget": "custom_area_1788853853599_1",
+      "downTarget": "kaderiku"
     },
     {
       "id": "builtinarea_1786777141727_85",
@@ -9865,8 +9898,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "area_1788853853599_1",
       "name": "ルアナ村",
       "type": "village",
-      "x": 176.09589364120774,
-      "y": 85.65180893561416,
+      "x": 171.91105041319088,
+      "y": 83.80632807245601,
       "bgTrack": "",
       "bgImage": "",
       "bossId": "",
@@ -9895,7 +9928,11 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "facility_1788244866711_1",
         "facility_1788134408511_1"
       ],
-      "mapNodeSize": 7
+      "mapNodeSize": 7,
+      "upTarget": "custom_area_1788854418149_4",
+      "leftTarget": "custom_area_1788878118939_1",
+      "rightTarget": "custom_area_1788854113373_2",
+      "downTarget": "kaderiku_n2"
     },
     {
       "id": "area_1788854113373_2",
@@ -9928,7 +9965,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "facilityIds": [
         "facility_1788247863308_16"
       ],
-      "mapNodeSize": 20
+      "mapNodeSize": 20,
+      "leftTarget": "custom_area_1788853853599_1",
+      "downTarget": "custom_area_1788853853599_1",
+      "upTarget": "custom_area_1789004846928_1"
     },
     {
       "id": "area_1788854418149_4",
@@ -9974,7 +10014,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         }
       ],
       "facilityIds": [],
-      "mapNodeSize": 6
+      "mapNodeSize": 6,
+      "downTarget": "custom_area_1788853853599_1",
+      "leftTarget": "custom_area_1788878118939_1",
+      "rightTarget": "custom_area_1788854113373_2"
     },
     {
       "id": "area_1788878118939_1",
@@ -10038,7 +10081,11 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         }
       ],
       "facilityIds": [],
-      "mapNodeSize": 10
+      "mapNodeSize": 10,
+      "rightTarget": "custom_area_1788854418149_4",
+      "leftTarget": "kaderiku_n2",
+      "downTarget": "custom_area_1788853853599_1",
+      "upTarget": "custom_area_1789004846928_1"
     },
     {
       "id": "area_1789004846928_1",
@@ -10068,7 +10115,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "chapterId": "custom_1788854370721_3"
         }
       ],
-      "facilityIds": []
+      "facilityIds": [],
+      "rightTarget": "custom_area_1788854113373_2",
+      "downTarget": "custom_area_1788854113373_2"
     }
   ],
   "mapEdges": [
