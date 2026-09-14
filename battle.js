@@ -15,6 +15,8 @@ const MONSTER_MASTER = Object.assign({}, ENEMY_MASTER, BOSS_MASTER);
 
 // 今の戦闘の状態（戦闘中でなければ null）
 let battleState = null;
+let currentBossEventEnemy = null; // ★要望対応：ボスの戦闘イベント（演出ブロック）実行中だけ、そのボスのenemyを入れておく。
+                                   //   scenariobuild.jsのresolveIfBlockValueが「ボスの体力」条件を見る時に参照する
 let lastHitWasCritical = false; // ★直前の一撃がクリティカルだったかどうか（会心の一撃！のメッセージ用）
 
 // ★敗北時にいくら所持金を失ったかを記録しておく（adventure.jsの帰還メッセージから参照する）
@@ -1588,6 +1590,20 @@ async function executeBossBattleEvent(enemy, event) {
       kind: event.skillKind || undefined
     });
     return true;
+    
+  } else if (event.action === "blocks") {
+    // ★要望対応：ボスの体力割合・経過ターン数などをifブロックで参照しながら、話のブロックと同じ仕組みで
+    //   セリフ・演出・変数操作・パラメータ変更などを自由に組み合わせられる（scenariobuild.js参照）
+    currentBossEventEnemy = enemy; // ★resolveIfBlockValueの「ボスの体力」条件がこれを見る
+    try {
+      if (Array.isArray(event.blocks) && event.blocks.length > 0 && typeof runBlockSequence === "function") {
+        await runBlockSequence({ id: "bossevent::" + enemy.monsterKey + "::" + event.id, blocks: event.blocks }, event.blocks, []);
+      }
+    } finally {
+      currentBossEventEnemy = null;
+    }
+    updateBattleHud();
+    return event.blocksConsumesTurn === true;
   }
   
   return false;
@@ -2143,7 +2159,13 @@ function resolveSkillBlockEnemyTargets(targetMode, context) {
 //   隠れたskill.power（新規作成時は10）と掛け合わされて威力450相当という異常な値になり、
 //   レベルが上がるほど（レベル倍率が乗る）どんどん現実離れしたダメージになってしまっていた。
 //   ここでは編集画面の説明通り、ブロックの式の評価結果をそのまま威力として使う（skill.powerは一切使わない）
-function calculateSkillBlockDamage(skill, block, multiplier, caster) {
+// ★バグ修正：くり返し(repeat)ブロックの中でdamageブロックを使うと、1ヒットごとに
+//   「攻撃力(または魔力)×0.7」の項がまるごと発生していたため、くり返し回数を増やすだけで
+//   威力(power)の差以上に極端に強くなってしまっていた（固定フィールド技のcalculateSkillDamageで
+//   命中回数(hitCount)に対して既に対応済みだったのと同じ種類の問題が、ブロック技には未対応だった）。
+//   hitCountForBalanceには、このdamageブロックを囲んでいるrepeatの回数（入れ子なら掛け合わせた回数）を渡し、
+//   攻撃力由来の項だけをその回数で割ってから1回ごとに加える。威力(power)の項は今まで通り1回ごとにそのまま加算する
+function calculateSkillBlockDamage(skill, block, multiplier, caster, hitCountForBalance = 1) {
   caster = caster || player;
   const isPlayerCaster = caster === player;
   if (isPlayerCaster && battleState) battleState.playerAttackCount = (battleState.playerAttackCount || 0) + 1;
@@ -2155,7 +2177,8 @@ function calculateSkillBlockDamage(skill, block, multiplier, caster) {
   const level = caster ? caster.level : 1;
   const levelMultiplier = 1 + level * 0.05;
   const power = Number.isFinite(multiplier) ? multiplier : 0; // ★式の評価結果＝技の威力そのもの（skill.powerとは掛け合わせない）
-  let raw = Math.round(levelMultiplier * power) + Math.round(applyAtkBonusToStat(baseAtk, block.atkType === "magical") * 0.7) + variance;
+  const atkPerHit = Math.round(applyAtkBonusToStat(baseAtk, block.atkType === "magical") * 0.7) / Math.max(1, hitCountForBalance);
+  let raw = Math.round(levelMultiplier * power) + Math.round(atkPerHit) + variance;
   // ★狂戦士「血闘の刻印」：ここまでに繰り出した攻撃の回数に応じて威力が増加する（上限あり）※主人公が使った場合のみ
   if (isPlayerCaster && skill.id === "kettou_no_kokuin" && battleState) {
     const bonusRatio = Math.min(0.6, Math.max(0, (battleState.playerAttackCount - 1)) * 0.03);
@@ -2186,7 +2209,7 @@ function skillBlocksNeedSingleTarget(blocks) {
 }
 
 // ブロック1つぶんを実行する。戻り値：次に飛ぶブロックid（nullなら次のブロックへ普通に進む／"END"ならそこで技を打ち切る）
-async function runSingleSkillBlock(block, skill, context) {
+async function runSingleSkillBlock(block, skill, context, hitCountForBalance = 1) {
   if (block.type === "message") {
     if (block.speaker !== undefined) changeSpeaker(block.speaker || "");
     await displayMessage(block.text || "", { allowSubFocus: true });
@@ -2263,7 +2286,7 @@ async function runSingleSkillBlock(block, skill, context) {
     // ★要望対応：話のifブロックと同じく、真/偽それぞれの中身を直接ブロックとして書けるようにした
     const branchBlocks = result ? block.trueBlocks : block.falseBlocks;
     if (Array.isArray(branchBlocks) && branchBlocks.length > 0) {
-      const nested = await runSkillBlockList(branchBlocks, skill, context);
+      const nested = await runSkillBlockList(branchBlocks, skill, context, hitCountForBalance);
       if (nested === "END") return "END";
       // ★要望対応：中身の中にジャンプブロックがあり、その行き先がこのif内（trueBlocks/falseBlocks）に
       //   無かった場合、そのままさらに外側へジャンプ要求を伝える（ifの外や別の分岐へもジャンプできる）
@@ -2284,7 +2307,7 @@ async function runSingleSkillBlock(block, skill, context) {
     const multiplier = evaluateSkillExpression(block.powerMultiplier, buildSkillExprContext(skill, context));
     for (const enemyTarget of resolveSkillBlockEnemyTargets(block.target, context)) {
       if (enemyTarget.hp <= 0) continue;
-      const damage = calculateSkillBlockDamage(skill, block, multiplier, context.caster);
+      const damage = calculateSkillBlockDamage(skill, block, multiplier, context.caster, hitCountForBalance);
       const result = resolveDamageForTarget(enemyTarget, damage);
       enemyTarget.hp = Math.max(0, enemyTarget.hp - result.damage);
       if (result.blocked) await displayMessage(`${enemyTarget.displayName}には効いていないようだッ！`, { allowSubFocus: true });
@@ -2410,8 +2433,9 @@ async function runSingleSkillBlock(block, skill, context) {
   
   if (block.type === "repeat") {
     const count = Math.max(0, Math.round(evaluateSkillExpression(block.countExpression, buildSkillExprContext(skill, context))));
+    const innerHitCountForBalance = hitCountForBalance * Math.max(1, count);
     for (let i = 0; i < count; i++) {
-      const outcome = await runSkillBlockList(block.bodyBlocks || [], skill, context);
+      const outcome = await runSkillBlockList(block.bodyBlocks || [], skill, context, innerHitCountForBalance);
       if (outcome === "END") return "END"; // ★くり返しの中で「end」ブロックに達したら、技全体をそこで打ち切る
       // ★要望対応：くり返しの中のジャンプブロックの行き先がこのくり返しの中に無かった場合、
       //   そのまま外側へジャンプ要求を伝える（くり返しの外へジャンプで抜けられるようにする）
@@ -2426,13 +2450,13 @@ async function runSingleSkillBlock(block, skill, context) {
 }
 
 // ブロック列を、指定された1つの配列の中で上から順に実行する（ジャンプ・条件分岐も含む）
-async function runSkillBlockList(blocks, skill, context) {
+async function runSkillBlockList(blocks, skill, context, hitCountForBalance = 1) {
   let index = 0;
   let guard = 0;
   while (index >= 0 && index < blocks.length) {
     if (++guard > 500) break; // ★万一ジャンプがループし続けても、強制的に打ち切る安全弁
     const block = blocks[index];
-    const jumpId = await runSingleSkillBlock(block, skill, context);
+    const jumpId = await runSingleSkillBlock(block, skill, context, hitCountForBalance);
     if (jumpId === "END") return "END";
     if (typeof jumpId === "string" && jumpId.startsWith("JUMP:")) {
       // ★要望対応：ジャンプ先がこのブロック配列の中に無い場合（ifブロックの外や、別の分岐の中身など）は、

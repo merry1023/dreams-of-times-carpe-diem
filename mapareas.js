@@ -773,6 +773,39 @@ function buildMapAreaSummaryRow(area, index) {
   return row;
 }
 
+// ★要望対応：冒険マップの矢印キー移動先を、方向ごとに指定するセレクトボックスを作る
+function buildAreaDirectionTargetSelect(area, dirField, labelText, persist) {
+  const row = document.createElement("div");
+  row.style.display = "flex";
+  row.style.alignItems = "center";
+  row.style.gap = "6px";
+  row.style.margin = "2px 0";
+  row.appendChild(labelSpan(labelText));
+  
+  const select = document.createElement("select");
+  select.className = "scenariobuild-jump-select";
+  
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = "（未指定＝自動）";
+  select.appendChild(defaultOption);
+  
+  const nodes = (typeof getCombinedAdventureMapNodes === "function") ? getCombinedAdventureMapNodes() : []; // adventuremap.js
+  const selfId = area.builtin ? area.locationKey : ("custom_" + area.id);
+  nodes.forEach(node => {
+    if (node.id === selfId) return; // ★自分自身は選べないようにする
+    const option = document.createElement("option");
+    option.value = node.id;
+    option.textContent = node.label || node.id;
+    select.appendChild(option);
+  });
+  
+  select.value = area[dirField] || "";
+  select.onchange = () => { area[dirField] = select.value || null; persist(); };
+  row.appendChild(select);
+  return row;
+}
+
 // ===================================================================
 // ===== メイン画面：マップ詳細エディタ（専用全画面。scenarioBuildMainView === "mapEditor"） =====
 // ===================================================================
@@ -1046,6 +1079,34 @@ function buildMapAreaCard(area, index) {
     bossInput.setAttribute("list", "scenariobuild-monster-datalist");
     bossInput.onchange = () => { area.bossId = bossInput.value.trim(); persist(); };
     infoEl.appendChild(bossInput);
+    
+    // ★要望対応：エリアのボスのレベルを固定で指定できるようにする（空欄なら今まで通り主人公基準）
+    const bossLevelRow = document.createElement("div");
+    bossLevelRow.style.display = "flex";
+    bossLevelRow.style.alignItems = "center";
+    bossLevelRow.style.gap = "6px";
+    bossLevelRow.style.margin = "4px 0 8px";
+    bossLevelRow.appendChild(labelSpan("ボスのレベル："));
+    const bossLevelInput = document.createElement("input");
+    bossLevelInput.type = "number";
+    bossLevelInput.min = "1";
+    bossLevelInput.className = "scenariobuild-condition-input";
+    bossLevelInput.placeholder = "空欄＝主人公基準";
+    bossLevelInput.value = area.bossLevel != null ? area.bossLevel : "";
+    bossLevelInput.onchange = () => { area.bossLevel = bossLevelInput.value ? Math.max(1, Number(bossLevelInput.value) || 1) : null; persist(); };
+    bossLevelRow.appendChild(bossLevelInput);
+    infoEl.appendChild(bossLevelRow);
+    
+    // ★要望対応：冒険マップで矢印キーを押した時、方向ごとに「必ずこのエリアへ飛ぶ」を指定できるようにする。
+    //   空欄なら今まで通り、座標から一番近いエリアへ自動的に移動する
+    const dirTitle = document.createElement("p");
+    dirTitle.className = "devmode-note";
+    dirTitle.textContent = "矢印キーでの移動先（空欄＝一番近いエリアへ自動）：";
+    infoEl.appendChild(dirTitle);
+    infoEl.appendChild(buildAreaDirectionTargetSelect(area, "upTarget", "↑ 上：", persist));
+    infoEl.appendChild(buildAreaDirectionTargetSelect(area, "downTarget", "↓ 下：", persist));
+    infoEl.appendChild(buildAreaDirectionTargetSelect(area, "leftTarget", "← 左：", persist));
+    infoEl.appendChild(buildAreaDirectionTargetSelect(area, "rightTarget", "→ 右：", persist));
     
     // ★エリアボスの出現方式（歩数進んだら確率で／調べた時に、複数選択可）と、それぞれの確率。
     //   要望対応：アヌスの洞窟のような「歩数」方式と、ガマジルの草原のような「調べた時」方式を選べるようにする

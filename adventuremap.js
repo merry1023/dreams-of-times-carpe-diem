@@ -63,14 +63,47 @@ function closeAdventureMap() {
   window.removeEventListener("keydown", handleAdventureMapKeyDown);
 }
 
+// ★要望対応：矢印キーの行き先ラベルに出す表示名を、地図上の丸の表示（？表示等）と揃えて求める
+function getAdventureMapNodeDisplayName(node) {
+  const { isConditionLocked, backingArea } = computeAdventureMapNodeLockState(node);
+  const isFilledIn = backingArea && backingArea.type !== "placeholder" && backingArea.type !== "unknown";
+  const showAsUnknown = (node.kind === "unknown" && !isFilledIn) || isConditionLocked;
+  if (showAsUnknown) return "？";
+  return node.label || "？";
+}
+
 // ★今フォーカスしているエリアの丸を光らせる
 function updateAdventureMapFocusVisual(nodeId) {
   const svg = document.getElementById("adventure-map-svg");
   if (!svg) return;
   svg.querySelectorAll(".adventure-map-node-focused").forEach(el => el.classList.remove("adventure-map-node-focused"));
+  svg.querySelectorAll(".adventure-map-node-direction-target").forEach(el => el.classList.remove("adventure-map-node-direction-target"));
+  
+  const hintLabels = {
+    ArrowUp: document.getElementById("adventure-map-direction-hint-up"),
+    ArrowDown: document.getElementById("adventure-map-direction-hint-down"),
+    ArrowLeft: document.getElementById("adventure-map-direction-hint-left"),
+    ArrowRight: document.getElementById("adventure-map-direction-hint-right")
+  };
+  Object.values(hintLabels).forEach(el => { if (el) el.textContent = ""; }); // ★:emptyのCSSで自動的に非表示になる
+  
   if (!nodeId) return;
   const g = svg.querySelector(`[data-node-id="${CSS.escape(nodeId)}"]`);
   if (g) g.classList.add("adventure-map-node-focused");
+  
+  // ★要望対応：矢印キーでどこへ移動できるかを、行き先の丸を光らせつつ、画面固定のラベルに
+  //   行き先の名前を表示して分かりやすくする（地図をズーム・パンして行き先が画面外にあっても迷わない）
+  const nodes = getCombinedAdventureMapNodes();
+  const current = nodes.find(n => n.id === nodeId);
+  if (!current) return;
+  const targets = getAdventureMapDirectionTargets(current, nodes);
+  Object.keys(targets).forEach(key => {
+    const target = targets[key];
+    if (!target || target.id === current.id) return;
+    const targetG = svg.querySelector(`[data-node-id="${CSS.escape(target.id)}"]`);
+    if (targetG) targetG.classList.add("adventure-map-node-direction-target");
+    if (hintLabels[key]) hintLabels[key].textContent = `${ADVENTURE_MAP_DIRECTION_GLYPHS[key]} ${getAdventureMapNodeDisplayName(target)}`;
+  });
 }
 
 // ★今フォーカスしているエリアの座標から、上下左右それぞれの方向に一番近いエリアを探す
@@ -93,6 +126,29 @@ function findNearestAdventureMapNodeInDirection(current, nodes, key) {
   return filtered[0].node;
 }
 
+// ★要望対応：ノードに紐づくエリア設定（上下左右の移動先を指定できる）を取り出す
+function getAreaConfigForNode(node) {
+  return node.area || node.customArea || null;
+}
+
+const ADVENTURE_MAP_DIRECTION_FIELDS = { ArrowUp: "upTarget", ArrowDown: "downTarget", ArrowLeft: "leftTarget", ArrowRight: "rightTarget" };
+const ADVENTURE_MAP_DIRECTION_GLYPHS = { ArrowUp: "▲", ArrowDown: "▼", ArrowLeft: "◀", ArrowRight: "▶" };
+
+// ★要望対応：今フォーカスしているエリアから、矢印キーの上下左右それぞれで実際にどこへ移動するかをまとめて求める
+//   （エリア編集で指定されていればそれ、無ければ座標から一番近いエリア＝実際の移動と全く同じロジック）
+function getAdventureMapDirectionTargets(current, nodes) {
+  const config = getAreaConfigForNode(current);
+  const result = {};
+  Object.keys(ADVENTURE_MAP_DIRECTION_FIELDS).forEach(key => {
+    const field = ADVENTURE_MAP_DIRECTION_FIELDS[key];
+    let next = null;
+    if (config && config[field]) next = nodes.find(n => n.id === config[field]);
+    if (!next) next = findNearestAdventureMapNodeInDirection(current, nodes, key);
+    result[key] = next || null;
+  });
+  return result;
+}
+
 // ★矢印キーでエリア間を移動→Zキーで選択→「はい」で確定、という一連の操作
 async function handleAdventureMapKeyDown(event) {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★要望対応：シナリオエディタ表示中は本編を操作させない
@@ -109,9 +165,11 @@ async function handleAdventureMapKeyDown(event) {
   }
   if (!current) return;
   
+  // ★要望対応：エリア編集で「この方向へはこのエリアへ飛ぶ」が指定されていればそれを優先し、
+  //   空欄（未指定）なら今まで通り座標から一番近いエリアを自動で選ぶ（表示用と全く同じロジックを使う）
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
     event.preventDefault();
-    const next = findNearestAdventureMapNodeInDirection(current, nodes, event.key);
+    const next = getAdventureMapDirectionTargets(current, nodes)[event.key];
     if (!next) return;
     adventureMapFocusedNodeId = next.id;
     updateAdventureMapFocusVisual(next.id);

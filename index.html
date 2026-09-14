@@ -87,6 +87,11 @@
         <div class="adventure-map-panel">
           <h2 class="adventure-map-title">冒険する</h2>
           <svg id="adventure-map-svg" class="adventure-map-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+          <!-- ★要望対応：画面のどこにいても矢印キーの移動先の名前が分かるよう、地図の外側（画面固定）に表示する -->
+          <div id="adventure-map-direction-hint-up" class="adventure-map-direction-hint-label adventure-map-direction-hint-up"></div>
+          <div id="adventure-map-direction-hint-down" class="adventure-map-direction-hint-label adventure-map-direction-hint-down"></div>
+          <div id="adventure-map-direction-hint-left" class="adventure-map-direction-hint-label adventure-map-direction-hint-left"></div>
+          <div id="adventure-map-direction-hint-right" class="adventure-map-direction-hint-label adventure-map-direction-hint-right"></div>
           <div class="adventure-map-footer">
             <button id="adventure-map-close-btn" class="devmode-btn">戻る</button>
           </div>

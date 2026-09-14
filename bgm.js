@@ -104,6 +104,9 @@ async function stopScenarioBGM(options = {}) {
 function playBgmTrack(trackName, options = {}) {
   const fallbackAudio = currentBgmAudio; // ★この曲の読み込みに失敗した時に戻す、直前の再生状態
   const fallbackName = currentBgmName;
+  // ★要望対応：この曲の読み込みに失敗した時、直前の曲に戻す代わりに指定した曲を鳴らす
+  //   （例：ボス専用BGMが無かった場合、探索中の曲ではなく通常戦闘BGMを鳴らす）
+  const onFailFallbackTrack = options.onFailFallbackTrack || null;
   const volume = options.volume !== undefined ? options.volume : BGM_DEFAULT_VOLUME;
   
   const audio = new Audio(resolveBgmTrackPath(trackName));
@@ -115,9 +118,16 @@ function playBgmTrack(trackName, options = {}) {
     if (failHandled) return;
     failHandled = true;
     bgmFailedTracks.add(trackName); // ★次回以降、この曲名へは最初から切り替えを試みない
-    console.warn(`BGM「${trackName}」の再生に失敗しました（${resolveBgmTrackPath(trackName)} が無い可能性があります）。直前の曲があれば継続します。`);
     
     if (currentBgmAudio !== audio) return; // ★既に別の曲へ切り替わっていたら、ここでは何もしない
+    
+    if (onFailFallbackTrack && onFailFallbackTrack !== trackName && !bgmFailedTracks.has(onFailFallbackTrack)) {
+      console.warn(`BGM「${trackName}」の再生に失敗しました（${resolveBgmTrackPath(trackName)} が無い可能性があります）。代わりに「${onFailFallbackTrack}」を再生します。`);
+      playBgmTrack(onFailFallbackTrack, { ...options, onFailFallbackTrack: null });
+      return;
+    }
+    
+    console.warn(`BGM「${trackName}」の再生に失敗しました（${resolveBgmTrackPath(trackName)} が無い可能性があります）。直前の曲があれば継続します。`);
     if (fallbackAudio) {
       fallbackAudio.volume = volume; // ★フェードアウト済みで音量が0になっている場合があるので戻す
       fallbackAudio.play().catch(() => {});
@@ -226,7 +236,9 @@ function startBattleBGM(isBoss) {
     return;
   }
   const tracks = getBattleBgmTracks();
-  playBgmTrack(tracks.normal, { loop: true });
+  // ★要望対応：ボス専用BGMの再生に失敗した場合、それまでの曲（探索中の曲など）に戻すのではなく、
+  //   通常戦闘BGMを流す
+  playBgmTrack(tracks.normal, { loop: true, onFailFallbackTrack: BATTLE_BGM_TRACKS.normal });
 }
 
 // ★毎ターン（battle.jsのupdateBattleHudから）呼ぶ想定。
@@ -255,7 +267,8 @@ function notifyBattleBGMOfStateChange(isBoss) {
   }
   
   if (targetTrack && targetTrack !== currentBgmName) {
-    switchScenarioBGM(targetTrack, { fadeMs: 600 });
+    // ★要望対応：ボス専用BGM（追い込み・緊迫を含む）の再生に失敗した場合は通常戦闘BGMを流す
+    switchScenarioBGM(targetTrack, { fadeMs: 600, onFailFallbackTrack: BATTLE_BGM_TRACKS.normal });
   }
 }
 

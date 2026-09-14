@@ -468,7 +468,7 @@ async function examineCustomArea(area) {
       if (typeof ensureCustomMonstersRegistered === "function") ensureCustomMonstersRegistered();
       changeSpeaker("");
       await displayMessage("……何か大きなものの気配がする！");
-      await startBattle(area.bossId); // battle.js。戦闘後の処理はbattle.js側に任せる
+      await startBattle(area.bossId, { fixedLevel: area.bossLevel }); // battle.js。戦闘後の処理はbattle.js側に任せる（要望対応：エリアでボスのレベルを固定指定できるように）
       return;
     }
   }
@@ -843,7 +843,8 @@ async function checkForEncounter() {
   if (loc.isCustomArea && loc.customAreaData.bossId && bossTriggerTypes.includes("step")
       && Math.random() < (Number(loc.customAreaData.bossStepChance) || 0.08)) {
     if (typeof ensureCustomMonstersRegistered === "function") ensureCustomMonstersRegistered();
-    await startBattle(loc.customAreaData.bossId, battleOptions); // battle.js
+    // ★要望対応：ボスのレベルは、エリアの「出現する敵のレベル」とは別に、専用の「ボスのレベル」を優先する
+    await startBattle(loc.customAreaData.bossId, { fixedLevel: loc.customAreaData.bossLevel || battleOptions.fixedLevel }); // battle.js
     return;
   }
   
