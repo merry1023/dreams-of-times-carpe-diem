@@ -3258,6 +3258,21 @@ html, body {
   pointer-events: none;
 }
 
+/* ★要望対応：矢印キーで移動できる先の丸を、フォーカス中の丸とは違う色でやんわり光らせる */
+.adventure-map-node-direction-target .adventure-map-node-circle {
+  stroke: #6fd6ff;
+  stroke-width: 1.5;
+}
+
+/* ★要望対応：矢印キーの行き先に表示する▲▼◀▶の記号 */
+.adventure-map-direction-hint {
+  fill: #6fd6ff;
+  font-size: 4px;
+  text-anchor: middle;
+  pointer-events: none;
+  text-shadow: 0 0 2px #000;
+}
+
 .adventure-map-node-sublabel {
   fill: #8a6b3a;
   font-size: 2.2px;
