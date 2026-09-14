@@ -537,6 +537,14 @@ async function battleLoop() {
       await displayMessage(blockMessages[statusBlockedBy] || "行動できなかった……");
       turnEnded = true;
     } else {
+      // ★要望対応：装備している武器・防具に「常時発動」のスキルがあれば、行動選択の前に自動で発動する
+      await triggerPassiveEquipmentSkills(player, true);
+      if (!battleState) return; // ★常時発動スキルの効果で戦闘が終了した場合はここで打ち切る
+      if (isPartyDefeated()) {
+        await handleBattleDefeat();
+        return;
+      }
+      
       const action = await displayChoices([
         { text: "たたかう", next: "fight" },
         { text: "こうどう", next: "action" },
@@ -703,12 +711,16 @@ async function tickPlayerTurnBasedBuffs() {
 
 // ===== たたかう =====
 async function handleFightMenu() {
-  const choice = await displayChoices([
+  // ★要望対応：装備している武器・防具に「任意発動」のスキルがあれば、選択肢に追加する
+  const activeWeaponSkills = getEquipmentSkillsFor(player.equipment, "active");
+  const fightChoices = [
     { text: "通常攻撃", next: "normal" },
-    { text: "スキル", next: "skill" },
-    { text: "道具", next: "item" },
-    { text: "戻る", next: "back", isBack: true }
-  ]);
+    { text: "スキル", next: "skill" }
+  ];
+  if (activeWeaponSkills.length > 0) fightChoices.push({ text: "武器スキル", next: "weaponskill" });
+  fightChoices.push({ text: "道具", next: "item" });
+  fightChoices.push({ text: "戻る", next: "back", isBack: true });
+  const choice = await displayChoices(fightChoices);
   
   if (choice.next === "back") return false;
   
@@ -720,11 +732,36 @@ async function handleFightMenu() {
     return await handleSkillMenu();
   }
   
+  if (choice.next === "weaponskill") {
+    return await handleWeaponSkillMenu(activeWeaponSkills);
+  }
+  
   if (choice.next === "item") {
     return await handleItemMenuInBattle();
   }
   
   return false;
+}
+
+// ★要望対応：装備している武器・防具の「任意発動」スキルを選んで発動する（プレイヤー側）
+async function handleWeaponSkillMenu(activeWeaponSkills) {
+  const list = activeWeaponSkills || getEquipmentSkillsFor(player.equipment, "active");
+  if (list.length === 0) {
+    changeSpeaker("");
+    await displayMessage("今は使える武器スキルが無いようだ……");
+    return false;
+  }
+  
+  const choices = list.map(entry => ({ text: entry.master.skillName || entry.master.name, next: entry.slotKey, description: entry.master.description }));
+  choices.push({ text: "戻る", next: "back", isBack: true });
+  const picked = await displayChoices(choices);
+  if (picked.next === "back") return false;
+  
+  const entry = list.find(e => e.slotKey === picked.next);
+  if (!entry) return false;
+  
+  changeSpeaker("");
+  return await runEquipmentSkillBlocks(player, entry.master, true);
 }
 
 // ★狂戦士「賊害の連鎖」：発動中、単体攻撃が命中した時にもう一体の敵にも連鎖してダメージを与える。
@@ -1223,20 +1260,50 @@ async function performCompanionAction(companion) {
   changeSpeaker("");
   await displayMessage(`${name}の番だ。行動を選ぼう。`);
   
-  const action = await displayChoices([
+  // ★要望対応：装備している武器・防具に「常時発動」のスキルがあれば、行動選択の前に自動で発動する
+  await triggerPassiveEquipmentSkills(companion, false);
+  if (!battleState) return;
+  if (!companion.alive || isPartyDefeated()) return; // ★常時発動スキルの効果でこの仲間やパーティが力尽きた場合は、ここで行動を打ち切る（全滅処理は呼び出し元のbattleLoopに任せる）
+  
+  // ★要望対応：装備している武器・防具に「任意発動」のスキルがあれば、選択肢に追加する
+  const activeWeaponSkills = getEquipmentSkillsFor(companion.equipment, "active");
+  const actionChoices = [
     { text: "たたかう", next: "fight" },
-    { text: "スキル", next: "skill" },
-    { text: "道具", next: "item" } // ★要望対応：以前は主人公のターンでしか道具を使えなかったが、仲間の行動選択でも使えるようにする
-  ]);
+    { text: "スキル", next: "skill" }
+  ];
+  if (activeWeaponSkills.length > 0) actionChoices.push({ text: "武器スキル", next: "weaponskill" });
+  actionChoices.push({ text: "道具", next: "item" }); // ★要望対応：以前は主人公のターンでしか道具を使えなかったが、仲間の行動選択でも使えるようにする
+  
+  const action = await displayChoices(actionChoices);
   
   if (action.next === "fight") {
     await performCompanionNormalAttack(companion);
   } else if (action.next === "item") {
     const used = await handleItemMenuInBattle(); // battle.js（対象は自分・他の仲間・全員から選べる。既存の道具選択と共通）
     if (!used) { await performCompanionAction(companion); return; } // ★何も使わず「戻る」を選んだ場合は、行動選択からやり直す
+  } else if (action.next === "weaponskill") {
+    const success = await performCompanionWeaponSkillMenu(companion, activeWeaponSkills);
+    if (!success) { await performCompanionAction(companion); return; } // ★対象選択をキャンセル／戻るを選んだ場合は、行動選択からやり直す
   } else {
     await performCompanionSkillMenu(companion);
   }
+}
+
+// ★要望対応：装備している武器・防具の「任意発動」スキルを選んで発動する（仲間側）
+async function performCompanionWeaponSkillMenu(companion, activeWeaponSkills) {
+  const list = activeWeaponSkills || getEquipmentSkillsFor(companion.equipment, "active");
+  if (list.length === 0) return false;
+  
+  const choices = list.map(entry => ({ text: entry.master.skillName || entry.master.name, next: entry.slotKey, description: entry.master.description }));
+  choices.push({ text: "戻る", next: "back", isBack: true });
+  const picked = await displayChoices(choices);
+  if (picked.next === "back") return false;
+  
+  const entry = list.find(e => e.slotKey === picked.next);
+  if (!entry) return false;
+  
+  changeSpeaker("");
+  return await runEquipmentSkillBlocks(companion, entry.master, false);
 }
 
 async function performCompanionNormalAttack(companion) {
@@ -2522,6 +2589,58 @@ async function runSkillBlocksForCompanionTurn(companion, skill) {
   const outcome = await runSkillBlockList(skill.blocks, skill, context);
   if (typeof outcome === "string" && outcome.startsWith("JUMP:")) console.warn(`ジャンプブロックの行き先ブロック（id: ${outcome.slice(5)}）が技「${skill.name}」の中に見つかりませんでした`);
   return true;
+}
+
+// ★要望対応：武器・防具に持たせたスキル（scenariobuild.jsの「⚡ スキル編集」で組んだブロック）を集める。
+//   equipmentObjはplayer.equipmentまたは仲間のequipment。activationModeで"active"(任意発動)/"passive"(常時発動)を絞り込む
+function getEquipmentSkillsFor(equipmentObj, activationMode) {
+  if (!equipmentObj || typeof getEquippedItemDataFor !== "function") return []; // player.js
+  const result = [];
+  Object.keys(equipmentObj).forEach(slotKey => {
+    const data = getEquippedItemDataFor(equipmentObj, slotKey); // player.js
+    const master = data && data.master;
+    if (!master || !Array.isArray(master.skillBlocks) || master.skillBlocks.length === 0) return;
+    const mode = master.skillActivationMode === "passive" ? "passive" : "active";
+    if (mode !== activationMode) return;
+    result.push({ slotKey, itemId: data.itemId, master });
+  });
+  return result;
+}
+
+// ★武器・防具のスキルを実際に発動する。isPlayerでプレイヤー/仲間どちらの番かを判定し、
+//   ダメージ計算等の基準になるcasterを正しく設定する。特殊スキル編集と同じブロック実行エンジン（runSkillBlockList）を
+//   そのまま使い回すため、.name/.blocks/.variablesだけを持つ「仮の技」を組み立てて渡す
+async function runEquipmentSkillBlocks(caster, master, isPlayer) {
+  const skillLabel = master.skillName || master.name || "武器スキル";
+  const pseudoSkill = { id: `itemskill_${master.name || "weapon"}`, name: skillLabel, blocks: master.skillBlocks, variables: (master.skillVariables && typeof master.skillVariables === "object") ? master.skillVariables : {} };
+  
+  changeSpeaker(isPlayer ? "" : getCompanionDisplayName(caster));
+  await displayMessage(isPlayer ? `「${skillLabel}」を発動した！` : `${getCompanionDisplayName(caster)}の「${skillLabel}」！`, { allowSubFocus: true });
+  
+  const needsTarget = skillBlocksNeedSingleTarget(pseudoSkill.blocks);
+  let target = null;
+  if (needsTarget) {
+    target = await selectEnemyTarget();
+    if (!target) return false; // ★対象選択をキャンセルした：呼び出し元でメニューをやり直す
+  }
+  
+  const context = { variables: { ...pseudoSkill.variables }, target, caster };
+  const outcome = await runSkillBlockList(pseudoSkill.blocks, pseudoSkill, context);
+  if (typeof outcome === "string" && outcome.startsWith("JUMP:")) console.warn(`ジャンプブロックの行き先ブロック（id: ${outcome.slice(5)}）が武器スキル「${skillLabel}」の中に見つかりませんでした`);
+  
+  renderStatusHUD();
+  updateBattleHud();
+  return true;
+}
+
+// ★常時発動（毎ターン自動）の武器・防具スキルを、その番が来るたびに実行する。
+//   何体分あっても全部まとめて発動する（同時に複数の常時発動装備を持っていても対応できるように）
+async function triggerPassiveEquipmentSkills(caster, isPlayer) {
+  const passiveSkills = getEquipmentSkillsFor(caster.equipment, "passive");
+  for (const entry of passiveSkills) {
+    await runEquipmentSkillBlocks(caster, entry.master, isPlayer);
+    if (!battleState) return; // ★常時発動スキルの効果で戦闘そのものが終了した（全滅・勝利）場合はここで打ち切る
+  }
 }
 
 // ★習得済みのスキル（攻撃・回復・自己強化技に加え、魔法少女の「マジカル変身」だけは特殊技だが戦闘中に使うので一覧に含める）を表示し、実際に効果を発動する
