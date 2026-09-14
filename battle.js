@@ -606,12 +606,7 @@ async function battleLoop() {
     
     // ★敵を全滅させた？
     if (getAliveEnemies().length === 0) {
-      const spared = await handlePreVictoryFlavor(); // 倒す直前の専用セリフ（敵が1体だけの時、サキュバス・ハーピーは見逃すか選べる）
-      if (spared) {
-        await handleMonsterSpared();
-      } else {
-        await handleBattleVictory();
-      }
+      await resolveBattleVictory(); // 勝利処理（敵の種類ごとの殺す/逃がすの選択も含む）
       return;
     }
     
@@ -619,12 +614,7 @@ async function battleLoop() {
     await companionTeamTurn();
     if (!battleState) return;
     if (getAliveEnemies().length === 0) {
-      const spared = await handlePreVictoryFlavor();
-      if (spared) {
-        await handleMonsterSpared();
-      } else {
-        await handleBattleVictory();
-      }
+      await resolveBattleVictory();
       return;
     }
     
@@ -632,12 +622,7 @@ async function battleLoop() {
     await tryFriendlyMonsterAssist();
     if (!battleState) return;
     if (getAliveEnemies().length === 0) {
-      const spared = await handlePreVictoryFlavor();
-      if (spared) {
-        await handleMonsterSpared();
-      } else {
-        await handleBattleVictory();
-      }
+      await resolveBattleVictory();
       return;
     }
     
@@ -3075,95 +3060,15 @@ async function tickMagicalGirlTransformState() {
 
 // 倒す直前、見逃せる魔物（SPAREABLE_KEYS）だけ「見逃すか殺すか」選べるようにする。
 // ★複数体との戦闘では「誰を見逃すか」が成立しづらいため、敵が1体だけだった時に限る。
-// 戻り値は「見逃した(true)」かどうか。trueならこの後は handleMonsterSpared() を、
-// falseなら通常通り handleBattleVictory() を呼ぶ
-async function handlePreVictoryFlavor() {
-  if (battleState.enemies.length !== 1) return false;
-  const enemy = battleState.enemies[0];
-  const master = MONSTER_MASTER[enemy.monsterKey];
-  if (!SPAREABLE_KEYS.includes(enemy.monsterKey)) {
-    return false; // ★対象外の魔物（ボス級）はそのまま通常の勝利処理へ
-  }
-  
+// ★戦闘勝利時の処理をまとめて行う：敵の種類（monsterKey）ごとに「殺す/逃がす」を選ばせてから
+//   （見逃せない相手＝SPAREABLE_KEYSに無い種類は今まで通り自動的に倒す）、経験値・ドロップ・
+//   好感度・クエスト進捗などをまとめて処理する。
+// ★要望対応：以前は敵が1体の時しか殺す/逃がすを選べなかったが、複数体（同じ種類が複数含まれる
+//   場合も含む）でも、出てきた敵の種類ごとに選べるようにした。同じ種類が複数いても選択は1回だけで、
+//   逃がした時の好感度上昇量も1体分と同じ（複数体ぶん合算しない）
+// ★要望対応：好感度が既にMAXの相手は、殺しても好感度が下がらない
+async function resolveBattleVictory() {
   changeSpeaker("");
-  await displayMessage("かわいそうだし逃がしていいかな！？！？！？！？");
-  
-  const choice = await displayChoices([
-    { text: "逃がす", next: "spare" },
-    { text: "殺す", next: "kill" }
-  ]);
-  
-  if (choice.next === "kill") {
-    changeMonsterAffection(enemy.monsterKey, -8); // ★殺すと好感度が下がる
-    discoveredMonsters[enemy.monsterKey] = true; // ★倒したので図鑑に載る
-    // ★要望対応：見逃した/倒した時の演出を、単なる1行のセリフだけでなくブロックで自由に組み立てられるようにする
-    if (Array.isArray(master.killBlocks) && master.killBlocks.length > 0 && typeof runBlockSequence === "function") {
-      await runBlockSequence({ id: "enemyflavor_" + enemy.monsterKey, blocks: master.killBlocks }, master.killBlocks, []); // scenariobuild.js
-    } else if (master.killFlavor) {
-      changeSpeaker(master.name);
-      await displayMessage(master.killFlavor);
-    }
-    return false;
-  }
-  
-  // ★見逃す（好感度が上がる。サキュバスだけ他より上がりにくい）
-  const [gainMin, gainMax] = master.affectionGainRange || [5, 10];
-  const affectionGain = gainMin + Math.floor(Math.random() * (gainMax - gainMin + 1));
-  changeMonsterAffection(enemy.monsterKey, affectionGain);
-  discoveredMonsters[enemy.monsterKey] = true; // ★見逃したので図鑑に載る
-  if (Array.isArray(master.spareBlocks) && master.spareBlocks.length > 0 && typeof runBlockSequence === "function") {
-    await runBlockSequence({ id: "enemyflavor_" + enemy.monsterKey, blocks: master.spareBlocks }, master.spareBlocks, []); // scenariobuild.js
-  } else if (master.spareFlavor) {
-    changeSpeaker(master.name);
-    await displayMessage(master.spareFlavor);
-  }
-  if (enemy.monsterKey === "harpy") {
-    changeSpeaker("ハーピー");
-    await displayMessage("「ちょっとまっててくださいね……」");
-    changeSpeaker("");
-    await displayMessage("「チョロチョロチョロ…」");
-    changeSpeaker("田中治郎");
-    await displayMessage("「え！ちょっと！なにやってんの！」");
-    changeSpeaker("ハーピー");
-    await displayMessage("「お待たせしました！どうぞ見逃してくれたお礼です！」");
-    addItem("harpy_water", 1); // inventory.js
-  }
-  return true;
-}
-
-// 見逃した場合の決着処理：とどめは刺していないので、経験値は半分・お金やドロップは無し
-async function handleMonsterSpared() {
-  const enemy = battleState.enemies[0];
-  changeSpeaker("");
-  stopBattleBGM(); // bgm.js
-  const halvedExp = Math.floor(enemy.exp / 2); // ★見逃した魔物からは経験値が半分しか手に入らない
-  const levelResult = addExp(halvedExp);
-  addProgressPoints(1); // ★見逃しでも進行度+1（player.js）
-  renderStatusHUD();
-  await displayMessage(`${enemy.displayName}を見逃した。経験値${halvedExp}を獲得した。`);
-  
-  // ★レベルアップ・新スキル習得があれば知らせる
-  if (typeof announceLevelUpIfAny === "function") {
-    await announceLevelUpIfAny(levelResult);
-  }
-  
-  const monsterKey = enemy.monsterKey;
-  hideBattleHud();
-  battleState = null;
-  // ★受注中の討伐依頼の対象なら、見逃しでも進捗を進める（「被害が減る」という扱い）
-  if (typeof progressHuntQuestIfMatching === "function") {
-    await progressHuntQuestIfMatching(monsterKey, true);
-  }
-  await returnToAdventureAfterBattle("win"); // adventure.js（見逃しも探索続行という意味では勝利と同じ扱い）
-}
-
-async function handleBattleVictory() {
-  changeSpeaker("");
-  if (battleState.enemies.length === 1) {
-    await displayMessage(`${battleState.enemies[0].displayName}を倒した！`);
-  } else {
-    await displayMessage("敵を全て倒した！");
-  }
   stopBattleBGM(); // bgm.js
   
   // ★戦闘中に力尽きてしまった仲間は、勝利後にわずかなHPで目を覚ます（詰みを防ぐための簡易処置）
@@ -3183,34 +3088,110 @@ async function handleBattleVictory() {
     return;
   }
   
-  // ★魔物を倒してもお金はもらえない仕様に変更（お金は物を売る・クエスト・宝箱・調べる等から得る）。
-  //   複数体を倒した時は、全員分の経験値を合算する
-  const totalExp = battleState.enemies.reduce((sum, e) => sum + e.exp, 0);
+  // ★敵の種類ごとに「殺す/逃がす」を決める（同じ種類が複数いても選択は1回だけ）
+  const enemyTypes = [...new Set(battleState.enemies.map(e => e.monsterKey))];
+  const decisions = {}; // monsterKey -> "kill" | "spare"
+  
+  for (const monsterKey of enemyTypes) {
+    const master = MONSTER_MASTER[monsterKey];
+    const countOfType = battleState.enemies.filter(e => e.monsterKey === monsterKey).length;
+    
+    if (!SPAREABLE_KEYS.includes(monsterKey)) {
+      decisions[monsterKey] = "kill"; // ★ボス級など、見逃せない相手は今まで通り自動的に倒す
+      continue;
+    }
+    
+    changeSpeaker("");
+    await displayMessage(countOfType > 1
+      ? `かわいそうだし${master.name}（${countOfType}体）を逃がしていいかな！？！？！？！？`
+      : "かわいそうだし逃がしていいかな！？！？！？！？");
+    const choice = await displayChoices([
+      { text: "逃がす", next: "spare" },
+      { text: "殺す", next: "kill" }
+    ]);
+    decisions[monsterKey] = choice.next;
+    
+    if (choice.next === "kill") {
+      if (getMonsterAffection(monsterKey) < AFFECTION_MAX) { // ★要望対応：好感度が既にMAXなら、殺しても下げない
+        changeMonsterAffection(monsterKey, -8); // ★殺すと好感度が下がる
+      }
+      discoveredMonsters[monsterKey] = true; // ★倒したので図鑑に載る
+      if (Array.isArray(master.killBlocks) && master.killBlocks.length > 0 && typeof runBlockSequence === "function") {
+        await runBlockSequence({ id: "enemyflavor_" + monsterKey, blocks: master.killBlocks }, master.killBlocks, []); // scenariobuild.js
+      } else if (master.killFlavor) {
+        changeSpeaker(master.name);
+        await displayMessage(master.killFlavor);
+      }
+    } else {
+      // ★見逃す（好感度が上がる。抽選は種類ごとに1回だけ＝同じ種類が複数体いても上昇量は1体分と同じ）
+      const [gainMin, gainMax] = master.affectionGainRange || [5, 10];
+      const affectionGain = gainMin + Math.floor(Math.random() * (gainMax - gainMin + 1));
+      changeMonsterAffection(monsterKey, affectionGain);
+      discoveredMonsters[monsterKey] = true; // ★見逃したので図鑑に載る
+      if (Array.isArray(master.spareBlocks) && master.spareBlocks.length > 0 && typeof runBlockSequence === "function") {
+        await runBlockSequence({ id: "enemyflavor_" + monsterKey, blocks: master.spareBlocks }, master.spareBlocks, []); // scenariobuild.js
+      } else if (master.spareFlavor) {
+        changeSpeaker(master.name);
+        await displayMessage(master.spareFlavor);
+      }
+      if (monsterKey === "harpy") {
+        changeSpeaker("ハーピー");
+        await displayMessage("「ちょっとまっててくださいね……」");
+        changeSpeaker("");
+        await displayMessage("「チョロチョロチョロ…」");
+        changeSpeaker("田中治郎");
+        await displayMessage("「え！ちょっと！なにやってんの！」");
+        changeSpeaker("ハーピー");
+        await displayMessage("「お待たせしました！どうぞ見逃してくれたお礼です！」");
+        addItem("harpy_water", 1); // inventory.js
+      }
+    }
+  }
+  
+  const allSpared = enemyTypes.length > 0 && enemyTypes.every(k => decisions[k] === "spare");
+  
+  // ★経験値：見逃した種類は個体ごとに半分、倒した種類は個体ごとに全額（複数体いれば合算する）
+  const totalExp = battleState.enemies.reduce((sum, enemy) => {
+    const spared = decisions[enemy.monsterKey] === "spare";
+    return sum + (spared ? Math.floor(enemy.exp / 2) : enemy.exp);
+  }, 0);
   const levelResult = addExp(totalExp);
-  addProgressPoints(2); // ★討伐で進行度+2（player.js）
+  addProgressPoints(allSpared ? 1 : 2); // ★全員見逃した時だけ+1、それ以外（1体でも倒していれば）は+2（player.js）
   renderStatusHUD();
-  await displayMessage(`経験値${totalExp}を獲得した。`);
+  
+  if (battleState.enemies.length === 1) {
+    await displayMessage(allSpared
+      ? `${battleState.enemies[0].displayName}を見逃した。経験値${totalExp}を獲得した。`
+      : `${battleState.enemies[0].displayName}を倒した！`);
+    if (!allSpared) await displayMessage(`経験値${totalExp}を獲得した。`);
+  } else {
+    await displayMessage(allSpared ? "敵を全て見逃した。" : "敵の相手が終わった。");
+    await displayMessage(`経験値${totalExp}を獲得した。`);
+  }
   
   // ★レベルアップ・新スキル習得があれば知らせる
   if (typeof announceLevelUpIfAny === "function") {
     await announceLevelUpIfAny(levelResult);
   }
   
-  // ★倒した敵それぞれについて、ドロップ抽選とクエスト進捗を個別にチェックする
+  // ★倒した敵それぞれについて、討伐数記録・ドロップ抽選を行う（見逃した敵は対象外＝今までの仕様通り）。
+  //   クエスト進捗は、倒した/見逃したどちらでも個体ごとに進める
   const lootBonus = (typeof hasPassiveSkill === "function" && hasPassiveSkill("lootBonus")) ? 0.15 : 0; // ★お宝鑑定団の「掘り出し物」（player.js）
   for (const enemy of battleState.enemies) {
-    // ★マップのエリア解放条件（「指定した敵をn体倒した」「全ての敵をn体倒した」）用に討伐数を記録する
-    if (player && player.enemyKillCounts) {
-      player.enemyKillCounts[enemy.monsterKey] = (player.enemyKillCounts[enemy.monsterKey] || 0) + 1;
-      player.totalKillCount = (player.totalKillCount || 0) + 1;
-    }
-    if (enemy.dropItemId && Math.random() < enemy.dropRate + lootBonus) {
-      addItem(enemy.dropItemId, 1);
-      const master = ITEM_MASTER[enemy.dropItemId];
-      await displayMessage(`「${master.name}」を手に入れた！`);
+    const spared = decisions[enemy.monsterKey] === "spare";
+    if (!spared) {
+      if (player && player.enemyKillCounts) {
+        player.enemyKillCounts[enemy.monsterKey] = (player.enemyKillCounts[enemy.monsterKey] || 0) + 1;
+        player.totalKillCount = (player.totalKillCount || 0) + 1;
+      }
+      if (enemy.dropItemId && Math.random() < enemy.dropRate + lootBonus) {
+        addItem(enemy.dropItemId, 1);
+        const dropMaster = ITEM_MASTER[enemy.dropItemId];
+        await displayMessage(`「${dropMaster.name}」を手に入れた！`);
+      }
     }
     if (typeof progressHuntQuestIfMatching === "function") {
-      await progressHuntQuestIfMatching(enemy.monsterKey);
+      await progressHuntQuestIfMatching(enemy.monsterKey, spared);
     }
   }
   
