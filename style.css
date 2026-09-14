@@ -3178,6 +3178,55 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  position: relative; /* ★要望対応：矢印キーの行き先ラベルをこの枠を基準に画面固定で置くため */
+}
+
+/* ★要望対応：矢印キーの移動先を、地図の外側（画面固定）に名前つきで表示する。
+   地図をズーム・パンしても常に同じ位置に出るので、行き先が画面外にあっても迷わない */
+.adventure-map-direction-hint-label {
+  position: absolute;
+  z-index: 2;
+  max-width: 40%;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #4a3210;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #d8b673;
+  border-radius: 12px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.adventure-map-direction-hint-label:empty {
+  display: none; /* ★行き先が無い方向はラベルごと出さない */
+}
+
+.adventure-map-direction-hint-up {
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.adventure-map-direction-hint-down {
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.adventure-map-direction-hint-left {
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.adventure-map-direction-hint-right {
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .adventure-map-title {
@@ -3262,15 +3311,6 @@ html, body {
 .adventure-map-node-direction-target .adventure-map-node-circle {
   stroke: #6fd6ff;
   stroke-width: 1.5;
-}
-
-/* ★要望対応：矢印キーの行き先に表示する▲▼◀▶の記号 */
-.adventure-map-direction-hint {
-  fill: #6fd6ff;
-  font-size: 4px;
-  text-anchor: middle;
-  pointer-events: none;
-  text-shadow: 0 0 2px #000;
 }
 
 .adventure-map-node-sublabel {

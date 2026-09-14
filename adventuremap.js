@@ -63,39 +63,46 @@ function closeAdventureMap() {
   window.removeEventListener("keydown", handleAdventureMapKeyDown);
 }
 
+// ★要望対応：矢印キーの行き先ラベルに出す表示名を、地図上の丸の表示（？表示等）と揃えて求める
+function getAdventureMapNodeDisplayName(node) {
+  const { isConditionLocked, backingArea } = computeAdventureMapNodeLockState(node);
+  const isFilledIn = backingArea && backingArea.type !== "placeholder" && backingArea.type !== "unknown";
+  const showAsUnknown = (node.kind === "unknown" && !isFilledIn) || isConditionLocked;
+  if (showAsUnknown) return "？";
+  return node.label || "？";
+}
+
 // ★今フォーカスしているエリアの丸を光らせる
 function updateAdventureMapFocusVisual(nodeId) {
   const svg = document.getElementById("adventure-map-svg");
   if (!svg) return;
   svg.querySelectorAll(".adventure-map-node-focused").forEach(el => el.classList.remove("adventure-map-node-focused"));
   svg.querySelectorAll(".adventure-map-node-direction-target").forEach(el => el.classList.remove("adventure-map-node-direction-target"));
-  svg.querySelectorAll(".adventure-map-direction-hint").forEach(el => el.remove()); // ★前回表示していた矢印ヒントを消す
+  
+  const hintLabels = {
+    ArrowUp: document.getElementById("adventure-map-direction-hint-up"),
+    ArrowDown: document.getElementById("adventure-map-direction-hint-down"),
+    ArrowLeft: document.getElementById("adventure-map-direction-hint-left"),
+    ArrowRight: document.getElementById("adventure-map-direction-hint-right")
+  };
+  Object.values(hintLabels).forEach(el => { if (el) el.textContent = ""; }); // ★:emptyのCSSで自動的に非表示になる
+  
   if (!nodeId) return;
   const g = svg.querySelector(`[data-node-id="${CSS.escape(nodeId)}"]`);
   if (g) g.classList.add("adventure-map-node-focused");
   
-  // ★要望対応：矢印キーでどこへ移動できるかを、行き先の丸を光らせつつ矢印記号でも分かりやすく示す
+  // ★要望対応：矢印キーでどこへ移動できるかを、行き先の丸を光らせつつ、画面固定のラベルに
+  //   行き先の名前を表示して分かりやすくする（地図をズーム・パンして行き先が画面外にあっても迷わない）
   const nodes = getCombinedAdventureMapNodes();
   const current = nodes.find(n => n.id === nodeId);
   if (!current) return;
   const targets = getAdventureMapDirectionTargets(current, nodes);
-  const stackCountByNodeId = {}; // ★同じ丸に複数方向の矢印が重なる場合、少しずつ縦にずらして両方見えるようにする
   Object.keys(targets).forEach(key => {
     const target = targets[key];
     if (!target || target.id === current.id) return;
     const targetG = svg.querySelector(`[data-node-id="${CSS.escape(target.id)}"]`);
-    if (!targetG) return;
-    targetG.classList.add("adventure-map-node-direction-target");
-    
-    const stackIndex = stackCountByNodeId[target.id] || 0;
-    stackCountByNodeId[target.id] = stackIndex + 1;
-    const text = document.createElementNS(svg.namespaceURI, "text");
-    text.setAttribute("x", target.x);
-    text.setAttribute("y", target.y - (target.radius || 8) - 3 - stackIndex * 9);
-    text.setAttribute("text-anchor", "middle");
-    text.setAttribute("class", "adventure-map-direction-hint");
-    text.textContent = ADVENTURE_MAP_DIRECTION_GLYPHS[key];
-    svg.appendChild(text);
+    if (targetG) targetG.classList.add("adventure-map-node-direction-target");
+    if (hintLabels[key]) hintLabels[key].textContent = `${ADVENTURE_MAP_DIRECTION_GLYPHS[key]} ${getAdventureMapNodeDisplayName(target)}`;
   });
 }
 
