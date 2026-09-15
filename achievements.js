@@ -137,6 +137,12 @@ function isAchievementUnlocked(achievement) {
   return !!(player && Array.isArray(player.unlockedAchievementIds) && player.unlockedAchievementIds.includes(achievement.id));
 }
 
+// ★要望対応：「隠し実績」（hidden: true）は、達成するまで一覧に存在ごと出さない（？？？すら出さない）。
+//   hidden: falseの実績は、達成するまで一覧には出すが、名前・説明を「？？？」にする。
+function isAchievementVisible(achievement) {
+  return isAchievementUnlocked(achievement) || !achievement.hidden;
+}
+
 function openAchievementsPanel() {
   const grid = document.getElementById("convenience-icon-grid");
   const saveloadPanel = document.getElementById("saveload-panel");
@@ -165,16 +171,18 @@ function closeAchievementsPanel() {
 function renderAchievementsSummary(container) {
   container.innerHTML = "";
   container.className = "progress-panel-summary";
-  const list = getAchievementList();
-  const unlockedCount = list.filter(a => isAchievementUnlocked(a)).length;
-  container.appendChild(buildProgressRow("達成済み", `${unlockedCount} ／ ${list.length}`));
+  // ★hidden（隠し実績）で未達成のものは、一覧に存在ごと出さないので、分母にも数えない
+  const visibleList = getAchievementList().filter(isAchievementVisible);
+  const unlockedCount = visibleList.filter(a => isAchievementUnlocked(a)).length;
+  container.appendChild(buildProgressRow("達成済み", `${unlockedCount} ／ ${visibleList.length}`));
 }
 
 function renderAchievementsList(container) {
   container.innerHTML = "";
   container.className = "progress-panel-list progress-panel-chapter-list";
   
-  const list = getAchievementList();
+  // ★hidden（隠し実績）で未達成のものは一覧から除外する（？？？すら出さない）
+  const list = getAchievementList().filter(isAchievementVisible);
   if (achievementsCursorIndex >= list.length) achievementsCursorIndex = Math.max(0, list.length - 1);
   
   if (list.length === 0) {
@@ -197,8 +205,8 @@ function renderAchievementsList(container) {
     
     const titleEl = document.createElement("span");
     titleEl.className = "progress-panel-chapter-title";
-    // ★hidden（隠し実績）は、達成するまで名前も「？？？」にする
-    titleEl.textContent = (unlocked || !achievement.hidden) ? (achievement.name || "（名称未設定）") : "？？？";
+    // ★未達成のものは、hiddenがfalseでも（一覧に出す代わりに）名前を「？？？」にする
+    titleEl.textContent = unlocked ? (achievement.name || "（名称未設定）") : "？？？";
     row.appendChild(titleEl);
     
     row.onclick = (event) => {
@@ -226,11 +234,13 @@ function buildAchievementRewardLines(achievement) {
 
 function renderAchievementDetail(panel) {
   panel.innerHTML = "";
-  const list = getAchievementList();
+  // ★一覧側の表示（hidden実績は非表示、それ以外は未達成なら？？？）とインデックスを合わせる
+  const list = getAchievementList().filter(isAchievementVisible);
   const achievement = list[achievementsCursorIndex];
   if (!achievement) { achievementsDetailOpen = false; renderAchievementsPanel(); return; }
   const unlocked = isAchievementUnlocked(achievement);
-  const canReveal = unlocked || !achievement.hidden;
+  // ★未達成の間は、hiddenがfalseでも（一覧同様）？？？のままにする
+  const canReveal = unlocked;
   
   const title = document.createElement("h3");
   title.className = "monster-codex-title";
@@ -315,7 +325,8 @@ function handleAchievementsKeyDown(event) {
     return;
   }
   
-  const list = getAchievementList();
+  // ★一覧側の表示（hidden実績は非表示）とカーソルの範囲を合わせる
+  const list = getAchievementList().filter(isAchievementVisible);
   if (event.key === "ArrowDown") {
     event.preventDefault();
     if (list.length === 0) return;
