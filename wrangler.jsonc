@@ -5,7 +5,17 @@
   "observability": {
     "enabled": true
   },
+  "main": "worker/index.js",
   "assets": {
-    "directory": "."
-  }
+    "directory": ".",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "COMPANION_CHAT_KV",
+      // ★「wrangler kv namespace create COMPANION_CHAT_KV」を実行して発行されたidに書き換えてください
+      //   （詳しくはREADME_COMPANION_CHAT.mdを参照）
+      "id": "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+    }
+  ]
 }

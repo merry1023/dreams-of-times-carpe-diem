@@ -43,6 +43,12 @@ let scenarioProject = {
   mapAreas: [],   // [{ id, name, type, x, y, bgTrack, bgImage, bossId, enemyIds, items, examineMessages(配列。「調べる」で毎回ランダムに1つ選ぶ), battleVariations, builtin, locationKey }, ...]
   mapEdges: [],   // [[fromNodeId, toNodeId], ...] ★マップ画面でのエリア同士のつながり（村="village"、組み込みは"cave"等、自作エリアは"custom_"+id）
   loginBonusDays: [], // ★要望対応：ログインボーナス。7日分の配列 [{ gold, exp, items:[{itemId, qty}, ...] }, ...]（1日目〜7日目）
+  companionChatSettings: { // ★要望対応：仲間との会話（Gemini API連携）の「会話AI設定」タブで編集する情報
+    partyName: "",              // パーティ名
+    protagonistEpithet: "",     // 主人公の二つ名
+    protagonistPersonality: "", // 主人公の性格・口調の指針（会話AIが参考にする）
+    companions: {}               // { [仲間のid]: { epithet: "", personality: "" }, ... }
+  },
   // ★組み込み（builtin）のデータを削除した時、次回読み込み時に自動で復活してしまわないように記録しておく置き場所。
   //   「編集・削除できない」問題の多くは、実は削除できていたのに毎回ここでの記録が無く復活していたことが原因だった
   deletedBuiltinIds: { chapters: [], characters: [], enemies: [], bosses: [], items: [], bgmTracks: [], mapAreas: [], skills: [], companions: [] }
@@ -205,6 +211,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.trialGuardianOverrides = data.trialGuardianOverrides || {};
   scenarioProject.fameThresholds = data.fameThresholds || {};
   if (Array.isArray(data.loginBonusDays)) scenarioProject.loginBonusDays = data.loginBonusDays; // ★要望対応：ログインボーナス
+  if (data.companionChatSettings && typeof data.companionChatSettings === "object") scenarioProject.companionChatSettings = data.companionChatSettings; // ★要望対応：会話AI設定
   if (typeof data.creditsText === "string") scenarioProject.creditsText = data.creditsText; // ★書き出し側に合わせてクレジットの文面も取り込む
   if (typeof data.introText === "string") scenarioProject.introText = data.introText; // ★オープニングの注意書きも同様に取り込む
   if (!scenarioProject.deletedBuiltinIds) scenarioProject.deletedBuiltinIds = {};
@@ -395,6 +402,22 @@ function normalizeScenarioProject() {
     if (!Array.isArray(dayData.items)) dayData.items = [];
   }
   scenarioProject.loginBonusDays.length = 7; // ★万が一7件より多く保存されていても7件に切り詰める
+  // ★要望対応：会話AI設定（無ければ初期値を用意し、仲間ごとの欄も仲間の数だけ揃える）
+  if (!scenarioProject.companionChatSettings || typeof scenarioProject.companionChatSettings !== "object") {
+    scenarioProject.companionChatSettings = { partyName: "", protagonistEpithet: "", protagonistPersonality: "", companions: {} };
+  }
+  const ccs = scenarioProject.companionChatSettings;
+  if (typeof ccs.partyName !== "string") ccs.partyName = "";
+  if (typeof ccs.protagonistEpithet !== "string") ccs.protagonistEpithet = "";
+  if (typeof ccs.protagonistPersonality !== "string") ccs.protagonistPersonality = "";
+  if (!ccs.companions || typeof ccs.companions !== "object") ccs.companions = {};
+  (scenarioProject.companions || []).forEach(companion => {
+    if (!ccs.companions[companion.id] || typeof ccs.companions[companion.id] !== "object") {
+      ccs.companions[companion.id] = { epithet: "", personality: "" };
+    }
+    if (typeof ccs.companions[companion.id].epithet !== "string") ccs.companions[companion.id].epithet = "";
+    if (typeof ccs.companions[companion.id].personality !== "string") ccs.companions[companion.id].personality = "";
+  });
   // ★状態異常・状態強化の「種類」を、状態管理タブから追加・編集できるようにする。
   //   実際の動作（mechanic）は決まった仕組みの中からしか選べないが、id・表示名・説明・
   //   デフォルトの効果量／ターン数は自由に決められる（同じ仕組みを違う名前・数値で使い回せる）
@@ -1328,6 +1351,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "gamevars", label: "ゲーム変数管理" }, // ★要望対応：話ブロックのifで参照できる数値変数の管理タブ（システム変数一覧の「変数一覧」とは別物）
   { view: "recipes", label: "レシピ管理" },
   { view: "loginbonus", label: "ログボ報酬" }, // ★要望対応：ログインボーナス（7日分の報酬編集）
+  { view: "companionchat", label: "会話AI設定" }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集
   { view: "companions", label: "仲間編集" },
   { view: "classes", label: "職業編集" },
   { view: "bgm", label: "BGM設定" },
@@ -1431,6 +1455,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "items") renderEntityManager(bodyEl, getItemManagerConfig());
   else if (scenarioBuildSubView === "quests") renderEntityManager(bodyEl, getQuestManagerConfig());
   else if (scenarioBuildSubView === "loginbonus") renderLoginBonusManager(bodyEl); // ★要望対応：ログインボーナス
+  else if (scenarioBuildSubView === "companionchat") renderCompanionChatSettingsManager(bodyEl); // ★要望対応：会話AI設定
   else if (scenarioBuildSubView === "achievements") renderEntityManager(bodyEl, getAchievementManagerConfig());
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
@@ -9791,6 +9816,104 @@ function renderLoginBonusManager(container) {
   });
 }
 
+// ★要望対応：会話AI設定。パーティ名・主人公の二つ名や性格、各仲間の二つ名や性格を編集する
+//   （「仲間との会話」機能で、まとめAIが会話AIに渡す設定資料の材料になる）
+function renderCompanionChatSettingsManager(container) {
+  const introEl = document.createElement("p");
+  introEl.className = "devmode-note";
+  introEl.textContent = "「仲間との会話」機能で使う、パーティ名・二つ名・性格や口調の指針を設定します。ここで書いた内容は会話AIがキャラクターになりきる時の参考にされます（空欄でも動作しますが、埋めておくほどキャラクターらしい会話になります）。";
+  container.appendChild(introEl);
+  
+  const ccs = scenarioProject.companionChatSettings;
+  
+  const partyCard = document.createElement("div");
+  partyCard.className = "scenariobuild-entity-card";
+  const partyHeader = document.createElement("h4");
+  partyHeader.className = "scenariobuild-subheading";
+  partyHeader.textContent = "パーティ全体";
+  partyCard.appendChild(partyHeader);
+  
+  const partyNameRow = document.createElement("div");
+  partyNameRow.className = "scenariobuild-condition-row";
+  partyNameRow.appendChild(labelSpan("パーティ名："));
+  const partyNameInput = document.createElement("input");
+  partyNameInput.type = "text";
+  partyNameInput.className = "scenariobuild-title-input";
+  partyNameInput.placeholder = "例：夜明けの旅団";
+  partyNameInput.value = ccs.partyName || "";
+  partyNameInput.onchange = () => { ccs.partyName = partyNameInput.value.trim(); markScenarioBuildDirty(); };
+  partyNameRow.appendChild(partyNameInput);
+  partyCard.appendChild(partyNameRow);
+  container.appendChild(partyCard);
+  
+  const protagonistCard = document.createElement("div");
+  protagonistCard.className = "scenariobuild-entity-card";
+  const protagonistHeader = document.createElement("h4");
+  protagonistHeader.className = "scenariobuild-subheading";
+  protagonistHeader.textContent = "主人公";
+  protagonistCard.appendChild(protagonistHeader);
+  
+  const protagonistEpithetRow = document.createElement("div");
+  protagonistEpithetRow.className = "scenariobuild-condition-row";
+  protagonistEpithetRow.appendChild(labelSpan("二つ名："));
+  const protagonistEpithetInput = document.createElement("input");
+  protagonistEpithetInput.type = "text";
+  protagonistEpithetInput.className = "scenariobuild-title-input";
+  protagonistEpithetInput.value = ccs.protagonistEpithet || "";
+  protagonistEpithetInput.onchange = () => { ccs.protagonistEpithet = protagonistEpithetInput.value.trim(); markScenarioBuildDirty(); };
+  protagonistEpithetRow.appendChild(protagonistEpithetInput);
+  protagonistCard.appendChild(protagonistEpithetRow);
+  
+  const protagonistPersonalityArea = document.createElement("textarea");
+  protagonistPersonalityArea.className = "scenariobuild-textarea";
+  protagonistPersonalityArea.placeholder = "性格・口調の指針（任意。例：普段は軽口を叩くが、仲間には誰よりも義理堅い）";
+  protagonistPersonalityArea.value = ccs.protagonistPersonality || "";
+  protagonistPersonalityArea.onchange = () => { ccs.protagonistPersonality = protagonistPersonalityArea.value; markScenarioBuildDirty(); };
+  protagonistCard.appendChild(protagonistPersonalityArea);
+  container.appendChild(protagonistCard);
+  
+  const companions = scenarioProject.companions || [];
+  if (companions.length === 0) {
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "devmode-note";
+    emptyEl.textContent = "「仲間編集」タブで仲間を登録すると、ここに一覧が表示されます。";
+    container.appendChild(emptyEl);
+    return;
+  }
+  
+  companions.forEach(companion => {
+    if (!ccs.companions[companion.id]) ccs.companions[companion.id] = { epithet: "", personality: "" };
+    const entry = ccs.companions[companion.id];
+    
+    const card = document.createElement("div");
+    card.className = "scenariobuild-entity-card";
+    const header = document.createElement("h4");
+    header.className = "scenariobuild-subheading";
+    header.textContent = companion.name || "（名前未設定）";
+    card.appendChild(header);
+    
+    const epithetRow = document.createElement("div");
+    epithetRow.className = "scenariobuild-condition-row";
+    epithetRow.appendChild(labelSpan("二つ名："));
+    const epithetInput = document.createElement("input");
+    epithetInput.type = "text";
+    epithetInput.className = "scenariobuild-title-input";
+    epithetInput.value = entry.epithet || "";
+    epithetInput.onchange = () => { entry.epithet = epithetInput.value.trim(); markScenarioBuildDirty(); };
+    epithetRow.appendChild(epithetInput);
+    card.appendChild(epithetRow);
+    
+    const personalityArea = document.createElement("textarea");
+    personalityArea.className = "scenariobuild-textarea";
+    personalityArea.placeholder = "性格・口調の指針（任意）";
+    personalityArea.value = entry.personality || "";
+    personalityArea.onchange = () => { entry.personality = personalityArea.value; markScenarioBuildDirty(); };
+    card.appendChild(personalityArea);
+    
+    container.appendChild(card);
+  });
+}
+
 function renderDataManager(container) {
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
@@ -9944,6 +10067,7 @@ function exportGameSettingsAsJsFile() {
     trialGuardianOverrides: scenarioProject.trialGuardianOverrides,
     fameThresholds: scenarioProject.fameThresholds,
     loginBonusDays: scenarioProject.loginBonusDays, // ★要望対応：ログインボーナス
+    companionChatSettings: scenarioProject.companionChatSettings, // ★要望対応：会話AI設定
     creditsText: scenarioProject.creditsText || "", // ★以前はここに無く、JSファイル出力するとクレジットの文面だけ引き継がれない不具合があった
     introText: scenarioProject.introText || "", // ★オープニングの注意書き（titlescreen.jsのDEFAULT_INTRO_SPLASH_TEXT）
     deletedBuiltinIds: {

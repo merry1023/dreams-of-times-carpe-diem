@@ -1229,6 +1229,11 @@ function switchTab(tabId) {
     renderCompanionsTab();
   }
   
+  // ★要望対応：仲間と話すタブに切り替えたら、パーティー一覧の画面に戻す（会話中の画面を開いたままにしない）
+  if (tabId === 'tab-companionchat' && typeof renderCompanionChatTab === "function") {
+    renderCompanionChatTab(); // companionchat.js
+  }
+  
   // 強さタブに切り替えたら、ステータス一覧を描画し直す
   if (tabId === 'tab-strength') {
     renderStrengthTab();
