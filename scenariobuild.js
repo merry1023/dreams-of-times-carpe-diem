@@ -35,12 +35,14 @@ let scenarioProject = {
                   //  （JSファイル出力・取り込みは中身をそのままJSONで扱うので、フィールドが増えても対応不要）
   companions: [], // [{ id, name, description, class, initialWeaponId, baseStats:{...}, growthPerLevel:{...}, builtin }, ...]
   quests: [],     // [{ id, rank, title, description, type:"hunt"|"gather", targetMonsterKey, targetItemId, targetCount, rewardGold, rewardExp, rewardItemId, rewardItemQty, builtin }, ...] ★酒場のクエスト管理タブ
+  achievements: [], // [{ id, name, description, hidden, conditionType, conditionValue, classId, monsterKey, areaId, flagName, varName, rewardExp, rewardGold, rewardItemId, rewardItemQty }, ...] ★実績管理タブ（要望対応）
   tutorials: [],  // [{ id, category, title, body }, ...] ★便利タブの「チュートリアル」アイコンから見られる、カテゴリ分けされたヘルプ項目
   classStats: {}, // { 職業名: { description, type:"normal"|"advanced"|"master", unlockFlagName, baseStats:{...}, maxSleepiness, maxFatigue, growthPerLevel:{...} }, ... } ★主人公の職業のステータス編集用（追加・削除可能）
   facilities: [], // [{ id, type:"inn"|"townhall"|"flavor", name, bgTrack, bgImage, ownerDialogue, price, sleepinessRecovery, fatigueRecovery, classChangeCost, allowedClassNames }, ...] ★村の「酒場/宿屋/店/冒険する」に追加できる施設
   bgmTracks: [],  // [{ id, name, path }, ...] ★名前とファイルパスを登録しておくと、曲名として選べるようになる
   mapAreas: [],   // [{ id, name, type, x, y, bgTrack, bgImage, bossId, enemyIds, items, examineMessages(配列。「調べる」で毎回ランダムに1つ選ぶ), battleVariations, builtin, locationKey }, ...]
   mapEdges: [],   // [[fromNodeId, toNodeId], ...] ★マップ画面でのエリア同士のつながり（村="village"、組み込みは"cave"等、自作エリアは"custom_"+id）
+  loginBonusDays: [], // ★要望対応：ログインボーナス。7日分の配列 [{ gold, exp, items:[{itemId, qty}, ...] }, ...]（1日目〜7日目）
   // ★組み込み（builtin）のデータを削除した時、次回読み込み時に自動で復活してしまわないように記録しておく置き場所。
   //   「編集・削除できない」問題の多くは、実は削除できていたのに毎回ここでの記録が無く復活していたことが原因だった
   deletedBuiltinIds: { chapters: [], characters: [], enemies: [], bosses: [], items: [], bgmTracks: [], mapAreas: [], skills: [], companions: [] }
@@ -191,6 +193,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.companions = data.companions || [];
   scenarioProject.quests = data.quests || [];
   ensureCustomQuestsRegistered();
+  scenarioProject.achievements = data.achievements || []; // ★実績管理タブ（要望対応）
   scenarioProject.tutorials = data.tutorials || [];
   scenarioProject.classStats = data.classStats || {};
   scenarioProject.facilities = data.facilities || [];
@@ -201,6 +204,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.mapEdges = data.mapEdges || [];
   scenarioProject.trialGuardianOverrides = data.trialGuardianOverrides || {};
   scenarioProject.fameThresholds = data.fameThresholds || {};
+  if (Array.isArray(data.loginBonusDays)) scenarioProject.loginBonusDays = data.loginBonusDays; // ★要望対応：ログインボーナス
   if (typeof data.creditsText === "string") scenarioProject.creditsText = data.creditsText; // ★書き出し側に合わせてクレジットの文面も取り込む
   if (typeof data.introText === "string") scenarioProject.introText = data.introText; // ★オープニングの注意書きも同様に取り込む
   if (!scenarioProject.deletedBuiltinIds) scenarioProject.deletedBuiltinIds = {};
@@ -379,6 +383,18 @@ function normalizeScenarioProject() {
   if (!Array.isArray(scenarioProject.flagDefs)) scenarioProject.flagDefs = []; // [{ name, description }, ...]（フラグ管理タブ）
   if (!Array.isArray(scenarioProject.variableDefs)) scenarioProject.variableDefs = []; // [{ name, description }, ...]（ゲーム変数管理タブ。値自体はscenarioVariablesに保存される）
   if (!Array.isArray(scenarioProject.recipes)) scenarioProject.recipes = []; // [{ id, name, shopType, mode, materials, baseItemId, resultItemId, resultCount, cost, description }, ...]（レシピ管理タブ）
+  // ★要望対応：ログインボーナス。常に必ず7日分（1〜7日目）が揃った状態にしておく
+  if (!Array.isArray(scenarioProject.loginBonusDays)) scenarioProject.loginBonusDays = [];
+  for (let day = 0; day < 7; day++) {
+    if (!scenarioProject.loginBonusDays[day] || typeof scenarioProject.loginBonusDays[day] !== "object") {
+      scenarioProject.loginBonusDays[day] = { gold: 0, exp: 0, items: [] };
+    }
+    const dayData = scenarioProject.loginBonusDays[day];
+    if (typeof dayData.gold !== "number") dayData.gold = 0;
+    if (typeof dayData.exp !== "number") dayData.exp = 0;
+    if (!Array.isArray(dayData.items)) dayData.items = [];
+  }
+  scenarioProject.loginBonusDays.length = 7; // ★万が一7件より多く保存されていても7件に切り詰める
   // ★状態異常・状態強化の「種類」を、状態管理タブから追加・編集できるようにする。
   //   実際の動作（mechanic）は決まった仕組みの中からしか選べないが、id・表示名・説明・
   //   デフォルトの効果量／ターン数は自由に決められる（同じ仕組みを違う名前・数値で使い回せる）
@@ -429,6 +445,7 @@ function normalizeScenarioProject() {
   });
   if (!Array.isArray(scenarioProject.companions)) scenarioProject.companions = [];
   if (!Array.isArray(scenarioProject.quests)) scenarioProject.quests = [];
+  if (!Array.isArray(scenarioProject.achievements)) scenarioProject.achievements = []; // ★実績管理タブ（要望対応）
   if (!Array.isArray(scenarioProject.tutorials)) scenarioProject.tutorials = [];
   if (!Array.isArray(scenarioProject.facilities)) scenarioProject.facilities = [];
   if (!Array.isArray(scenarioProject.portraitCharacters)) scenarioProject.portraitCharacters = []; // ★立ち絵管理（キャラごとの通常時画像＋表情一覧）
@@ -1020,6 +1037,12 @@ function ensureCustomItemsRegistered() {
       statBonusRange: (item.statBonusRange && typeof item.statBonusRange.min === "number" && typeof item.statBonusRange.max === "number")
         ? item.statBonusRange : existing.statBonusRange,
       unsellable: !!item.unsellable, // ★アイテム管理の「売れない」チェック（town.jsの買取屋で参照する）
+      // ★バグ修正：錆びたシリーズ設定（isRustySeries／appraisedName／rustyRankOutcomes）がここで一切
+      //   ITEM_MASTERへコピーされておらず、アイテム管理タブで変化先を指定しても実際のサビ取りには反映されず、
+      //   いつまでも「（手入れ済み）」への性能揺らぎ直しにフォールバックし続けてしまっていた
+      isRustySeries: (typeof item.isRustySeries === "boolean") ? item.isRustySeries : !!existing.isRustySeries,
+      appraisedName: item.appraisedName || existing.appraisedName,
+      rustyRankOutcomes: (item.rustyRankOutcomes && Object.keys(item.rustyRankOutcomes).length > 0) ? item.rustyRankOutcomes : existing.rustyRankOutcomes,
       // ★要望対応：インベントリでのスタック可否（装備以外）。未指定ならカテゴリ既定値にお任せするため、
       //   明示的にtrue/falseが設定されている時だけ上書きする
       stackable: (typeof item.stackable === "boolean") ? item.stackable : existing.stackable,
@@ -1297,12 +1320,14 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "bosses", label: "ボス設定" },
   { view: "items", label: "アイテム設定" },
   { view: "quests", label: "クエスト管理" },
+  { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
   { view: "tutorials", label: "チュートリアル管理" },
   { view: "skills", label: "スキル管理" },
   { view: "statuses", label: "状態管理" },
   { view: "flags", label: "フラグ管理" },
   { view: "gamevars", label: "ゲーム変数管理" }, // ★要望対応：話ブロックのifで参照できる数値変数の管理タブ（システム変数一覧の「変数一覧」とは別物）
   { view: "recipes", label: "レシピ管理" },
+  { view: "loginbonus", label: "ログボ報酬" }, // ★要望対応：ログインボーナス（7日分の報酬編集）
   { view: "companions", label: "仲間編集" },
   { view: "classes", label: "職業編集" },
   { view: "bgm", label: "BGM設定" },
@@ -1405,6 +1430,8 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "bosses") { renderTrialGuardianConfig(bodyEl); renderFameThresholdConfig(bodyEl); renderEntityManager(bodyEl, getBossManagerConfig()); }
   else if (scenarioBuildSubView === "items") renderEntityManager(bodyEl, getItemManagerConfig());
   else if (scenarioBuildSubView === "quests") renderEntityManager(bodyEl, getQuestManagerConfig());
+  else if (scenarioBuildSubView === "loginbonus") renderLoginBonusManager(bodyEl); // ★要望対応：ログインボーナス
+  else if (scenarioBuildSubView === "achievements") renderEntityManager(bodyEl, getAchievementManagerConfig());
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
   else if (scenarioBuildSubView === "statuses") renderStatusManager(bodyEl);
@@ -4468,6 +4495,63 @@ function getTutorialManagerConfig() {
       { key: "body", label: "本文", type: "textarea", placeholder: "実際に表示される説明文（改行OK）" }
     ],
     newEntity: () => ({ id: generateId("tutorial"), category: "その他", title: "新しい項目", body: "" })
+  };
+}
+
+// ★要望対応：便利タブの「実績」アイコンから見られる実績（達成条件・報酬）を編集するタブ
+function getAchievementManagerConfig() {
+  const classOptions = [{ value: "", label: "（指定なし＝今の職業）" }]
+    .concat(Object.keys(scenarioProject.classStats || {}).map(name => ({ value: name, label: name })));
+  const areaOptions = [{ value: "", label: "（未選択）" }]
+    .concat((scenarioProject.mapAreas || []).map(a => ({ value: a.id, label: a.name || a.id })));
+  return {
+    note: "便利タブの「実績」アイコンから見られる実績を作成します。「隠し実績」をONにすると、達成するまで名前・説明が「？？？」になります。" +
+      "条件の種類ごとに、下の欄のうち実際に使うものが変わります（使わない欄は空欄のままでOK）："
+      + "職業レベル→対象の職業（空欄なら今の職業）＋必要な数値＝レベル／"
+      + "クリア済みの話数→必要な数値＝話数／"
+      + "職業解放→対象の職業／"
+      + "累計ダメージ量・累計回復量・累計被ダメージ量・累計討伐数→必要な数値＝しきい値／"
+      + "特定の敵を倒した→対象の魔物ID＋必要な数値＝討伐数／"
+      + "全ての種類の敵を倒した→必要な数値＝敵1種類あたりの討伐数／"
+      + "エリアを解放した→対象のエリア／"
+      + "フラグ→対象のフラグ名／"
+      + "変数→対象の変数名＋必要な数値",
+    category: "achievements",
+    getList: () => scenarioProject.achievements,
+    fields: [
+      { key: "name", label: "実績名", type: "text", placeholder: "例：はじめの一歩" },
+      { key: "description", label: "説明文", type: "textarea", placeholder: "達成条件や内容の説明" },
+      { key: "hidden", label: "隠し実績にする（達成まで名前・説明を？？？にする）", type: "checkbox" },
+      { key: "conditionType", label: "条件の種類", type: "select", options: [
+        { value: "classLevel", label: "職業レベルが指定値以上" },
+        { value: "chaptersCleared", label: "クリア済みの話数が指定値以上" },
+        { value: "classUnlocked", label: "特定の職業を解放した" },
+        { value: "totalDamageDealt", label: "累計ダメージ量が指定値以上" },
+        { value: "totalHealingDone", label: "累計回復量が指定値以上" },
+        { value: "totalDamageTaken", label: "累計被ダメージ量が指定値以上" },
+        { value: "enemyKillsSpecific", label: "特定の敵を指定数以上倒した" },
+        { value: "enemyKillsAllTypes", label: "全ての種類の敵をそれぞれ指定数以上倒した" },
+        { value: "totalKillCount", label: "累計討伐数が指定値以上" },
+        { value: "areaUnlocked", label: "特定のエリアを解放した" },
+        { value: "flag", label: "特定のフラグがONになっている" },
+        { value: "variable", label: "特定の変数が指定値以上" }
+      ] },
+      { key: "conditionValue", label: "必要な数値（しきい値・レベル・話数など）", type: "number", placeholder: "1" },
+      { key: "classId", label: "対象の職業（職業レベル／職業解放でのみ使用）", type: "select", options: classOptions },
+      { key: "monsterKey", label: "対象の魔物ID（特定の敵を倒した、でのみ使用）", type: "text", placeholder: "例：slime", list: "scenariobuild-monster-datalist" },
+      { key: "areaId", label: "対象のエリア（エリア解放でのみ使用）", type: "select", options: areaOptions },
+      { key: "flagName", label: "対象のフラグ名（フラグでのみ使用）", type: "text", placeholder: "フラグ名" },
+      { key: "varName", label: "対象の変数名（変数でのみ使用）", type: "text", placeholder: "変数名" },
+      { key: "rewardExp", label: "報酬：経験値", type: "number", placeholder: "0" },
+      { key: "rewardGold", label: "報酬：陳（お金）", type: "number", placeholder: "0" },
+      { key: "rewardItemId", label: "報酬：アイテムID（任意）", type: "text", placeholder: "例：herb_001", list: "scenariobuild-item-datalist" },
+      { key: "rewardItemQty", label: "報酬：アイテム個数", type: "number", placeholder: "1" }
+    ],
+    newEntity: () => ({
+      id: generateId("achievement"), name: "新しい実績", description: "", hidden: false,
+      conditionType: "classLevel", conditionValue: 1, classId: "", monsterKey: "", areaId: "",
+      flagName: "", varName: "", rewardExp: 0, rewardGold: 0, rewardItemId: "", rewardItemQty: 1
+    })
   };
 }
 
@@ -9594,6 +9678,108 @@ function buildEndingListCard(entry) {
 // ===================================================================
 // ===== サブ画面：データ管理（JSON出力・読込） =====
 // ===================================================================
+// ★要望対応：ログインボーナス。1〜7日目、それぞれの報酬（陳・経験値・アイテム複数可＋個数）を編集する
+function renderLoginBonusManager(container) {
+  const introEl = document.createElement("p");
+  introEl.className = "devmode-note";
+  introEl.textContent = "セーブデータをロードした日に応じて、1〜7日目の報酬をポップアップで受け取れます。前回ロードした日の翌日以降に開けば連続記録が進み、1日でも空くと1日目からやり直しになります。7日目の翌日はまた1日目に戻ってループします。";
+  container.appendChild(introEl);
+  
+  if (!Array.isArray(scenarioProject.loginBonusDays)) scenarioProject.loginBonusDays = [];
+  for (let day = 0; day < 7; day++) {
+    if (!scenarioProject.loginBonusDays[day]) scenarioProject.loginBonusDays[day] = { gold: 0, exp: 0, items: [] };
+  }
+  
+  scenarioProject.loginBonusDays.forEach((dayData, dayIndex) => {
+    if (!Array.isArray(dayData.items)) dayData.items = [];
+    
+    const dayBox = document.createElement("div");
+    dayBox.className = "scenariobuild-entity-card";
+    
+    const dayHeader = document.createElement("h4");
+    dayHeader.className = "scenariobuild-subheading";
+    dayHeader.textContent = `${dayIndex + 1}日目` + (dayIndex === 6 ? "（この後は1日目に戻ります）" : "");
+    dayBox.appendChild(dayHeader);
+    
+    const goldRow = document.createElement("div");
+    goldRow.className = "scenariobuild-condition-row";
+    goldRow.appendChild(labelSpan("陳（お金）："));
+    const goldInput = document.createElement("input");
+    goldInput.type = "number";
+    goldInput.min = "0";
+    goldInput.className = "scenariobuild-condition-input";
+    goldInput.value = dayData.gold || 0;
+    goldInput.onchange = () => { dayData.gold = Math.max(0, Number(goldInput.value) || 0); markScenarioBuildDirty(); };
+    goldRow.appendChild(goldInput);
+    dayBox.appendChild(goldRow);
+    
+    const expRow = document.createElement("div");
+    expRow.className = "scenariobuild-condition-row";
+    expRow.appendChild(labelSpan("経験値："));
+    const expInput = document.createElement("input");
+    expInput.type = "number";
+    expInput.min = "0";
+    expInput.className = "scenariobuild-condition-input";
+    expInput.value = dayData.exp || 0;
+    expInput.onchange = () => { dayData.exp = Math.max(0, Number(expInput.value) || 0); markScenarioBuildDirty(); };
+    expRow.appendChild(expInput);
+    dayBox.appendChild(expRow);
+    
+    const itemsHeader = document.createElement("div");
+    itemsHeader.className = "scenariobuild-condition-row";
+    itemsHeader.appendChild(labelSpan("アイテム："));
+    dayBox.appendChild(itemsHeader);
+    
+    dayData.items.forEach((itemEntry, itemIndex) => {
+      const itemRow = document.createElement("div");
+      itemRow.className = "scenariobuild-condition-row";
+      
+      const itemInput = document.createElement("input");
+      itemInput.type = "text";
+      itemInput.className = "scenariobuild-title-input";
+      itemInput.placeholder = "アイテムID";
+      itemInput.setAttribute("list", "scenariobuild-item-datalist");
+      itemInput.value = itemEntry.itemId || "";
+      itemInput.onchange = () => { itemEntry.itemId = itemInput.value.trim(); markScenarioBuildDirty(); };
+      itemRow.appendChild(itemInput);
+      
+      itemRow.appendChild(labelSpan("個数："));
+      const qtyInput = document.createElement("input");
+      qtyInput.type = "number";
+      qtyInput.min = "1";
+      qtyInput.className = "scenariobuild-condition-input";
+      qtyInput.value = itemEntry.qty != null ? itemEntry.qty : 1;
+      qtyInput.onchange = () => { itemEntry.qty = Math.max(1, Number(qtyInput.value) || 1); markScenarioBuildDirty(); };
+      itemRow.appendChild(qtyInput);
+      
+      const removeItemBtn = document.createElement("button");
+      removeItemBtn.className = "devmode-btn devmode-btn-danger";
+      removeItemBtn.textContent = "×";
+      removeItemBtn.onclick = (event) => {
+        event.stopPropagation();
+        dayData.items.splice(itemIndex, 1);
+        markScenarioBuildDirty();
+        renderScenarioBuildPanel();
+      };
+      itemRow.appendChild(removeItemBtn);
+      dayBox.appendChild(itemRow);
+    });
+    
+    const addItemBtn = document.createElement("button");
+    addItemBtn.className = "devmode-btn";
+    addItemBtn.textContent = "＋アイテムを追加";
+    addItemBtn.onclick = (event) => {
+      event.stopPropagation();
+      dayData.items.push({ itemId: "", qty: 1 });
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    dayBox.appendChild(addItemBtn);
+    
+    container.appendChild(dayBox);
+  });
+}
+
 function renderDataManager(container) {
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
@@ -9735,6 +9921,7 @@ function exportGameSettingsAsJsFile() {
     statusBuffs: scenarioProject.statusBuffs,
     companions: scenarioProject.companions,
     quests: scenarioProject.quests,
+    achievements: scenarioProject.achievements, // ★実績管理タブ（要望対応）
     tutorials: scenarioProject.tutorials,
     classStats: scenarioProject.classStats,
     facilities: scenarioProject.facilities,
@@ -9745,6 +9932,7 @@ function exportGameSettingsAsJsFile() {
     mapEdges: scenarioProject.mapEdges,
     trialGuardianOverrides: scenarioProject.trialGuardianOverrides,
     fameThresholds: scenarioProject.fameThresholds,
+    loginBonusDays: scenarioProject.loginBonusDays, // ★要望対応：ログインボーナス
     creditsText: scenarioProject.creditsText || "", // ★以前はここに無く、JSファイル出力するとクレジットの文面だけ引き継がれない不具合があった
     introText: scenarioProject.introText || "", // ★オープニングの注意書き（titlescreen.jsのDEFAULT_INTRO_SPLASH_TEXT）
     deletedBuiltinIds: {
@@ -10649,6 +10837,7 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     //   進行度アイコンや次の話の解放条件がいつまでも反映されない不具合の原因になっていた
     if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
     if (typeof autoSaveAfterEnding === "function") await autoSaveAfterEnding(); // convenience.js（直前のスロットへ自動保存し、上の記録を実際に残す）
+    if (typeof checkAchievements === "function") await checkAchievements(); // ★実績システム（要望対応）：クリア済み話数などが更新された後にチェック
     
     const endrollEnabled = block.endrollEnabled !== false; // ★未指定（古いデータ）の場合はこれまで通りON扱い
     if (endrollEnabled && block.endroll && typeof playEndRoll === "function") {
@@ -10666,6 +10855,7 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     //   保存されない）。これが無いと、第一話クリア直後に第二話の解放条件を確認する処理（loadCustomScenarioDataの
     //   再読み込み）で、まだ保存されていない今のcleared=trueが古いfalseで上書きされてしまう不具合があった
     if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
+    if (typeof checkAchievements === "function") await checkAchievements(); // ★実績システム（要望対応）：クリア済み話数などが更新された後にチェック
     return nextDefaultId;
   }
   

@@ -272,6 +272,7 @@
           <div id="progress-panel" class="monster-codex-panel hidden"></div>
           <div id="credits-panel" class="monster-codex-panel hidden"></div>
           <div id="tutorial-panel" class="monster-codex-panel hidden"></div>
+          <div id="achievements-panel" class="monster-codex-panel hidden"></div>
         </div>
 
         <div id="tab-log" class="tab-content">
@@ -346,6 +347,18 @@
     </div>
   </div>
   
+  <!-- ★要望対応：ログインボーナス（セーブデータをロードした時に出るポップアップ） -->
+  <div id="login-bonus-popup-overlay" class="login-bonus-popup-overlay hidden">
+    <div class="login-bonus-popup-box">
+      <p class="login-bonus-popup-title">🎁 ログインボーナス</p>
+      <p id="login-bonus-popup-day" class="login-bonus-popup-day"></p>
+      <div id="login-bonus-popup-streak" class="login-bonus-popup-streak"></div>
+      <div id="login-bonus-popup-rewards" class="login-bonus-popup-rewards"></div>
+      <button id="login-bonus-popup-close" class="login-bonus-popup-close-btn">受け取る</button>
+      <p class="login-bonus-popup-hint">Zキー／決定キーでも閉じられます</p>
+    </div>
+  </div>
+  
 </body>
 
 <!-- ★Googleアカウント認証（Firebase）。auth.jsより前に読み込む必要がある -->
@@ -377,6 +390,7 @@
 <script src="battle.js"></script>
 <script src="adventure.js"></script>
 <script src="adventuremap.js"></script>
+<script src="achievements.js"></script>
 <script src="scenario.js"></script>
 <script src="scenario2.js"></script>
 <script src="script.js"></script>

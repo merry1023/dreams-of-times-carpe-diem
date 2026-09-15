@@ -39,6 +39,7 @@ function openAdventureMap(returnTo) {
   adventureMapReturnTo = typeof returnTo === "function" ? returnTo : openTownMenu;
   currentLocationKey = "town"; // adventure.js/town.js側のセーブ用記録に合わせる
   if (typeof loadCustomScenarioData === "function") loadCustomScenarioData(); // scenariobuild.js（マップ設定タブで作ったエリアを反映するため）
+  if (typeof checkAchievements === "function") checkAchievements(); // ★実績システム（要望対応）：エリア解放系の実績をここでチェック
   if (typeof hideLocationMenu === "function") hideLocationMenu(); // mainfunc.js（★これを閉じないと、裏で行き先メニューの矢印キー/決定キー処理が先に反応し、地図側のキー操作が一切効かなくなる不具合の原因だった）
   const overlay = document.getElementById("adventure-map-overlay");
   if (!overlay) return;
