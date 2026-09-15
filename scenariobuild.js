@@ -35,6 +35,7 @@ let scenarioProject = {
                   //  （JSファイル出力・取り込みは中身をそのままJSONで扱うので、フィールドが増えても対応不要）
   companions: [], // [{ id, name, description, class, initialWeaponId, baseStats:{...}, growthPerLevel:{...}, builtin }, ...]
   quests: [],     // [{ id, rank, title, description, type:"hunt"|"gather", targetMonsterKey, targetItemId, targetCount, rewardGold, rewardExp, rewardItemId, rewardItemQty, builtin }, ...] ★酒場のクエスト管理タブ
+  achievements: [], // [{ id, name, description, hidden, conditionType, conditionValue, classId, monsterKey, areaId, flagName, varName, rewardExp, rewardGold, rewardItemId, rewardItemQty }, ...] ★実績管理タブ（要望対応）
   tutorials: [],  // [{ id, category, title, body }, ...] ★便利タブの「チュートリアル」アイコンから見られる、カテゴリ分けされたヘルプ項目
   classStats: {}, // { 職業名: { description, type:"normal"|"advanced"|"master", unlockFlagName, baseStats:{...}, maxSleepiness, maxFatigue, growthPerLevel:{...} }, ... } ★主人公の職業のステータス編集用（追加・削除可能）
   facilities: [], // [{ id, type:"inn"|"townhall"|"flavor", name, bgTrack, bgImage, ownerDialogue, price, sleepinessRecovery, fatigueRecovery, classChangeCost, allowedClassNames }, ...] ★村の「酒場/宿屋/店/冒険する」に追加できる施設
@@ -192,6 +193,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.companions = data.companions || [];
   scenarioProject.quests = data.quests || [];
   ensureCustomQuestsRegistered();
+  scenarioProject.achievements = data.achievements || []; // ★実績管理タブ（要望対応）
   scenarioProject.tutorials = data.tutorials || [];
   scenarioProject.classStats = data.classStats || {};
   scenarioProject.facilities = data.facilities || [];
@@ -443,6 +445,7 @@ function normalizeScenarioProject() {
   });
   if (!Array.isArray(scenarioProject.companions)) scenarioProject.companions = [];
   if (!Array.isArray(scenarioProject.quests)) scenarioProject.quests = [];
+  if (!Array.isArray(scenarioProject.achievements)) scenarioProject.achievements = []; // ★実績管理タブ（要望対応）
   if (!Array.isArray(scenarioProject.tutorials)) scenarioProject.tutorials = [];
   if (!Array.isArray(scenarioProject.facilities)) scenarioProject.facilities = [];
   if (!Array.isArray(scenarioProject.portraitCharacters)) scenarioProject.portraitCharacters = []; // ★立ち絵管理（キャラごとの通常時画像＋表情一覧）
@@ -1311,6 +1314,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "bosses", label: "ボス設定" },
   { view: "items", label: "アイテム設定" },
   { view: "quests", label: "クエスト管理" },
+  { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
   { view: "tutorials", label: "チュートリアル管理" },
   { view: "skills", label: "スキル管理" },
   { view: "statuses", label: "状態管理" },
@@ -1421,6 +1425,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "items") renderEntityManager(bodyEl, getItemManagerConfig());
   else if (scenarioBuildSubView === "quests") renderEntityManager(bodyEl, getQuestManagerConfig());
   else if (scenarioBuildSubView === "loginbonus") renderLoginBonusManager(bodyEl); // ★要望対応：ログインボーナス
+  else if (scenarioBuildSubView === "achievements") renderEntityManager(bodyEl, getAchievementManagerConfig());
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
   else if (scenarioBuildSubView === "statuses") renderStatusManager(bodyEl);
@@ -4484,6 +4489,63 @@ function getTutorialManagerConfig() {
       { key: "body", label: "本文", type: "textarea", placeholder: "実際に表示される説明文（改行OK）" }
     ],
     newEntity: () => ({ id: generateId("tutorial"), category: "その他", title: "新しい項目", body: "" })
+  };
+}
+
+// ★要望対応：便利タブの「実績」アイコンから見られる実績（達成条件・報酬）を編集するタブ
+function getAchievementManagerConfig() {
+  const classOptions = [{ value: "", label: "（指定なし＝今の職業）" }]
+    .concat(Object.keys(scenarioProject.classStats || {}).map(name => ({ value: name, label: name })));
+  const areaOptions = [{ value: "", label: "（未選択）" }]
+    .concat((scenarioProject.mapAreas || []).map(a => ({ value: a.id, label: a.name || a.id })));
+  return {
+    note: "便利タブの「実績」アイコンから見られる実績を作成します。「隠し実績」をONにすると、達成するまで名前・説明が「？？？」になります。" +
+      "条件の種類ごとに、下の欄のうち実際に使うものが変わります（使わない欄は空欄のままでOK）："
+      + "職業レベル→対象の職業（空欄なら今の職業）＋必要な数値＝レベル／"
+      + "クリア済みの話数→必要な数値＝話数／"
+      + "職業解放→対象の職業／"
+      + "累計ダメージ量・累計回復量・累計被ダメージ量・累計討伐数→必要な数値＝しきい値／"
+      + "特定の敵を倒した→対象の魔物ID＋必要な数値＝討伐数／"
+      + "全ての種類の敵を倒した→必要な数値＝敵1種類あたりの討伐数／"
+      + "エリアを解放した→対象のエリア／"
+      + "フラグ→対象のフラグ名／"
+      + "変数→対象の変数名＋必要な数値",
+    category: "achievements",
+    getList: () => scenarioProject.achievements,
+    fields: [
+      { key: "name", label: "実績名", type: "text", placeholder: "例：はじめの一歩" },
+      { key: "description", label: "説明文", type: "textarea", placeholder: "達成条件や内容の説明" },
+      { key: "hidden", label: "隠し実績にする（達成まで名前・説明を？？？にする）", type: "checkbox" },
+      { key: "conditionType", label: "条件の種類", type: "select", options: [
+        { value: "classLevel", label: "職業レベルが指定値以上" },
+        { value: "chaptersCleared", label: "クリア済みの話数が指定値以上" },
+        { value: "classUnlocked", label: "特定の職業を解放した" },
+        { value: "totalDamageDealt", label: "累計ダメージ量が指定値以上" },
+        { value: "totalHealingDone", label: "累計回復量が指定値以上" },
+        { value: "totalDamageTaken", label: "累計被ダメージ量が指定値以上" },
+        { value: "enemyKillsSpecific", label: "特定の敵を指定数以上倒した" },
+        { value: "enemyKillsAllTypes", label: "全ての種類の敵をそれぞれ指定数以上倒した" },
+        { value: "totalKillCount", label: "累計討伐数が指定値以上" },
+        { value: "areaUnlocked", label: "特定のエリアを解放した" },
+        { value: "flag", label: "特定のフラグがONになっている" },
+        { value: "variable", label: "特定の変数が指定値以上" }
+      ] },
+      { key: "conditionValue", label: "必要な数値（しきい値・レベル・話数など）", type: "number", placeholder: "1" },
+      { key: "classId", label: "対象の職業（職業レベル／職業解放でのみ使用）", type: "select", options: classOptions },
+      { key: "monsterKey", label: "対象の魔物ID（特定の敵を倒した、でのみ使用）", type: "text", placeholder: "例：slime", list: "scenariobuild-monster-datalist" },
+      { key: "areaId", label: "対象のエリア（エリア解放でのみ使用）", type: "select", options: areaOptions },
+      { key: "flagName", label: "対象のフラグ名（フラグでのみ使用）", type: "text", placeholder: "フラグ名" },
+      { key: "varName", label: "対象の変数名（変数でのみ使用）", type: "text", placeholder: "変数名" },
+      { key: "rewardExp", label: "報酬：経験値", type: "number", placeholder: "0" },
+      { key: "rewardGold", label: "報酬：陳（お金）", type: "number", placeholder: "0" },
+      { key: "rewardItemId", label: "報酬：アイテムID（任意）", type: "text", placeholder: "例：herb_001", list: "scenariobuild-item-datalist" },
+      { key: "rewardItemQty", label: "報酬：アイテム個数", type: "number", placeholder: "1" }
+    ],
+    newEntity: () => ({
+      id: generateId("achievement"), name: "新しい実績", description: "", hidden: false,
+      conditionType: "classLevel", conditionValue: 1, classId: "", monsterKey: "", areaId: "",
+      flagName: "", varName: "", rewardExp: 0, rewardGold: 0, rewardItemId: "", rewardItemQty: 1
+    })
   };
 }
 
@@ -9853,6 +9915,7 @@ function exportGameSettingsAsJsFile() {
     statusBuffs: scenarioProject.statusBuffs,
     companions: scenarioProject.companions,
     quests: scenarioProject.quests,
+    achievements: scenarioProject.achievements, // ★実績管理タブ（要望対応）
     tutorials: scenarioProject.tutorials,
     classStats: scenarioProject.classStats,
     facilities: scenarioProject.facilities,
@@ -10768,6 +10831,7 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     //   進行度アイコンや次の話の解放条件がいつまでも反映されない不具合の原因になっていた
     if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
     if (typeof autoSaveAfterEnding === "function") await autoSaveAfterEnding(); // convenience.js（直前のスロットへ自動保存し、上の記録を実際に残す）
+    if (typeof checkAchievements === "function") await checkAchievements(); // ★実績システム（要望対応）：クリア済み話数などが更新された後にチェック
     
     const endrollEnabled = block.endrollEnabled !== false; // ★未指定（古いデータ）の場合はこれまで通りON扱い
     if (endrollEnabled && block.endroll && typeof playEndRoll === "function") {
@@ -10785,6 +10849,7 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     //   保存されない）。これが無いと、第一話クリア直後に第二話の解放条件を確認する処理（loadCustomScenarioDataの
     //   再読み込み）で、まだ保存されていない今のcleared=trueが古いfalseで上書きされてしまう不具合があった
     if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
+    if (typeof checkAchievements === "function") await checkAchievements(); // ★実績システム（要望対応）：クリア済み話数などが更新された後にチェック
     return nextDefaultId;
   }
   

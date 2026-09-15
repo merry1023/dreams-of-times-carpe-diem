@@ -452,6 +452,11 @@ function initPlayer(className) {
     // ★マップのエリア解放条件（「指定した敵をn体倒した」「全ての敵をn体倒した」）の判定用の記録
     enemyKillCounts: {}, // { モンスターキー: 討伐数 }
     totalKillCount: 0,
+    // ★実績システム用の累計記録（要望対応）
+    totalDamageDealt: 0, // 累計与ダメージ量
+    totalHealingDone: 0, // 累計回復量（HP）
+    totalDamageTaken: 0, // 累計被ダメージ量
+    unlockedAchievementIds: [], // 達成済みの実績ID一覧
     // ★話の始まるきっかけ（「エリアに来た時」）やシナリオ専用エリアのn回目判定に使う、拠点ごとの来訪回数
     areaVisitCounts: {}, // { locationKey: 来訪回数 }
     // ★マップのエリア解放条件（「特定のクエストをクリアした」）の判定用の記録
@@ -1079,7 +1084,12 @@ function applyHealToUnit(unit, gaugeKey, amount, cleanse, revives = false) {
   const before = gauge.current;
   gauge.current = Math.min(gauge.max, gauge.current + Math.max(0, amount));
   if (cleanse && unit === player) cureStatusAilment("all");
-  return gauge.current - before;
+  const healedAmount = gauge.current - before;
+  // ★実績システム用：HPの回復量を累計しておく（要望対応。SPは対象外）
+  if (gaugeKey === "hp" && healedAmount > 0 && typeof player !== "undefined" && player) {
+    player.totalHealingDone = (player.totalHealingDone || 0) + healedAmount;
+  }
+  return healedAmount;
 }
 
 // ★applyHealToUnitと違い、プラス（回復）だけでなくマイナス（消費・減少）も指定できる汎用版。
