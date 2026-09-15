@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789462130351,
+  "version": 1789462579094,
   "enemies": [
     {
       "id": "goblin",
@@ -8417,7 +8417,42 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "rewardItemQty": 1
     }
   ],
-  "achievements": [],
+  "achievements": [
+    {
+      "id": "achievement_1789462390398_1",
+      "name": "かけだし魔物キラー",
+      "description": "魔物を10体倒そう。",
+      "hidden": false,
+      "conditionType": "totalKillCount",
+      "conditionValue": 10,
+      "classId": "",
+      "monsterKey": "",
+      "areaId": "",
+      "flagName": "",
+      "varName": "",
+      "rewardExp": 400,
+      "rewardGold": 500,
+      "rewardItemId": "",
+      "rewardItemQty": 1
+    },
+    {
+      "id": "achievement_1789462494786_2",
+      "name": "ちょっと強くなったね。",
+      "description": "レベルが2になる。",
+      "hidden": false,
+      "conditionType": "classLevel",
+      "conditionValue": 2,
+      "classId": "",
+      "monsterKey": "",
+      "areaId": "",
+      "flagName": "",
+      "varName": "",
+      "rewardExp": 200,
+      "rewardGold": 500,
+      "rewardItemId": "herb_003",
+      "rewardItemQty": 3
+    }
+  ],
   "tutorials": [
     {
       "id": "tutorial_1788150675334_1",
