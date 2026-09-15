@@ -2038,6 +2038,7 @@ const SCENARIO_BLOCK_TYPES = {
   narration: "地の文",
   telop: "テロップ",
   bgm: "BGM切り替え",
+  bgmstop: "BGMを止める",
   se: "効果音",
   flag: "フラグ",
   setvar: "変数を設定（数値）",
@@ -2576,6 +2577,7 @@ function createBlock(type) {
   if (type === "narration") return { ...base, text: "" };
   if (type === "telop") return { ...base, text: "" };
   if (type === "bgm") return { ...base, track: "" };
+  if (type === "bgmstop") return { ...base }; // ★BGMをフェードアウトして止める特殊ブロック（設定項目なし）
   if (type === "se") return { ...base, path: "" };
   if (type === "flag") return { ...base, flagName: "", mode: "on" }; // mode: "on" | "off" | "toggle"
   if (type === "setvar") return { ...base, varName: "", mode: "set", amount: 0 }; // mode: "set" | "add" | "subtract"
@@ -2644,6 +2646,7 @@ function blockPreviewText(block) {
   if (block.type === "narration") return block.text.slice(0, 12);
   if (block.type === "telop") return block.text.slice(0, 12);
   if (block.type === "bgm") return block.track;
+  if (block.type === "bgmstop") return "";
   if (block.type === "se") return block.path;
   if (block.type === "flag") return block.flagName;
   if (block.type === "setvar") {
@@ -3033,6 +3036,14 @@ function buildBlockFormFields(chapter, block) {
     trackInput.setAttribute("list", "scenariobuild-bgm-datalist");
     trackInput.onchange = () => { block.track = trackInput.value.trim(); persist(); };
     wrap.appendChild(trackInput);
+    return wrap;
+  }
+  
+  if (block.type === "bgmstop") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note scenariobuild-condition";
+    noteEl.textContent = "今鳴っているBGMをフェードアウトして止めます（無音になります）。設定項目はありません。別のBGMに切り替えたいだけの場合は「BGM切り替え」ブロックを使ってください。";
+    wrap.appendChild(noteEl);
     return wrap;
   }
   
@@ -10414,6 +10425,13 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
   if (block.type === "bgm") {
     if (block.track && typeof switchScenarioBGM === "function") {
       switchScenarioBGM(block.track, { fadeMs: 600 });
+    }
+    return nextDefaultId;
+  }
+  
+  if (block.type === "bgmstop") {
+    if (typeof stopScenarioBGM === "function") {
+      stopScenarioBGM({ fadeMs: 600 });
     }
     return nextDefaultId;
   }
