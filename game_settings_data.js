@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789346087014,
+  "version": 1789462130351,
   "enemies": [
     {
       "id": "goblin",
@@ -452,7 +452,11 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "affectionGainRange": [
         5,
         10
-      ]
+      ],
+      "restSkillBlocks": [],
+      "normalAttackStatusInflictions": [],
+      "statusImmunities": [],
+      "statusResistances": {}
     },
     {
       "id": "enemy_1788135897707_6",
@@ -609,6 +613,44 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "poison": 0.5
       },
       "restSkillName": "",
+      "affectionGainRange": [
+        5,
+        10
+      ],
+      "killBlocks": [],
+      "spareBlocks": [],
+      "restSkillBlocks": [],
+      "normalAttackStatusInflictions": []
+    },
+    {
+      "id": "enemy_1789443926000_18",
+      "name": "緑色スライム",
+      "description": "緑の色素を持つスライム。みどりいろスライムと読みがちだが、正しくはりょくしょくスライムである。そこそこ強い。",
+      "maxHp": 35,
+      "atk": 12,
+      "exp": 30,
+      "imagePath": "",
+      "sizeMultiplier": 1,
+      "dropItemId": "item_1789443834281_17",
+      "dropRate": 0.5,
+      "killFlavor": "ぷにゅぅ...",
+      "spareFlavor": "ぷにぷにてぃーだ！",
+      "giftItemId": "item_1789443834281_17",
+      "uniqueSkill": {
+        "name": "",
+        "chance": 0,
+        "multiplier": 1,
+        "flavor": "",
+        "kind": "normal",
+        "hpDrainRatio": 0,
+        "spDrain": 0
+      },
+      "statusInflictions": [],
+      "normalAttackStatusInflictions": [],
+      "statusImmunities": [],
+      "statusResistances": {},
+      "restSkillName": "",
+      "restSkillBlocks": [],
       "affectionGainRange": [
         5,
         10
@@ -1146,7 +1188,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "params": {
         "攻撃力": 2,
         "装備部位": "武器",
-        "武器種類": "剣"
+        "武器種類": "剣",
+        "グレード": 1
       },
       "statBonusRange": {
         "min": -20,
@@ -1154,10 +1197,13 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       },
       "isRustySeries": true,
       "rustyRankOutcomes": {
-        "A": "weapon_004",
         "B": "weapon_002",
-        "F": "item_1787882432627_2"
-      }
+        "F": "item_1787882432627_2",
+        "D": "weapon_004",
+        "E": "weapon_002"
+      },
+      "blocks": [],
+      "variables": {}
     },
     {
       "id": "weapon_002",
@@ -1812,17 +1858,149 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "params": {
         "希少度": 4,
         "武器種類": "剣",
-        "攻撃力": 30,
-        "魔力": 30,
+        "攻撃力": 35,
+        "魔力": 35,
+        "HP自動回復": 55,
+        "装備部位": "武器"
+      },
+      "statBonusRange": {
+        "min": 0,
+        "max": 4
+      },
+      "isRustySeries": false,
+      "rustyRankOutcomes": {},
+      "blocks": [
+        {
+          "id": "skillblock_1789443540361_14",
+          "type": "message",
+          "speaker": "",
+          "text": "魔導のつるぎが緑色に光りだす！"
+        },
+        {
+          "id": "skillblock_1789443578070_16",
+          "type": "adjustGauge",
+          "target": "self",
+          "gauge": "sp",
+          "amount": "40"
+        },
+        {
+          "id": "skillblock_1789443559629_15",
+          "type": "heal",
+          "target": "all",
+          "gauge": "hp",
+          "amount": "25",
+          "amountIsPercent": true
+        }
+      ],
+      "variables": {},
+      "skillName": "オールリカバリー(40SP)"
+    },
+    {
+      "id": "item_1789442698035_6",
+      "name": "無粋な鍛冶型・武器",
+      "category": "weapon",
+      "description": "様々な武器を作るためのベーシックな鍛冶型。",
+      "rank": "D",
+      "listedPrice": 1500,
+      "trueValue": 1200,
+      "unsellable": false,
+      "params": {
+        "希少度": 1,
+        "武器種類": "その他"
+      },
+      "statBonusRange": {
+        "min": 0,
+        "max": 0
+      },
+      "blocks": [],
+      "variables": {}
+    },
+    {
+      "id": "item_1789442825410_7",
+      "name": "大地の杖",
+      "category": "weapon",
+      "description": "大地の力を吸収させて作られた杖。使うと仲間全員のSPを少量使用し小規模の地震を発生させる。",
+      "rank": "C",
+      "listedPrice": 35000,
+      "trueValue": 35000,
+      "unsellable": false,
+      "params": {
+        "希少度": 5,
+        "武器種類": "杖",
+        "魔力": 40,
+        "攻撃力": 8,
         "HP自動回復": 25,
         "装備部位": "武器"
       },
       "statBonusRange": {
-        "min": -5,
-        "max": 4
+        "min": 0,
+        "max": 0
       },
-      "isRustySeries": true,
+      "blocks": [
+        {
+          "id": "skillblock_1789442961849_8",
+          "type": "message",
+          "speaker": "",
+          "text": "大地が揺れ動く...！"
+        },
+        {
+          "id": "skillblock_1789443028910_11",
+          "type": "adjustGauge",
+          "target": "all",
+          "gauge": "sp",
+          "amount": "-5"
+        },
+        {
+          "id": "skillblock_1789442990428_9",
+          "type": "damage",
+          "target": "all",
+          "powerMultiplier": "24",
+          "atkType": "physical"
+        }
+      ],
+      "variables": {},
+      "skillName": "偉大なる貧乏ゆすり",
+      "isRustySeries": false,
       "rustyRankOutcomes": {}
+    },
+    {
+      "id": "item_1789443087577_12",
+      "name": "クリオナの大剣",
+      "category": "weapon",
+      "description": "敵を叩き潰す目的で作られた大剣。脳筋におすすめ。",
+      "rank": "C",
+      "listedPrice": 43000,
+      "trueValue": 43000,
+      "unsellable": false,
+      "params": {
+        "希少度": 5,
+        "武器種類": "大剣",
+        "攻撃力": 45,
+        "魔力": 10,
+        "装備部位": "武器"
+      },
+      "statBonusRange": {
+        "min": -7,
+        "max": 5
+      },
+      "blocks": [],
+      "variables": {},
+      "isRustySeries": false,
+      "rustyRankOutcomes": {}
+    },
+    {
+      "id": "item_1789443834281_17",
+      "name": "緑魔法石",
+      "category": "material",
+      "description": "魔物などからとれる魔法の宿る石。魔鉱石とは違い魔法そのものが宿っており、魔法系武器の作成などに使える。",
+      "rank": "E",
+      "listedPrice": 50,
+      "trueValue": 65,
+      "unsellable": false,
+      "params": {
+        "希少度": 4,
+        "用途": "鍛冶素材"
+      }
     }
   ],
   "skills": [
@@ -7307,7 +7485,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "gauge": "",
       "cleanse": false,
       "passiveId": "",
-      "statusEffectKind": "defDown",
+      "statusEffectKind": "atkDown",
       "statusEffectChance": 1,
       "statusEffectDuration": 3,
       "statusEffectPower": 15,
@@ -7488,7 +7666,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "description": "陰から出でし陰操獣を操り複数の敵を屠る技。",
       "type": "attack",
       "element": "無",
-      "spCost": 5,
+      "spCost": 75,
       "unlockLevel": 84,
       "power": 67,
       "target": "all",
@@ -7973,7 +8151,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "rank": "F",
       "title": "薬草採取の手伝い",
       "description": "薬師のために、薬草を3つ集めてきてほしいという依頼。冒険先で「調べる」と見つかることがある。",
-      "rewardGold": 10,
+      "rewardGold": 25,
       "rewardExp": 120,
       "type": "gather",
       "targetItemId": "herb_001",
@@ -7988,8 +8166,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "type": "gather",
       "targetMonsterKey": "",
       "targetItemId": "potion_001",
-      "targetCount": 10,
-      "rewardGold": 50,
+      "targetCount": 5,
+      "rewardGold": 250,
       "rewardExp": 150,
       "rewardItemId": "",
       "rewardItemQty": 0
@@ -8239,6 +8417,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "rewardItemQty": 1
     }
   ],
+  "achievements": [],
   "tutorials": [
     {
       "id": "tutorial_1788150675334_1",
@@ -8576,8 +8755,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "bgImage": "img/宿.jpeg",
       "ownerDialogue": "ゆっくりしていってね。",
       "price": 30,
-      "sleepinessRecovery": 150,
-      "fatigueRecovery": 150,
+      "sleepinessRecovery": 100,
+      "fatigueRecovery": 100,
       "classChangeCost": 100,
       "enterBlocks": [
         {
@@ -8950,7 +9129,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "ownerDialogue": ".....いらっしゃい.....",
       "price": 40,
       "sleepinessRecovery": 150,
-      "fatigueRecovery": 200,
+      "fatigueRecovery": 120,
       "classChangeCost": 100,
       "enterBlocks": [],
       "paidBlocks": [],
@@ -9077,7 +9256,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "type": "inn",
       "name": "ありふれた街宿",
       "bgTrack": "",
-      "bgImage": "/img/宿3.jpg",
+      "bgImage": "img/宿.jpeg",
       "ownerDialogue": "",
       "price": 100,
       "sleepinessRecovery": 350,
@@ -9103,6 +9282,130 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "text": "テンプレやめてね。"
         }
       ]
+    },
+    {
+      "id": "facility_1789425082967_1",
+      "type": "rustRemoval",
+      "name": "錆取りジョージ3号店",
+      "bgTrack": "",
+      "bgImage": "",
+      "ownerDialogue": "錆取りジョージへようこそ。",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "enterBlocks": []
+    },
+    {
+      "id": "facility_1789441646679_1",
+      "type": "inn",
+      "name": "国立旅館「いやしの亭」",
+      "bgTrack": "",
+      "bgImage": "/img/宿3.jpg",
+      "ownerDialogue": "よくぞお越しになられました。お部屋空いております。",
+      "price": 200,
+      "sleepinessRecovery": 500,
+      "fatigueRecovery": 500,
+      "classChangeCost": 100,
+      "enterBlocks": [],
+      "paidBlocks": [],
+      "morningBlocks": []
+    },
+    {
+      "id": "facility_1789441959626_2",
+      "type": "tavern",
+      "name": "城下町の酒場",
+      "bgTrack": "",
+      "bgImage": "/img/酒場2.jpg",
+      "ownerDialogue": "よお兄ちゃん。今日は何の用だい？",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "enterBlocks": []
+    },
+    {
+      "id": "facility_1789442044424_3",
+      "type": "blacksmith",
+      "name": "鍛冶屋クラミジ屋",
+      "bgTrack": "",
+      "bgImage": "",
+      "ownerDialogue": "",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "enterBlocks": [
+        {
+          "type": "dialogue",
+          "speaker": "鍛冶職人クラミジア",
+          "text": "なんか用か。いろいろ作ってやれるぞ。"
+        }
+      ]
+    },
+    {
+      "id": "facility_1789442164973_4",
+      "type": "townhall",
+      "name": "スペル=マ・ギア王都役所",
+      "bgTrack": "",
+      "bgImage": "/img/役場.jpg",
+      "ownerDialogue": "ここでは職業の変更手続きが可能です。",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 600,
+      "enterBlocks": [],
+      "allowedClassNames": [
+        "全能士",
+        "戦士",
+        "性騎士",
+        "ニート",
+        "お宝鑑定団",
+        "魔法少女",
+        "のど自慢"
+      ]
+    },
+    {
+      "id": "facility_1789442530326_5",
+      "type": "shop",
+      "name": "ガシマンズの装備屋",
+      "bgTrack": "",
+      "bgImage": "",
+      "ownerDialogue": "",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "enterBlocks": [
+        {
+          "type": "dialogue",
+          "speaker": "ガシマンズ",
+          "text": "おぉっ！お客さんかい！品質の良い装備が揃ってるぜ！"
+        }
+      ],
+      "shopItems": [
+        {
+          "itemId": "item_1788352084121_37",
+          "price": 400
+        },
+        {
+          "itemId": "item_1788073451922_3",
+          "price": 750
+        },
+        {
+          "itemId": "item_1789442698035_6",
+          "price": 1500
+        },
+        {
+          "itemId": "item_1789442825410_7",
+          "price": 35000
+        },
+        {
+          "itemId": "item_1789443087577_12",
+          "price": 43000
+        }
+      ],
+      "shopOffers": []
     }
   ],
   "portraitCharacters": [],
@@ -9223,6 +9526,36 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "resultCount": 3,
       "cost": 100,
       "description": "スライムゼリーと牛乳、魔鉱石を溶かして煮詰めたポーション。かなり効力が高い。"
+    },
+    {
+      "id": "recipe_1789443397952_13",
+      "name": "魔導剣・緑",
+      "shopType": "blacksmith",
+      "mode": "create",
+      "materials": [
+        {
+          "itemId": "item_1789442698035_6",
+          "count": 1
+        },
+        {
+          "itemId": "item_1788351958488_36",
+          "count": 1
+        },
+        {
+          "itemId": "potion_001",
+          "count": 5
+        },
+        {
+          "itemId": "item_1789443834281_17",
+          "count": 3
+        }
+      ],
+      "baseItemId": "",
+      "resultItemId": "item_1789345576131_1",
+      "resultCount": 1,
+      "cost": 2000,
+      "description": "継続回復、全体回復が可能で魔力、攻撃力ともに頼れる片手剣",
+      "facilityId": "facility_1789442044424_3"
     }
   ],
   "bgmTracks": [
@@ -9330,6 +9663,12 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "field_custom_area_1788878118939_1",
       "name": "field_custom_area_1788878118939_1",
       "path": "/bgm/冒険/草原/月明かりの草原ループ",
+      "builtin": true
+    },
+    {
+      "id": "field_custom_area_1788854418149_4",
+      "name": "field_custom_area_1788854418149_4",
+      "path": "冒険/洞窟/宵露洞窟",
       "builtin": true
     }
   ],
@@ -9743,12 +10082,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "examineMessages": [
         "花たちを見つめていると、心が和やかになった。"
       ],
-      "unlockConditions": [
-        {
-          "type": "daysSinceTransfer",
-          "days": 1000
-        }
-      ],
+      "unlockConditions": [],
       "bossTriggerTypes": [
         "step"
       ],
@@ -9941,7 +10275,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "x": 213.4818338426993,
       "y": -55.180805816837875,
       "bgTrack": "",
-      "bgImage": "",
+      "bgImage": "/img/城下町.jpg",
       "bossId": "",
       "bossTriggerTypes": [
         "step"
@@ -9963,7 +10297,15 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         }
       ],
       "facilityIds": [
-        "facility_1788247863308_16"
+        "facility_1788247863308_16",
+        "facility_1789425082967_1",
+        "facility_1789442164973_4",
+        "facility_1789442044424_3",
+        "facility_1789441959626_2",
+        "facility_1789441646679_1",
+        "facility_1787795897389_1",
+        "facility_1788244866711_1",
+        "facility_1788134408511_1"
       ],
       "mapNodeSize": 20,
       "leftTarget": "custom_area_1788853853599_1",
@@ -10324,6 +10666,158 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     "SSS": 3400,
     "X": 6000
   },
+  "loginBonusDays": [
+    {
+      "gold": 500,
+      "exp": 0,
+      "items": [
+        {
+          "itemId": "herb_003",
+          "qty": 3
+        },
+        {
+          "itemId": "potion_003",
+          "qty": 3
+        },
+        {
+          "itemId": "weapon_001",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "gold": 700,
+      "exp": 0,
+      "items": [
+        {
+          "itemId": "potion_004",
+          "qty": 3
+        }
+      ]
+    },
+    {
+      "gold": 1000,
+      "exp": 600,
+      "items": [
+        {
+          "itemId": "potion_004",
+          "qty": 3
+        },
+        {
+          "itemId": "item_1789108214910_2",
+          "qty": 3
+        }
+      ]
+    },
+    {
+      "gold": 1500,
+      "exp": 700,
+      "items": [
+        {
+          "itemId": "item_1789108283549_3",
+          "qty": 3
+        },
+        {
+          "itemId": "item_1788135707492_4",
+          "qty": 3
+        },
+        {
+          "itemId": "item_1789108214910_2",
+          "qty": 3
+        }
+      ]
+    },
+    {
+      "gold": 2000,
+      "exp": 1000,
+      "items": [
+        {
+          "itemId": "tool_001",
+          "qty": 4
+        },
+        {
+          "itemId": "herb_003",
+          "qty": 7
+        },
+        {
+          "itemId": "item_1787883339550_5",
+          "qty": 5
+        },
+        {
+          "itemId": "item_1788350425965_30",
+          "qty": 6
+        },
+        {
+          "itemId": "item_1789108214910_2",
+          "qty": 5
+        }
+      ]
+    },
+    {
+      "gold": 3000,
+      "exp": 1200,
+      "items": [
+        {
+          "itemId": "item_1788350425965_30",
+          "qty": 12
+        },
+        {
+          "itemId": "item_1789108283549_3",
+          "qty": 5
+        },
+        {
+          "itemId": "item_1789442698035_6",
+          "qty": 2
+        },
+        {
+          "itemId": "item_1789108214910_2",
+          "qty": 10
+        },
+        {
+          "itemId": "item_1788135780001_5",
+          "qty": 5
+        }
+      ]
+    },
+    {
+      "gold": 4000,
+      "exp": 7000,
+      "items": [
+        {
+          "itemId": "tool_001",
+          "qty": 10
+        },
+        {
+          "itemId": "weapon_002",
+          "qty": 1
+        },
+        {
+          "itemId": "item_1789108283549_3",
+          "qty": 10
+        },
+        {
+          "itemId": "item_1789108214910_2",
+          "qty": 10
+        },
+        {
+          "itemId": "item_1788349671945_25",
+          "qty": 10
+        },
+        {
+          "itemId": "weapon_001",
+          "qty": 3
+        },
+        {
+          "itemId": "item_1788350425965_30",
+          "qty": 10
+        },
+        {
+          "itemId": "item_1788595270345_5",
+          "qty": 2
+        }
+      ]
+    }
+  ],
   "creditsText": "敵などのデザインは僕が描いたものです。まだ下手ですが上手くなれるよう精進します...\nその他「フリー素材/コンポーザー様の楽曲等」を使用させていただいています\n\n背景\n<ゲームまてりあるず>様\n<AIPICT>様\n\n使用させていただいたBGM\n\n<クリエイター【オト】（https://creatoroto-blog.com/）>様\n「Oak-Village」\n\n<かずち>様\n「宵露洞窟」\n\n<ハルト>様\n「月明かりの草原」\n\n<松浦洋介>様\n「The Murmuring Forest」\n\n<Masuo>様\n「森へ」\n\n<dingerbox>様\n「haptime」\n「vacsina」\n\n<蒲鉾さちこ>様\n「哀愁と憂いの春に」\n「闇夜にたゆたう海」\n\n<しゃぐま>様\n「穢れ無き水面」\n\n<EBIMAYO>様\n「GOODRUSH」",
   "introText": "これから始める方へ。\nこのゲームはクソゲーです。\n開発者がノリで作ったしょうもないシナリオで、\n場が凍りつく会話や一部下ネタがふくまれます。\nキャラクターのイラストは開発者が描いたものですが、\nあまり上手とは言えませんので我慢してください。\n苦手な方はこの場でブラウザバックすることを\nおすすめしマスカット。",
   "deletedBuiltinIds": {

@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1789265704777,
+  "version": 1789462129955,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -5711,7 +5711,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1789141521302_30",
           "type": "narration",
-          "text": "うそだろ。\n典型的なクソカスじゃねーか。\nなんだよ「はらませにゃんこ」って。フリーフォントか！！"
+          "text": "うそだろ。\nとんでもねぇクソ野郎じゃねーか。\nなんだよ「はらませにゃんこ」って。フリーフォントか！！"
         },
         {
           "id": "block_1789141688756_31",
@@ -5733,13 +5733,13 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1789142129217_40",
           "type": "narration",
-          "text": "俺の顔を見てツァナが少し睨んできたように見えた。"
+          "text": "ツァナが俺の顔を見て少し睨んできたように見えた。"
         },
         {
           "id": "block_1789141746939_32",
           "type": "dialogue",
           "speaker": "ロリル",
-          "text": "それでね。\nお姉さんはいつも優しくて私のことをいつも気遣ってくれた。"
+          "text": "それでね。\nお姉さんはいつも優しくて私のことを気遣ってくれた。"
         },
         {
           "id": "block_1789141990579_39",
@@ -5909,7 +5909,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1789143191482_65",
           "type": "narration",
-          "text": "するとおもむろに俺の方を組んできた。"
+          "text": "するとおもむろに俺の肩を組んできた。"
         },
         {
           "id": "block_1789143220086_66",
@@ -6000,6 +6000,18 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "text": "そして奴隷のお姉さんを保護して合流した後、ミタメに必要な情報を吐かせて殺す。というわけですね。"
         },
         {
+          "id": "block_1789393560386_2",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "ただ、俺の能力は明るい場所では使いづらい。\n発動できるのは屋敷に入ってからだ。ミタメにバレないように能力を使う必要がある。"
+        },
+        {
+          "id": "block_1789393651868_3",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "分かりました。"
+        },
+        {
           "id": "block_1789145003641_86",
           "type": "dialogue",
           "speaker": "ケツァナ",
@@ -6072,9 +6084,14 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "text": "ナイスね治郎！"
         },
         {
+          "id": "block_1789459567122_1",
+          "type": "background",
+          "path": "/workspaces/dreams-of-times-carpe-diem/img/豪邸部屋.jpg"
+        },
+        {
           "id": "block_1789145748073_100",
           "type": "telop",
-          "text": "長い廊下を歩く。\n小汚いい豚のような外見の身なりだけはやたらと清潔な主人が大部屋のソファに座って待っていた。"
+          "text": "長い廊下を歩く。少し広めの部屋に\n小汚い豚のような外見の、身なりだけはやたらと清潔な主人が大部屋のソファに座って待っていた。"
         },
         {
           "id": "block_1789145856963_101",
@@ -6097,6 +6114,119 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1789146077074_106",
           "type": "narration",
           "text": "するとコリスギウスの身体が陰に消えていった。"
+        },
+        {
+          "id": "block_1789393516206_1",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "ん？さっきまで四人いなかったか？"
+        },
+        {
+          "id": "block_1789393668934_4",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "...？いえ、僕たちは最初から三人ですよ？"
+        },
+        {
+          "id": "block_1789393699293_5",
+          "type": "narration",
+          "text": "ミタメは少し怪訝な表情をしていたが、バレてはいなさそうだ。"
+        },
+        {
+          "id": "block_1789399338018_17",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "(あぶねぇー焦ったぁー！)"
+        },
+        {
+          "id": "block_1789393760383_6",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "そうか、では早く愛しのロリルを私に寄越せ。"
+        },
+        {
+          "id": "block_1789393805565_8",
+          "type": "narration",
+          "text": "よほど\"奴隷として\"気に入っていたのか、ロリルを渡せと急かしてくる。"
+        },
+        {
+          "id": "block_1789393797291_7",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "その前に報酬の件について聞かせていただけますか？"
+        },
+        {
+          "id": "block_1789393896657_9",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "...あぁ？"
+        },
+        {
+          "id": "block_1789393906971_10",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "…ああそうか、そうだったな。"
+        },
+        {
+          "id": "block_1789393965148_11",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "ちゃんと報奨金もらえるのよね？"
+        },
+        {
+          "id": "block_1789393987152_12",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "いいぞ。何なら今持ってきてやる。"
+        },
+        {
+          "id": "block_1789394026817_14",
+          "type": "narration",
+          "text": "少し待ってろと俺達を置いていくと、なにやら箱を持ってきて足元にどすんと置いた。"
+        },
+        {
+          "id": "block_1789394098338_15",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "ほれ。約束の100000陳だ。"
+        },
+        {
+          "id": "block_1789394156085_16",
+          "type": "narration",
+          "text": ".....ん？100000陳だったっけ報奨金..."
+        },
+        {
+          "id": "block_1789399409970_18",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "ちょっと。\n報奨金は300000陳だったはずよ！？\nきちんと報酬を払ってくれないとこの子は渡せないわ。"
+        },
+        {
+          "id": "block_1789399490809_19",
+          "type": "narration",
+          "text": "おお！そうだった、ナイスだツァナ！\nミタメのぐぐぐ...という悔しそうな顔が見れて清々するぜ。\n富豪のくせにケチなんだな。"
+        },
+        {
+          "id": "block_1789399512299_20",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "そ、そうだったな！すまない勘違いをしていたようだ...！\n300000だったか！今すぐ持ってくる。"
+        },
+        {
+          "id": "block_1789399684875_22",
+          "type": "narration",
+          "text": "慌てて金を取りに行くミタメを背に、ツァナに小さくグッドサインを送る。\n渾身のドヤ顔で返された。"
+        },
+        {
+          "id": "block_1789399792502_23",
+          "type": "telop",
+          "text": "一方その頃コリスギウスは..."
+        },
+        {
+          "id": "block_1789399817536_24",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "この屋敷広すぎるだろ。どんだけ部屋あるんだ..."
         }
       ],
       "enabled": false,
