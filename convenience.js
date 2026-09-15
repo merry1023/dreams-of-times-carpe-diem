@@ -1320,25 +1320,23 @@ async function restoreGameFromChoiceCheckpoint(chapterId, choiceBlockId, data) {
   choiceCursorIndex = 0;
   choiceBox.innerHTML = "";
   
-  gold = data.gold;
-  currentLocationKey = data.currentLocationKey;
-  chapter1Finished = data.chapter1Finished;
-  player = sanitizeLoadedPlayer(deepClone(data.player)); // player.js
-  inventorySlots = deepClone(data.inventorySlots);
-  sanitizeInventoryInstanceIds(); // inventory.js
-  migrateLegacyEquipmentReferences(); // player.js
-  monsterAffection = data.monsterAffection ? deepClone(data.monsterAffection) : {};
-  SPAREABLE_KEYS.forEach(key => { if (!(key in monsterAffection)) monsterAffection[key] = 0; });
-  discoveredMonsters = data.discoveredMonsters ? deepClone(data.discoveredMonsters) : {};
-  SPAREABLE_KEYS.forEach(key => { if (!(key in discoveredMonsters)) discoveredMonsters[key] = false; });
-  messageLog = deepClone(data.messageLog || []);
+  // ★バグ修正：便利タブ（オートセーブ一覧）から復元した直後、村の広場などの選択肢が
+  //   非表示にされないまま画面に残ってしまっていたため、通常のセーブ/ロードと同じく
+  //   ここで隠す。あわせてcontrolFocusをmainへ戻さないと、選択肢がキーボードで選べなくなる
+  switchTab("tab-main");
+  hideLocationMenu();
+  changeSpeaker("");
+  controlFocus = "main";
+  updateControlFocusIndicator();
+  
+  // ★要望対応：現在のステータス・所持品・好感度・クリア済みの話などの「進行度」はそのまま保持し、
+  //   話の進行（今どのブロックを実行中か）だけを、その選択肢の直前まで巻き戻す。
+  //   以前はセーブデータ全体をチェックポイント記録時点まで巻き戻していたため、記録後に得た
+  //   経験値やアイテム、他の話のクリア状況まで失われてしまっていた
+  applyBackground(data.background); // ★見た目だけ、その選択肢が表示された時の背景に戻しておく
   renderStatusHUD();
-  applyBackground(data.background);
   
   if (typeof loadCustomScenarioData === "function") loadCustomScenarioData(); // scenariobuild.js（話の最新データを読み込む）
-  if (Array.isArray(data.clearedChapterIds) && typeof scenarioProject !== "undefined") {
-    scenarioProject.chapters.forEach(c => { c.cleared = data.clearedChapterIds.includes(c.id); });
-  }
   const targetChapter = typeof scenarioProject !== "undefined" ? scenarioProject.chapters.find(c => c.id === chapterId) : null;
   if (!targetChapter) {
     await showGameAlert("この話のデータが見つからないため、やり直しを再開できないようだ。");

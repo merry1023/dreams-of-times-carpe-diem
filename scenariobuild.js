@@ -63,6 +63,10 @@ let scenarioBuildEditingSkillId = null; // ★特殊スキル編集（ブロッ�
 //   buildSkillBlockInsertSlot内の読み取りでReferenceErrorが発生し、ブロック一覧と「＋」ボタンが
 //   一切描画されなくなっていた（データ自体は保存されていても表示側で毎回落ちていた）
 let scenarioBuildSkillInsertMenuTarget = null; // ★特殊スキルのブロック挿入用「＋」を今どの位置で開いているか（nullなら閉じている）
+let scenarioBuildEditingItemSkillId = null; // ★武器・防具の「スキル編集」の専用全画面エディタで、今どのアイテムを編集中か（特殊スキル編集の画面をそのまま使い回す）
+// ★潜在バグ予防：以前はどこにも宣言されないまま使われていた（代入が先に必ず起きるため実害は出ていなかったが、
+//   特殊スキル編集の未宣言変数と同じ種類の危険なパターンだったため、ここで正式に宣言しておく）
+let scenarioBuildEditingEntityRef = null; // ★敵/ボス/アイテムの詳細編集の専用全画面エディタで、今何を編集中か（{ category, id }）
 
 // ===== データの読み書き（自動保存） =====
 // ★JSファイルとして書き出した「シナリオのみ」「ゲームの基本設定のみ」データを、
@@ -921,6 +925,8 @@ function ensureCustomMonstersRegistered() {
       imagePath: enemy.imagePath || undefined,
       sizeMultiplier: (typeof enemy.sizeMultiplier === "number" && enemy.sizeMultiplier > 0) ? enemy.sizeMultiplier : undefined,
       statusInflictions: (Array.isArray(enemy.statusInflictions) && enemy.statusInflictions.length > 0) ? enemy.statusInflictions : undefined,
+      // ★要望対応：通常攻撃命中時に付ける状態異常（専用スキル発動時のstatusInflictionsとは別設定）
+      normalAttackStatusInflictions: (Array.isArray(enemy.normalAttackStatusInflictions) && enemy.normalAttackStatusInflictions.length > 0) ? enemy.normalAttackStatusInflictions : undefined,
       // ★要望対応：この魔物自身の状態異常耐性・無効
       statusImmunities: (Array.isArray(enemy.statusImmunities) && enemy.statusImmunities.length > 0) ? enemy.statusImmunities : undefined,
       statusResistances: (enemy.statusResistances && typeof enemy.statusResistances === "object" && Object.keys(enemy.statusResistances).length > 0) ? enemy.statusResistances : undefined,
@@ -965,6 +971,8 @@ function ensureCustomMonstersRegistered() {
       level: (typeof boss.level === "number" && boss.level > 0) ? boss.level : undefined, // ★空欄ならundefined＝エリア設定 or 主人公基準のレベルになる（battle.js）
       fixedStats: boss.fixedStats === "on", // ★ONなら、レベルによる自動計算をせず上記のHP・攻撃力・経験値をそのまま使う（battle.js）
       statusInflictions: (Array.isArray(boss.statusInflictions) && boss.statusInflictions.length > 0) ? boss.statusInflictions : undefined,
+      // ★要望対応：通常攻撃命中時に付ける状態異常（専用スキル発動時のstatusInflictionsとは別設定）
+      normalAttackStatusInflictions: (Array.isArray(boss.normalAttackStatusInflictions) && boss.normalAttackStatusInflictions.length > 0) ? boss.normalAttackStatusInflictions : undefined,
       // ★要望対応：この魔物自身の状態異常耐性・無効
       statusImmunities: (Array.isArray(boss.statusImmunities) && boss.statusImmunities.length > 0) ? boss.statusImmunities : undefined,
       statusResistances: (boss.statusResistances && typeof boss.statusResistances === "object" && Object.keys(boss.statusResistances).length > 0) ? boss.statusResistances : undefined,
@@ -1014,7 +1022,15 @@ function ensureCustomItemsRegistered() {
       unsellable: !!item.unsellable, // ★アイテム管理の「売れない」チェック（town.jsの買取屋で参照する）
       // ★要望対応：インベントリでのスタック可否（装備以外）。未指定ならカテゴリ既定値にお任せするため、
       //   明示的にtrue/falseが設定されている時だけ上書きする
-      stackable: (typeof item.stackable === "boolean") ? item.stackable : existing.stackable
+      stackable: (typeof item.stackable === "boolean") ? item.stackable : existing.stackable,
+      // ★要望対応：武器・防具に持たせる専用スキル（特殊スキル編集と同じブロック形式で組める）。
+      //   scenarioProject.items側ではitem.blocks/item.variablesという名前（特殊スキル編集の画面をそのまま使い回すため）
+      //   だが、battle.js側から見て紛らわしくないよう、ここでskillBlocks/skillVariablesという名前に変えて渡す。
+      //   skillActivationMode："passive"＝常時発動（毎ターン自動）／それ以外＝任意発動（戦闘中に「武器スキル」を選んだ時だけ）
+      skillBlocks: (Array.isArray(item.blocks) && item.blocks.length > 0) ? item.blocks : undefined,
+      skillVariables: (item.variables && typeof item.variables === "object") ? item.variables : undefined,
+      skillActivationMode: item.skillActivationMode === "passive" ? "passive" : "active",
+      skillName: item.skillName || undefined
     };
   });
 }
@@ -4251,7 +4267,7 @@ function getEnemyManagerConfig() {
       { key: "imagePath", label: "画像パス", type: "text", placeholder: "例：img/敵/goblin.png（空欄なら img/敵/名前.png を使う）" },
       { key: "sizeMultiplier", label: "大きさ倍率", type: "number", placeholder: "1.0（例：1.2で少し大きく、0.8で少し小さく）" }
     ],
-    newEntity: () => ({ id: generateId("enemy"), name: "", description: "", maxHp: 10, atk: 5, exp: 10, imagePath: "", sizeMultiplier: 1, dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], statusImmunities: [], statusResistances: {}, restSkillName: "", restSkillBlocks: [], affectionGainRange: [5, 10], killBlocks: [], spareBlocks: [] }),
+    newEntity: () => ({ id: generateId("enemy"), name: "", description: "", maxHp: 10, atk: 5, exp: 10, imagePath: "", sizeMultiplier: 1, dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], normalAttackStatusInflictions: [], statusImmunities: [], statusResistances: {}, restSkillName: "", restSkillBlocks: [], affectionGainRange: [5, 10], killBlocks: [], spareBlocks: [] }),
     onChange: ensureCustomMonstersRegistered,
     getDefaultFromMaster: (id) => {
       const master = typeof ENEMY_MASTER !== "undefined" ? ENEMY_MASTER[id] : null;
@@ -4262,8 +4278,10 @@ function getEnemyManagerConfig() {
         dropItemId: master.dropItemId || null, dropRate: master.dropRate || 0,
         killFlavor: master.killFlavor || "", spareFlavor: master.spareFlavor || "", giftItemId: master.giftItemId || null,
         uniqueSkill: master.uniqueSkill ? { ...master.uniqueSkill } : null,
-        // ★古いpoisonChanceだけのデータも、開いたら自動的に「状態異常」欄の1件として引き継ぐ
-        statusInflictions: Array.isArray(master.statusInflictions) ? master.statusInflictions.map(s => ({ ...s }))
+        // ★要望対応：statusInflictionsは専用スキル発動時の状態異常として使うため、既存データのみそのまま引き継ぐ。
+        //   古いpoisonChanceだけのデータ（従来ずっと通常攻撃で毒になっていた）は、通常攻撃用の欄に引き継ぐ
+        statusInflictions: Array.isArray(master.statusInflictions) ? master.statusInflictions.map(s => ({ ...s })) : [],
+        normalAttackStatusInflictions: Array.isArray(master.normalAttackStatusInflictions) ? master.normalAttackStatusInflictions.map(s => ({ ...s }))
           : (master.poisonChance ? [{ kind: "poison", chance: master.poisonChance, duration: 3, power: 0 }] : []),
         // ★要望対応：この魔物自身の状態異常耐性・無効
         statusImmunities: Array.isArray(master.statusImmunities) ? [...master.statusImmunities] : [],
@@ -4383,7 +4401,7 @@ function getBossManagerConfig() {
       { key: "sizeMultiplier", label: "大きさ倍率", type: "number", placeholder: "1.0（例：1.5で大きく、ボスらしく強調できます）" },
       { key: "invincibilityBreakItemId", label: "無敵解除アイテムID", type: "text", placeholder: "空欄＝最初からダメージが通る", list: "scenariobuild-item-datalist" }
     ],
-    newEntity: () => ({ id: generateId("boss"), name: "", description: "", level: null, fixedStats: "", maxHp: 50, atk: 10, exp: 50, bgmTrack: "", bgmFinalTrack: "", bgmCrisisTrack: "", imagePath: "", sizeMultiplier: 1, invincibilityBreakItemId: "", dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], statusImmunities: [], statusResistances: {}, battleEvents: [] }),
+    newEntity: () => ({ id: generateId("boss"), name: "", description: "", level: null, fixedStats: "", maxHp: 50, atk: 10, exp: 50, bgmTrack: "", bgmFinalTrack: "", bgmCrisisTrack: "", imagePath: "", sizeMultiplier: 1, invincibilityBreakItemId: "", dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], normalAttackStatusInflictions: [], statusImmunities: [], statusResistances: {}, battleEvents: [] }),
     onChange: ensureCustomMonstersRegistered,
     getDefaultFromMaster: (id) => {
       const master = typeof BOSS_MASTER !== "undefined" ? BOSS_MASTER[id] : null;
@@ -4396,7 +4414,10 @@ function getBossManagerConfig() {
         dropItemId: master.dropItemId || null, dropRate: master.dropRate || 0,
         killFlavor: master.killFlavor || "", spareFlavor: master.spareFlavor || "", giftItemId: master.giftItemId || null,
         uniqueSkill: master.uniqueSkill ? { ...master.uniqueSkill } : null,
-        statusInflictions: Array.isArray(master.statusInflictions) ? master.statusInflictions.map(s => ({ ...s }))
+        // ★要望対応：statusInflictionsは専用スキル発動時の状態異常として使うため、既存データのみそのまま引き継ぐ。
+        //   古いpoisonChanceだけのデータ（従来ずっと通常攻撃で毒になっていた）は、通常攻撃用の欄に引き継ぐ
+        statusInflictions: Array.isArray(master.statusInflictions) ? master.statusInflictions.map(s => ({ ...s })) : [],
+        normalAttackStatusInflictions: Array.isArray(master.normalAttackStatusInflictions) ? master.normalAttackStatusInflictions.map(s => ({ ...s }))
           : (master.poisonChance ? [{ kind: "poison", chance: master.poisonChance, duration: 3, power: 0 }] : []),
         // ★要望対応：この魔物自身の状態異常耐性・無効
         statusImmunities: Array.isArray(master.statusImmunities) ? [...master.statusImmunities] : [],
@@ -6259,12 +6280,19 @@ function buildSkillBlockRow(blocksArray, block, index, skill, persist) {
 }
 
 function getEditingSkill() {
+  // ★武器・防具のスキル編集中は、scenarioProject.itemsの中からそのアイテムを返す。
+  //   これにより、ブロック一覧・if分岐編集・ジャンプ編集などの画面（.blocks/.variablesしか見ていない）を
+  //   キャラクターの特殊スキルとまったく同じコードでそのまま使い回せる
+  if (scenarioBuildEditingItemSkillId) {
+    return scenarioProject.items.find(i => i.id === scenarioBuildEditingItemSkillId) || null;
+  }
   return scenarioProject.skills.find(s => s.id === scenarioBuildEditingSkillId) || null;
 }
 
 // ===== メイン画面：特殊スキルのブロック編集（専用全画面。scenarioBuildMainView === "skillBlockEditor"） =====
 function renderSkillBlockEditor(container) {
   const skill = getEditingSkill();
+  const isItemSkill = !!scenarioBuildEditingItemSkillId; // ★武器・防具のスキル編集中かどうか
   if (!skill) {
     scenarioBuildMainView = "list";
     renderScenarioBuildPanel();
@@ -6277,24 +6305,32 @@ function renderSkillBlockEditor(container) {
   
   const backBtn = document.createElement("button");
   backBtn.className = "devmode-btn";
-  backBtn.textContent = "← スキル管理に戻る";
+  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : "← スキル管理に戻る";
   backBtn.onclick = (event) => {
     event.stopPropagation();
-    scenarioBuildMainView = "list";
-    scenarioBuildEditingSkillId = null;
     scenarioBuildSkillInsertMenuTarget = null;
-    ensureCustomSkillsRegistered();
+    if (isItemSkill) {
+      scenarioBuildMainView = "entityEditor";
+      scenarioBuildEditingEntityRef = { category: "items", id: scenarioBuildEditingItemSkillId };
+      scenarioBuildEditingItemSkillId = null;
+    } else {
+      scenarioBuildMainView = "list";
+      scenarioBuildEditingSkillId = null;
+      ensureCustomSkillsRegistered();
+    }
     renderScenarioBuildPanel();
   };
   container.appendChild(backBtn);
   
   const titleEl = document.createElement("h3");
-  titleEl.textContent = `「${skill.name}」を編集中`;
+  titleEl.textContent = isItemSkill ? `「${skill.name}」の武器スキルを編集中` : `「${skill.name}」を編集中`;
   container.appendChild(titleEl);
   
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
-  introEl.textContent = "話のブロックエディタと同じ操作感で、この技の詳細な動作を組み立てられます。上から順番に実行され、「＋」から好きな種類のブロックを差し込めます。ブロックを1つでも登録すると、この技は威力・種類などの固定フィールドを無視して、ここのブロックだけで動くようになります。";
+  introEl.textContent = isItemSkill
+    ? "話のブロックエディタと同じ操作感で、この装備が持つスキルの動作を組み立てられます。上から順番に実行され、「＋」から好きな種類のブロックを差し込めます。発動タイミング（常時発動／任意発動）は、この装備の詳細設定画面（1つ前の画面）で設定できます。"
+    : "話のブロックエディタと同じ操作感で、この技の詳細な動作を組み立てられます。上から順番に実行され、「＋」から好きな種類のブロックを差し込めます。ブロックを1つでも登録すると、この技は威力・種類などの固定フィールドを無視して、ここのブロックだけで動くようになります。";
   container.appendChild(introEl);
   
   // ★この技専用の作業用変数の初期値（setVariableで書き換えられる、この技を使うたびに毎回ここから始まる値）
@@ -7179,7 +7215,7 @@ function buildClassStatsRow(className) {
 // ===================================================================
 // ===== サブ画面：施設編集（村に追加できる「酒場/宿屋/店/冒険する」以外の施設） =====
 // ===================================================================
-const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", flavor: "その他（セリフのみ）" };
+const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", flavor: "その他（セリフのみ）" };
 
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
@@ -8351,6 +8387,71 @@ function buildItemStackableEditor(item, persist) {
   return wrap;
 }
 
+// ★要望対応：武器・防具に特殊スキルを持たせる。話のブロックエディタ・特殊スキル編集と同じ操作感で
+//   ブロックを組める（item.blocks / item.variables を使い、getEditingSkill()経由でそのまま画面を使い回す）。
+//   発動タイミングは「常時発動（装備者の番が来るたび自動で発動）」「任意発動（戦闘中に武器スキルとして選んで発動）」の2種類
+function buildItemSkillEditor(item, persist) {
+  const wrap = document.createElement("div");
+  const noteEl = document.createElement("p");
+  noteEl.className = "devmode-note scenariobuild-condition";
+  noteEl.textContent = "スキル：この装備を身につけているメンバーに、専用のスキルを持たせられます。「任意発動」は戦闘中そのメンバーの番が来た時に「武器スキル」という選択肢が増え、選ぶと発動します。「常時発動」はそのメンバーの番が来るたびに自動で発動します（毎ターン）。";
+  wrap.appendChild(noteEl);
+  
+  if (!Array.isArray(item.blocks)) item.blocks = [];
+  if (!item.variables || typeof item.variables !== "object") item.variables = {};
+  
+  const nameRow = document.createElement("div");
+  nameRow.className = "scenariobuild-condition-row";
+  nameRow.appendChild(labelSpan("スキル名（武器スキルの選択肢や発動時に表示。空なら装備名を使う）："));
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.className = "scenariobuild-title-input";
+  nameInput.placeholder = item.name || "";
+  nameInput.value = item.skillName || "";
+  nameInput.onchange = () => { item.skillName = nameInput.value; persist(); };
+  nameRow.appendChild(nameInput);
+  wrap.appendChild(nameRow);
+  
+  const modeRow = document.createElement("div");
+  modeRow.className = "scenariobuild-condition-row";
+  modeRow.appendChild(labelSpan("発動タイミング："));
+  const modeSelect = document.createElement("select");
+  modeSelect.className = "scenariobuild-jump-select";
+  [["active", "任意発動（戦闘中に「武器スキル」を選んだ時だけ）"], ["passive", "常時発動（装備者の番が来るたび自動で／毎ターン）"]].forEach(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    modeSelect.appendChild(option);
+  });
+  modeSelect.value = item.skillActivationMode === "passive" ? "passive" : "active"; // ★未設定時は任意発動（安全側）をデフォルトにする
+  modeSelect.onchange = () => { item.skillActivationMode = modeSelect.value; persist(); };
+  modeRow.appendChild(modeSelect);
+  wrap.appendChild(modeRow);
+  
+  const blockModeRow = document.createElement("div");
+  blockModeRow.className = "scenariobuild-condition-row";
+  const blockEditBtn = document.createElement("button");
+  blockEditBtn.className = "devmode-btn";
+  blockEditBtn.textContent = "⚡ スキル編集";
+  blockEditBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioBuildEditingItemSkillId = item.id;
+    scenarioBuildMainView = "skillBlockEditor";
+    renderScenarioBuildPanel();
+  };
+  blockModeRow.appendChild(blockEditBtn);
+  if (item.blocks.length > 0) {
+    const badge = document.createElement("span");
+    badge.className = "devmode-note";
+    badge.style.margin = "0";
+    badge.textContent = `ブロック数：${item.blocks.length}件`;
+    blockModeRow.appendChild(badge);
+  }
+  wrap.appendChild(blockModeRow);
+  
+  return wrap;
+}
+
 function buildItemStatBonusRangeEditor(item, persist) {
   const wrap = document.createElement("div");
   const noteEl = document.createElement("p");
@@ -8633,7 +8734,11 @@ function buildMonsterDetailEditor(entity, persist, category) {
     wrap.appendChild(skillRow6);
   }
   
-  wrap.appendChild(buildStatusInflictionEditor(entity, persist));
+  // ★要望対応：状態異常は「専用スキル発動時」と「通常攻撃命中時」を別々に設定できるようにした
+  wrap.appendChild(buildStatusInflictionEditor(entity, persist, "statusInflictions",
+    "専用スキル発動時にプレイヤーへ与える状態異常（複数設定可。既に同じ状態異常にかかっている間は上書きしません）："));
+  wrap.appendChild(buildStatusInflictionEditor(entity, persist, "normalAttackStatusInflictions",
+    "通常攻撃が命中した時にプレイヤーへ与える状態異常（複数設定可。既に同じ状態異常にかかっている間は上書きしません）："));
   wrap.appendChild(buildStatusResistanceEditor(entity, persist)); // ★要望対応：この魔物自身の、状態異常への耐性・無効
   
   // ★戦闘イベント（ifブロック的な演出・行動）は、ボス専用の機能（要望対応）
@@ -8739,17 +8844,20 @@ function buildStatusResistanceEditor(entity, persist) {
 }
 
 // ★敵/ボスの攻撃が命中した時に、プレイヤーへ与える状態異常（複数追加可）。
-//   スキルの状態異常編集と同じ考え方：種類・確率・ターン数・効果量を指定できる
-function buildStatusInflictionEditor(entity, persist) {
+//   スキルの状態異常編集と同じ考え方：種類・確率・ターン数・効果量を指定できる。
+//   ★要望対応：以前は「通常攻撃が命中した時」専用だったが、通常攻撃と専用スキルとで別々に設定できるよう、
+//   fieldName（entityのどのプロパティを使うか）とnoteText（説明文）を引数で受け取る形に汎用化した
+function buildStatusInflictionEditor(entity, persist, fieldName, noteText) {
   const wrap = document.createElement("div");
   const noteEl = document.createElement("p");
   noteEl.className = "devmode-note scenariobuild-condition";
-  noteEl.textContent = "攻撃命中時にプレイヤーへ与える状態異常（複数設定可。既に同じ状態異常にかかっている間は上書きしません）：";
+  noteEl.textContent = noteText;
   wrap.appendChild(noteEl);
   
-  if (!Array.isArray(entity.statusInflictions)) entity.statusInflictions = [];
+  if (!Array.isArray(entity[fieldName])) entity[fieldName] = [];
+  const list = entity[fieldName];
   
-  entity.statusInflictions.forEach((infliction, index) => {
+  list.forEach((infliction, index) => {
     const row = document.createElement("div");
     row.className = "scenariobuild-condition-row";
     
@@ -8797,7 +8905,7 @@ function buildStatusInflictionEditor(entity, persist) {
     removeBtn.textContent = "×";
     removeBtn.onclick = (event) => {
       event.stopPropagation();
-      entity.statusInflictions.splice(index, 1);
+      list.splice(index, 1);
       persist();
       renderScenarioBuildPanel();
     };
@@ -8811,7 +8919,7 @@ function buildStatusInflictionEditor(entity, persist) {
   addBtn.textContent = "＋状態異常を追加";
   addBtn.onclick = (event) => {
     event.stopPropagation();
-    entity.statusInflictions.push({ kind: "poison", chance: 0.3, duration: 3, power: 0 });
+    list.push({ kind: "poison", chance: 0.3, duration: 3, power: 0 });
     persist();
     renderScenarioBuildPanel();
   };
@@ -9194,6 +9302,7 @@ function renderEntityDetailEditor(container) {
     if (entity.category === "weapon" || entity.category === "armor") {
       fieldsWrap.appendChild(buildItemStatBonusRangeEditor(entity, persist));
       fieldsWrap.appendChild(buildRustySeriesEditor(entity, persist));
+      fieldsWrap.appendChild(buildItemSkillEditor(entity, persist));
     } else {
       // ★要望対応：装備（武器・防具）以外のアイテムに、スタックできるかどうかのチェックを追加
       fieldsWrap.appendChild(buildItemStackableEditor(entity, persist));

@@ -376,6 +376,12 @@ function debugSetPlayerLevel(newLevel) {
   if (!player) return;
   player.level = Math.max(1, Math.floor(newLevel));
   player.exp = 0; // ★手動でレベルを変更した場合、経験値は0からにする（中途半端な値が残らないようにする）
+  // ★バグ修正：ロード時は player.level ではなく classTotalExp（職業ごとの累計経験値）から
+  //   レベルを計算し直す仕様のため、ここも更新しておかないと、リロードした時に古い累計経験値
+  //   から計算された元のレベルへ戻ってしまっていた（player.jsのrestoreGameFromSaveData参照）
+  if (player.classTotalExp) {
+    player.classTotalExp[player.class] = calcTotalExpForLevel(player.level, expNeededForLevel); // player.js
+  }
   applyStatsForCurrentLevel();
   renderStatusHUD();
 }

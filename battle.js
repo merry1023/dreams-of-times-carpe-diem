@@ -537,6 +537,14 @@ async function battleLoop() {
       await displayMessage(blockMessages[statusBlockedBy] || "行動できなかった……");
       turnEnded = true;
     } else {
+      // ★要望対応：装備している武器・防具に「常時発動」のスキルがあれば、行動選択の前に自動で発動する
+      await triggerPassiveEquipmentSkills(player, true);
+      if (!battleState) return; // ★常時発動スキルの効果で戦闘が終了した場合はここで打ち切る
+      if (isPartyDefeated()) {
+        await handleBattleDefeat();
+        return;
+      }
+      
       const action = await displayChoices([
         { text: "たたかう", next: "fight" },
         { text: "こうどう", next: "action" },
@@ -598,12 +606,7 @@ async function battleLoop() {
     
     // ★敵を全滅させた？
     if (getAliveEnemies().length === 0) {
-      const spared = await handlePreVictoryFlavor(); // 倒す直前の専用セリフ（敵が1体だけの時、サキュバス・ハーピーは見逃すか選べる）
-      if (spared) {
-        await handleMonsterSpared();
-      } else {
-        await handleBattleVictory();
-      }
+      await resolveBattleVictory(); // 勝利処理（敵の種類ごとの殺す/逃がすの選択も含む）
       return;
     }
     
@@ -611,12 +614,7 @@ async function battleLoop() {
     await companionTeamTurn();
     if (!battleState) return;
     if (getAliveEnemies().length === 0) {
-      const spared = await handlePreVictoryFlavor();
-      if (spared) {
-        await handleMonsterSpared();
-      } else {
-        await handleBattleVictory();
-      }
+      await resolveBattleVictory();
       return;
     }
     
@@ -624,12 +622,7 @@ async function battleLoop() {
     await tryFriendlyMonsterAssist();
     if (!battleState) return;
     if (getAliveEnemies().length === 0) {
-      const spared = await handlePreVictoryFlavor();
-      if (spared) {
-        await handleMonsterSpared();
-      } else {
-        await handleBattleVictory();
-      }
+      await resolveBattleVictory();
       return;
     }
     
@@ -703,12 +696,16 @@ async function tickPlayerTurnBasedBuffs() {
 
 // ===== たたかう =====
 async function handleFightMenu() {
-  const choice = await displayChoices([
+  // ★要望対応：装備している武器・防具に「任意発動」のスキルがあれば、選択肢に追加する
+  const activeWeaponSkills = getEquipmentSkillsFor(player.equipment, "active");
+  const fightChoices = [
     { text: "通常攻撃", next: "normal" },
-    { text: "スキル", next: "skill" },
-    { text: "道具", next: "item" },
-    { text: "戻る", next: "back", isBack: true }
-  ]);
+    { text: "スキル", next: "skill" }
+  ];
+  if (activeWeaponSkills.length > 0) fightChoices.push({ text: "武器スキル", next: "weaponskill" });
+  fightChoices.push({ text: "道具", next: "item" });
+  fightChoices.push({ text: "戻る", next: "back", isBack: true });
+  const choice = await displayChoices(fightChoices);
   
   if (choice.next === "back") return false;
   
@@ -720,11 +717,36 @@ async function handleFightMenu() {
     return await handleSkillMenu();
   }
   
+  if (choice.next === "weaponskill") {
+    return await handleWeaponSkillMenu(activeWeaponSkills);
+  }
+  
   if (choice.next === "item") {
     return await handleItemMenuInBattle();
   }
   
   return false;
+}
+
+// ★要望対応：装備している武器・防具の「任意発動」スキルを選んで発動する（プレイヤー側）
+async function handleWeaponSkillMenu(activeWeaponSkills) {
+  const list = activeWeaponSkills || getEquipmentSkillsFor(player.equipment, "active");
+  if (list.length === 0) {
+    changeSpeaker("");
+    await displayMessage("今は使える武器スキルが無いようだ……");
+    return false;
+  }
+  
+  const choices = list.map(entry => ({ text: entry.master.skillName || entry.master.name, next: entry.slotKey, description: entry.master.description }));
+  choices.push({ text: "戻る", next: "back", isBack: true });
+  const picked = await displayChoices(choices);
+  if (picked.next === "back") return false;
+  
+  const entry = list.find(e => e.slotKey === picked.next);
+  if (!entry) return false;
+  
+  changeSpeaker("");
+  return await runEquipmentSkillBlocks(player, entry.master, true);
 }
 
 // ★狂戦士「賊害の連鎖」：発動中、単体攻撃が命中した時にもう一体の敵にも連鎖してダメージを与える。
@@ -1223,20 +1245,50 @@ async function performCompanionAction(companion) {
   changeSpeaker("");
   await displayMessage(`${name}の番だ。行動を選ぼう。`);
   
-  const action = await displayChoices([
+  // ★要望対応：装備している武器・防具に「常時発動」のスキルがあれば、行動選択の前に自動で発動する
+  await triggerPassiveEquipmentSkills(companion, false);
+  if (!battleState) return;
+  if (!companion.alive || isPartyDefeated()) return; // ★常時発動スキルの効果でこの仲間やパーティが力尽きた場合は、ここで行動を打ち切る（全滅処理は呼び出し元のbattleLoopに任せる）
+  
+  // ★要望対応：装備している武器・防具に「任意発動」のスキルがあれば、選択肢に追加する
+  const activeWeaponSkills = getEquipmentSkillsFor(companion.equipment, "active");
+  const actionChoices = [
     { text: "たたかう", next: "fight" },
-    { text: "スキル", next: "skill" },
-    { text: "道具", next: "item" } // ★要望対応：以前は主人公のターンでしか道具を使えなかったが、仲間の行動選択でも使えるようにする
-  ]);
+    { text: "スキル", next: "skill" }
+  ];
+  if (activeWeaponSkills.length > 0) actionChoices.push({ text: "武器スキル", next: "weaponskill" });
+  actionChoices.push({ text: "道具", next: "item" }); // ★要望対応：以前は主人公のターンでしか道具を使えなかったが、仲間の行動選択でも使えるようにする
+  
+  const action = await displayChoices(actionChoices);
   
   if (action.next === "fight") {
     await performCompanionNormalAttack(companion);
   } else if (action.next === "item") {
     const used = await handleItemMenuInBattle(); // battle.js（対象は自分・他の仲間・全員から選べる。既存の道具選択と共通）
     if (!used) { await performCompanionAction(companion); return; } // ★何も使わず「戻る」を選んだ場合は、行動選択からやり直す
+  } else if (action.next === "weaponskill") {
+    const success = await performCompanionWeaponSkillMenu(companion, activeWeaponSkills);
+    if (!success) { await performCompanionAction(companion); return; } // ★対象選択をキャンセル／戻るを選んだ場合は、行動選択からやり直す
   } else {
     await performCompanionSkillMenu(companion);
   }
+}
+
+// ★要望対応：装備している武器・防具の「任意発動」スキルを選んで発動する（仲間側）
+async function performCompanionWeaponSkillMenu(companion, activeWeaponSkills) {
+  const list = activeWeaponSkills || getEquipmentSkillsFor(companion.equipment, "active");
+  if (list.length === 0) return false;
+  
+  const choices = list.map(entry => ({ text: entry.master.skillName || entry.master.name, next: entry.slotKey, description: entry.master.description }));
+  choices.push({ text: "戻る", next: "back", isBack: true });
+  const picked = await displayChoices(choices);
+  if (picked.next === "back") return false;
+  
+  const entry = list.find(e => e.slotKey === picked.next);
+  if (!entry) return false;
+  
+  changeSpeaker("");
+  return await runEquipmentSkillBlocks(companion, entry.master, false);
 }
 
 async function performCompanionNormalAttack(companion) {
@@ -1740,11 +1792,23 @@ async function runSingleEnemyTurn(enemy) {
   
   await displayMessage(`${enemy.displayName}の攻撃！ ${damage}のダメージを受けた！`);
   
-  // ★魔物ごとに設定した状態異常（マップ設定タブの敵設定・ボス設定で編集可能）を、攻撃が当たった時に確率判定つきで付与する。
-  //   古いpoisonChanceのみの魔物データも、そのまま毒として扱われる（後方互換）
-  const inflictions = (master && Array.isArray(master.statusInflictions) && master.statusInflictions.length > 0)
-    ? master.statusInflictions
+  // ★要望対応：以前はここ（通常攻撃）でmaster.statusInflictionsを直接付与していたが、
+  //   専用スキル発動時に確率で付く状態異常に変更した。通常攻撃で付ける状態異常は
+  //   normalAttackStatusInflictionsという別設定で、マップ設定タブから個別に編集できるようにした。
+  //   古いpoisonChanceのみの魔物データは、これまで通り通常攻撃で毒になる（後方互換）
+  const normalAttackInflictions = (master && Array.isArray(master.normalAttackStatusInflictions) && master.normalAttackStatusInflictions.length > 0)
+    ? master.normalAttackStatusInflictions
     : (master && master.poisonChance ? [{ kind: "poison", chance: master.poisonChance, duration: 3, power: 0 }] : []);
+  await applyMonsterAttackStatusInflictions(normalAttackInflictions);
+  
+  // ★「大いなる光芒状態」は、ここまでで敵の攻撃を1回受け終えた＝1ターン経過とみなして消費する
+  if (battleState.playerStatusImmuneTurns > 0) battleState.playerStatusImmuneTurns--;
+}
+
+// ★魔物の攻撃（通常攻撃・専用スキルのどちらでも）が命中した時、設定されている状態異常を
+//   確率判定つきで主人公へ付与する共通処理（マップ設定タブの敵設定・ボス設定で編集可能）
+async function applyMonsterAttackStatusInflictions(inflictions) {
+  if (!Array.isArray(inflictions) || inflictions.length === 0) return;
   for (const infliction of inflictions) {
     if (!infliction.kind) continue;
     // ★バグ修正：状態異常タブで作ったカスタムの状態異常は、id（見た目上の種類）とmechanic（実際の動作）が
@@ -1762,9 +1826,6 @@ async function runSingleEnemyTurn(enemy) {
       await displayMessage(`${(def && def.label) || STATUS_EFFECT_LABELS[infliction.kind] || infliction.kind}状態になってしまった……！`);
     }
   }
-  
-  // ★「大いなる光芒状態」は、ここまでで敵の攻撃を1回受け終えた＝1ターン経過とみなして消費する
-  if (battleState.playerStatusImmuneTurns > 0) battleState.playerStatusImmuneTurns--;
 }
 
 // 魔物固有スキルの実行本体。通常攻撃より威力の倍率(multiplier)が高いものが多く、
@@ -1799,6 +1860,11 @@ async function executeMonsterUniqueSkill(enemy, skill) {
   await displayMessage(messageParts.join("、") + "……！");
   renderStatusHUD();
   updateBattleHud();
+  
+  // ★要望対応：以前は通常攻撃の時だけ状態異常が付いていたが、専用スキル発動時に確率で付くように変更。
+  //   マップ設定タブの「状態異常」欄（statusInflictions）は、これ以降はこの専用スキル発動時に使われる
+  const skillMaster = MONSTER_MASTER[enemy.monsterKey];
+  await applyMonsterAttackStatusInflictions(skillMaster && skillMaster.statusInflictions);
 }
 
 // ===== 特殊スキル・ブロックシステム（式パーサー） =====
@@ -2524,6 +2590,58 @@ async function runSkillBlocksForCompanionTurn(companion, skill) {
   return true;
 }
 
+// ★要望対応：武器・防具に持たせたスキル（scenariobuild.jsの「⚡ スキル編集」で組んだブロック）を集める。
+//   equipmentObjはplayer.equipmentまたは仲間のequipment。activationModeで"active"(任意発動)/"passive"(常時発動)を絞り込む
+function getEquipmentSkillsFor(equipmentObj, activationMode) {
+  if (!equipmentObj || typeof getEquippedItemDataFor !== "function") return []; // player.js
+  const result = [];
+  Object.keys(equipmentObj).forEach(slotKey => {
+    const data = getEquippedItemDataFor(equipmentObj, slotKey); // player.js
+    const master = data && data.master;
+    if (!master || !Array.isArray(master.skillBlocks) || master.skillBlocks.length === 0) return;
+    const mode = master.skillActivationMode === "passive" ? "passive" : "active";
+    if (mode !== activationMode) return;
+    result.push({ slotKey, itemId: data.itemId, master });
+  });
+  return result;
+}
+
+// ★武器・防具のスキルを実際に発動する。isPlayerでプレイヤー/仲間どちらの番かを判定し、
+//   ダメージ計算等の基準になるcasterを正しく設定する。特殊スキル編集と同じブロック実行エンジン（runSkillBlockList）を
+//   そのまま使い回すため、.name/.blocks/.variablesだけを持つ「仮の技」を組み立てて渡す
+async function runEquipmentSkillBlocks(caster, master, isPlayer) {
+  const skillLabel = master.skillName || master.name || "武器スキル";
+  const pseudoSkill = { id: `itemskill_${master.name || "weapon"}`, name: skillLabel, blocks: master.skillBlocks, variables: (master.skillVariables && typeof master.skillVariables === "object") ? master.skillVariables : {} };
+  
+  changeSpeaker(isPlayer ? "" : getCompanionDisplayName(caster));
+  await displayMessage(isPlayer ? `「${skillLabel}」を発動した！` : `${getCompanionDisplayName(caster)}の「${skillLabel}」！`, { allowSubFocus: true });
+  
+  const needsTarget = skillBlocksNeedSingleTarget(pseudoSkill.blocks);
+  let target = null;
+  if (needsTarget) {
+    target = await selectEnemyTarget();
+    if (!target) return false; // ★対象選択をキャンセルした：呼び出し元でメニューをやり直す
+  }
+  
+  const context = { variables: { ...pseudoSkill.variables }, target, caster };
+  const outcome = await runSkillBlockList(pseudoSkill.blocks, pseudoSkill, context);
+  if (typeof outcome === "string" && outcome.startsWith("JUMP:")) console.warn(`ジャンプブロックの行き先ブロック（id: ${outcome.slice(5)}）が武器スキル「${skillLabel}」の中に見つかりませんでした`);
+  
+  renderStatusHUD();
+  updateBattleHud();
+  return true;
+}
+
+// ★常時発動（毎ターン自動）の武器・防具スキルを、その番が来るたびに実行する。
+//   何体分あっても全部まとめて発動する（同時に複数の常時発動装備を持っていても対応できるように）
+async function triggerPassiveEquipmentSkills(caster, isPlayer) {
+  const passiveSkills = getEquipmentSkillsFor(caster.equipment, "passive");
+  for (const entry of passiveSkills) {
+    await runEquipmentSkillBlocks(caster, entry.master, isPlayer);
+    if (!battleState) return; // ★常時発動スキルの効果で戦闘そのものが終了した（全滅・勝利）場合はここで打ち切る
+  }
+}
+
 // ★習得済みのスキル（攻撃・回復・自己強化技に加え、魔法少女の「マジカル変身」だけは特殊技だが戦闘中に使うので一覧に含める）を表示し、実際に効果を発動する
 async function handleSkillMenu() {
   const skills = (typeof getUnlockedSkills === "function" ? getUnlockedSkills() : [])
@@ -2956,95 +3074,15 @@ async function tickMagicalGirlTransformState() {
 
 // 倒す直前、見逃せる魔物（SPAREABLE_KEYS）だけ「見逃すか殺すか」選べるようにする。
 // ★複数体との戦闘では「誰を見逃すか」が成立しづらいため、敵が1体だけだった時に限る。
-// 戻り値は「見逃した(true)」かどうか。trueならこの後は handleMonsterSpared() を、
-// falseなら通常通り handleBattleVictory() を呼ぶ
-async function handlePreVictoryFlavor() {
-  if (battleState.enemies.length !== 1) return false;
-  const enemy = battleState.enemies[0];
-  const master = MONSTER_MASTER[enemy.monsterKey];
-  if (!SPAREABLE_KEYS.includes(enemy.monsterKey)) {
-    return false; // ★対象外の魔物（ボス級）はそのまま通常の勝利処理へ
-  }
-  
+// ★戦闘勝利時の処理をまとめて行う：敵の種類（monsterKey）ごとに「殺す/逃がす」を選ばせてから
+//   （見逃せない相手＝SPAREABLE_KEYSに無い種類は今まで通り自動的に倒す）、経験値・ドロップ・
+//   好感度・クエスト進捗などをまとめて処理する。
+// ★要望対応：以前は敵が1体の時しか殺す/逃がすを選べなかったが、複数体（同じ種類が複数含まれる
+//   場合も含む）でも、出てきた敵の種類ごとに選べるようにした。同じ種類が複数いても選択は1回だけで、
+//   逃がした時の好感度上昇量も1体分と同じ（複数体ぶん合算しない）
+// ★要望対応：好感度が既にMAXの相手は、殺しても好感度が下がらない
+async function resolveBattleVictory() {
   changeSpeaker("");
-  await displayMessage("かわいそうだし逃がしていいかな！？！？！？！？");
-  
-  const choice = await displayChoices([
-    { text: "逃がす", next: "spare" },
-    { text: "殺す", next: "kill" }
-  ]);
-  
-  if (choice.next === "kill") {
-    changeMonsterAffection(enemy.monsterKey, -8); // ★殺すと好感度が下がる
-    discoveredMonsters[enemy.monsterKey] = true; // ★倒したので図鑑に載る
-    // ★要望対応：見逃した/倒した時の演出を、単なる1行のセリフだけでなくブロックで自由に組み立てられるようにする
-    if (Array.isArray(master.killBlocks) && master.killBlocks.length > 0 && typeof runBlockSequence === "function") {
-      await runBlockSequence({ id: "enemyflavor_" + enemy.monsterKey, blocks: master.killBlocks }, master.killBlocks, []); // scenariobuild.js
-    } else if (master.killFlavor) {
-      changeSpeaker(master.name);
-      await displayMessage(master.killFlavor);
-    }
-    return false;
-  }
-  
-  // ★見逃す（好感度が上がる。サキュバスだけ他より上がりにくい）
-  const [gainMin, gainMax] = master.affectionGainRange || [5, 10];
-  const affectionGain = gainMin + Math.floor(Math.random() * (gainMax - gainMin + 1));
-  changeMonsterAffection(enemy.monsterKey, affectionGain);
-  discoveredMonsters[enemy.monsterKey] = true; // ★見逃したので図鑑に載る
-  if (Array.isArray(master.spareBlocks) && master.spareBlocks.length > 0 && typeof runBlockSequence === "function") {
-    await runBlockSequence({ id: "enemyflavor_" + enemy.monsterKey, blocks: master.spareBlocks }, master.spareBlocks, []); // scenariobuild.js
-  } else if (master.spareFlavor) {
-    changeSpeaker(master.name);
-    await displayMessage(master.spareFlavor);
-  }
-  if (enemy.monsterKey === "harpy") {
-    changeSpeaker("ハーピー");
-    await displayMessage("「ちょっとまっててくださいね……」");
-    changeSpeaker("");
-    await displayMessage("「チョロチョロチョロ…」");
-    changeSpeaker("田中治郎");
-    await displayMessage("「え！ちょっと！なにやってんの！」");
-    changeSpeaker("ハーピー");
-    await displayMessage("「お待たせしました！どうぞ見逃してくれたお礼です！」");
-    addItem("harpy_water", 1); // inventory.js
-  }
-  return true;
-}
-
-// 見逃した場合の決着処理：とどめは刺していないので、経験値は半分・お金やドロップは無し
-async function handleMonsterSpared() {
-  const enemy = battleState.enemies[0];
-  changeSpeaker("");
-  stopBattleBGM(); // bgm.js
-  const halvedExp = Math.floor(enemy.exp / 2); // ★見逃した魔物からは経験値が半分しか手に入らない
-  const levelResult = addExp(halvedExp);
-  addProgressPoints(1); // ★見逃しでも進行度+1（player.js）
-  renderStatusHUD();
-  await displayMessage(`${enemy.displayName}を見逃した。経験値${halvedExp}を獲得した。`);
-  
-  // ★レベルアップ・新スキル習得があれば知らせる
-  if (typeof announceLevelUpIfAny === "function") {
-    await announceLevelUpIfAny(levelResult);
-  }
-  
-  const monsterKey = enemy.monsterKey;
-  hideBattleHud();
-  battleState = null;
-  // ★受注中の討伐依頼の対象なら、見逃しでも進捗を進める（「被害が減る」という扱い）
-  if (typeof progressHuntQuestIfMatching === "function") {
-    await progressHuntQuestIfMatching(monsterKey, true);
-  }
-  await returnToAdventureAfterBattle("win"); // adventure.js（見逃しも探索続行という意味では勝利と同じ扱い）
-}
-
-async function handleBattleVictory() {
-  changeSpeaker("");
-  if (battleState.enemies.length === 1) {
-    await displayMessage(`${battleState.enemies[0].displayName}を倒した！`);
-  } else {
-    await displayMessage("敵を全て倒した！");
-  }
   stopBattleBGM(); // bgm.js
   
   // ★戦闘中に力尽きてしまった仲間は、勝利後にわずかなHPで目を覚ます（詰みを防ぐための簡易処置）
@@ -3064,34 +3102,110 @@ async function handleBattleVictory() {
     return;
   }
   
-  // ★魔物を倒してもお金はもらえない仕様に変更（お金は物を売る・クエスト・宝箱・調べる等から得る）。
-  //   複数体を倒した時は、全員分の経験値を合算する
-  const totalExp = battleState.enemies.reduce((sum, e) => sum + e.exp, 0);
+  // ★敵の種類ごとに「殺す/逃がす」を決める（同じ種類が複数いても選択は1回だけ）
+  const enemyTypes = [...new Set(battleState.enemies.map(e => e.monsterKey))];
+  const decisions = {}; // monsterKey -> "kill" | "spare"
+  
+  for (const monsterKey of enemyTypes) {
+    const master = MONSTER_MASTER[monsterKey];
+    const countOfType = battleState.enemies.filter(e => e.monsterKey === monsterKey).length;
+    
+    if (!SPAREABLE_KEYS.includes(monsterKey)) {
+      decisions[monsterKey] = "kill"; // ★ボス級など、見逃せない相手は今まで通り自動的に倒す
+      continue;
+    }
+    
+    changeSpeaker("");
+    await displayMessage(countOfType > 1
+      ? `かわいそうだし${master.name}（${countOfType}体）を逃がしていいかな！？！？！？！？`
+      : "かわいそうだし逃がしていいかな！？！？！？！？");
+    const choice = await displayChoices([
+      { text: "逃がす", next: "spare" },
+      { text: "殺す", next: "kill" }
+    ]);
+    decisions[monsterKey] = choice.next;
+    
+    if (choice.next === "kill") {
+      if (getMonsterAffection(monsterKey) < AFFECTION_MAX) { // ★要望対応：好感度が既にMAXなら、殺しても下げない
+        changeMonsterAffection(monsterKey, -8); // ★殺すと好感度が下がる
+      }
+      discoveredMonsters[monsterKey] = true; // ★倒したので図鑑に載る
+      if (Array.isArray(master.killBlocks) && master.killBlocks.length > 0 && typeof runBlockSequence === "function") {
+        await runBlockSequence({ id: "enemyflavor_" + monsterKey, blocks: master.killBlocks }, master.killBlocks, []); // scenariobuild.js
+      } else if (master.killFlavor) {
+        changeSpeaker(master.name);
+        await displayMessage(master.killFlavor);
+      }
+    } else {
+      // ★見逃す（好感度が上がる。抽選は種類ごとに1回だけ＝同じ種類が複数体いても上昇量は1体分と同じ）
+      const [gainMin, gainMax] = master.affectionGainRange || [5, 10];
+      const affectionGain = gainMin + Math.floor(Math.random() * (gainMax - gainMin + 1));
+      changeMonsterAffection(monsterKey, affectionGain);
+      discoveredMonsters[monsterKey] = true; // ★見逃したので図鑑に載る
+      if (Array.isArray(master.spareBlocks) && master.spareBlocks.length > 0 && typeof runBlockSequence === "function") {
+        await runBlockSequence({ id: "enemyflavor_" + monsterKey, blocks: master.spareBlocks }, master.spareBlocks, []); // scenariobuild.js
+      } else if (master.spareFlavor) {
+        changeSpeaker(master.name);
+        await displayMessage(master.spareFlavor);
+      }
+      if (monsterKey === "harpy") {
+        changeSpeaker("ハーピー");
+        await displayMessage("「ちょっとまっててくださいね……」");
+        changeSpeaker("");
+        await displayMessage("「チョロチョロチョロ…」");
+        changeSpeaker("田中治郎");
+        await displayMessage("「え！ちょっと！なにやってんの！」");
+        changeSpeaker("ハーピー");
+        await displayMessage("「お待たせしました！どうぞ見逃してくれたお礼です！」");
+        addItem("harpy_water", 1); // inventory.js
+      }
+    }
+  }
+  
+  const allSpared = enemyTypes.length > 0 && enemyTypes.every(k => decisions[k] === "spare");
+  
+  // ★経験値：見逃した種類は個体ごとに半分、倒した種類は個体ごとに全額（複数体いれば合算する）
+  const totalExp = battleState.enemies.reduce((sum, enemy) => {
+    const spared = decisions[enemy.monsterKey] === "spare";
+    return sum + (spared ? Math.floor(enemy.exp / 2) : enemy.exp);
+  }, 0);
   const levelResult = addExp(totalExp);
-  addProgressPoints(2); // ★討伐で進行度+2（player.js）
+  addProgressPoints(allSpared ? 1 : 2); // ★全員見逃した時だけ+1、それ以外（1体でも倒していれば）は+2（player.js）
   renderStatusHUD();
-  await displayMessage(`経験値${totalExp}を獲得した。`);
+  
+  if (battleState.enemies.length === 1) {
+    await displayMessage(allSpared
+      ? `${battleState.enemies[0].displayName}を見逃した。経験値${totalExp}を獲得した。`
+      : `${battleState.enemies[0].displayName}を倒した！`);
+    if (!allSpared) await displayMessage(`経験値${totalExp}を獲得した。`);
+  } else {
+    await displayMessage(allSpared ? "敵を全て見逃した。" : "敵の相手が終わった。");
+    await displayMessage(`経験値${totalExp}を獲得した。`);
+  }
   
   // ★レベルアップ・新スキル習得があれば知らせる
   if (typeof announceLevelUpIfAny === "function") {
     await announceLevelUpIfAny(levelResult);
   }
   
-  // ★倒した敵それぞれについて、ドロップ抽選とクエスト進捗を個別にチェックする
+  // ★倒した敵それぞれについて、討伐数記録・ドロップ抽選を行う（見逃した敵は対象外＝今までの仕様通り）。
+  //   クエスト進捗は、倒した/見逃したどちらでも個体ごとに進める
   const lootBonus = (typeof hasPassiveSkill === "function" && hasPassiveSkill("lootBonus")) ? 0.15 : 0; // ★お宝鑑定団の「掘り出し物」（player.js）
   for (const enemy of battleState.enemies) {
-    // ★マップのエリア解放条件（「指定した敵をn体倒した」「全ての敵をn体倒した」）用に討伐数を記録する
-    if (player && player.enemyKillCounts) {
-      player.enemyKillCounts[enemy.monsterKey] = (player.enemyKillCounts[enemy.monsterKey] || 0) + 1;
-      player.totalKillCount = (player.totalKillCount || 0) + 1;
-    }
-    if (enemy.dropItemId && Math.random() < enemy.dropRate + lootBonus) {
-      addItem(enemy.dropItemId, 1);
-      const master = ITEM_MASTER[enemy.dropItemId];
-      await displayMessage(`「${master.name}」を手に入れた！`);
+    const spared = decisions[enemy.monsterKey] === "spare";
+    if (!spared) {
+      if (player && player.enemyKillCounts) {
+        player.enemyKillCounts[enemy.monsterKey] = (player.enemyKillCounts[enemy.monsterKey] || 0) + 1;
+        player.totalKillCount = (player.totalKillCount || 0) + 1;
+      }
+      if (enemy.dropItemId && Math.random() < enemy.dropRate + lootBonus) {
+        addItem(enemy.dropItemId, 1);
+        const dropMaster = ITEM_MASTER[enemy.dropItemId];
+        await displayMessage(`「${dropMaster.name}」を手に入れた！`);
+      }
     }
     if (typeof progressHuntQuestIfMatching === "function") {
-      await progressHuntQuestIfMatching(enemy.monsterKey);
+      await progressHuntQuestIfMatching(enemy.monsterKey, spared);
     }
   }
   

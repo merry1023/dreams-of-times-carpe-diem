@@ -300,15 +300,19 @@ async function showCustomShopMenu(facility, goBack) {
 // ===== 錆取り屋：「錆びたシリーズ」の武器・防具のサビを落として、ステータスを揺らし直してもらう =====
 // ★実際の抽選・反映処理は appraisal.js（getRustRemovalCandidates / performRustRemoval）が持っている。
 //   ここではお金のやり取りと画面遷移だけを担当する
-async function openRustRemovalShop() {
+// ★要望対応：施設編集タブから追加できる施設タイプ（rustRemoval）としてアタッチできるよう、
+//   施設情報(facility)と戻り先(returnTo)を受け取れるように一般化した
+async function openRustRemovalShop(facility, returnTo) {
+  const goBack = typeof returnTo === "function" ? returnTo : openShopMenu;
+  const speakerName = (facility && facility.name) || "錆取り屋の主人";
   hideLocationMenu();
   
   const candidates = getRustRemovalCandidates(); // appraisal.js
   
-  changeSpeaker("錆取り屋の主人");
+  changeSpeaker(speakerName);
   if (candidates.length === 0) {
     await displayMessage("「悪いが、うちで手入れできそうな錆びた品は持っていないようだな。」");
-    openShopMenu();
+    goBack();
     return;
   }
   
@@ -319,21 +323,21 @@ async function openRustRemovalShop() {
   
   const picked = await displayChoices(choices);
   if (picked.next === "back") {
-    openShopMenu();
+    goBack();
     return;
   }
   
   if (gold < RUST_REMOVAL_COST) {
-    changeSpeaker("錆取り屋の主人");
+    changeSpeaker(speakerName);
     await displayMessage("「金が足りないようだな。」");
-    openRustRemovalShop();
+    openRustRemovalShop(facility, returnTo);
     return;
   }
   
   const target = candidates.find(c => String(c.slot.instanceId) === picked.next);
   const ok = await showGameConfirm(`${RUST_REMOVAL_COST}陳でサビ取りをしますか？（結果は運次第です）`);
   if (!ok) {
-    openRustRemovalShop();
+    openRustRemovalShop(facility, returnTo);
     return;
   }
   
@@ -341,10 +345,10 @@ async function openRustRemovalShop() {
   renderStatusHUD();
   
   const resultText = performRustRemoval(target.itemId, target.master, target.slot); // appraisal.js
-  changeSpeaker("錆取り屋の主人");
+  changeSpeaker(speakerName);
   await displayMessage(resultText);
   
-  openRustRemovalShop(); // ★続けて他の品も試せるよう、もう一度この画面に戻る
+  openRustRemovalShop(facility, returnTo); // ★続けて他の品も試せるよう、もう一度この画面に戻る
 }
 
 // ★ 以下、まだ中身が無い場所のスタブ。
@@ -512,6 +516,15 @@ async function openCustomFacility(facility, returnTo) {
     await runFacilityDialogueBlocks(facility, facility.enterBlocks, facility.ownerDialogue); // ★入った時のセリフ（施設に入った最初の1回だけ流す）
     tavernReturnTo = goBack;
     openTavern();
+    return;
+  }
+  
+  // ★要望対応：錆取り屋を、施設編集タブから追加できる施設タイプにする
+  //   （実際の抽選・反映処理は既存のappraisal.js側のロジックをそのまま使う）
+  if (facility.type === "rustRemoval") {
+    hideLocationMenu();
+    await runFacilityDialogueBlocks(facility, facility.enterBlocks, facility.ownerDialogue); // ★入った時のセリフ
+    await openRustRemovalShop(facility, goBack);
     return;
   }
   
