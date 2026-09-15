@@ -2857,6 +2857,157 @@ html, body {
   box-shadow: 0 0 8px #ffc107;
 }
 
+/* ===== 仲間との会話タブ（Gemini API連携） ===== */
+.companionchat-login-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 30px 16px;
+  text-align: center;
+  color: #ccc;
+}
+
+.companionchat-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.companionchat-companion-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #222;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #eee;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.companionchat-companion-card:hover {
+  border-color: #ffc107;
+  background-color: #2a2a20;
+}
+
+.companionchat-companion-name {
+  font-weight: bold;
+}
+
+.companionchat-companion-sub {
+  color: #999;
+  font-size: 12px;
+}
+
+.companionchat-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #444;
+}
+
+.companionchat-back-btn {
+  background: none;
+  border: none;
+  color: #ffc107;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.companionchat-header-name {
+  font-weight: bold;
+  font-size: 15px;
+  color: #eee;
+}
+
+.companionchat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  min-height: 200px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.companionchat-hint {
+  color: #888;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.companionchat-bubble {
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.companionchat-bubble-user {
+  align-self: flex-end;
+  background-color: #ffc107;
+  color: #1a1a1a;
+  border-bottom-right-radius: 2px;
+}
+
+.companionchat-bubble-model {
+  align-self: flex-start;
+  background-color: #2a2a2a;
+  border: 1px solid #444;
+  color: #eee;
+  border-bottom-left-radius: 2px;
+}
+
+.companionchat-quota-note {
+  color: #888;
+  font-size: 11px;
+  padding: 0 12px;
+  margin: 4px 0;
+}
+
+.companionchat-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid #444;
+}
+
+.companionchat-input {
+  flex: 1;
+  background-color: #1a1a1a;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: #eee;
+  font-size: 14px;
+}
+
+.companionchat-send-btn {
+  background-color: #ffc107;
+  color: #1a1a1a;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.companionchat-send-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* ===== ログインボーナスポップアップ（セーブデータロード時に表示） ===== */
 .login-bonus-popup-overlay {
   position: fixed;
