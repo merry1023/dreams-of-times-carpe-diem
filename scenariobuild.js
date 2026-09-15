@@ -1034,6 +1034,12 @@ function ensureCustomItemsRegistered() {
       statBonusRange: (item.statBonusRange && typeof item.statBonusRange.min === "number" && typeof item.statBonusRange.max === "number")
         ? item.statBonusRange : existing.statBonusRange,
       unsellable: !!item.unsellable, // ★アイテム管理の「売れない」チェック（town.jsの買取屋で参照する）
+      // ★バグ修正：錆びたシリーズ設定（isRustySeries／appraisedName／rustyRankOutcomes）がここで一切
+      //   ITEM_MASTERへコピーされておらず、アイテム管理タブで変化先を指定しても実際のサビ取りには反映されず、
+      //   いつまでも「（手入れ済み）」への性能揺らぎ直しにフォールバックし続けてしまっていた
+      isRustySeries: (typeof item.isRustySeries === "boolean") ? item.isRustySeries : !!existing.isRustySeries,
+      appraisedName: item.appraisedName || existing.appraisedName,
+      rustyRankOutcomes: (item.rustyRankOutcomes && Object.keys(item.rustyRankOutcomes).length > 0) ? item.rustyRankOutcomes : existing.rustyRankOutcomes,
       // ★要望対応：インベントリでのスタック可否（装備以外）。未指定ならカテゴリ既定値にお任せするため、
       //   明示的にtrue/falseが設定されている時だけ上書きする
       stackable: (typeof item.stackable === "boolean") ? item.stackable : existing.stackable,
