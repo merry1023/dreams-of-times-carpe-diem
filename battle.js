@@ -863,6 +863,10 @@ function resolveDamageForTarget(target, rawDamage) {
   if (target && target.status && target.status.defDown && target.status.defDown.turns > 0) {
     damage = Math.round(damage * 1.3);
   }
+  // ★実績システム用：ここを通る対象は常に敵（主人公・仲間が与えるダメージ）なので、そのまま累計する（要望対応）
+  if (typeof player !== "undefined" && player && damage > 0) {
+    player.totalDamageDealt = (player.totalDamageDealt || 0) + damage;
+  }
   return { damage, blocked: false };
 }
 
@@ -1768,6 +1772,7 @@ async function runSingleEnemyTurn(enemy) {
     const companion = attackTarget.companion;
     const damage = Math.max(1, enemyAtk + variance);
     companion.gauges.hp.current = Math.max(0, companion.gauges.hp.current - damage);
+    player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
     renderStatusHUD();
     if (typeof triggerCameraShake === "function") triggerCameraShake(); // mainfunc.js
     await displayMessage(`${enemy.displayName}の攻撃！ ${attackTarget.displayName}は${damage}のダメージを受けた！`);
@@ -1787,6 +1792,7 @@ async function runSingleEnemyTurn(enemy) {
   }
   
   changeGauge("hp", -damage);
+  player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
   renderStatusHUD();
   if (typeof triggerCameraShake === "function") triggerCameraShake(); // mainfunc.js
   
@@ -1837,6 +1843,7 @@ async function executeMonsterUniqueSkill(enemy, skill) {
   const enemyAtk = enemy.atk + enemy.enemyAtkBonus;
   const damage = applyPlayerDamageReduction(Math.max(1, Math.round(enemyAtk * (skill.multiplier || 1))));
   changeGauge("hp", -damage);
+  player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
   if (typeof triggerCameraShake === "function") triggerCameraShake(); // mainfunc.js
   
   changeSpeaker("");
@@ -3210,6 +3217,7 @@ async function resolveBattleVictory() {
   }
   
   hideBattleHud();
+  if (typeof checkAchievements === "function") await checkAchievements(); // ★実績システム（要望対応）：討伐数・累計ダメージ等が更新された後にチェック
   const wasScripted = battleState.isScripted;
   battleState = null;
   

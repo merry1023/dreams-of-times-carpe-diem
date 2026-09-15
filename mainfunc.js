@@ -2623,6 +2623,7 @@ async function announceLevelUpIfAny(levelResult) {
   for (const skill of levelResult.newSkills) {
     await displayMessage(`新しいスキル「${skill.name}」を習得した！`);
   }
+  if (typeof checkAchievements === "function") await checkAchievements(); // ★実績システム（要望対応）：職業レベル系の実績をここでもチェック
 }
 
 // 強さタブ：レベル・ランク・基本ステータス・魅力などを一覧で描画する

@@ -671,6 +671,7 @@ async function useTownhallClassChange(facility, returnTo) {
   if (result.success) {
     const levelNote = result.isNewClass ? "" : `（以前の続きで Lv.${result.newLevel} から再開だ）`;
     await displayMessage(`手続きが完了した。今日から「${player.class}」だ${levelNote}。`);
+    if (typeof checkAchievements === "function") await checkAchievements(); // ★実績システム（要望対応）：職業解放系の実績をここでチェック
   } else {
     await displayMessage("手続きがうまくいかなかったようだ……");
   }

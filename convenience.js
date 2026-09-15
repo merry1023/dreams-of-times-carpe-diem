@@ -72,6 +72,7 @@ const CONVENIENCE_APPS = [
   { id: "saveload", label: "セーブ/ロード", icon: "💾", action: () => openSaveLoadPanel() },
   { id: "monsterCodex", label: "魔物図鑑", icon: "📖", action: () => openMonsterCodex() },
   { id: "progress", label: "進行度", icon: "📊", action: () => openProgressPanel() },
+  { id: "achievements", label: "実績", icon: "🏆", action: () => openAchievementsPanel() },
   { id: "tutorial", label: "チュートリアル", icon: "❓", action: () => openTutorialPanel() },
   { id: "credits", label: "クレジット", icon: "📜", action: () => openCredits() }
 ];
@@ -98,6 +99,7 @@ function renderConvenienceIcons() {
   const creditsPanel = document.getElementById("credits-panel");
   const progressPanel = document.getElementById("progress-panel");
   const tutorialPanel = document.getElementById("tutorial-panel");
+  const achievementsPanel = document.getElementById("achievements-panel");
   // ★バグ修正：各サブ画面（魔物図鑑・セーブロード・進行度・チュートリアル・クレジット）を
   //   「戻る」ボタン以外の方法（タブ切り替えなど）で離れた場合、そのままだとwindowのkeydown
   //   リスナーが残り続け、他の画面で矢印キーを押しただけで裏の画面が再描画されて勝手に
@@ -113,6 +115,7 @@ function renderConvenienceIcons() {
   if (creditsPanel) creditsPanel.classList.add("hidden"); // ★クレジットも同様に、閉じ忘れると下半分に残ってしまう
   if (progressPanel) progressPanel.classList.add("hidden");
   if (tutorialPanel) tutorialPanel.classList.add("hidden");
+  if (achievementsPanel) achievementsPanel.classList.add("hidden");
   if (!grid) return;
   
   grid.classList.remove("hidden");
@@ -177,6 +180,17 @@ function renderConvenienceIcons() {
       }
     }
     
+    // ★実績アイコンにも同様に「達成済み／全実績数」のバッジを出す
+    if (app.id === "achievements" && typeof getAchievementList === "function") {
+      const list = getAchievementList();
+      if (list.length > 0) {
+        const badge = document.createElement("span");
+        badge.className = "convenience-icon-badge";
+        badge.textContent = `${list.filter(a => typeof isAchievementUnlocked === "function" && isAchievementUnlocked(a)).length}/${list.length}`;
+        glyph.appendChild(badge);
+      }
+    }
+    
     const label = document.createElement("span");
     label.className = "convenience-icon-label";
     label.textContent = app.label;
@@ -204,11 +218,13 @@ function openSaveLoadPanel() {
   const creditsPanel = document.getElementById("credits-panel");
   const progressPanel = document.getElementById("progress-panel");
   const tutorialPanel = document.getElementById("tutorial-panel");
+  const achievementsPanel = document.getElementById("achievements-panel");
   if (grid) grid.classList.add("hidden");
   if (codexPanel) codexPanel.classList.add("hidden"); // ★念のため、他のパネルは必ず隠しておく
   if (creditsPanel) creditsPanel.classList.add("hidden");
   if (progressPanel) progressPanel.classList.add("hidden");
   if (tutorialPanel) tutorialPanel.classList.add("hidden");
+  if (achievementsPanel) achievementsPanel.classList.add("hidden");
   saveLoadMode = "save";
   saveLoadHeaderIndex = 0;
   renderSaveLoadPanel();
@@ -296,10 +312,12 @@ async function openMonsterCodex() {
   const saveloadPanel = document.getElementById("saveload-panel");
   const progressPanel = document.getElementById("progress-panel");
   const tutorialPanel = document.getElementById("tutorial-panel");
+  const achievementsPanel = document.getElementById("achievements-panel");
   if (grid) grid.classList.add("hidden");
   if (saveloadPanel) saveloadPanel.classList.add("hidden"); // ★念のため、他のパネルは必ず隠しておく
   if (progressPanel) progressPanel.classList.add("hidden");
   if (tutorialPanel) tutorialPanel.classList.add("hidden");
+  if (achievementsPanel) achievementsPanel.classList.add("hidden");
   codexCursorIndex = 0;
   codexViewMode = "list";
   renderMonsterCodex();
@@ -320,11 +338,13 @@ function openCredits() {
   const codexPanel = document.getElementById("monster-codex-panel");
   const progressPanel = document.getElementById("progress-panel");
   const tutorialPanel = document.getElementById("tutorial-panel");
+  const achievementsPanel = document.getElementById("achievements-panel");
   if (grid) grid.classList.add("hidden");
   if (saveloadPanel) saveloadPanel.classList.add("hidden"); // ★念のため、他のパネルは必ず隠しておく
   if (codexPanel) codexPanel.classList.add("hidden");
   if (progressPanel) progressPanel.classList.add("hidden");
   if (tutorialPanel) tutorialPanel.classList.add("hidden");
+  if (achievementsPanel) achievementsPanel.classList.add("hidden");
   renderCredits();
   window.removeEventListener("keydown", handleCreditsKeyDown); // 二重登録防止
   window.addEventListener("keydown", handleCreditsKeyDown);
@@ -406,10 +426,12 @@ function openTutorialPanel() {
   const codexPanel = document.getElementById("monster-codex-panel");
   const progressPanel = document.getElementById("progress-panel");
   const creditsPanel = document.getElementById("credits-panel");
+  const achievementsPanel = document.getElementById("achievements-panel");
   if (grid) grid.classList.add("hidden");
   if (saveloadPanel) saveloadPanel.classList.add("hidden"); // ★念のため、他のパネルは必ず隠しておく
   if (codexPanel) codexPanel.classList.add("hidden");
   if (progressPanel) progressPanel.classList.add("hidden");
+  if (achievementsPanel) achievementsPanel.classList.add("hidden");
   if (creditsPanel) creditsPanel.classList.add("hidden");
   tutorialCursorIndex = 0;
   tutorialDetailOpen = false;
@@ -572,11 +594,13 @@ function openProgressPanel() {
   const codexPanel = document.getElementById("monster-codex-panel");
   const creditsPanel = document.getElementById("credits-panel");
   const tutorialPanel = document.getElementById("tutorial-panel");
+  const achievementsPanel = document.getElementById("achievements-panel");
   if (grid) grid.classList.add("hidden");
   if (saveloadPanel) saveloadPanel.classList.add("hidden"); // ★念のため、他のパネルは必ず隠しておく
   if (codexPanel) codexPanel.classList.add("hidden");
   if (creditsPanel) creditsPanel.classList.add("hidden");
   if (tutorialPanel) tutorialPanel.classList.add("hidden");
+  if (achievementsPanel) achievementsPanel.classList.add("hidden");
   progressChapterCursorIndex = 0;
   progressDetailOpen = false;
   renderProgressPanel();
