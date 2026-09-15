@@ -1716,6 +1716,8 @@ async function restoreGameFromSaveData(data) {
     renderStatusHUD();
     applyBackground(data.background); // ★セーブ時点の背景を復元する
     
+    await checkAndShowLoginBonus(); // ★要望対応：ログインボーナス（このセーブ枠をロードした時に判定・表示する）
+    
     const resumeLocation = LOCATION_RESUMERS[currentLocationKey] || null;
     
     // ★エンディングに到達した直後のデータなら、その続きをどこから始めるか選んでもらう
@@ -1746,4 +1748,128 @@ async function restoreGameFromSaveData(data) {
       (resumeLocation || LOCATION_RESUMERS.town)();
     }
   }
+}
+
+// ===== ★要望対応：ログインボーナス =====
+// セーブデータをロードした「実際の日付（端末のローカル日付）」を基準に、1〜7日目の報酬を判定・付与する。
+// ・前回受け取った日の翌日にロードした場合：連続記録が1日進む（7日目の次は1日目に戻ってループする）
+// ・それ以外（同じ日／間が空いた／記録が無い）の場合：同じ日なら何もしない、間が空いていれば1日目からやり直し
+// ・報酬の中身（陳・経験値・アイテム）はシナリオビルドの「ログボ報酬」タブ（scenarioProject.loginBonusDays）で編集する
+
+// YYYY-MM-DD形式（端末のローカル日付。タイムゾーンをまたいでもズレないよう自前で組み立てる）
+function getLocalDateString(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// "YYYY-MM-DD" 同士の日数差（b - a）。真夜中固定でパースするので夏時間等の影響を受けない
+function getDaysBetweenDateStrings(a, b) {
+  const da = new Date(a + "T00:00:00");
+  const db = new Date(b + "T00:00:00");
+  return Math.round((db - da) / 86400000);
+}
+
+async function checkAndShowLoginBonus() {
+  try {
+    if (!player) return;
+    if (!player.loginBonus || typeof player.loginBonus !== "object") {
+      player.loginBonus = { lastClaimedDate: null, streakDay: 0 };
+    }
+    const lb = player.loginBonus;
+    const todayStr = getLocalDateString(new Date());
+    if (lb.lastClaimedDate === todayStr) return; // ★今日はもう受け取り済み
+    
+    const diffDays = lb.lastClaimedDate ? getDaysBetweenDateStrings(lb.lastClaimedDate, todayStr) : null;
+    const newStreakDay = (diffDays === 1) ? ((lb.streakDay % 7) + 1) : 1; // ★昨日ロードしていれば連続、それ以外は1日目から
+    lb.lastClaimedDate = todayStr;
+    lb.streakDay = newStreakDay;
+    
+    const rewardConfig = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.loginBonusDays) && scenarioProject.loginBonusDays[newStreakDay - 1])
+      ? scenarioProject.loginBonusDays[newStreakDay - 1] : { gold: 0, exp: 0, items: [] };
+    
+    const grantedItems = [];
+    if (rewardConfig.gold) gold += rewardConfig.gold;
+    if (rewardConfig.exp && typeof addExp === "function") addExp(rewardConfig.exp); // player.js
+    if (Array.isArray(rewardConfig.items)) {
+      rewardConfig.items.forEach(entry => {
+        if (!entry || !entry.itemId) return;
+        const master = (typeof ITEM_MASTER !== "undefined") ? ITEM_MASTER[entry.itemId] : null;
+        if (!master) return; // ★シナリオビルド側でIDを書き間違えている場合は静かに無視する
+        const qty = Math.max(1, Number(entry.qty) || 1);
+        addItem(entry.itemId, qty, { noStatBonus: true }); // inventory.js（ログボの武器・防具は個体差なしで安定させる）
+        grantedItems.push({ name: master.name, qty });
+      });
+    }
+    
+    renderStatusHUD();
+    await showLoginBonusPopup(newStreakDay, rewardConfig, grantedItems);
+  } catch (e) {
+    console.error("ログインボーナスの処理に失敗しました", e);
+  }
+}
+
+// ログインボーナスのポップアップを表示する。閉じるボタン／Zキー・決定キー・Xキーのいずれかでresolveする
+function showLoginBonusPopup(dayNumber, rewardConfig, grantedItems) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById("login-bonus-popup-overlay");
+    const dayEl = document.getElementById("login-bonus-popup-day");
+    const streakEl = document.getElementById("login-bonus-popup-streak");
+    const rewardsEl = document.getElementById("login-bonus-popup-rewards");
+    const closeBtn = document.getElementById("login-bonus-popup-close");
+    if (!overlay || !dayEl || !streakEl || !rewardsEl || !closeBtn) { resolve(); return; }
+    
+    dayEl.textContent = `${dayNumber}日目のログインボーナス！`;
+    
+    streakEl.innerHTML = "";
+    for (let i = 1; i <= 7; i++) {
+      const dot = document.createElement("span");
+      dot.className = "login-bonus-popup-streak-dot";
+      if (i === dayNumber) dot.classList.add("is-today");
+      else if (i < dayNumber) dot.classList.add("is-claimed");
+      dot.textContent = String(i);
+      streakEl.appendChild(dot);
+    }
+    
+    rewardsEl.innerHTML = "";
+    const lines = [];
+    if (rewardConfig.gold) lines.push(`陳 ${rewardConfig.gold}`);
+    if (rewardConfig.exp) lines.push(`経験値 ${rewardConfig.exp}`);
+    grantedItems.forEach(item => lines.push(`${item.name} ×${item.qty}`));
+    if (lines.length === 0) {
+      const emptyEl = document.createElement("p");
+      emptyEl.className = "login-bonus-popup-empty";
+      emptyEl.textContent = "（この日の報酬はまだ設定されていません）";
+      rewardsEl.appendChild(emptyEl);
+    } else {
+      lines.forEach(text => {
+        const itemEl = document.createElement("p");
+        itemEl.className = "login-bonus-popup-reward-item";
+        itemEl.textContent = text;
+        rewardsEl.appendChild(itemEl);
+      });
+    }
+    
+    overlay.classList.remove("hidden");
+    isGameDialogOpen = true; // mainfunc.js（他画面のキー操作を止めるための共通フラグ）
+    
+    const cleanup = () => {
+      overlay.classList.add("hidden");
+      isGameDialogOpen = false;
+      closeBtn.onclick = null;
+      window.removeEventListener("keydown", handleKey);
+    };
+    
+    closeBtn.onclick = (event) => { event.stopPropagation(); cleanup(); resolve(); };
+    
+    const handleKey = (event) => {
+      if (KEY_CONFIG.decideKeys.includes(event.key) || KEY_CONFIG.cancelKeys.includes(event.key)) {
+        event.preventDefault();
+        cleanup();
+        resolve();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+  });
 }
