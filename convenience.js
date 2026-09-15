@@ -181,8 +181,10 @@ function renderConvenienceIcons() {
     }
     
     // ★実績アイコンにも同様に「達成済み／全実績数」のバッジを出す
+    //   （hidden実績で未達成のものはバッジの分母にも出さない＝存在自体を明かさない）
     if (app.id === "achievements" && typeof getAchievementList === "function") {
-      const list = getAchievementList();
+      const rawList = getAchievementList();
+      const list = typeof isAchievementVisible === "function" ? rawList.filter(isAchievementVisible) : rawList;
       if (list.length > 0) {
         const badge = document.createElement("span");
         badge.className = "convenience-icon-badge";
