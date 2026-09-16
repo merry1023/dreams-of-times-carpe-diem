@@ -1091,6 +1091,20 @@ html, body {
     background-color: #241a1a;
 }
 
+/* ★要望対応：仲間タブで矢印キーで選んでいる仲間を、他のカーソル系UIと同じ見た目ではっきり示す */
+.companion-card.cursor {
+    border-color: #ffc107;
+    box-shadow: 0 0 8px #ffc107;
+    background-color: #2a2205;
+}
+
+/* ★戦闘不能の仲間にカーソルが合っている時は、両方の色味を無理に混ぜずカーソル表示を優先する */
+.companion-card.companion-card-down.cursor {
+    border-color: #ffc107;
+    box-shadow: 0 0 8px #ffc107;
+    background-color: #2a2205;
+}
+
 .companion-card-header {
     display: flex;
     align-items: center;
@@ -2893,6 +2907,13 @@ html, body {
 .companionchat-companion-card:hover {
   border-color: #ffc107;
   background-color: #2a2a20;
+}
+
+/* ★要望対応：矢印キーで選んでいる仲間を、他のカーソル系UIと同じ見た目ではっきり示す */
+.companionchat-companion-card.cursor {
+  border-color: #ffc107;
+  box-shadow: 0 0 8px #ffc107;
+  background-color: #2a2205;
 }
 
 .companionchat-companion-name {

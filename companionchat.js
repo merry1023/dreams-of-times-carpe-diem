@@ -10,9 +10,11 @@
 let companionChatActiveId = null; // ★今開いている会話相手のcompanionId（nullならパーティー一覧画面）
 let companionChatSessions = {};   // ★{ [companionId]: { talkHistory:[{role,text}], cachedBriefing:string|null, lastQuota:{...}|null } }（ページを開いている間だけ保持。リロードで消える）
 let companionChatSending = false; // ★二重送信防止
+let companionChatCursorIndex = 0; // ★キーボード操作用：パーティー一覧の何番目にカーソルがあるか（会話中の相手を切替える時は使わない）
 
 function renderCompanionChatTab() {
   companionChatActiveId = null; // ★タブを開き直したら、必ずパーティー一覧から
+  companionChatCursorIndex = 0;
   renderCompanionChatRoot();
 }
 
@@ -54,12 +56,17 @@ function renderCompanionChatPicker(container) {
   
   const listEl = document.createElement("div");
   listEl.className = "companionchat-picker-list";
-  player.companions.forEach(companion => {
+  // ★キーボードのカーソルは「戦闘不能で会話できない仲間」を除いた、実際に表示される並びに合わせる
+  const chattableCompanions = player.companions.filter(c => c.alive);
+  if (companionChatCursorIndex >= chattableCompanions.length) companionChatCursorIndex = Math.max(0, chattableCompanions.length - 1);
+  if (companionChatCursorIndex < 0) companionChatCursorIndex = 0;
+  
+  chattableCompanions.forEach((companion, index) => {
     const master = typeof getCompanionMaster === "function" ? getCompanionMaster(companion) : null; // player.js
-    if (!companion.alive) return; // ★戦闘不能中の仲間とは話せない
     
     const card = document.createElement("button");
-    card.className = "companionchat-companion-card";
+    const isCursor = index === companionChatCursorIndex;
+    card.className = "companionchat-companion-card" + (isCursor ? " cursor" : "");
     
     const nameEl = document.createElement("span");
     nameEl.className = "companionchat-companion-name";
@@ -71,8 +78,9 @@ function renderCompanionChatPicker(container) {
     subEl.textContent = `${master ? master.class : "？"} Lv.${companion.level}`;
     card.appendChild(subEl);
     
-    card.onclick = () => openCompanionChatSession(companion.companionId);
+    card.onclick = () => { companionChatCursorIndex = index; openCompanionChatSession(companion.companionId); };
     listEl.appendChild(card);
+    if (isCursor) card.scrollIntoView({ block: "nearest" }); // ★キーボードでカーソルが画面外に出ないよう追従させる
   });
   container.appendChild(listEl);
 }
@@ -214,7 +222,57 @@ async function handleCompanionChatSend(companionId) {
   }
 }
 
-// ★まとめAI・会話AIに渡す「ゲーム内の生データ」をまとめる
+// ★要望対応：会話タブ（仲間との会話）にもキーボード操作を対応させる。
+//   ・パーティー一覧：↑↓でカーソル移動、決定キーでその仲間との会話を開く
+//   ・会話中：メッセージ入力欄にフォーカスが無い時だけ、戻るキーでパーティー一覧に戻る／決定キーで入力欄にフォーカスする
+//   （入力欄にフォーカスしている間は、タイプしたZ・スペース・Xがゲーム側のキー操作に奪われないよう、ここでは一切拾わない）
+window.addEventListener("keydown", (event) => {
+  if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★シナリオエディタ表示中は本編を操作させない
+  if (typeof controlFocus !== "undefined" && controlFocus !== "sub") return;
+  if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return;
+  if (typeof isTextDisplaying !== "undefined" && isTextDisplaying) return; // ★結果メッセージ表示中などの二重操作防止（他のサブタブと同様）
+  if (event.repeat) return;
+  
+  const activeTab = document.querySelector(".tab-content.active");
+  if (!activeTab || activeTab.id !== "tab-companionchat") return;
+  
+  const inputEl = document.getElementById("companionchat-input");
+  const isTypingInInput = !!(inputEl && document.activeElement === inputEl);
+  
+  if (!companionChatActiveId) {
+    // ===== パーティー一覧画面 =====
+    if (!player || !player.companions) return;
+    const chattableCompanions = player.companions.filter(c => c.alive);
+    if (chattableCompanions.length === 0) return;
+    
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      companionChatCursorIndex = Math.min(chattableCompanions.length - 1, companionChatCursorIndex + 1);
+      renderCompanionChatRoot();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      companionChatCursorIndex = Math.max(0, companionChatCursorIndex - 1);
+      renderCompanionChatRoot();
+    } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
+      event.preventDefault();
+      const target = chattableCompanions[companionChatCursorIndex];
+      if (target) openCompanionChatSession(target.companionId);
+    }
+    return;
+  }
+  
+  // ===== 会話画面 =====
+  if (isTypingInInput) return; // ★入力欄にフォーカス中は、タイピングの邪魔をしないよう何もしない（送信はEnterで既に対応済み）
+  
+  if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
+    event.preventDefault();
+    closeCompanionChatSession();
+  } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
+    event.preventDefault();
+    if (inputEl) inputEl.focus(); // ★決定キーで、メッセージ入力欄にフォーカスしてすぐ打てるようにする
+  }
+});
+
 function buildCompanionChatContext(companionId) {
   const ccs = (typeof scenarioProject !== "undefined" && scenarioProject.companionChatSettings) || {};
   const master = typeof COMPANION_MASTER !== "undefined" ? COMPANION_MASTER[companionId] : null;
