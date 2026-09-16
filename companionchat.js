@@ -193,14 +193,21 @@ async function handleCompanionChatSend(companionId) {
       })
     });
     const data = await res.json().catch(() => null);
-    if (!res.ok || !data) throw new Error((data && data.error) || `通信に失敗しました（status ${res.status}）`);
+    if (!res.ok || !data) {
+      const err = new Error((data && data.error) || `通信に失敗しました（status ${res.status}）`);
+      err.code = data && data.code;
+      throw err;
+    }
     
     session.talkHistory.push({ role: "model", text: data.reply || "……" });
     session.cachedBriefing = data.briefing || session.cachedBriefing;
     session.lastQuota = data.quota ? { ...data.quota, usedModel: data.usedModel } : session.lastQuota;
   } catch (e) {
     console.error("仲間との会話に失敗しました", e);
-    session.talkHistory.push({ role: "model", text: `（うまく通信できなかったみたい……：${e.message}）` });
+    const message = e.code === "busy"
+      ? "……声が届いていないみたいだ、時間を置いてもう一回話しかけよう。"
+      : `（うまく通信できなかったみたい……：${e.message}）`;
+    session.talkHistory.push({ role: "model", text: message });
   } finally {
     companionChatSending = false;
     renderCompanionChatRoot();

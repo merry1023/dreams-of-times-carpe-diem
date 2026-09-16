@@ -157,6 +157,11 @@ async function handleCompanionChat(request, env) {
     });
   } catch (e) {
     console.error("仲間との会話処理でエラーが発生しました", e);
+    // ★要望対応：Gemini側が混雑している時（503）は、通信エラーと区別できるコードを返す
+    const isBusy = e && (e.upstreamStatus === 503 || e.upstreamStatus === 429);
+    if (isBusy) {
+      return jsonResponse({ error: "AIが混雑しています。時間をおいて試してください", code: "busy" }, 503);
+    }
     return jsonResponse({ error: "AIとの通信に失敗しました。時間をおいて試してください" }, 502);
   }
 }
@@ -210,7 +215,9 @@ async function callGenerateContent(apiKey, model, contents, systemInstructionTex
   });
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
-    throw new Error(`Gemini API呼び出しに失敗しました（${model}, status ${res.status}）: ${errText.slice(0, 300)}`);
+    const err = new Error(`Gemini API呼び出しに失敗しました（${model}, status ${res.status}）: ${errText.slice(0, 300)}`);
+    err.upstreamStatus = res.status; // ★呼び出し元で「混雑中(503)」かどうかを判定するために持たせておく
+    throw err;
   }
   return res.json();
 }
