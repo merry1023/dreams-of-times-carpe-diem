@@ -38,7 +38,7 @@ npx wrangler deploy
 
 ## 使用モデルについて
 
-- 会話AI：`gemini-3.1-pro`（思考モデル、1日10回・週40回まで）→ 枠を使い切ったら `gemini-3.8-flash` に自動で切り替え
+- 会話AI：`gemini-3.1-pro-preview`（思考モデル、1日10回・週40回まで）→ 枠を使い切ったら `gemini-3.8-flash` に自動で切り替え
 - まとめAI：`gemini-3.1-flash-lite` 固定
 
 Geminiはモデルの提供終了・切り替えが度々あるため、今後エラーが出るようになった場合は
