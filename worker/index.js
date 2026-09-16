@@ -228,18 +228,29 @@ async function callGenerateContent(apiKey, model, contents, systemInstructionTex
   if (systemInstructionText) requestBody.systemInstruction = { parts: [{ text: systemInstructionText }] };
   if (tools) requestBody.tools = tools;
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify(requestBody)
-  });
-  if (!res.ok) {
+  // ★要望対応：503(高需要)/429(レート制限)は一瞬のスパイクで終わることも多いため、
+  //   少し待ってから最大2回まで自動リトライしてから諦める（合計3回試す）
+  const maxAttempts = 3;
+  const retryDelaysMs = [500, 1500];
+  let lastErr;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify(requestBody)
+    });
+    if (res.ok) return res.json();
+
     const errText = await res.text().catch(() => "");
     const err = new Error(`Gemini API呼び出しに失敗しました（${model}, status ${res.status}）: ${errText.slice(0, 300)}`);
     err.upstreamStatus = res.status; // ★呼び出し元で「混雑中(503)」かどうかを判定するために持たせておく
-    throw err;
+    lastErr = err;
+
+    const isRetryable = res.status === 503 || res.status === 429;
+    if (!isRetryable || attempt === maxAttempts - 1) throw err;
+    await new Promise(resolve => setTimeout(resolve, retryDelaysMs[attempt]));
   }
-  return res.json();
+  throw lastErr;
 }
 
 // ===== ★1日10回・週40回の回数管理（Cloudflare KVにFirebaseのuidごとに保存） =====
