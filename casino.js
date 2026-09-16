@@ -6,6 +6,12 @@
 let casinoFacility = null;      // 今開いているカジノ施設のデータ（scenariobuild.jsのfacility）
 let casinoReturnTo = null;      // 「戻る」で呼ぶ関数（村メニュー、または拠点の施設一覧）
 
+function prepareCasinoConversationFocus() {
+  controlFocus = "main";
+  if (typeof updateControlFocusIndicator === "function") updateControlFocusIndicator();
+  hideLocationMenu();
+}
+
 // カジノの入り口。openCustomFacility（town.js）から呼ばれる
 function openCasino(facility, returnTo) {
   casinoFacility = facility;
@@ -58,6 +64,7 @@ async function pickCasinoBet(label) {
 
 // ===== ①丁半博打（サイコロ2つの合計が偶数＝丁／奇数＝半） =====
 async function startDiceGame() {
+  prepareCasinoConversationFocus();
   const bet = await pickCasinoBet("丁半博打の賭け金");
   if (bet <= 0) { showCasinoMenu(); return; }
   
@@ -124,6 +131,7 @@ function getSlotSymbolMarkup(symbol) {
 }
 
 async function startSlotGame() {
+  prepareCasinoConversationFocus();
   const bet = await pickCasinoBet("スロットの賭け金");
   if (bet <= 0) { showCasinoMenu(); return; }
   
@@ -284,6 +292,7 @@ function pickRouletteBet() {
 }
 
 async function startRouletteGame() {
+  prepareCasinoConversationFocus();
   const minBet = getCasinoMinBet();
   if (gold < minBet) {
     changeSpeaker(casinoFacility.name || "ルーレット台");
@@ -292,7 +301,6 @@ async function startRouletteGame() {
     return;
   }
   
-  hideLocationMenu();
   const cell = await pickRouletteBet();
   if (!cell) { showCasinoMenu(); return; }
   
