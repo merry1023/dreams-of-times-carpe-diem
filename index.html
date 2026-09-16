@@ -81,18 +81,6 @@
       </div>
     </div>
     
-    <!-- ★カジノ・ルーレットの賭け盤面（casino.js）。矢印キー/タップでマスを選び、決定で賭け金入力(pickQuantity)へ進む -->
-    <div id="casino-roulette-board" class="casino-roulette-board hidden">
-      <div class="casino-roulette-box">
-        <p id="casino-roulette-title" class="casino-roulette-title">賭けるマスを選んでください</p>
-        <div id="casino-roulette-grid" class="casino-roulette-grid"></div>
-        <div class="casino-roulette-footer">
-          <button id="casino-roulette-confirm" class="devmode-btn">このマスに賭ける<span class="key-badge">Z</span></button>
-          <button id="casino-roulette-cancel" class="devmode-btn">やめる<span class="key-badge">X</span></button>
-        </div>
-      </div>
-    </div>
-    
     <div class="main-screen">
       <!-- ★冒険の行き先選択：ノードマップ表示（adventuremap.js）。メイン画面だけを覆い、サブ画面はそのまま操作できる -->
       <div id="adventure-map-overlay" class="adventure-map-overlay hidden">
@@ -377,6 +365,11 @@
     </div>
   </div>
   
+  <!-- ★要望対応：メンテナンスモード（セーブデータをロードした時、ONなら画面を黒くして操作不可にする） -->
+  <div id="maintenance-mode-overlay" class="maintenance-mode-overlay hidden">
+    <p class="maintenance-mode-message">ただ今メンテナンス中です。<br>メンテナンスが終わるまでお待ちください。</p>
+  </div>
+  
 </body>
 
 <!-- ★Googleアカウント認証（Firebase）。auth.jsより前に読み込む必要がある -->
@@ -385,6 +378,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="auth.js"></script>
 <script src="cloudsave.js"></script>
+<script src="maintenance.js"></script>
 <script src="items.js"></script>
 <script src="inventory.js"></script>
 <script src="player.js"></script>
@@ -402,7 +396,6 @@
 <script src="scenario_only_data.js"></script>
 <script src="game_settings_data.js"></script>
 <script src="town.js"></script>
-<script src="casino.js"></script>
 <script src="crafting.js"></script>
 <script src="questboard.js"></script>
 <script src="enemy.js"></script>

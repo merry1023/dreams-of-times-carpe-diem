@@ -1529,7 +1529,7 @@ async function handleAutoSaveDecide() {
     const ok = await showGameConfirm(`「${row.label}」（${data.savedAt}）からロードしますか？（現在の進行状況は失われます）`);
     if (!ok) return;
     closeAutoSavePanel();
-    await restoreGameFromSaveData(data);
+    await restoreGameFromSaveData(data, () => forceOverwriteAutoSaveSlot(row.key)); // settings.js（メンテナンス中のログインボーナス記録の書き戻し用）
     
   } else if (autoSaveView === "chapterList") {
     const chapters = getRewindableChapters();
@@ -1654,7 +1654,7 @@ async function handleLoadFromSlot(slotIndex, data) {
   if (!ok) return;
   
   setLastUsedSaveSlot(slotIndex); // ★タイトル画面で「前回のデータ」として強調表示するための記録
-  await restoreGameFromSaveData(data);
+  await restoreGameFromSaveData(data, () => saveDataToSlot(slotIndex, buildSaveData())); // ★メンテナンス中のログインボーナス記録の書き戻し用
 }
 
 // ★実際にセーブデータをゲーム状態へ反映する処理本体。
@@ -1662,7 +1662,11 @@ async function handleLoadFromSlot(slotIndex, data) {
 //   第一話（chapter1）の途中でセーブしたデータなら、シナリオを最初から高速リプレイして
 //   セーブ地点まで一気に追いつかせてから、通常表示に戻して続きをプレイできるようにする。
 //   第一話が完了した後（自由行動パート）のセーブなら、記録されていた場所を直接開き直す。
-async function restoreGameFromSaveData(data) {
+// ★persistLoadedDataFn（省略可）：メンテナンスモード中にログインボーナスを付与した時、
+//   通常プレイができず後から手動セーブする機会が無いため、その場でこのセーブ枠へ書き戻すための関数。
+//   呼び出し元（手動ロード・オートセーブ再開・タイトル画面の「つづきから」）ごとに、
+//   それぞれの保存先へ書き戻す処理を渡す
+async function restoreGameFromSaveData(data, persistLoadedDataFn) {
   // ★〈重要〉新しいセッションを開始し、ロード前に進行中だった古い表示待ちを凍結する。
   //   シナリオ再生中（ページ読み込み直後の自動再生など）に別のセーブをロードすると、
   //   古い再生処理がdisplayMessage/displayChoicesの内部でメッセージ表示中フラグ等を
@@ -1679,6 +1683,10 @@ async function restoreGameFromSaveData(data) {
   choiceResolveFn = null;
   choiceCursorIndex = 0;
   choiceBox.innerHTML = ""; // ★選択肢が表示された状態でロードすると、ボタンが画面に残ったままになるバグの修正
+  
+  // ★要望対応：メンテナンスモード。ロードした瞬間に判定し、ONなら黒画面を出して操作をロックする
+  //   （このあと下で復元する内容が一瞬見えてしまわないよう、できるだけ早い段階でチェックする）
+  const isMaintenanceActive = (typeof applyMaintenanceOverlayIfNeeded === "function") ? await applyMaintenanceOverlayIfNeeded() : false; // maintenance.js
   
   gold = data.gold;
   currentLocationKey = data.currentLocationKey || "town";
@@ -1742,7 +1750,15 @@ async function restoreGameFromSaveData(data) {
     renderStatusHUD();
     applyBackground(data.background); // ★セーブ時点の背景を復元する
     
-    await checkAndShowLoginBonus(); // ★要望対応：ログインボーナス（このセーブ枠をロードした時に判定・表示する）
+    const loginBonusGranted = await checkAndShowLoginBonus(); // ★要望対応：ログインボーナス（このセーブ枠をロードした時に判定・表示する）
+    if (isMaintenanceActive) {
+      // ★ログインボーナスのポップアップを閉じる処理でisGameDialogOpenがfalseに戻されるため、
+      //   メンテナンス中は改めてロックし直す
+      isGameDialogOpen = true; // mainfunc.js
+      // ★通常プレイができないため、ここで確実に今回の受け取り記録をこのセーブ枠へ書き戻しておく
+      //   （書き戻さないと、次に同じ枠を開いた時にまた受け取れてしまう）
+      if (loginBonusGranted && typeof persistLoadedDataFn === "function") await persistLoadedDataFn();
+    }
     
     const resumeLocation = LOCATION_RESUMERS[currentLocationKey] || null;
     
@@ -1805,7 +1821,7 @@ async function checkAndShowLoginBonus() {
     }
     const lb = player.loginBonus;
     const todayStr = getLocalDateString(new Date());
-    if (lb.lastClaimedDate === todayStr) return; // ★今日はもう受け取り済み
+    if (lb.lastClaimedDate === todayStr) return false; // ★今日はもう受け取り済み
     
     const diffDays = lb.lastClaimedDate ? getDaysBetweenDateStrings(lb.lastClaimedDate, todayStr) : null;
     const newStreakDay = (diffDays === 1) ? ((lb.streakDay % 7) + 1) : 1; // ★昨日ロードしていれば連続、それ以外は1日目から
@@ -1831,8 +1847,10 @@ async function checkAndShowLoginBonus() {
     
     renderStatusHUD();
     await showLoginBonusPopup(newStreakDay, rewardConfig, grantedItems);
+    return true; // ★要望対応（メンテナンスモード）：今回新たに付与したことを呼び出し元に伝える
   } catch (e) {
     console.error("ログインボーナスの処理に失敗しました", e);
+    return false;
   }
 }
 

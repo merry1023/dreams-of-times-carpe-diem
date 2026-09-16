@@ -92,6 +92,22 @@ async function autoSaveToSlot(slotType) {
   }
 }
 
+// ★要望対応（メンテナンスモード）：canAutoSaveNow()の判定（オートセーブON/OFF設定など）に関係なく、
+//   現在の状態を強制的にこの枠へ上書きする。メンテナンス中にログインボーナスを付与した記録を、
+//   通常プレイができないその場で確実に書き戻すための専用処理（通常のオートセーブ処理とは別物）
+async function forceOverwriteAutoSaveSlot(slotType) {
+  try {
+    const data = buildSaveData(); // convenience.js
+    if (typeof isCloudSaveActive === "function" && isCloudSaveActive()) {
+      await cloudSetAutoSaveSlotData(slotType, data); // cloudsave.js
+    } else {
+      localStorage.setItem(AUTOSAVE_KEYS[slotType], JSON.stringify(data));
+    }
+  } catch (e) {
+    console.error(`オートセーブ（${AUTOSAVE_SLOT_LABELS[slotType] || slotType}）への書き戻しに失敗しました`, e);
+  }
+}
+
 function getAutoSaveSlotData(slotType) {
   // ★要望対応：ログイン中はクラウド(Firestore)から取得する（ローカルの旧データ移行は未ログイン時のみ考慮すればよい）
   if (typeof isCloudSaveActive === "function" && isCloudSaveActive()) return cloudGetAutoSaveSlotData(slotType); // cloudsave.js
