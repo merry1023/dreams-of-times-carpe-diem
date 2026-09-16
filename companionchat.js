@@ -8,7 +8,7 @@
 // ・思考モデルの利用回数（1日10回・週40回）はサーバー側で管理されるが、直近の結果はここでも表示する
 
 let companionChatActiveId = null; // ★今開いている会話相手のcompanionId（nullならパーティー一覧画面）
-let companionChatSessions = {};   // ★{ [companionId]: { talkHistory:[{role,text}], cachedBriefing:string|null, lastQuota:{...}|null } }（ページを開いている間だけ保持。リロードで消える）
+let companionChatSessions = {};   // ★{ [companionId]: { talkHistory:[{role,text}], cachedBriefing:string|null, summary:string, lastQuota:{...}|null } }（ページを開いている間だけ保持。リロードで消える）
 let companionChatSending = false; // ★二重送信防止
 let companionChatCursorIndex = 0; // ★キーボード操作用：パーティー一覧の何番目にカーソルがあるか（会話中の相手を切替える時は使わない）
 
@@ -87,7 +87,7 @@ function renderCompanionChatPicker(container) {
 
 function openCompanionChatSession(companionId) {
   if (!companionChatSessions[companionId]) {
-    companionChatSessions[companionId] = { talkHistory: [], cachedBriefing: null, lastQuota: null };
+    companionChatSessions[companionId] = { talkHistory: [], cachedBriefing: null, summary: "", lastQuota: null };
   }
   companionChatActiveId = companionId;
   renderCompanionChatRoot();
@@ -123,6 +123,12 @@ function renderCompanionChatConversation(container, companionId) {
     hintEl.className = "companionchat-hint";
     hintEl.textContent = `${master ? master.name : "仲間"}に話しかけてみよう。`;
     messagesEl.appendChild(hintEl);
+  } else if (session.summary) {
+    // ★要望対応：まとめメモリ。要約済みで古いログが畳まれている時は、その旨を表示しておく
+    const foldedHintEl = document.createElement("p");
+    foldedHintEl.className = "companionchat-hint";
+    foldedHintEl.textContent = "（これより前の会話は要約して覚えています）";
+    messagesEl.appendChild(foldedHintEl);
   }
   session.talkHistory.forEach(turn => {
     const bubble = document.createElement("div");
@@ -197,7 +203,8 @@ async function handleCompanionChatSend(companionId) {
         talkHistory: session.talkHistory.slice(0, -1), // ★今送った分より前の履歴（今回のuserMessageは別欄で送る）
         userMessage: text,
         context,
-        cachedBriefing: session.cachedBriefing
+        cachedBriefing: session.cachedBriefing,
+        conversationSummary: session.summary || "" // ★要望対応：まとめメモリ（古い会話の要約）
       })
     });
     const data = await res.json().catch(() => null);
@@ -210,6 +217,14 @@ async function handleCompanionChatSend(companionId) {
     session.talkHistory.push({ role: "model", text: data.reply || "……" });
     session.cachedBriefing = data.briefing || session.cachedBriefing;
     session.lastQuota = data.quota ? { ...data.quota, usedModel: data.usedModel } : session.lastQuota;
+    // ★要望対応：まとめメモリ。サーバー側が「会話が長くなってきたので要約した」と言ってきたら、
+    //   要約を保存し、生ログは直近分だけ残して以降の送信を軽くする
+    if (data.updatedSummary) {
+      session.summary = data.updatedSummary;
+      if (typeof data.trimTo === "number" && data.trimTo > 0) {
+        session.talkHistory = session.talkHistory.slice(-data.trimTo);
+      }
+    }
   } catch (e) {
     console.error("仲間との会話に失敗しました", e);
     const message = e.code === "busy"
