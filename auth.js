@@ -71,6 +71,9 @@ let authReadyResolved = false;
     // ★今まさに設定タブを見ている場合だけ再描画する（他のタブを見ている時に勝手に切り替えないため）
     const activeTab = document.querySelector('.tab-content.active');
     if (activeTab && activeTab.id === 'tab-setting' && typeof renderSettingsTab === "function") renderSettingsTab();
+    if (typeof window !== "undefined" && typeof window.refreshMaintenanceModeManagerUi === "function") {
+      window.refreshMaintenanceModeManagerUi();
+    }
     if (!authReadyResolved) { authReadyResolved = true; resolveAuthReady(); }
   });
 })();

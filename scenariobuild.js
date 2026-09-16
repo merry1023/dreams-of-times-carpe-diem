@@ -9748,17 +9748,19 @@ function renderMaintenanceModeManager(container) {
   container.appendChild(permissionNote);
   
   // ★取得した状態に合わせて、状態表示・ボタンの文言・押せるかどうかを更新する
-  const refreshUi = (enabled) => {
-    statusValue.textContent = enabled ? "🔴 メンテナンス中（ON）" : "🟢 通常稼働中（OFF）";
+  const refreshUi = async (enabled) => {
+    if (typeof authReadyPromise !== "undefined") await authReadyPromise; // auth.js：ログイン状態が確定してから表示を決める
+    const currentEnabled = typeof enabled === "boolean" ? enabled : await fetchMaintenanceModeEnabled();
     const canToggle = typeof isDeveloperAccount === "function" && isDeveloperAccount(); // auth.js
+    statusValue.textContent = currentEnabled ? "🔴 メンテナンス中（ON）" : "🟢 通常稼働中（OFF）";
     toggleBtn.disabled = !canToggle;
-    toggleBtn.textContent = enabled ? "メンテナンスモードをOFFにする" : "メンテナンスモードをONにする";
+    toggleBtn.textContent = currentEnabled ? "メンテナンスモードをOFFにする" : "メンテナンスモードをONにする";
     permissionNote.textContent = canToggle ? "" : "※この切り替えはGoogleでログインした開発者アカウントのみ実行できます。";
     
     toggleBtn.onclick = async (event) => {
       event.stopPropagation();
       if (!canToggle) return;
-      const nextEnabled = !enabled;
+      const nextEnabled = !currentEnabled;
       const confirmMessage = nextEnabled
         ? "メンテナンスモードをONにしますか？\n以後、セーブデータをロードした全プレイヤーの画面が真っ黒になり、操作できなくなります。"
         : "メンテナンスモードをOFFにしますか？";
@@ -9773,14 +9775,15 @@ function renderMaintenanceModeManager(container) {
         refreshUi(nextEnabled);
       } else {
         if (typeof showGameAlert === "function") await showGameAlert("更新に失敗しました。通信状態やログイン状態（開発者アカウントか）を確認してもう一度お試しください。");
-        refreshUi(enabled); // ★失敗時は元の状態のまま表示し直す
+        refreshUi(currentEnabled); // ★失敗時は元の状態のまま表示し直す
       }
     };
   };
   
+  window.refreshMaintenanceModeManagerUi = refreshUi;
   refreshUi(false); // ★Firestoreへの問い合わせが終わるまでの仮表示（OFF扱い）
   if (typeof fetchMaintenanceModeEnabled === "function") {
-    fetchMaintenanceModeEnabled().then(refreshUi); // maintenance.js
+    fetchMaintenanceModeEnabled().then((enabled) => refreshUi(enabled)); // maintenance.js
   }
 }
 // ===================================================================
