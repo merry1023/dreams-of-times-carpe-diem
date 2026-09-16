@@ -165,6 +165,7 @@
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-inventory')">インベントリ</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-skill')">スキル</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-companions')">仲間</button>
+        <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-companionchat')">会話</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-strength')">強さ</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-equipment')">装備</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-convenience')">便利</button>
@@ -254,6 +255,11 @@
 
         <div id="tab-companions" class="tab-content">
           <div id="companion-list" class="companion-list"></div>
+        </div>
+
+        <!-- ★要望対応：仲間と話すタブ。パーティー一覧画面とチャット画面をJS側で切り替えて表示する -->
+        <div id="tab-companionchat" class="tab-content">
+          <div id="companionchat-root"></div>
         </div>
 
         <div id="tab-strength" class="tab-content">
@@ -378,6 +384,7 @@
 <script src="settings.js"></script>
 <script src="devmode.js"></script>
 <script src="scenariobuild.js"></script>
+<script src="companionchat.js"></script>
 <script src="mapareas.js"></script>
 <script src="builtin_chapters_seed.js"></script>
 <script src="scenario_only_data.js"></script>
