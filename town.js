@@ -519,6 +519,14 @@ async function openCustomFacility(facility, returnTo) {
     return;
   }
   
+  // ★新規：カジノ系の施設。実際のゲーム一覧・演出はcasino.jsにまとめてある
+  if (facility.type === "casino") {
+    hideLocationMenu();
+    await runFacilityDialogueBlocks(facility, facility.enterBlocks, facility.ownerDialogue); // ★入った時のセリフ（施設に入った最初の1回だけ流す）
+    openCasino(facility, goBack); // casino.js
+    return;
+  }
+  
   // ★要望対応：錆取り屋を、施設編集タブから追加できる施設タイプにする
   //   （実際の抽選・反映処理は既存のappraisal.js側のロジックをそのまま使う）
   if (facility.type === "rustRemoval") {
@@ -683,12 +691,23 @@ async function useTownhallClassChange(facility, returnTo) {
 // ★以前はdisplayChoices（文章の選択肢）を使い回していたため、＋1/－1のたびにメッセージが再表示されて
 //   もっさりしていた上、←→キーがchoice-box共通のページ送りに取られてしまい、個数調整には使えなかった。
 //   専用のポップアップに変更し、この間だけ←→キーを個数の増減に割り当てるようにした
-function pickQuantity(maxQty, itemLabel) {
-  if (maxQty <= 0) return Promise.resolve(0);
-  if (maxQty === 1) return Promise.resolve(1); // 1個しか対象が無いなら、わざわざ選ばせない
+// ★カジノの賭け金選択（casino.js）でも同じ操作感の±UIを使いたいので、最小値・刻み幅・表示文言を
+//   optionsで差し替えられるように拡張した。呼び出し側で何も指定しなければ、これまで通り
+//   「1個から」「1個ずつ」「◯個」の個数選択として動く（既存の呼び出し箇所には一切影響しない）
+function pickQuantity(maxQty, itemLabel, options = {}) {
+  const minQty = options.min != null ? options.min : 1;
+  const step = options.step != null ? options.step : 1;
+  const formatValue = typeof options.formatValue === "function" ? options.formatValue : (v => `${v}個`);
+  const formatLabel = typeof options.formatLabel === "function"
+    ? options.formatLabel
+    : (max => itemLabel ? `${itemLabel}（最大${max}個）` : `個数（最大${max}個）`);
+  const cancelValue = options.cancelValue != null ? options.cancelValue : 0;
+  
+  if (maxQty <= 0) return Promise.resolve(cancelValue);
+  if (maxQty === minQty) return Promise.resolve(maxQty); // 選べる値が1通りしか無いなら、わざわざ選ばせない
   
   return new Promise((resolve) => {
-    let qty = 1;
+    let qty = minQty;
     const overlay = document.getElementById("quantity-picker");
     const labelEl = document.getElementById("quantity-picker-label");
     const valueEl = document.getElementById("quantity-picker-value");
@@ -698,9 +717,9 @@ function pickQuantity(maxQty, itemLabel) {
     const cancelBtn = document.getElementById("quantity-picker-cancel");
     
     function render() {
-      if (labelEl) labelEl.textContent = itemLabel ? `${itemLabel}（最大${maxQty}個）` : `個数（最大${maxQty}個）`;
-      if (valueEl) valueEl.textContent = `${qty}個`;
-      if (decBtn) decBtn.disabled = qty <= 1;
+      if (labelEl) labelEl.textContent = formatLabel(maxQty);
+      if (valueEl) valueEl.textContent = formatValue(qty);
+      if (decBtn) decBtn.disabled = qty <= minQty;
       if (incBtn) incBtn.disabled = qty >= maxQty;
     }
     
@@ -716,23 +735,23 @@ function pickQuantity(maxQty, itemLabel) {
       if (event.repeat) return;
       if (event.key === "ArrowRight") {
         event.preventDefault(); event.stopImmediatePropagation();
-        qty = Math.min(maxQty, qty + 1); render();
+        qty = Math.min(maxQty, qty + step); render();
       } else if (event.key === "ArrowLeft") {
         event.preventDefault(); event.stopImmediatePropagation();
-        qty = Math.max(1, qty - 1); render();
+        qty = Math.max(minQty, qty - step); render();
       } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
         event.preventDefault(); event.stopImmediatePropagation();
         finish(qty);
       } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
         event.preventDefault(); event.stopImmediatePropagation();
-        finish(0);
+        finish(cancelValue);
       }
     }
     
-    if (decBtn) decBtn.onclick = (event) => { event.stopPropagation(); qty = Math.max(1, qty - 1); render(); };
-    if (incBtn) incBtn.onclick = (event) => { event.stopPropagation(); qty = Math.min(maxQty, qty + 1); render(); };
+    if (decBtn) decBtn.onclick = (event) => { event.stopPropagation(); qty = Math.max(minQty, qty - step); render(); };
+    if (incBtn) incBtn.onclick = (event) => { event.stopPropagation(); qty = Math.min(maxQty, qty + step); render(); };
     if (confirmBtn) confirmBtn.onclick = (event) => { event.stopPropagation(); finish(qty); };
-    if (cancelBtn) cancelBtn.onclick = (event) => { event.stopPropagation(); finish(0); };
+    if (cancelBtn) cancelBtn.onclick = (event) => { event.stopPropagation(); finish(cancelValue); };
     
     render();
     if (overlay) overlay.classList.remove("hidden");

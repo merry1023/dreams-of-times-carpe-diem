@@ -81,6 +81,18 @@
       </div>
     </div>
     
+    <!-- ★カジノ・ルーレットの賭け盤面（casino.js）。矢印キー/タップでマスを選び、決定で賭け金入力(pickQuantity)へ進む -->
+    <div id="casino-roulette-board" class="casino-roulette-board hidden">
+      <div class="casino-roulette-box">
+        <p id="casino-roulette-title" class="casino-roulette-title">賭けるマスを選んでください</p>
+        <div id="casino-roulette-grid" class="casino-roulette-grid"></div>
+        <div class="casino-roulette-footer">
+          <button id="casino-roulette-confirm" class="devmode-btn">このマスに賭ける<span class="key-badge">Z</span></button>
+          <button id="casino-roulette-cancel" class="devmode-btn">やめる<span class="key-badge">X</span></button>
+        </div>
+      </div>
+    </div>
+    
     <div class="main-screen">
       <!-- ★冒険の行き先選択：ノードマップ表示（adventuremap.js）。メイン画面だけを覆い、サブ画面はそのまま操作できる -->
       <div id="adventure-map-overlay" class="adventure-map-overlay hidden">
@@ -390,6 +402,7 @@
 <script src="scenario_only_data.js"></script>
 <script src="game_settings_data.js"></script>
 <script src="town.js"></script>
+<script src="casino.js"></script>
 <script src="crafting.js"></script>
 <script src="questboard.js"></script>
 <script src="enemy.js"></script>
