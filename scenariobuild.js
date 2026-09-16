@@ -9726,7 +9726,7 @@ function renderMaintenanceModeManager(container) {
   
   const note = document.createElement("p");
   note.className = "devmode-note";
-  note.textContent = "ONの間にプレイヤーがセーブデータをロードすると、画面が真っ黒になり「ただ今メンテナンス中です」と表示されて操作できなくなります（ログインボーナスだけは黒画面の手前に表示され、通常通り受け取れます）。JSファイルの書き出しは不要で、切り替えた瞬間からサイト全体に反映されます。";
+  note.textContent = "ONの間にプレイヤーがセーブデータをロードすると、画面が真っ黒になり「ただ今メンテナンス中です」と表示されて操作できなくなります（ログインボーナスだけは黒画面の手前に表示され、通常通り受け取れます）。開発者アカウントでログイン中は対象外で、メンテナンス中でも通常通りプレイ・動作確認できます。JSファイルの書き出しは不要で、切り替えた瞬間からサイト全体に反映されます。";
   container.appendChild(note);
   
   const statusRow = document.createElement("div");

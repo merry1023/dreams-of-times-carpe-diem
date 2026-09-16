@@ -13,6 +13,9 @@
 //   （受け取った記録は、その場でロードしたセーブデータへ自動的に上書き保存される。
 //   通常プレイができないため、次回また同じ日に開いた時に二重に受け取れてしまわないよう）
 //
+// ・開発者アカウント（DEVELOPER_EMAILS）でログイン中は対象外。メンテナンス中でも
+//   通常通りプレイでき、自分で動作確認ができる
+//
 // ★Firebaseコンソール側で以下のFirestoreセキュリティルールを設定してください
 //  （Firebaseコンソール → Firestore Database → ルール）。
 //  auth.jsのDEVELOPER_EMAILSと同じメールアドレスを並べてください：
@@ -69,8 +72,12 @@ function showMaintenanceOverlay() {
 }
 
 // ★セーブデータをロードした時（convenience.jsのrestoreGameFromSaveData）に呼ぶ共通処理。
-//   メンテナンス中なら黒画面を表示し、キー操作もロックした上でtrueを返す
+//   メンテナンス中なら黒画面を表示し、キー操作もロックした上でtrueを返す。
+//   ただし開発者アカウント（auth.js DEVELOPER_EMAILS）でログイン中は、メンテナンス中でも
+//   自分の動作確認ができるよう、黒画面にはせず通常通りプレイできるようにする
 async function applyMaintenanceOverlayIfNeeded() {
+  if (typeof authReadyPromise !== "undefined") await authReadyPromise; // auth.js：ログイン状態が確定してから判定する
+  if (typeof isDeveloperAccount === "function" && isDeveloperAccount()) return false; // auth.js
   const enabled = await fetchMaintenanceModeEnabled();
   if (enabled) {
     showMaintenanceOverlay();
