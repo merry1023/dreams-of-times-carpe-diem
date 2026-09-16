@@ -15,7 +15,7 @@
       "binding": "COMPANION_CHAT_KV",
       // ★「wrangler kv namespace create COMPANION_CHAT_KV」を実行して発行されたidに書き換えてください
       //   （詳しくはREADME_COMPANION_CHAT.mdを参照）
-      "id": "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+      "id": "4d5d5aa19a7c47d7b88d826fd50161d0"
     }
   ]
 }
