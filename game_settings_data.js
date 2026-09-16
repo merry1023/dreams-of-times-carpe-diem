@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789462579096,
+  "version": 1789536284690,
   "enemies": [
     {
       "id": "goblin",
@@ -11453,6 +11453,25 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ]
     }
   ],
+  "companionChatSettings": {
+    "partyName": "鉄塊",
+    "protagonistEpithet": "一文無しの放浪者",
+    "protagonistPersonality": "本名は治郎、イカれ野郎だが変なところで真面目、根は優しい。",
+    "companions": {
+      "ketsuna": {
+        "epithet": "竜殺し",
+        "personality": "かなり刺さる言葉遣い、毒舌だがツンデレ。"
+      },
+      "companion_1788390422466_28": {
+        "epithet": "砕けないダイヤモンド",
+        "personality": "普段は淡々と話すが知らない人に対しては敬語。\nパーティメンバーは知っている人なのでタメ語。\n「〜じゃん。」や「〜だよね。」などではなく、「〜。」や「...ありがとう...」のような端的？で淡々とした口調。"
+      },
+      "companion_1789144270926_76": {
+        "epithet": "疾風のバン旦那",
+        "personality": "元王国騎士部隊隊長で、陰に潜ったり支援したり攻撃したりとかなりの万能職業。\nしかし40過ぎてまでDTを拗らせてしまったせいで自己嫌悪に陥り隊長を辞任した。\nタメ口で優しいイケオジ。治郎に対しては下ネタを話せる仲。\nしかし自己肯定感だけ以上に低い。"
+      }
+    }
+  },
   "creditsText": "敵などのデザインは僕が描いたものです。まだ下手ですが上手くなれるよう精進します...\nその他「フリー素材/コンポーザー様の楽曲等」を使用させていただいています\n\n背景\n<ゲームまてりあるず>様\n<AIPICT>様\n\n使用させていただいたBGM\n\n<クリエイター【オト】（https://creatoroto-blog.com/）>様\n「Oak-Village」\n\n<かずち>様\n「宵露洞窟」\n\n<ハルト>様\n「月明かりの草原」\n\n<松浦洋介>様\n「The Murmuring Forest」\n\n<Masuo>様\n「森へ」\n\n<dingerbox>様\n「haptime」\n「vacsina」\n\n<蒲鉾さちこ>様\n「哀愁と憂いの春に」\n「闇夜にたゆたう海」\n\n<しゃぐま>様\n「穢れ無き水面」\n\n<EBIMAYO>様\n「GOODRUSH」",
   "introText": "これから始める方へ。\nこのゲームはクソゲーです。\n開発者がノリで作ったしょうもないシナリオで、\n場が凍りつく会話や一部下ネタがふくまれます。\nキャラクターのイラストは開発者が描いたものですが、\nあまり上手とは言えませんので我慢してください。\n苦手な方はこの場でブラウザバックすることを\nおすすめしマスカット。",
   "deletedBuiltinIds": {

@@ -1229,6 +1229,11 @@ function switchTab(tabId) {
     renderCompanionsTab();
   }
   
+  // ★要望対応：仲間と話すタブに切り替えたら、パーティー一覧の画面に戻す（会話中の画面を開いたままにしない）
+  if (tabId === 'tab-companionchat' && typeof renderCompanionChatTab === "function") {
+    renderCompanionChatTab(); // companionchat.js
+  }
+  
   // 強さタブに切り替えたら、ステータス一覧を描画し直す
   if (tabId === 'tab-strength') {
     renderStrengthTab();
@@ -1291,7 +1296,7 @@ window.addEventListener("keydown", (event) => {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★要望対応：シナリオエディタ表示中は本編を操作させない
   if (controlFocus !== "sub") return; // ★サブ画面を操作している時だけ、タブ切り替えを有効にする
   
-  const tabIds = ["tab-main", "tab-inventory", "tab-skill", "tab-companions", "tab-strength", "tab-equipment", "tab-convenience", "tab-log", "tab-setting"];
+  const tabIds = ["tab-main", "tab-inventory", "tab-skill", "tab-companions", "tab-companionchat", "tab-strength", "tab-equipment", "tab-convenience", "tab-log", "tab-setting"]; // ★要望対応：会話タブをQ/E切り替えの対象に追加
   
   // 現在アクティブになっているタブのIDを探す
   const currentActive = document.querySelector('.tab-content.active');
