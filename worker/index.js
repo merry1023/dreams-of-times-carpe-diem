@@ -196,7 +196,7 @@ function buildTalkSystemInstruction(context, briefing) {
   if (persona.epithet) instruction += `二つ名は「${persona.epithet}」です。`;
   if (persona.personality) instruction += `性格・口調の指針：${persona.personality}`;
   instruction += "\n\n以下はこのキャラクターが把握している設定資料です。これをそのまま読み上げるのではなく、" +
-    "キャラクターとして自然な言葉で会話に活かしてください。\n\n---設定資料---\n" + briefing +
+    "キャラクターとして自然な言葉で会話に活かしてください。また、本当にひどい会話内容(geminiの規約に反するような)場合のみ、キャラクターになりきってやんわり断ってください。\n\n---設定資料---\n" + briefing +
     "\n\n設定資料だけでは答えに困る、より詳しい情報が必要な時だけrequest_reference_detail関数を呼び出してください。" +
     "毎回呼び出す必要はありません。";
   return instruction;
