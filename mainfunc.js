@@ -1300,23 +1300,31 @@ function applyPlayTabVisibility() {
   const tabButtons = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
   const visibleTabIds = new Set(getVisiblePlayTabIds());
+  const currentActiveTab = document.querySelector('.tab-content.active');
+  const fallbackTabId = getVisiblePlayTabIds()[0] || 'tab-main';
+  const targetTabId = currentActiveTab && visibleTabIds.has(currentActiveTab.id) ? currentActiveTab.id : fallbackTabId;
 
   tabButtons.forEach(btn => {
     const onClickAttr = btn.getAttribute('onclick') || '';
     const tabId = onClickAttr.match(/switchTab\('([^']+)'\)/)?.[1];
     const enabled = tabId ? visibleTabIds.has(tabId) : true;
     btn.style.display = enabled ? "" : "none";
+    btn.classList.toggle('active', tabId === targetTabId);
   });
 
   tabContents.forEach(content => {
     const enabled = visibleTabIds.has(content.id);
-    content.style.display = enabled && content.classList.contains('active') ? 'block' : 'none';
+    const shouldShow = enabled && content.id === targetTabId;
+    content.classList.toggle('active', shouldShow);
+    content.style.display = shouldShow ? 'block' : 'none';
   });
 
-  const activeTab = document.querySelector('.tab-content.active');
-  if (activeTab && !visibleTabIds.has(activeTab.id)) {
-    const fallbackTabId = getVisiblePlayTabIds()[0] || 'tab-main';
-    if (typeof switchTab === 'function') switchTab(fallbackTabId);
+  if (currentActiveTab && currentActiveTab.id !== targetTabId && typeof switchTab === 'function') {
+    switchTab(targetTabId);
+  }
+
+  if (typeof updateMiniStatusHudVisibility === 'function') {
+    updateMiniStatusHudVisibility(targetTabId);
   }
 }
 
