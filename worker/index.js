@@ -30,6 +30,11 @@ const DAILY_LIMIT = 10;
 const WEEKLY_LIMIT = 40;
 const MAX_FUNCTION_CALL_LOOPS = 2; // ★会話AIが「設定資料をもっと見せて」を要求できる最大回数（無限ループ・コスト暴走の防止）
 
+// ★要望対応：まとめメモリ。会話履歴がこの件数を超えたら、古い分をまとめAIに要約させて「要約メモリ」に畳み込み、
+//   以降はKEEP_RECENT_TURNS件の生ログ＋要約だけを送るようにして、会話が長くなるほど毎回のリクエストが重くなるのを防ぐ
+const SUMMARY_TRIGGER_TURNS = 12; // 会話履歴（ユーザー・キャラ発言の合計件数）がこれを超えたら要約する
+const KEEP_RECENT_TURNS = 6;      // 要約した後、生ログとして残しておく直近の件数
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -68,7 +73,7 @@ async function handleCompanionChat(request, env) {
   if (!verified) return jsonResponse({ error: "ログイン情報が確認できませんでした。再度ログインしてください" }, 401);
   const uid = verified.uid;
 
-  const { companionId, talkHistory, userMessage, context, cachedBriefing } = body || {};
+  const { companionId, talkHistory, userMessage, context, cachedBriefing, conversationSummary } = body || {};
   if (!companionId || typeof userMessage !== "string" || !userMessage.trim() || !context) {
     return jsonResponse({ error: "パラメータが不足しています" }, 400);
   }
@@ -95,7 +100,7 @@ async function handleCompanionChat(request, env) {
     }
 
     // ===== ③会話AI呼び出し（必要なら「設定資料をもっと見せて」のやり取りを挟む） =====
-    const systemInstruction = buildTalkSystemInstruction(context, briefing);
+    const systemInstruction = buildTalkSystemInstruction(context, briefing, conversationSummary);
     const tools = [{
       functionDeclarations: [{
         name: "request_reference_detail",
@@ -122,7 +127,9 @@ async function handleCompanionChat(request, env) {
     let actualModel = talkModel;
     let finalText;
     try {
-      finalText = await runTalkConversation(env, talkModel, contents0, systemInstruction, tools, context);
+      // ★思考モデル(プレビュー版で不安定)は粘らせすぎず、失敗したらすぐflashへ切り替える（1回失敗したら即フォールバック）
+      const talkModelMaxAttempts = talkModel === TALK_MODEL_FLASH ? 3 : 1;
+      finalText = await runTalkConversation(env, talkModel, contents0, systemInstruction, tools, context, talkModelMaxAttempts);
     } catch (e) {
       const isBusy = e && (e.upstreamStatus === 503 || e.upstreamStatus === 429);
       // ★思考モデルが混雑していた場合、その場でflashに切り替えてもう一度だけ試す
@@ -141,6 +148,23 @@ async function handleCompanionChat(request, env) {
       try { await incrementQuota(env, uid, quota); } catch (e) { console.error("回数制限データの更新に失敗しました", e); }
     }
 
+    // ===== ⑤まとめメモリ：会話が長くなってきたら、古い分をまとめAIに要約させて畳み込む =====
+    let updatedSummary = null;
+    const fullTurnsForSummary = [
+      ...(Array.isArray(talkHistory) ? talkHistory : []),
+      { role: "user", text: userMessage },
+      { role: "model", text: finalText }
+    ];
+    if (fullTurnsForSummary.length > SUMMARY_TRIGGER_TURNS) {
+      const turnsToFold = fullTurnsForSummary.slice(0, fullTurnsForSummary.length - KEEP_RECENT_TURNS);
+      try {
+        updatedSummary = await callWorkAi(env, buildSummaryUpdatePrompt(conversationSummary, turnsToFold));
+      } catch (e) {
+        console.error("会話の要約更新に失敗しました（生ログのまま続行）", e);
+        updatedSummary = null; // ★要約に失敗しても会話自体は止めない。次回また試す
+      }
+    }
+
     return jsonResponse({
       reply: finalText,
       briefing, // ★次回以降のリクエストでcachedBriefingとして送り返してもらう（まとめAI呼び出しの節約用）
@@ -150,7 +174,8 @@ async function handleCompanionChat(request, env) {
         dayLimit: DAILY_LIMIT,
         weekCount: quota.weekCount + (usedThinkingModelSuccessfully ? 1 : 0),
         weekLimit: WEEKLY_LIMIT
-      }
+      },
+      ...(updatedSummary ? { updatedSummary, trimTo: KEEP_RECENT_TURNS } : {})
     });
   } catch (e) {
     console.error("仲間との会話処理でエラーが発生しました", e);
@@ -178,6 +203,19 @@ function buildDetailPrompt(context, topic) {
     "話題：" + topic + "\n\n---ゲーム内データ(JSON)---\n" + JSON.stringify(context);
 }
 
+// ★要望対応：まとめメモリ。古い会話ログ＋これまでの要約を1つの新しい要約にまとめ直す
+function buildSummaryUpdatePrompt(existingSummary, turnsToFold) {
+  const turnsText = turnsToFold.map(t => `${t.role === "model" ? "キャラクター" : "プレイヤー"}: ${t.text}`).join("\n");
+  let prompt = "あなたは会話ログの要約担当です。以下は、あるキャラクターとプレイヤーの会話ログの古い部分です。";
+  if (existingSummary) {
+    prompt += "これまでの要約と、その後に続いた会話ログを1つにまとめ直し、新しい要約を作ってください。\n\n---これまでの要約---\n" + existingSummary + "\n\n---その後の会話ログ---\n" + turnsText;
+  } else {
+    prompt += "この会話ログを要約してください。\n\n---会話ログ---\n" + turnsText;
+  }
+  prompt += "\n\n後で会話AIがこの要約だけを見て話を続けられるように、決まった約束事・プレイヤーが話した重要な内容・キャラクターの態度の変化などを中心に、簡潔な日本語でまとめてください。世間話などの重要でない部分は省略して構いません。";
+  return prompt;
+}
+
 async function callWorkAi(env, promptText) {
   const result = await callGenerateContent(env.GEMINI_WORK_API_KEY, WORK_MODEL, [{ role: "user", parts: [{ text: promptText }] }], null, null);
   const parts = (result && result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts) || [];
@@ -186,10 +224,10 @@ async function callWorkAi(env, promptText) {
 }
 
 // 会話AIを1モデル分呼び出す（Function Callingの「設定資料をもっと見せて」往復も含む）。最終的な返答テキストを返す
-async function runTalkConversation(env, model, initialContents, systemInstruction, tools, context) {
+async function runTalkConversation(env, model, initialContents, systemInstruction, tools, context, maxAttempts = 3) {
   let contents = initialContents;
   for (let loop = 0; loop <= MAX_FUNCTION_CALL_LOOPS; loop++) {
-    const result = await callGenerateContent(env.GEMINI_TALK_API_KEY, model, contents, systemInstruction, tools);
+    const result = await callGenerateContent(env.GEMINI_TALK_API_KEY, model, contents, systemInstruction, tools, maxAttempts);
     const parts = (result && result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts) || [];
     const functionCallPart = parts.find(p => p.functionCall);
     const textPart = parts.find(p => typeof p.text === "string" && p.text);
@@ -210,27 +248,31 @@ async function runTalkConversation(env, model, initialContents, systemInstructio
 
 // ===== 会話AI（Talk）関連 =====
 
-function buildTalkSystemInstruction(context, briefing) {
+function buildTalkSystemInstruction(context, briefing, conversationSummary) {
   const persona = context.companionPersona || {};
   let instruction = `あなたは「${persona.name || "仲間"}」というキャラクターになりきって、プレイヤーと一対一の会話をしてください。`;
   if (persona.epithet) instruction += `二つ名は「${persona.epithet}」です。`;
   if (persona.personality) instruction += `性格・口調の指針：${persona.personality}`;
   instruction += "\n\n以下はこのキャラクターが把握している設定資料です。これをそのまま読み上げるのではなく、" +
-    "キャラクターとして自然な言葉で会話に活かしてください。\n\n---設定資料---\n" + briefing +
-    "\n\n設定資料だけでは答えに困る、より詳しい情報が必要な時だけrequest_reference_detail関数を呼び出してください。" +
+    "キャラクターとして自然な言葉で会話に活かしてください。\n\n---設定資料---\n" + briefing;
+  if (conversationSummary) {
+    // ★要望対応：まとめメモリ。古い会話は生ログの代わりにこの要約だけを渡して、送信量を軽くする
+    instruction += "\n\n---ここまでの会話の要約---\n" + conversationSummary +
+      "\n（この要約より後のやり取りは、この後に続く会話履歴を見てください）";
+  }
+  instruction += "\n\n設定資料だけでは答えに困る、より詳しい情報が必要な時だけrequest_reference_detail関数を呼び出してください。" +
     "毎回呼び出す必要はありません。";
   return instruction;
 }
 
-async function callGenerateContent(apiKey, model, contents, systemInstructionText, tools) {
+async function callGenerateContent(apiKey, model, contents, systemInstructionText, tools, maxAttempts = 3) {
   if (!apiKey) throw new Error(`APIキーが設定されていません（${model}）。Cloudflareのシークレット環境変数を確認してください`);
   const requestBody = { contents };
   if (systemInstructionText) requestBody.systemInstruction = { parts: [{ text: systemInstructionText }] };
   if (tools) requestBody.tools = tools;
 
-  // ★要望対応：503(高需要)/429(レート制限)は一瞬のスパイクで終わることも多いため、
-  //   少し待ってから最大2回まで自動リトライしてから諦める（合計3回試す）
-  const maxAttempts = 3;
+  // ★503(高需要)/429(レート制限)は一瞬のスパイクで終わることも多いため、少し待ってから自動リトライしてから諦める。
+  //   maxAttemptsは呼び出し元が指定（例：不安定なプレビューモデルは1回で見切りをつけてすぐflashへフォールバック）
   const retryDelaysMs = [500, 1500];
   let lastErr;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
