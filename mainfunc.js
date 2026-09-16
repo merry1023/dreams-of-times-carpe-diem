@@ -1296,7 +1296,7 @@ window.addEventListener("keydown", (event) => {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★要望対応：シナリオエディタ表示中は本編を操作させない
   if (controlFocus !== "sub") return; // ★サブ画面を操作している時だけ、タブ切り替えを有効にする
   
-  const tabIds = ["tab-main", "tab-inventory", "tab-skill", "tab-companions", "tab-strength", "tab-equipment", "tab-convenience", "tab-log", "tab-setting"];
+  const tabIds = ["tab-main", "tab-inventory", "tab-skill", "tab-companions", "tab-companionchat", "tab-strength", "tab-equipment", "tab-convenience", "tab-log", "tab-setting"]; // ★要望対応：会話タブをQ/E切り替えの対象に追加
   
   // 現在アクティブになっているタブのIDを探す
   const currentActive = document.querySelector('.tab-content.active');
