@@ -254,7 +254,7 @@ function buildTalkSystemInstruction(context, briefing, conversationSummary) {
   if (persona.epithet) instruction += `二つ名は「${persona.epithet}」です。`;
   if (persona.personality) instruction += `性格・口調の指針：${persona.personality}`;
   instruction += "\n\n以下はこのキャラクターが把握している設定資料です。これをそのまま読み上げるのではなく、" +
-    "キャラクターとして自然な言葉で会話に活かしてください。\n\n---設定資料---\n" + briefing;
+    "キャラクターとして自然な言葉で会話に活かしてください。また、本当にひどい会話内容(geminiの規約に反するような)場合のみ、キャラクターになりきってやんわり断ってください。\n\n---設定資料---\n" + briefing;
   if (conversationSummary) {
     // ★要望対応：まとめメモリ。古い会話は生ログの代わりにこの要約だけを渡して、送信量を軽くする
     instruction += "\n\n---ここまでの会話の要約---\n" + conversationSummary +
