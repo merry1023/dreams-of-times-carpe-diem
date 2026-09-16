@@ -110,7 +110,7 @@ async function handleCompanionChat(request, env) {
       }]
     }];
 
-    let contents = [
+    let contents0 = [
       ...(Array.isArray(talkHistory) ? talkHistory.slice(-20).map(turn => ({
         role: turn.role === "model" ? "model" : "user",
         parts: [{ text: String(turn.text || "") }]
@@ -118,40 +118,37 @@ async function handleCompanionChat(request, env) {
       { role: "user", parts: [{ text: userMessage }] }
     ];
 
-    let finalText = null;
-    for (let loop = 0; loop <= MAX_FUNCTION_CALL_LOOPS; loop++) {
-      const result = await callGenerateContent(env.GEMINI_TALK_API_KEY, talkModel, contents, systemInstruction, tools);
-      const parts = (result && result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts) || [];
-      const functionCallPart = parts.find(p => p.functionCall);
-      const textPart = parts.find(p => typeof p.text === "string" && p.text);
-
-      if (functionCallPart && loop < MAX_FUNCTION_CALL_LOOPS) {
-        const topic = (functionCallPart.functionCall.args && functionCallPart.functionCall.args.topic) || "";
-        const detail = await callWorkAi(env, buildDetailPrompt(context, topic));
-        contents = [...contents,
-          { role: "model", parts: [functionCallPart] },
-          { role: "user", parts: [{ functionResponse: { name: "request_reference_detail", response: { detail } } }] }
-        ];
-        continue; // ★もう一度会話AIに聞かせて、最終的な返答を作らせる
+    // ===== 実際に使ったモデル（混雑でflashに落ちた場合はここが変わる） =====
+    let actualModel = talkModel;
+    let finalText;
+    try {
+      finalText = await runTalkConversation(env, talkModel, contents0, systemInstruction, tools, context);
+    } catch (e) {
+      const isBusy = e && (e.upstreamStatus === 503 || e.upstreamStatus === 429);
+      // ★思考モデルが混雑していた場合、その場でflashに切り替えてもう一度だけ試す
+      //   （gemini-3.1-pro-previewはプレビュー版のため空き枠が非常に少なく、頻繁に混雑する既知の問題があるため）
+      if (isBusy && talkModel !== TALK_MODEL_FLASH) {
+        actualModel = TALK_MODEL_FLASH;
+        finalText = await runTalkConversation(env, TALK_MODEL_FLASH, contents0, systemInstruction, tools, context);
+      } else {
+        throw e;
       }
-
-      finalText = textPart ? textPart.text : "……（うまく言葉が出てこなかったみたい）";
-      break;
     }
+    const usedThinkingModelSuccessfully = useThinkingModel && actualModel === talkModel;
 
-    // ===== ④思考モデルを使った時だけ回数を1消費する =====
-    if (useThinkingModel) {
+    // ===== ④思考モデルを実際に使えた時だけ回数を1消費する（flashに落ちた時は消費しない） =====
+    if (usedThinkingModelSuccessfully) {
       try { await incrementQuota(env, uid, quota); } catch (e) { console.error("回数制限データの更新に失敗しました", e); }
     }
 
     return jsonResponse({
       reply: finalText,
       briefing, // ★次回以降のリクエストでcachedBriefingとして送り返してもらう（まとめAI呼び出しの節約用）
-      usedModel: useThinkingModel ? "thinking" : "flash",
+      usedModel: usedThinkingModelSuccessfully ? "thinking" : "flash",
       quota: {
-        dayCount: quota.dayCount + (useThinkingModel ? 1 : 0),
+        dayCount: quota.dayCount + (usedThinkingModelSuccessfully ? 1 : 0),
         dayLimit: DAILY_LIMIT,
-        weekCount: quota.weekCount + (useThinkingModel ? 1 : 0),
+        weekCount: quota.weekCount + (usedThinkingModelSuccessfully ? 1 : 0),
         weekLimit: WEEKLY_LIMIT
       }
     });
@@ -186,6 +183,29 @@ async function callWorkAi(env, promptText) {
   const parts = (result && result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts) || [];
   const textPart = parts.find(p => typeof p.text === "string" && p.text);
   return textPart ? textPart.text : "";
+}
+
+// 会話AIを1モデル分呼び出す（Function Callingの「設定資料をもっと見せて」往復も含む）。最終的な返答テキストを返す
+async function runTalkConversation(env, model, initialContents, systemInstruction, tools, context) {
+  let contents = initialContents;
+  for (let loop = 0; loop <= MAX_FUNCTION_CALL_LOOPS; loop++) {
+    const result = await callGenerateContent(env.GEMINI_TALK_API_KEY, model, contents, systemInstruction, tools);
+    const parts = (result && result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts) || [];
+    const functionCallPart = parts.find(p => p.functionCall);
+    const textPart = parts.find(p => typeof p.text === "string" && p.text);
+
+    if (functionCallPart && loop < MAX_FUNCTION_CALL_LOOPS) {
+      const topic = (functionCallPart.functionCall.args && functionCallPart.functionCall.args.topic) || "";
+      const detail = await callWorkAi(env, buildDetailPrompt(context, topic));
+      contents = [...contents,
+        { role: "model", parts: [functionCallPart] },
+        { role: "user", parts: [{ functionResponse: { name: "request_reference_detail", response: { detail } } }] }
+      ];
+      continue; // ★もう一度会話AIに聞かせて、最終的な返答を作らせる
+    }
+
+    return textPart ? textPart.text : "……（うまく言葉が出てこなかったみたい）";
+  }
 }
 
 // ===== 会話AI（Talk）関連 =====
