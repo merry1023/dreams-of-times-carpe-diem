@@ -424,7 +424,7 @@ async function loadDevModeSlot() {
   if (!raw) return;
   try {
     const data = JSON.parse(raw);
-    await restoreGameFromSaveData(data); // convenience.js
+    await restoreGameFromSaveData(data, () => { localStorage.setItem(DEVMODE_SAVE_KEY, JSON.stringify(buildSaveData())); }); // convenience.js
     toggleDevModePanel(); // ★ロード後は元のシーンが表示されるので、パネルは閉じておく
   } catch (e) {
     console.error("開発者セーブの読み込みに失敗しました", e);

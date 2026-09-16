@@ -141,7 +141,7 @@ async function handleTitleScreenSlotChosen(slotIndex, data) {
   
   if (typeof setLastUsedSaveSlot === "function") setLastUsedSaveSlot(slotIndex); // convenience.js
   hideTitleScreen();
-  await restoreGameFromSaveData(data); // convenience.js
+  await restoreGameFromSaveData(data, () => saveDataToSlot(slotIndex, buildSaveData())); // convenience.js（メンテナンス中のログインボーナス記録の書き戻し用）
 }
 
 function hideTitleScreen() {

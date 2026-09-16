@@ -7335,7 +7335,7 @@ function buildClassStatsRow(className) {
 // ===================================================================
 // ===== サブ画面：施設編集（村に追加できる「酒場/宿屋/店/冒険する」以外の施設） =====
 // ===================================================================
-const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", casino: "カジノ系（丁半博打・ルーレット・スロットで賭け事）", flavor: "その他（セリフのみ）" };
+const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", flavor: "その他（セリフのみ）" };
 
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
@@ -7383,8 +7383,7 @@ function renderFacilityManager(container) {
         id: generateId("facility"), type, name: "新しい施設",
         bgTrack: "", bgImage: "", ownerDialogue: "",
         price: 20, sleepinessRecovery: 40, fatigueRecovery: 40,
-        classChangeCost: 100,
-        minBet: 10, maxBet: 1000, slotImages: {} // ★カジノ系で使う項目（他の種類では無視される）
+        classChangeCost: 100
       };
       scenarioProject.facilities.push(newFacility);
       // ★以前はここで自動的に村へアタッチしていたが、他の拠点（カデリクの街など）にだけアタッチしたつもりでも
@@ -7673,65 +7672,6 @@ function buildFacilityRow(facility) {
     noteEl.className = "devmode-note";
     noteEl.textContent = `この施設で扱うレシピは「レシピ管理」タブで登録してください（対象の店を「${facility.type === "blacksmith" ? "鍛冶屋" : "素材合成屋"}」に指定したレシピが、ここに一覧で表示されます。同じ種類の店が複数ある場合は、レシピ側の「対象の店」でこの施設を選べば、この施設だけの専用レシピにできます）。`;
     infoEl.appendChild(noteEl);
-  } else if (facility.type === "casino") {
-    const noteEl = document.createElement("p");
-    noteEl.className = "devmode-note";
-    noteEl.textContent = "丁半博打・ルーレット・スロットの3種類で遊べます。賭け金の上限・下限をここで設定してください（実際に賭けられる上限は、この最高額とプレイヤーの所持金の低い方になります）。";
-    infoEl.appendChild(noteEl);
-    
-    const betRow = document.createElement("div");
-    betRow.className = "scenariobuild-condition-row";
-    betRow.appendChild(labelSpan("最低ベット額："));
-    const minBetInput = document.createElement("input");
-    minBetInput.type = "number";
-    minBetInput.min = "1";
-    minBetInput.className = "scenariobuild-condition-input";
-    minBetInput.value = facility.minBet != null ? facility.minBet : 10;
-    minBetInput.onchange = () => { facility.minBet = Math.max(1, Number(minBetInput.value) || 1); markScenarioBuildDirty(); };
-    betRow.appendChild(minBetInput);
-    
-    betRow.appendChild(labelSpan("最高ベット額："));
-    const maxBetInput = document.createElement("input");
-    maxBetInput.type = "number";
-    maxBetInput.min = "1";
-    maxBetInput.className = "scenariobuild-condition-input";
-    maxBetInput.value = facility.maxBet != null ? facility.maxBet : 1000;
-    maxBetInput.onchange = () => { facility.maxBet = Math.max(1, Number(maxBetInput.value) || 1); markScenarioBuildDirty(); };
-    betRow.appendChild(maxBetInput);
-    infoEl.appendChild(betRow);
-    
-    // ★スロットの絵柄画像。パスを1つも設定していない絵柄は、ゲーム内では絵文字で表示される
-    const slotNoteEl = document.createElement("p");
-    slotNoteEl.className = "devmode-note";
-    slotNoteEl.style.margin = "10px 0 2px";
-    slotNoteEl.textContent = "スロットの絵柄画像（任意）。空欄のままなら絵文字で表示されます。画像を使う場合は、正方形に近い小さめの画像を推奨します：";
-    infoEl.appendChild(slotNoteEl);
-    
-    if (!facility.slotImages || typeof facility.slotImages !== "object") facility.slotImages = {};
-    const SLOT_SYMBOL_ROWS = [
-      { key: "grape", label: "ぶどう（絵文字：🍇）" },
-      { key: "bell", label: "鈴（絵文字：🔔）" },
-      { key: "star", label: "星（絵文字：⭐）" },
-      { key: "gem", label: "宝石（絵文字：💎）" },
-      { key: "seven", label: "セブン（絵文字：7）" }
-    ];
-    SLOT_SYMBOL_ROWS.forEach(({ key, label }) => {
-      const slotRow = document.createElement("div");
-      slotRow.className = "scenariobuild-condition-row";
-      slotRow.appendChild(labelSpan(`${label}："`));
-      const pathInput = document.createElement("input");
-      pathInput.type = "text";
-      pathInput.placeholder = "画像URL（空欄なら絵文字）";
-      pathInput.className = "scenariobuild-title-input";
-      pathInput.value = facility.slotImages[key] || "";
-      pathInput.onchange = () => {
-        const value = pathInput.value.trim();
-        if (value) facility.slotImages[key] = value; else delete facility.slotImages[key];
-        markScenarioBuildDirty();
-      };
-      slotRow.appendChild(pathInput);
-      infoEl.appendChild(slotRow);
-    });
   } else if (facility.type === "shop") {
     const buyRow = document.createElement("div");
     buyRow.className = "scenariobuild-condition-row";
@@ -9773,6 +9713,76 @@ function buildEndingListCard(entry) {
 
 // ===================================================================
 // ===== サブ画面：データ管理（JSON出力・読込） =====
+
+// ★要望対応：メンテナンスモード。ここでのON/OFFだけは他の項目と違い、JSファイル書き出しを介さず
+//   maintenance.jsを通じてFirestore（クラウド）へ直接保存し、切り替えた瞬間からサイト全体に反映される。
+//   書き込みはFirestore側のセキュリティルールで開発者アカウントのみに制限する想定のため、
+//   ここではisDeveloperAccount()でボタンの見た目を制御しているだけで、実際の安全性はルール側が担保する。
+function renderMaintenanceModeManager(container) {
+  const header = document.createElement("h4");
+  header.className = "scenariobuild-subheading";
+  header.textContent = "🚧 メンテナンスモード";
+  container.appendChild(header);
+  
+  const note = document.createElement("p");
+  note.className = "devmode-note";
+  note.textContent = "ONの間にプレイヤーがセーブデータをロードすると、画面が真っ黒になり「ただ今メンテナンス中です」と表示されて操作できなくなります（ログインボーナスだけは黒画面の手前に表示され、通常通り受け取れます）。JSファイルの書き出しは不要で、切り替えた瞬間からサイト全体に反映されます。";
+  container.appendChild(note);
+  
+  const statusRow = document.createElement("div");
+  statusRow.className = "scenariobuild-condition-row";
+  statusRow.appendChild(labelSpan("現在の状態："));
+  const statusValue = document.createElement("span");
+  statusValue.textContent = "確認中…";
+  statusRow.appendChild(statusValue);
+  container.appendChild(statusRow);
+  
+  const toggleBtn = document.createElement("button");
+  toggleBtn.className = "devmode-btn devmode-btn-danger";
+  toggleBtn.textContent = "確認中…";
+  toggleBtn.disabled = true;
+  container.appendChild(toggleBtn);
+  
+  const permissionNote = document.createElement("p");
+  permissionNote.className = "devmode-note";
+  container.appendChild(permissionNote);
+  
+  // ★取得した状態に合わせて、状態表示・ボタンの文言・押せるかどうかを更新する
+  const refreshUi = (enabled) => {
+    statusValue.textContent = enabled ? "🔴 メンテナンス中（ON）" : "🟢 通常稼働中（OFF）";
+    const canToggle = typeof isDeveloperAccount === "function" && isDeveloperAccount(); // auth.js
+    toggleBtn.disabled = !canToggle;
+    toggleBtn.textContent = enabled ? "メンテナンスモードをOFFにする" : "メンテナンスモードをONにする";
+    permissionNote.textContent = canToggle ? "" : "※この切り替えはGoogleでログインした開発者アカウントのみ実行できます。";
+    
+    toggleBtn.onclick = async (event) => {
+      event.stopPropagation();
+      if (!canToggle) return;
+      const nextEnabled = !enabled;
+      const confirmMessage = nextEnabled
+        ? "メンテナンスモードをONにしますか？\n以後、セーブデータをロードした全プレイヤーの画面が真っ黒になり、操作できなくなります。"
+        : "メンテナンスモードをOFFにしますか？";
+      const ok = (typeof showGameConfirm === "function") ? await showGameConfirm(confirmMessage) : true; // mainfunc.js
+      if (!ok) return;
+      
+      toggleBtn.disabled = true;
+      toggleBtn.textContent = "更新中…";
+      const success = (typeof setMaintenanceModeEnabled === "function") ? await setMaintenanceModeEnabled(nextEnabled) : false; // maintenance.js
+      if (success) {
+        if (typeof showGameAlert === "function") await showGameAlert(nextEnabled ? "メンテナンスモードをONにしました。" : "メンテナンスモードをOFFにしました。");
+        refreshUi(nextEnabled);
+      } else {
+        if (typeof showGameAlert === "function") await showGameAlert("更新に失敗しました。通信状態やログイン状態（開発者アカウントか）を確認してもう一度お試しください。");
+        refreshUi(enabled); // ★失敗時は元の状態のまま表示し直す
+      }
+    };
+  };
+  
+  refreshUi(false); // ★Firestoreへの問い合わせが終わるまでの仮表示（OFF扱い）
+  if (typeof fetchMaintenanceModeEnabled === "function") {
+    fetchMaintenanceModeEnabled().then(refreshUi); // maintenance.js
+  }
+}
 // ===================================================================
 // ★要望対応：ログインボーナス。1〜7日目、それぞれの報酬（陳・経験値・アイテム複数可＋個数）を編集する
 function renderLoginBonusManager(container) {
@@ -9975,6 +9985,8 @@ function renderCompanionChatSettingsManager(container) {
 }
 
 function renderDataManager(container) {
+  renderMaintenanceModeManager(container); // ★要望対応：メンテナンスモード（Firestoreに直接反映）
+  
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
   introEl.textContent = "シナリオデータ（話・キャラ・敵・ボス・アイテム）は、変更するたびにブラウザへ自動保存されています。他の端末に移したり、バックアップを取りたい時はJSONで書き出し・読み込みができます。";
