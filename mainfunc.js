@@ -1199,6 +1199,11 @@ function updateMiniStatusHudVisibility(tabId) {
 }
 
 function switchTab(tabId) {
+  if (!tabId || !isPlayTabEnabled(tabId)) {
+    const fallbackTabId = getVisiblePlayTabIds()[0] || "tab-main";
+    tabId = fallbackTabId;
+  }
+
   const contents = document.querySelectorAll('.tab-content');
   const buttons = document.querySelectorAll('.tab-btn');
   
@@ -1291,12 +1296,37 @@ function switchTab(tabId) {
   });
 }
 
+function applyPlayTabVisibility() {
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+  const visibleTabIds = new Set(getVisiblePlayTabIds());
+
+  tabButtons.forEach(btn => {
+    const onClickAttr = btn.getAttribute('onclick') || '';
+    const tabId = onClickAttr.match(/switchTab\('([^']+)'\)/)?.[1];
+    const enabled = tabId ? visibleTabIds.has(tabId) : true;
+    btn.style.display = enabled ? "" : "none";
+  });
+
+  tabContents.forEach(content => {
+    const enabled = visibleTabIds.has(content.id);
+    content.style.display = enabled && content.classList.contains('active') ? 'block' : 'none';
+  });
+
+  const activeTab = document.querySelector('.tab-content.active');
+  if (activeTab && !visibleTabIds.has(activeTab.id)) {
+    const fallbackTabId = getVisiblePlayTabIds()[0] || 'tab-main';
+    if (typeof switchTab === 'function') switchTab(fallbackTabId);
+  }
+}
+
 // ② Qキー / Eキーでタブを左右に切り替える（キーボード用）
 window.addEventListener("keydown", (event) => {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★要望対応：シナリオエディタ表示中は本編を操作させない
   if (controlFocus !== "sub") return; // ★サブ画面を操作している時だけ、タブ切り替えを有効にする
   
-  const tabIds = ["tab-main", "tab-inventory", "tab-skill", "tab-companions", "tab-companionchat", "tab-strength", "tab-equipment", "tab-convenience", "tab-log", "tab-setting"]; // ★要望対応：会話タブをQ/E切り替えの対象に追加
+  const tabIds = getVisiblePlayTabIds();
+  if (!tabIds.length) return;
   
   // 現在アクティブになっているタブのIDを探す
   const currentActive = document.querySelector('.tab-content.active');
