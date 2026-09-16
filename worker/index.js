@@ -22,7 +22,7 @@ import { verifyFirebaseIdToken } from "./verifyFirebaseToken.js";
 
 const TALK_MODEL_THINKING = "gemini-3.1-pro";  // ★会話AI：普段はこちら（思考モデル）
 const TALK_MODEL_FLASH = "gemini-3.8-flash";   // ★会話AI：1日10回/週40回を使い切ったらこちらに切り替え
-const WORK_MODEL = "gemini-3.8-flash";         // ★まとめAI：常にこちら固定（情報整形が仕事なので思考モデルは不要）
+const WORK_MODEL = "gemini-3.1-flash-lite"; // ★まとめAI：軽量な情報整形・抽出向けモデルに変更（gemini-3.8-flashが混雑していたため）
 // ★Geminiのモデルは提供終了・切り替えが頻繁にあるため（例：2.5系は2026年10月に終了予定）、
 //   将来エラーが出るようになったら https://ai.google.dev/gemini-api/docs/models で現行モデル名を確認してください。
 
