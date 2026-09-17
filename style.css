@@ -827,6 +827,14 @@ html, body {
     display: block;
 }
 
+/* ★要望対応：プレイ画面タブ管理で非表示にしたタブ・ボタン。.activeより必ず優先して隠す */
+.tab-content.tab-hidden-by-setting{
+    display: none !important;
+}
+.tab-btn.tab-hidden-by-setting{
+    display: none !important;
+}
+
 .tab-content-container{
     flex: 1;
     display: flex;
