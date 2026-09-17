@@ -2858,7 +2858,27 @@ html, body {
 .casino-roulette-title {
   color: #eee;
   font-size: 13px;
+  margin: 0 0 6px 0;
+}
+
+.casino-roulette-status {
+  color: #ffe082;
+  font-size: 11px;
   margin: 0 0 10px 0;
+}
+
+.casino-roulette-chip-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.casino-roulette-chip-label {
+  color: #fff;
+  font-size: 12px;
+  min-width: 44px;
 }
 
 .casino-roulette-grid {
@@ -2870,6 +2890,7 @@ html, body {
 }
 
 .casino-roulette-cell {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2895,11 +2916,106 @@ html, body {
   filter: brightness(1.35);
 }
 
+.casino-roulette-cell.has-bet {
+  box-shadow: inset 0 0 0 2px #ffe082;
+}
+
+.casino-chip-badge {
+  position: absolute;
+  bottom: 1px;
+  right: 2px;
+  background-color: #ffe082;
+  color: #3a2a00;
+  font-size: 9px;
+  font-weight: bold;
+  border-radius: 8px;
+  padding: 0 3px;
+  line-height: 1.4;
+  box-shadow: 0 0 0 1px #7a5900;
+}
+
 .casino-roulette-footer {
   display: flex;
   justify-content: center;
   gap: 10px;
   margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+/* ===== カジノ・ルーレットの回転演出（casino.js） ===== */
+.casino-roulette-wheel-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 200000;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.casino-roulette-wheel-overlay.hidden {
+  display: none !important;
+  pointer-events: none;
+}
+
+.casino-roulette-wheel-box {
+  text-align: center;
+}
+
+.casino-roulette-wheel-svg {
+  width: min(80vw, 340px);
+  height: min(80vw, 340px);
+}
+
+.casino-roulette-wheel-hint {
+  color: #ccc;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.casino-wheel-rim {
+  fill: #3b2410;
+  stroke: #caa153;
+  stroke-width: 3;
+}
+
+.casino-wheel-hub {
+  fill: #2a1c0f;
+  stroke: #caa153;
+  stroke-width: 2;
+}
+
+.casino-wheel-pocket {
+  stroke: #d8c48a;
+  stroke-width: 0.6;
+}
+
+.casino-wheel-pocket.casino-wheel-red { fill: #a01818; }
+.casino-wheel-pocket.casino-wheel-black { fill: #222; }
+.casino-wheel-pocket.casino-wheel-zero { fill: #1c6b3a; }
+
+.casino-wheel-number {
+  fill: #fff;
+  font-size: 9px;
+  font-weight: bold;
+  text-anchor: middle;
+}
+
+.casino-wheel-pointer {
+  fill: #ffc107;
+  stroke: #7a5900;
+  stroke-width: 1;
+}
+
+.casino-wheel-ball {
+  fill: #fff;
+  stroke: #999;
+  stroke-width: 0.5;
 }
 
 /* ===== カジノ・スロットの絵柄表示（casino.js。メッセージ文中に埋め込んで表示する） ===== */

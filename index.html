@@ -81,15 +81,32 @@
       </div>
     </div>
     
-    <!-- ★カジノ・ルーレットの賭け盤面（casino.js）。矢印キー/タップでマスを選び、決定で賭け金入力(pickQuantity)へ進む -->
+    <!-- ★カジノ・ルーレットの賭け盤面（casino.js）。矢印キー/タップでマスを選び、Zでチップを置く。Cで確定して回す -->
     <div id="casino-roulette-board" class="casino-roulette-board hidden">
       <div class="casino-roulette-box">
-        <p id="casino-roulette-title" class="casino-roulette-title">賭けるマスを選んでください</p>
+        <p id="casino-roulette-title" class="casino-roulette-title">賭けるマスを選んでチップを置いてください</p>
+        <p id="casino-roulette-status" class="casino-roulette-status"></p>
+        <div class="casino-roulette-chip-row">
+          <button id="casino-roulette-chip-dec" class="quantity-picker-btn">－<span class="key-badge">Q</span></button>
+          <span class="casino-roulette-chip-label">チップ額</span>
+          <button id="casino-roulette-chip-inc" class="quantity-picker-btn">＋<span class="key-badge">E</span></button>
+        </div>
         <div id="casino-roulette-grid" class="casino-roulette-grid"></div>
         <div class="casino-roulette-footer">
-          <button id="casino-roulette-confirm" class="devmode-btn">このマスに賭ける<span class="key-badge">Z</span></button>
-          <button id="casino-roulette-cancel" class="devmode-btn">やめる<span class="key-badge">X</span></button>
+          <button id="casino-roulette-place" class="devmode-btn">置く<span class="key-badge">Z</span></button>
+          <button id="casino-roulette-clear" class="devmode-btn">このマスをクリア<span class="key-badge">X</span></button>
+          <button id="casino-roulette-confirm" class="devmode-btn">確定して回す<span class="key-badge">C</span></button>
         </div>
+      </div>
+    </div>
+    
+    <!-- ★カジノ・ルーレットの回転演出（casino.js）。SVGを使い、等角減速（物理の等加速度運動と同じ式）で
+         ホイールとボールを動かす。ボールは外側の軌道を逆回転しながら内側へ落ち、途中からは結果の目に
+         吸い込まれてホイールと一緒に回転して止まる -->
+    <div id="casino-roulette-wheel-overlay" class="casino-roulette-wheel-overlay hidden">
+      <div class="casino-roulette-wheel-box">
+        <svg id="casino-roulette-wheel-svg" class="casino-roulette-wheel-svg" viewBox="0 0 300 300"></svg>
+        <p class="casino-roulette-wheel-hint">決定キー<span class="key-badge">Z</span>で早送り</p>
       </div>
     </div>
     
