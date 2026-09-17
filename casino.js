@@ -385,10 +385,11 @@ async function startSlotGame() {
     for (let reel = 0; reel < 3; reel++) {
       const stopIndexes = [reel, reel + 3, reel + 6];
       if (stopButton) {
+        // ★要望対応：スロット画面のみで完結させたいので、通常のメッセージウィンドウは出さず
+        //   ボタン自体のテキストで「リールNを止める」を伝える
         stopButton.textContent = `リール${reel + 1}を止める`;
         stopButton.innerHTML = `リール${reel + 1}を止める<span class="key-badge">Z</span>`;
       }
-      await displayMessage(`リール${reel + 1}を止める`);
       await waitForSlotStopSignal(stopButton);
 
       for (let frame = 0; frame < 10; frame++) {
@@ -447,8 +448,13 @@ async function startSlotGame() {
 
   while (true) {
     if (gold < minBet) {
-      changeSpeaker(casinoFacility.name || "スロット台");
-      await displayMessage(`所持金が足りない。最低${minBet}陳必要だ。`);
+      // ★要望対応：スロット画面のみで完結させるため、通常のメッセージウィンドウではなく
+      //   スロット画面内の結果表示欄を使って一瞬伝えてから閉じる
+      if (resultEl) {
+        resultEl.classList.remove("hidden");
+        resultEl.textContent = `所持金が足りない。最低${minBet}陳必要だ。`;
+      }
+      await sleep(1400);
       overlay.classList.add("hidden");
       showCasinoMenu();
       return;
@@ -461,10 +467,9 @@ async function startSlotGame() {
       return;
     }
 
-    changeSpeaker(casinoFacility.name || "スロット台");
-    await displayMessage(`掛け金${bet}陳。レバーを引いて、3回Zで各リールを止める`);
+    // ★要望対応：掛け金・操作方法は掛金表示欄／ボタン文言／固定ヒント文で既に伝わっているので、
+    //   ここで重ねてメッセージウィンドウを出すのはやめる（スロット画面のみで完結させる）
     await runOneSlotRound(bet);
-    await displayMessage(`次は左右キーまたはボタンで掛金を調整して、Zで回す。`);
   }
 }
 
@@ -486,23 +491,30 @@ function setRouletteSpinSceneVisible(visible) {
 }
 
 function animateRouletteSpin(resultNumber) {
+  const boardOverlay = document.getElementById("casino-roulette-board");
+  const panel = boardOverlay ? boardOverlay.querySelector(".casino-roulette-panel") : null;
   const scene = document.getElementById("casino-roulette-wheel-scene");
   const wheel = document.getElementById("casino-roulette-wheel");
   const ball = document.getElementById("casino-roulette-ball");
-  if (!scene || !wheel || !ball) return Promise.resolve();
+  if (!boardOverlay || !scene || !wheel || !ball) return Promise.resolve();
 
+  // ★バグ修正：賭けを確定した時点でpickRouletteBets()側が#casino-roulette-board自体を非表示にしていたため、
+  //   その中にある#casino-roulette-wheel-sceneだけ表示クラスを付けても、親ごと隠れたままで演出が一切見えなかった。
+  //   演出中だけ盤面の枠を再度表示し、グリッドなど不要な部分はCSSで隠す
+  boardOverlay.classList.remove("hidden");
+  if (panel) panel.classList.add("spin-only");
   setRouletteSpinSceneVisible(true);
   const duration = 1800;
   wheel.style.animation = `roulette-wheel-spin ${duration}ms linear infinite`;
   ball.style.animation = `roulette-ball-orbit ${duration}ms linear infinite`;
-  wheel.style.display = "block";
-  ball.style.display = "block";
 
   return new Promise((resolve) => {
     setTimeout(() => {
       wheel.style.animation = "none";
       ball.style.animation = "none";
       setRouletteSpinSceneVisible(false);
+      if (panel) panel.classList.remove("spin-only");
+      boardOverlay.classList.add("hidden"); // ★演出が終わったらまた盤面ごと隠す
       resolve();
     }, duration + 150);
   });
@@ -684,18 +696,13 @@ async function pickRouletteBets() {
         event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, -1);
       } else if (event.key === "Enter" || event.key === "e" || event.key === "E") {
         event.preventDefault(); event.stopImmediatePropagation();
-        if (selections.length > 0) {
-          finish(selections);
-        } else {
-          await addCurrentSelection();
-        }
+        // ★バグ修正：ここで「選択済みなら即確定」にしていたせいで、1つ目のチップを置いた後は
+        //   Enter/Eキーで2つ目以降のチップが置けなくなっていた。確定はConfirmボタンかXキーで行う
+        await addCurrentSelection();
       } else if (event.key === "c" || event.key === "C") {
         event.preventDefault(); event.stopImmediatePropagation();
-        if (selections.length > 0) {
-          finish(selections);
-        } else {
-          await addCurrentSelection();
-        }
+        // ★バグ修正：同上。Cキーも常にチップを置くだけにする
+        await addCurrentSelection();
       } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
         event.preventDefault(); event.stopImmediatePropagation();
         finish(selections.length ? selections : null);

@@ -3202,6 +3202,13 @@ html, body {
   animation: roulette-ball-orbit 1.4s linear infinite;
 }
 
+.casino-roulette-panel.spin-only .casino-roulette-header,
+.casino-roulette-panel.spin-only .casino-roulette-status,
+.casino-roulette-panel.spin-only .casino-roulette-grid,
+.casino-roulette-panel.spin-only .casino-roulette-footer {
+  display: none;
+}
+
 @keyframes roulette-wheel-spin {
   0% { transform: rotate(0deg) scale(1); }
   50% { transform: rotate(180deg) scale(1.04); }
