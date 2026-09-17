@@ -5,12 +5,12 @@
 //   1. FirebaseのIDトークンを検証し、誰がリクエストしたか(uid)を確認する
 //   2. そのuidの「1日10回・週40回」の思考モデル利用回数を確認する
 //      → 残っていれば会話AI(Talk)は思考モデル、無くなっていればflashモデルにそっと切り替える
-//   3. まとめAI(Work・常にflash固定)に、あらすじ・パーティ情報などの生データを渡し、
-//      会話AI向けの「設定資料（briefing）」を簡潔にまとめてもらう（既にある場合は作り直さない）
-//   4. 会話AI(Talk)にキャラクターのペルソナ＋設定資料＋会話履歴を渡して返答を作らせる。
-//      会話AIが「もっと詳しい設定資料が欲しい」とツール呼び出しをしてきたら、
-//      その話題だけをまとめAIに聞きに行って、結果を会話AIに渡してもう一度答えさせる
+//   3. まとめAI(Work)に、あらすじ・パーティ情報などの生データを渡し、
+//      会話AI向けの「設定資料（briefing）」を作ってもらう（既にある場合は作り直さない。失敗しても諦めて先へ進む）
+//   4. 会話AI(Talk)に、キャラクターのペルソナ＋設定資料＋要約メモリ＋直近の会話履歴を渡して、1回の呼び出しで
+//      返答を作らせる（会話の最中にまとめAIへ追加リクエストを送ることはしない。往復が増えるほど詰まりやすくなるため）
 //   5. 出来上がった返答をプレイヤーに返す（思考モデルを使った時だけ回数を1消費する）
+//   6. 会話が一定件数を超えたら、まとめAIに古い分だけ要約させて「要約メモリ」に畳み込む（数ターンに1回だけ。失敗したらその回は諦めて、生ログのまま続行）
 //
 // 必要な設定（Cloudflareダッシュボード or wrangler CLIで用意してください）：
 //   ・シークレット環境変数 GEMINI_WORK_API_KEY  … まとめAI用のGeminiキー（"Gemini Work API Key"）
@@ -22,13 +22,10 @@ import { verifyFirebaseIdToken } from "./verifyFirebaseToken.js";
 
 const TALK_MODEL_THINKING = "gemini-3.1-pro-preview";  // ★会話AI：普段はこちら（思考モデル）※現時点ではpreview版のみ提供されているためこの名前
 const TALK_MODEL_FLASH = "gemini-3.8-flash";   // ★会話AI：1日10回/週40回を使い切ったらこちらに切り替え
-const WORK_MODEL = "gemini-3.1-flash-lite"; // ★まとめAI：軽量な情報整形・抽出向けモデルに変更（gemini-3.8-flashが混雑していたため）
-// ★Geminiのモデルは提供終了・切り替えが頻繁にあるため（例：2.5系は2026年10月に終了予定）、
-//   将来エラーが出るようになったら https://ai.google.dev/gemini-api/docs/models で現行モデル名を確認してください。
+const WORK_MODEL = "gemini-3.1-flash-lite"; // ★まとめAI：軽量な情報整形・抽出向けモデル
 
 const DAILY_LIMIT = 10;
 const WEEKLY_LIMIT = 40;
-const MAX_FUNCTION_CALL_LOOPS = 2; // ★会話AIが「設定資料をもっと見せて」を要求できる最大回数（無限ループ・コスト暴走の防止）
 
 // ★要望対応：まとめメモリ。会話履歴がこの件数を超えたら、古い分をまとめAIに要約させて「要約メモリ」に畳み込み、
 //   以降はKEEP_RECENT_TURNS件の生ログ＋要約だけを送るようにして、会話が長くなるほど毎回のリクエストが重くなるのを防ぐ
@@ -93,29 +90,21 @@ async function handleCompanionChat(request, env) {
   const talkModel = useThinkingModel ? TALK_MODEL_THINKING : TALK_MODEL_FLASH;
 
   try {
-    // ===== ②設定資料（briefing）を用意。既に貰っていれば作り直さない =====
+    // ===== ②設定資料（briefing）を用意。既に貰っていれば作り直さない。
+    //        まとめAIが失敗しても、無しのまま会話AIに進む（ここで会話全体を止めない） =====
     let briefing = typeof cachedBriefing === "string" && cachedBriefing.trim() ? cachedBriefing : null;
     if (!briefing) {
-      briefing = await callWorkAi(env, buildBriefingPrompt(context));
+      try {
+        briefing = await callWorkAi(env, buildBriefingPrompt(context));
+      } catch (e) {
+        console.error("設定資料の作成に失敗しました（設定資料無しのまま続行）", e);
+        briefing = ""; // ★リトライはしない。無ければ無いまま会話AIに任せる
+      }
     }
 
-    // ===== ③会話AI呼び出し（必要なら「設定資料をもっと見せて」のやり取りを挟む） =====
+    // ===== ③会話AI呼び出し（1回のみ。会話の最中にまとめAIへ追加リクエストは送らない） =====
     const systemInstruction = buildTalkSystemInstruction(context, briefing, conversationSummary);
-    const tools = [{
-      functionDeclarations: [{
-        name: "request_reference_detail",
-        description: "渡された設定資料の概要だけでは分からない、パーティ・仲間・これまでの話についての詳しい情報が会話の返答に必要な時にだけ呼び出す。",
-        parameters: {
-          type: "OBJECT",
-          properties: {
-            topic: { type: "STRING", description: "知りたい内容（例：〇〇の技の詳細、△△との過去の出来事、など）" }
-          },
-          required: ["topic"]
-        }
-      }]
-    }];
-
-    let contents0 = [
+    const contents0 = [
       ...(Array.isArray(talkHistory) ? talkHistory.slice(-20).map(turn => ({
         role: turn.role === "model" ? "model" : "user",
         parts: [{ text: String(turn.text || "") }]
@@ -129,14 +118,14 @@ async function handleCompanionChat(request, env) {
     try {
       // ★思考モデル(プレビュー版で不安定)は粘らせすぎず、失敗したらすぐflashへ切り替える（1回失敗したら即フォールバック）
       const talkModelMaxAttempts = talkModel === TALK_MODEL_FLASH ? 3 : 1;
-      finalText = await runTalkConversation(env, talkModel, contents0, systemInstruction, tools, context, talkModelMaxAttempts);
+      finalText = await runTalkConversation(env, talkModel, contents0, systemInstruction, talkModelMaxAttempts);
     } catch (e) {
       const isBusy = e && (e.upstreamStatus === 503 || e.upstreamStatus === 429);
       // ★思考モデルが混雑していた場合、その場でflashに切り替えてもう一度だけ試す
       //   （gemini-3.1-pro-previewはプレビュー版のため空き枠が非常に少なく、頻繁に混雑する既知の問題があるため）
       if (isBusy && talkModel !== TALK_MODEL_FLASH) {
         actualModel = TALK_MODEL_FLASH;
-        finalText = await runTalkConversation(env, TALK_MODEL_FLASH, contents0, systemInstruction, tools, context);
+        finalText = await runTalkConversation(env, TALK_MODEL_FLASH, contents0, systemInstruction);
       } else {
         throw e;
       }
@@ -148,7 +137,7 @@ async function handleCompanionChat(request, env) {
       try { await incrementQuota(env, uid, quota); } catch (e) { console.error("回数制限データの更新に失敗しました", e); }
     }
 
-    // ===== ⑤まとめメモリ：会話が長くなってきたら、古い分をまとめAIに要約させて畳み込む =====
+    // ===== ⑤まとめメモリ：会話が長くなってきたら、古い分をまとめAIに要約させて畳み込む（数ターンに1回だけ。リトライはしない） =====
     let updatedSummary = null;
     const fullTurnsForSummary = [
       ...(Array.isArray(talkHistory) ? talkHistory : []),
@@ -160,8 +149,8 @@ async function handleCompanionChat(request, env) {
       try {
         updatedSummary = await callWorkAi(env, buildSummaryUpdatePrompt(conversationSummary, turnsToFold));
       } catch (e) {
-        console.error("会話の要約更新に失敗しました（生ログのまま続行）", e);
-        updatedSummary = null; // ★要約に失敗しても会話自体は止めない。次回また試す
+        console.error("会話の要約更新に失敗しました（今回は諦めて、生ログのまま続行。次にまた閾値を超えた時に再挑戦）", e);
+        updatedSummary = null; // ★要望対応：失敗したら繰り返さない。この回はスキップするだけ
       }
     }
 
@@ -179,7 +168,7 @@ async function handleCompanionChat(request, env) {
     });
   } catch (e) {
     console.error("仲間との会話処理でエラーが発生しました", e);
-    // ★要望対応：Gemini側が混雑している時（503）は、通信エラーと区別できるコードを返す
+    // ★Gemini側が混雑している時（503）は、通信エラーと区別できるコードを返す
     const isBusy = e && (e.upstreamStatus === 503 || e.upstreamStatus === 429);
     if (isBusy) {
       return jsonResponse({ error: "AIが混雑しています。時間をおいて試してください", code: "busy" }, 503);
@@ -192,15 +181,10 @@ async function handleCompanionChat(request, env) {
 
 function buildBriefingPrompt(context) {
   return "あなたは物語設定の要約担当です。以下のゲーム内データ（JSON）を、キャラクター会話AIが内部で把握しておくための" +
-    "簡潔な日本語の「設定資料」としてまとめてください。会話相手に読み上げる文章ではなく、あくまでAIが参照するメモです。" +
-    "物語のあらすじ、パーティ名、パーティメンバーそれぞれの二つ名・レベル・職業を中心に、長くなりすぎないようにまとめてください。\n\n" +
+    "日本語の「設定資料」としてまとめてください。会話相手に読み上げる文章ではなく、あくまでAIが参照するメモです。" +
+    "この設定資料が会話AIにとって唯一の参照情報になるので、物語のあらすじ、パーティ名、パーティメンバーそれぞれの二つ名・レベル・職業・主な技を、" +
+    "省略しすぎずひと通り含めてください（ただし長文の垂れ流しは避け、簡潔にまとめること）。\n\n" +
     "---ゲーム内データ(JSON)---\n" + JSON.stringify(context);
-}
-
-function buildDetailPrompt(context, topic) {
-  return "以下のゲーム内データ（JSON）の中から、次の話題に関係する部分だけを詳しく抜き出し、日本語の文章でまとめてください。" +
-    "データの中に無い情報は絶対に創作せず「その点についての詳しい情報は見当たりません」と答えてください。\n\n" +
-    "話題：" + topic + "\n\n---ゲーム内データ(JSON)---\n" + JSON.stringify(context);
 }
 
 // ★要望対応：まとめメモリ。古い会話ログ＋これまでの要約を1つの新しい要約にまとめ直す
@@ -216,34 +200,20 @@ function buildSummaryUpdatePrompt(existingSummary, turnsToFold) {
   return prompt;
 }
 
-async function callWorkAi(env, promptText) {
-  const result = await callGenerateContent(env.GEMINI_WORK_API_KEY, WORK_MODEL, [{ role: "user", parts: [{ text: promptText }] }], null, null);
+// ★要望対応：まとめAIはリトライしない（1回失敗したら繰り返さず、呼び出し元でそのまま諦める）
+async function callWorkAi(env, promptText, maxAttempts = 1) {
+  const result = await callGenerateContent(env.GEMINI_WORK_API_KEY, WORK_MODEL, [{ role: "user", parts: [{ text: promptText }] }], null, maxAttempts);
   const parts = (result && result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts) || [];
   const textPart = parts.find(p => typeof p.text === "string" && p.text);
   return textPart ? textPart.text : "";
 }
 
-// 会話AIを1モデル分呼び出す（Function Callingの「設定資料をもっと見せて」往復も含む）。最終的な返答テキストを返す
-async function runTalkConversation(env, model, initialContents, systemInstruction, tools, context, maxAttempts = 3) {
-  let contents = initialContents;
-  for (let loop = 0; loop <= MAX_FUNCTION_CALL_LOOPS; loop++) {
-    const result = await callGenerateContent(env.GEMINI_TALK_API_KEY, model, contents, systemInstruction, tools, maxAttempts);
-    const parts = (result && result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts) || [];
-    const functionCallPart = parts.find(p => p.functionCall);
-    const textPart = parts.find(p => typeof p.text === "string" && p.text);
-
-    if (functionCallPart && loop < MAX_FUNCTION_CALL_LOOPS) {
-      const topic = (functionCallPart.functionCall.args && functionCallPart.functionCall.args.topic) || "";
-      const detail = await callWorkAi(env, buildDetailPrompt(context, topic));
-      contents = [...contents,
-        { role: "model", parts: [functionCallPart] },
-        { role: "user", parts: [{ functionResponse: { name: "request_reference_detail", response: { detail } } }] }
-      ];
-      continue; // ★もう一度会話AIに聞かせて、最終的な返答を作らせる
-    }
-
-    return textPart ? textPart.text : "……（うまく言葉が出てこなかったみたい）";
-  }
+// 会話AIを1回だけ呼び出す（まとめAIへの追加リクエストは送らない。設定資料・要約・履歴だけで完結させる）
+async function runTalkConversation(env, model, contents, systemInstruction, maxAttempts = 3) {
+  const result = await callGenerateContent(env.GEMINI_TALK_API_KEY, model, contents, systemInstruction, maxAttempts);
+  const parts = (result && result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts) || [];
+  const textPart = parts.find(p => typeof p.text === "string" && p.text);
+  return textPart ? textPart.text : "……（うまく言葉が出てこなかったみたい）";
 }
 
 // ===== 会話AI（Talk）関連 =====
@@ -254,25 +224,23 @@ function buildTalkSystemInstruction(context, briefing, conversationSummary) {
   if (persona.epithet) instruction += `二つ名は「${persona.epithet}」です。`;
   if (persona.personality) instruction += `性格・口調の指針：${persona.personality}`;
   instruction += "\n\n以下はこのキャラクターが把握している設定資料です。これをそのまま読み上げるのではなく、" +
-    "キャラクターとして自然な言葉で会話に活かしてください。また、本当にひどい会話内容(geminiの規約に反するような)場合のみ、キャラクターになりきってやんわり断ってください。\n\n---設定資料---\n" + briefing;
+    "キャラクターとして自然な言葉で会話に活かしてください。また、本当にひどい会話内容(geminiの規約に反するような)場合のみ、キャラクターになりきってやんわり断ってください。" +
+    (briefing ? "\n\n---設定資料---\n" + briefing : "");
   if (conversationSummary) {
     // ★要望対応：まとめメモリ。古い会話は生ログの代わりにこの要約だけを渡して、送信量を軽くする
     instruction += "\n\n---ここまでの会話の要約---\n" + conversationSummary +
       "\n（この要約より後のやり取りは、この後に続く会話履歴を見てください）";
   }
-  instruction += "\n\n設定資料だけでは答えに困る、より詳しい情報が必要な時だけrequest_reference_detail関数を呼び出してください。" +
-    "毎回呼び出す必要はありません。";
   return instruction;
 }
 
-async function callGenerateContent(apiKey, model, contents, systemInstructionText, tools, maxAttempts = 3) {
+async function callGenerateContent(apiKey, model, contents, systemInstructionText, maxAttempts = 3) {
   if (!apiKey) throw new Error(`APIキーが設定されていません（${model}）。Cloudflareのシークレット環境変数を確認してください`);
   const requestBody = { contents };
   if (systemInstructionText) requestBody.systemInstruction = { parts: [{ text: systemInstructionText }] };
-  if (tools) requestBody.tools = tools;
 
   // ★503(高需要)/429(レート制限)は一瞬のスパイクで終わることも多いため、少し待ってから自動リトライしてから諦める。
-  //   maxAttemptsは呼び出し元が指定（例：不安定なプレビューモデルは1回で見切りをつけてすぐflashへフォールバック）
+  //   maxAttemptsは呼び出し元が指定（例：不安定なプレビューモデルやまとめAIは1回で見切りをつける）
   const retryDelaysMs = [500, 1500];
   let lastErr;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -325,3 +293,4 @@ async function incrementQuota(env, uid, quota) {
   const updated = { dayDate: quota.dayDate, dayCount: quota.dayCount + 1, weekStart: quota.weekStart, weekCount: quota.weekCount + 1 };
   await env.COMPANION_CHAT_KV.put(`rl:${uid}`, JSON.stringify(updated), { expirationTtl: 60 * 60 * 24 * 14 }); // ★2週間で自動失効
 }
+

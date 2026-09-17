@@ -7407,7 +7407,7 @@ function buildClassStatsRow(className) {
 // ===================================================================
 // ===== サブ画面：施設編集（村に追加できる「酒場/宿屋/店/冒険する」以外の施設） =====
 // ===================================================================
-const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", flavor: "その他（セリフのみ）" };
+const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", flavor: "その他（セリフのみ）" };
 
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
@@ -7949,6 +7949,83 @@ function buildFacilityRow(facility) {
       };
       infoEl.appendChild(addOfferBtn);
     }
+  } else if (facility.type === "auction") {
+    // ★新規：オークション施設。出品候補アイテム（重み付き抽選）・開催間隔・手数料を施設ごとに設定できる
+    const intervalRow = document.createElement("div");
+    intervalRow.className = "scenariobuild-condition-row";
+    intervalRow.appendChild(labelSpan("開催間隔（日）："));
+    const intervalInput = document.createElement("input");
+    intervalInput.type = "number";
+    intervalInput.min = "1";
+    intervalInput.className = "scenariobuild-condition-input";
+    intervalInput.value = facility.auctionIntervalDays || 4;
+    intervalInput.onchange = () => { facility.auctionIntervalDays = Math.max(1, Number(intervalInput.value) || 4); markScenarioBuildDirty(); };
+    intervalRow.appendChild(intervalInput);
+    infoEl.appendChild(intervalRow);
+    
+    const feeRow = document.createElement("div");
+    feeRow.className = "scenariobuild-condition-row";
+    feeRow.appendChild(labelSpan("手数料（陳・開催日に最初の一回だけ徴収）："));
+    const feeInput = document.createElement("input");
+    feeInput.type = "number";
+    feeInput.min = "0";
+    feeInput.className = "scenariobuild-condition-input";
+    feeInput.value = facility.auctionFee != null ? facility.auctionFee : 1000;
+    feeInput.onchange = () => { facility.auctionFee = Math.max(0, Number(feeInput.value) || 0); markScenarioBuildDirty(); };
+    feeRow.appendChild(feeInput);
+    infoEl.appendChild(feeRow);
+    
+    const poolNote = document.createElement("p");
+    poolNote.className = "devmode-note";
+    poolNote.textContent = "出品候補アイテムです。開催日には、この中からランク帯ごとに重み付き抽選で1点ずつ出品されます（1回目：F～C、2回目：C～AAA、3回目：S～X。3回目は30%の確率でのみ開催）。ランク分けはアイテム自体の「ランク」設定を自動で使うので、ここでは登録するだけでOKです。重みは大きいほど選ばれやすくなります（未入力は1）。";
+    infoEl.appendChild(poolNote);
+    
+    if (!Array.isArray(facility.auctionItemPool)) facility.auctionItemPool = [];
+    facility.auctionItemPool.forEach((entry, i) => {
+      const poolRow = document.createElement("div");
+      poolRow.className = "scenariobuild-condition-row";
+      
+      const poolItemInput = document.createElement("input");
+      poolItemInput.type = "text";
+      poolItemInput.className = "scenariobuild-title-input";
+      poolItemInput.placeholder = "アイテムID";
+      poolItemInput.setAttribute("list", "scenariobuild-item-datalist");
+      poolItemInput.value = entry.itemId || "";
+      poolItemInput.onchange = () => { entry.itemId = poolItemInput.value.trim(); markScenarioBuildDirty(); };
+      poolRow.appendChild(poolItemInput);
+      
+      poolRow.appendChild(labelSpan("重み："));
+      const weightInput = document.createElement("input");
+      weightInput.type = "number";
+      weightInput.min = "1";
+      weightInput.className = "scenariobuild-condition-input";
+      weightInput.value = entry.weight || 1;
+      weightInput.onchange = () => { entry.weight = Math.max(1, Number(weightInput.value) || 1); markScenarioBuildDirty(); };
+      poolRow.appendChild(weightInput);
+      
+      const removePoolBtn = document.createElement("button");
+      removePoolBtn.className = "devmode-btn devmode-btn-danger";
+      removePoolBtn.textContent = "×";
+      removePoolBtn.onclick = (event) => {
+        event.stopPropagation();
+        facility.auctionItemPool.splice(i, 1);
+        markScenarioBuildDirty();
+        renderScenarioBuildPanel();
+      };
+      poolRow.appendChild(removePoolBtn);
+      infoEl.appendChild(poolRow);
+    });
+    
+    const addPoolBtn = document.createElement("button");
+    addPoolBtn.className = "devmode-btn";
+    addPoolBtn.textContent = "＋出品候補アイテムを追加";
+    addPoolBtn.onclick = (event) => {
+      event.stopPropagation();
+      facility.auctionItemPool.push({ itemId: "", weight: 1 });
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    infoEl.appendChild(addPoolBtn);
   }
   
   const bgRow = document.createElement("div");

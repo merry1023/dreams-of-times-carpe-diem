@@ -827,6 +827,14 @@ html, body {
     display: block;
 }
 
+/* ★要望対応：プレイ画面タブ管理で非表示にしたタブ・ボタン。.activeより必ず優先して隠す */
+.tab-content.tab-hidden-by-setting{
+    display: none !important;
+}
+.tab-btn.tab-hidden-by-setting{
+    display: none !important;
+}
+
 .tab-content-container{
     flex: 1;
     display: flex;
@@ -2822,6 +2830,98 @@ html, body {
   gap: 10px;
 }
 
+/* ★オークションの入札額テンキー（auction.js） */
+.auction-bid-keypad {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 200000;
+}
+
+.auction-bid-keypad.hidden {
+  display: none !important;
+  pointer-events: none;
+}
+
+.auction-bid-keypad-box {
+  width: 260px;
+  max-width: 90vw;
+  background-color: #1a1a1a;
+  border: 3px solid #ffc107;
+  border-radius: 10px;
+  padding: 18px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.auction-bid-keypad-label {
+  color: #eee;
+  font-size: 13px;
+  margin: 0 0 8px 0;
+}
+
+.auction-bid-keypad-display {
+  color: #ffc107;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.auction-bid-keypad-error {
+  color: #ff6b6b;
+  font-size: 12px;
+  margin: 0 0 8px 0;
+}
+
+.auction-bid-keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.auction-bid-keypad-btn {
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid #555;
+  background-color: #2a2a2a;
+  color: #eee;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.auction-bid-keypad-btn:hover {
+  border-color: #ffc107;
+}
+
+.auction-bid-keypad-btn.cursor {
+  border-color: #ffc107;
+  box-shadow: 0 0 8px #ffc107;
+  background-color: #2a2205;
+}
+
+.auction-bid-keypad-btn-confirm {
+  background-color: #7a5a1a;
+  border-color: #ffc107;
+}
+
+.auction-bid-keypad-btn-backspace {
+  font-size: 13px;
+}
+
+.auction-bid-keypad-hint {
+  color: #999;
+  font-size: 11px;
+  margin: 0;
+}
+
 /* ===== カジノのスロット盤 ===== */
 .casino-slot-overlay {
   position: fixed;
@@ -3194,6 +3294,13 @@ html, body {
   animation: roulette-ball-orbit 1.4s linear infinite;
 }
 
+.casino-roulette-panel.spin-only .casino-roulette-header,
+.casino-roulette-panel.spin-only .casino-roulette-status,
+.casino-roulette-panel.spin-only .casino-roulette-grid,
+.casino-roulette-panel.spin-only .casino-roulette-footer {
+  display: none;
+}
+
 @keyframes roulette-wheel-spin {
   0% { transform: rotate(0deg) scale(1); }
   50% { transform: rotate(180deg) scale(1.04); }
@@ -3313,6 +3420,7 @@ html, body {
   gap: 12px;
   margin-top: 14px;
 }
+
 
 .game-dialog-box {
   width: 420px;

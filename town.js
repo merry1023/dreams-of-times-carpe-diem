@@ -536,6 +536,14 @@ async function openCustomFacility(facility, returnTo) {
     return;
   }
   
+  // ★新規：オークション施設。実際の入札・NPCとの競り処理はauction.jsにまとめてある
+  if (facility.type === "auction") {
+    hideLocationMenu();
+    await runFacilityDialogueBlocks(facility, facility.enterBlocks, facility.ownerDialogue); // ★入った時のセリフ
+    await openAuction(facility, goBack); // auction.js
+    return;
+  }
+  
   // ★バグ修正：店タイプの施設だけこの分岐が無く、「その他（flavor）」扱いになってしまっていた。
   //   拠点（村・街・国）にアタッチした店は、openCustomSettlementArea側で先に振り分けてから
   //   openCustomShopFacilityへ渡すため問題にならないが、敵エリアの「調べる」で見つかる店

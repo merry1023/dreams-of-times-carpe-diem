@@ -122,9 +122,21 @@
         </div>
         <div id="casino-roulette-grid" class="casino-roulette-grid"></div>
         <div class="casino-roulette-footer">
-          <button id="casino-roulette-confirm" class="devmode-btn">確定<span class="key-badge">C</span></button>
+          <button id="casino-roulette-confirm" class="devmode-btn">確定<span class="key-badge">X</span></button>
           <button id="casino-roulette-cancel" class="devmode-btn">やめる<span class="key-badge">X</span></button>
         </div>
+      </div>
+    </div>
+    
+    <!-- ★オークションの入札額入力（auction.js pickAuctionBidAmount）。テンキー方式。スマホはタップ、
+         キーボードは矢印キーでボタンを選んでZ/スペースで入力、Xでキャンセル -->
+    <div id="auction-bid-keypad" class="auction-bid-keypad hidden">
+      <div class="auction-bid-keypad-box">
+        <p id="auction-bid-keypad-label" class="auction-bid-keypad-label"></p>
+        <div id="auction-bid-keypad-display" class="auction-bid-keypad-display">0陳</div>
+        <p id="auction-bid-keypad-error" class="auction-bid-keypad-error hidden"></p>
+        <div id="auction-bid-keypad-grid" class="auction-bid-keypad-grid"></div>
+        <p class="auction-bid-keypad-hint">矢印キーで選択、<span class="key-badge">Z</span>または<span class="key-badge">スペース</span>で入力、<span class="key-badge">X</span>でキャンセル</p>
       </div>
     </div>
     
@@ -446,6 +458,7 @@
 <script src="town.js"></script>
 <script src="crafting.js"></script>
 <script src="questboard.js"></script>
+<script src="auction.js"></script>
 <script src="enemy.js"></script>
 <script src="boss.js"></script>
 <script src="battle.js"></script>
