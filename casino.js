@@ -544,6 +544,8 @@ async function pickRouletteBets() {
     async function handleKey(event) {
       if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
       if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return;
+      const quantityPicker = document.getElementById("quantity-picker");
+      if (quantityPicker && !quantityPicker.classList.contains("hidden")) return;
       if (event.repeat) return;
       if (event.key === "ArrowRight") {
         event.preventDefault(); event.stopImmediatePropagation(); moveCursor(1, 0);

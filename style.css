@@ -2753,7 +2753,7 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 200010; /* ★ルーレット盤のオーバーレイより上に出して、賭け金入力を操作可能にする */
+  z-index: 201000; /* ★ルーレット盤（199950）よりも明確に上に出して、賭け金入力を操作可能にする */
 }
 
 .quantity-picker.hidden {
