@@ -2753,7 +2753,7 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 200000; /* ★確認ダイアログ（game-dialog-overlay）と同じく、どの画面の中からでも一番手前に出す */
+  z-index: 200010; /* ★ルーレット盤のオーバーレイより上に出して、賭け金入力を操作可能にする */
 }
 
 .quantity-picker.hidden {
@@ -2833,7 +2833,7 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 200000;
+  z-index: 199900;
 }
 
 .casino-slot-overlay.hidden {
@@ -2928,7 +2928,7 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 200000;
+  z-index: 199950;
 }
 
 .casino-roulette-overlay.hidden {
