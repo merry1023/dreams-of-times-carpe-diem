@@ -85,14 +85,19 @@ function showAuctionMenu() {
   const state = getAuctionState();
   changeSpeaker(auctionFacility.name || "オークション会場");
   const resultCount = state.pendingResults.length;
-  showLocationMenu([
-    { label: "オークションに参加する", action: () => tryStartAuctionDay() },
-    {
-      label: resultCount > 0 ? `出品の結果を聞く（${resultCount}件）` : "出品の結果を聞く",
-      action: () => hearAuctionResults(),
-    },
+  const options = [
+    { label: "オークションに参加する", action: () => runWithLocationMenuHidden(tryStartAuctionDay) },
     { label: "やめる", action: () => auctionReturnTo() },
-  ]);
+  ];
+
+  if (resultCount > 0) {
+    options.splice(1, 0, {
+      label: `出品の結果を聞く（${resultCount}件）`,
+      action: () => runWithLocationMenuHidden(hearAuctionResults),
+    });
+  }
+
+  showLocationMenu(options);
 }
 
 // ===== 1日分のセッション開始 =====
