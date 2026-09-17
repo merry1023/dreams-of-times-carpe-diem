@@ -7455,7 +7455,8 @@ function renderFacilityManager(container) {
         id: generateId("facility"), type, name: "新しい施設",
         bgTrack: "", bgImage: "", ownerDialogue: "",
         price: 20, sleepinessRecovery: 40, fatigueRecovery: 40,
-        classChangeCost: 100
+        classChangeCost: 100,
+        minBet: 10, maxBet: 1000, slotImages: {} // ★カジノ系で使う項目（他の種類では無視される）
       };
       scenarioProject.facilities.push(newFacility);
       // ★以前はここで自動的に村へアタッチしていたが、他の拠点（カデリクの街など）にだけアタッチしたつもりでも
@@ -7744,6 +7745,65 @@ function buildFacilityRow(facility) {
     noteEl.className = "devmode-note";
     noteEl.textContent = `この施設で扱うレシピは「レシピ管理」タブで登録してください（対象の店を「${facility.type === "blacksmith" ? "鍛冶屋" : "素材合成屋"}」に指定したレシピが、ここに一覧で表示されます。同じ種類の店が複数ある場合は、レシピ側の「対象の店」でこの施設を選べば、この施設だけの専用レシピにできます）。`;
     infoEl.appendChild(noteEl);
+  } else if (facility.type === "casino") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note";
+    noteEl.textContent = "丁半博打・ルーレット・スロットの3種類で遊べます。賭け金の下限・上限をここで設定してください（丁半博打・スロットでは1回の賭け金の上限、ルーレットでは1マスあたりに置けるチップの上限になります。いずれも実際の上限は、この設定額とプレイヤーの所持金の低い方です）。";
+    infoEl.appendChild(noteEl);
+    
+    const betRow = document.createElement("div");
+    betRow.className = "scenariobuild-condition-row";
+    betRow.appendChild(labelSpan("最低ベット額："));
+    const minBetInput = document.createElement("input");
+    minBetInput.type = "number";
+    minBetInput.min = "1";
+    minBetInput.className = "scenariobuild-condition-input";
+    minBetInput.value = facility.minBet != null ? facility.minBet : 10;
+    minBetInput.onchange = () => { facility.minBet = Math.max(1, Number(minBetInput.value) || 1); markScenarioBuildDirty(); };
+    betRow.appendChild(minBetInput);
+    
+    betRow.appendChild(labelSpan("最高ベット額："));
+    const maxBetInput = document.createElement("input");
+    maxBetInput.type = "number";
+    maxBetInput.min = "1";
+    maxBetInput.className = "scenariobuild-condition-input";
+    maxBetInput.value = facility.maxBet != null ? facility.maxBet : 1000;
+    maxBetInput.onchange = () => { facility.maxBet = Math.max(1, Number(maxBetInput.value) || 1); markScenarioBuildDirty(); };
+    betRow.appendChild(maxBetInput);
+    infoEl.appendChild(betRow);
+    
+    // ★スロットの絵柄画像。パスを1つも設定していない絵柄は、ゲーム内では絵文字で表示される
+    const slotNoteEl = document.createElement("p");
+    slotNoteEl.className = "devmode-note";
+    slotNoteEl.style.margin = "10px 0 2px";
+    slotNoteEl.textContent = "スロットの絵柄画像（任意）。空欄のままなら絵文字で表示されます。画像を使う場合は、正方形に近い小さめの画像を推奨します：";
+    infoEl.appendChild(slotNoteEl);
+    
+    if (!facility.slotImages || typeof facility.slotImages !== "object") facility.slotImages = {};
+    const SLOT_SYMBOL_ROWS = [
+      { key: "grape", label: "ぶどう（絵文字：🍇）" },
+      { key: "bell", label: "鈴（絵文字：🔔）" },
+      { key: "star", label: "星（絵文字：⭐）" },
+      { key: "gem", label: "宝石（絵文字：💎）" },
+      { key: "seven", label: "セブン（絵文字：7）" }
+    ];
+    SLOT_SYMBOL_ROWS.forEach(({ key, label }) => {
+      const slotRow = document.createElement("div");
+      slotRow.className = "scenariobuild-condition-row";
+      slotRow.appendChild(labelSpan(`${label}："`));
+      const pathInput = document.createElement("input");
+      pathInput.type = "text";
+      pathInput.placeholder = "画像URL（空欄なら絵文字）";
+      pathInput.className = "scenariobuild-title-input";
+      pathInput.value = facility.slotImages[key] || "";
+      pathInput.onchange = () => {
+        const value = pathInput.value.trim();
+        if (value) facility.slotImages[key] = value; else delete facility.slotImages[key];
+        markScenarioBuildDirty();
+      };
+      slotRow.appendChild(pathInput);
+      infoEl.appendChild(slotRow);
+    });
   } else if (facility.type === "shop") {
     const buyRow = document.createElement("div");
     buyRow.className = "scenariobuild-condition-row";
