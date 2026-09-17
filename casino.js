@@ -291,93 +291,109 @@ async function startSlotGame() {
   const bet = await pickCasinoBet("スロットの賭け金");
   if (bet <= 0) { showCasinoMenu(); return; }
 
-  // 掛金は決定した時点で即時に減額して、以降はZ/Spaceまたは「止める」ボタンで止めるだけにする
-  changeGold(-bet);
-  renderStatusHUD();
-
-  changeSpeaker(casinoFacility.name || "スロット台");
-  await displayMessage(`掛け金${bet}陳を賭けた。レバーを引いて、止めるボタンまたはZ/Spaceで各リールを止めろ！`);
-
-  const finalBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
   const overlay = document.getElementById("casino-slot-board");
   const stopButton = document.getElementById("casino-slot-stop-btn");
   const resultEl = document.getElementById("casino-slot-result");
-  const currentBoard = Array(9).fill(null);
 
   if (overlay) overlay.classList.remove("hidden");
   if (stopButton) {
     stopButton.disabled = false;
-    stopButton.textContent = "止める";
-    stopButton.innerHTML = "止める<span class=\"key-badge\">Z</span>";
+    stopButton.textContent = "回す";
+    stopButton.innerHTML = "回す<span class=\"key-badge\">Z</span>";
   }
-  setSlotLeverPulled(true);
-  await sleep(180);
-  setSlotLeverPulled(false);
 
-  for (let reel = 0; reel < 3; reel++) {
-    const stopIndexes = [reel, reel + 3, reel + 6];
-    await displayMessage(`リール${reel + 1}を止める`);
-    if (stopButton) {
-      stopButton.textContent = `リール${reel + 1}を止める`;
-      stopButton.innerHTML = `リール${reel + 1}を止める<span class="key-badge">Z</span>`;
-    }
-
+  const waitForRoundStart = async () => {
+    const promptText = `掛け金${bet}陳。Zで回す`; 
+    changeSpeaker(casinoFacility.name || "スロット台");
+    await displayMessage(promptText);
     await waitForSlotStopSignal(stopButton);
+  };
 
-    for (let frame = 0; frame < 12; frame++) {
-      const tempBoard = currentBoard.slice();
-      for (let i = 0; i < 9; i++) {
-        if (stopIndexes.includes(i)) continue;
-        tempBoard[i] = pickWeightedSlotSymbol();
+  const runOneSlotRound = async () => {
+    changeGold(-bet);
+    renderStatusHUD();
+
+    const finalBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
+    const currentBoard = Array(9).fill(null);
+
+    const startBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
+    renderSlotBoard(startBoard, [], false);
+    setSlotLeverPulled(true);
+    await sleep(160);
+    setSlotLeverPulled(false);
+
+    for (let reel = 0; reel < 3; reel++) {
+      const stopIndexes = [reel, reel + 3, reel + 6];
+      if (stopButton) {
+        stopButton.textContent = `リール${reel + 1}を止める`;
+        stopButton.innerHTML = `リール${reel + 1}を止める<span class="key-badge">Z</span>`;
       }
-      for (let i = 0; i < 9; i++) {
-        if (tempBoard[i] == null) tempBoard[i] = finalBoard[i];
+      await displayMessage(`リール${reel + 1}を止める`);
+      await waitForSlotStopSignal(stopButton);
+
+      for (let frame = 0; frame < 10; frame++) {
+        const tempBoard = currentBoard.slice();
+        for (let i = 0; i < 9; i++) {
+          if (stopIndexes.includes(i)) {
+            if (tempBoard[i] == null) tempBoard[i] = finalBoard[i];
+            continue;
+          }
+          tempBoard[i] = pickWeightedSlotSymbol();
+        }
+        for (let i = 0; i < 9; i++) {
+          if (tempBoard[i] == null) tempBoard[i] = finalBoard[i];
+        }
+        renderSlotBoard(tempBoard, [], true);
+        await sleep(80);
       }
-      renderSlotBoard(tempBoard, [], true);
-      await sleep(85);
+
+      for (const idx of stopIndexes) {
+        currentBoard[idx] = finalBoard[idx];
+      }
+      renderSlotBoard(currentBoard, [], false);
+      await sleep(180);
     }
 
-    for (const idx of stopIndexes) {
-      currentBoard[idx] = finalBoard[idx];
+    const result = getSlotBoardResult(finalBoard);
+    const winningIndexes = result.line.length ? result.line : [];
+    renderSlotBoard(finalBoard, winningIndexes);
+
+    if (resultEl) {
+      resultEl.classList.remove("hidden");
+      if (result.type === "win") {
+        resultEl.textContent = `大当たり！ ${result.symbol.emoji} が揃って${bet * result.payout}陳の儲けだ！`;
+      } else if (result.type === "small") {
+        resultEl.textContent = `惜しい、2つ揃った。${Math.ceil(bet * 0.5)}陳だけ戻ってきた。`;
+      } else {
+        resultEl.textContent = `残念、揃わなかった。${bet}陳は没収だな……`;
+      }
     }
-    renderSlotBoard(currentBoard, [], false);
-    await sleep(200);
-  }
 
-  const result = getSlotBoardResult(finalBoard);
-  const winningIndexes = result.line.length ? result.line : [];
-  renderSlotBoard(finalBoard, winningIndexes);
-
-  if (resultEl) {
-    resultEl.classList.remove("hidden");
     if (result.type === "win") {
-      resultEl.textContent = `大当たり！ ${result.symbol.emoji} が揃って${bet * result.payout}陳の儲けだ！`;
+      changeGold(bet * result.payout);
     } else if (result.type === "small") {
-      resultEl.textContent = `惜しい、2つ揃った。${Math.ceil(bet * 0.5)}陳だけ戻ってきた。`;
-    } else {
-      resultEl.textContent = `残念、揃わなかった。${bet}陳は没収だな……`;
+      const refund = Math.ceil(bet * 0.5);
+      changeGold(refund);
     }
+    renderStatusHUD();
+
+    await sleep(500);
+
+    if (stopButton) {
+      stopButton.textContent = "回す";
+      stopButton.innerHTML = "回す<span class=\"key-badge\">Z</span>";
+    }
+    if (resultEl) {
+      resultEl.classList.add("hidden");
+      resultEl.textContent = "";
+    }
+    await displayMessage(`Zで次のゲームを回す。掛け金${bet}陳が自動で消費される。`);
+  };
+
+  while (true) {
+    await waitForRoundStart();
+    await runOneSlotRound();
   }
-
-  await sleep(450);
-
-  if (overlay) overlay.classList.add("hidden");
-  if (stopButton) {
-    stopButton.disabled = true;
-    stopButton.textContent = "止める";
-    stopButton.innerHTML = "止める<span class=\"key-badge\">Z</span>";
-  }
-
-  if (result.type === "win") {
-    changeGold(bet * result.payout);
-  } else if (result.type === "small") {
-    const refund = Math.ceil(bet * 0.5);
-    changeGold(refund - bet);
-  }
-
-  renderStatusHUD();
-  await sleep(150);
-  showCasinoMenu();
 }
 
 // ===== ③ルーレット（複数の賭けをまとめて確定するまで追加できる） =====
