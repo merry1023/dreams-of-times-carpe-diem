@@ -167,7 +167,7 @@ function getSlotSymbolDisplay(symbol) {
   return symbol.emoji;
 }
 
-function renderSlotBoard(boardSymbols, winningIndexes = []) {
+function renderSlotBoard(boardSymbols, winningIndexes = [], isSpinning = false) {
   const overlay = document.getElementById("casino-slot-board");
   const grid = document.getElementById("casino-slot-grid");
   const result = document.getElementById("casino-slot-result");
@@ -176,7 +176,11 @@ function renderSlotBoard(boardSymbols, winningIndexes = []) {
   grid.innerHTML = "";
   boardSymbols.forEach((symbol, index) => {
     const cell = document.createElement("div");
-    cell.className = "casino-slot-cell" + (winningIndexes.includes(index) ? " is-winning" : "");
+    const classes = ["casino-slot-cell"];
+    if (winningIndexes.includes(index)) classes.push("is-winning");
+    if (isSpinning) classes.push("is-spinning");
+    cell.className = classes.join(" ");
+    cell.style.animationDelay = `${(index % 3) * 40}ms`;
     cell.innerHTML = getSlotSymbolDisplay(symbol);
     grid.appendChild(cell);
   });
@@ -234,6 +238,37 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function setSlotLeverPulled(pulled) {
+  const lever = document.getElementById("casino-slot-lever");
+  if (!lever) return;
+  lever.classList.toggle("is-pulled", !!pulled);
+}
+
+async function waitForSlotStopSignal(buttonEl) {
+  return new Promise((resolve) => {
+    let settled = false;
+
+    const finalize = () => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("keydown", handleKey);
+      if (buttonEl) buttonEl.removeEventListener("click", finalize);
+      resolve();
+    };
+
+    const handleKey = (event) => {
+      if (event.repeat) return;
+      if (typeof KEY_CONFIG === "undefined" || !KEY_CONFIG.decideKeys.includes(event.key)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      finalize();
+    };
+
+    window.addEventListener("keydown", handleKey);
+    if (buttonEl) buttonEl.addEventListener("click", finalize);
+  });
+}
+
 async function spinSlotBoard(finalBoard) {
   const overlay = document.getElementById("casino-slot-board");
   const grid = document.getElementById("casino-slot-grid");
@@ -241,14 +276,14 @@ async function spinSlotBoard(finalBoard) {
 
   overlay.classList.remove("hidden");
 
-  for (let frame = 0; frame < 12; frame++) {
+  for (let frame = 0; frame < 14; frame++) {
     const randomBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
-    renderSlotBoard(randomBoard, []);
-    await sleep(80);
+    renderSlotBoard(randomBoard, [], true);
+    await sleep(70);
   }
 
-  renderSlotBoard(finalBoard, []);
-  await sleep(180);
+  renderSlotBoard(finalBoard, [], false);
+  await sleep(220);
 }
 
 async function startSlotGame() {
@@ -256,26 +291,40 @@ async function startSlotGame() {
   const bet = await pickCasinoBet("スロットの賭け金");
   if (bet <= 0) { showCasinoMenu(); return; }
 
-  // 掛金は決定した時点で即時に減額して、以降はZ/Spaceで止めるだけにする
+  // 掛金は決定した時点で即時に減額して、以降はZ/Spaceまたは「止める」ボタンで止めるだけにする
   changeGold(-bet);
   renderStatusHUD();
 
   changeSpeaker(casinoFacility.name || "スロット台");
-  await displayMessage(`掛け金${bet}陳を賭けた。レバーを引いて、あと3回Z/Spaceで各リールを止めろ！`);
+  await displayMessage(`掛け金${bet}陳を賭けた。レバーを引いて、止めるボタンまたはZ/Spaceで各リールを止めろ！`);
 
   const finalBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
   const overlay = document.getElementById("casino-slot-board");
+  const stopButton = document.getElementById("casino-slot-stop-btn");
   const resultEl = document.getElementById("casino-slot-result");
   const currentBoard = Array(9).fill(null);
 
   if (overlay) overlay.classList.remove("hidden");
+  if (stopButton) {
+    stopButton.disabled = false;
+    stopButton.textContent = "止める";
+    stopButton.innerHTML = "止める<span class=\"key-badge\">Z</span>";
+  }
+  setSlotLeverPulled(true);
+  await sleep(180);
+  setSlotLeverPulled(false);
 
   for (let reel = 0; reel < 3; reel++) {
     const stopIndexes = [reel, reel + 3, reel + 6];
     await displayMessage(`リール${reel + 1}を止める`);
-    await waitForDecideKeyPresses(1, "");
+    if (stopButton) {
+      stopButton.textContent = `リール${reel + 1}を止める`;
+      stopButton.innerHTML = `リール${reel + 1}を止める<span class="key-badge">Z</span>`;
+    }
 
-    for (let frame = 0; frame < 14; frame++) {
+    await waitForSlotStopSignal(stopButton);
+
+    for (let frame = 0; frame < 12; frame++) {
       const tempBoard = currentBoard.slice();
       for (let i = 0; i < 9; i++) {
         if (stopIndexes.includes(i)) continue;
@@ -284,15 +333,15 @@ async function startSlotGame() {
       for (let i = 0; i < 9; i++) {
         if (tempBoard[i] == null) tempBoard[i] = finalBoard[i];
       }
-      renderSlotBoard(tempBoard, []);
-      await sleep(60);
+      renderSlotBoard(tempBoard, [], true);
+      await sleep(85);
     }
 
     for (const idx of stopIndexes) {
       currentBoard[idx] = finalBoard[idx];
     }
-    renderSlotBoard(currentBoard, []);
-    await sleep(180);
+    renderSlotBoard(currentBoard, [], false);
+    await sleep(200);
   }
 
   const result = getSlotBoardResult(finalBoard);
@@ -313,6 +362,11 @@ async function startSlotGame() {
   await sleep(450);
 
   if (overlay) overlay.classList.add("hidden");
+  if (stopButton) {
+    stopButton.disabled = true;
+    stopButton.textContent = "止める";
+    stopButton.innerHTML = "止める<span class=\"key-badge\">Z</span>";
+  }
 
   if (result.type === "win") {
     changeGold(bet * result.payout);
