@@ -29,7 +29,7 @@ const PLAY_SCREEN_TAB_DEFS = [
   { id: "tab-inventory", label: "インベントリ", enabledByDefault: true },
   { id: "tab-skill", label: "スキル", enabledByDefault: true },
   { id: "tab-companions", label: "仲間", enabledByDefault: true },
-  { id: "tab-companionchat", label: "会話", enabledByDefault: false },
+  { id: "tab-companionchat", label: "会話", enabledByDefault: true },
   { id: "tab-strength", label: "強さ", enabledByDefault: true },
   { id: "tab-equipment", label: "装備", enabledByDefault: true },
   { id: "tab-convenience", label: "便利", enabledByDefault: true },
