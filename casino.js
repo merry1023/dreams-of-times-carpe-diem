@@ -62,6 +62,28 @@ async function pickCasinoBet(label) {
   return bet;
 }
 
+async function waitForDecideKeyPresses(count, text) {
+  if (text) {
+    await displayMessage(text);
+  }
+
+  return new Promise((resolve) => {
+    let pressed = 0;
+    const listener = (event) => {
+      if (event.repeat) return;
+      if (typeof KEY_CONFIG === "undefined" || !KEY_CONFIG.decideKeys.includes(event.key)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      pressed += 1;
+      if (pressed >= count) {
+        window.removeEventListener("keydown", listener);
+        resolve();
+      }
+    };
+    window.addEventListener("keydown", listener);
+  });
+}
+
 // ===== ①丁半博打（サイコロ2つの合計が偶数＝丁／奇数＝半） =====
 async function startDiceGame() {
   prepareCasinoConversationFocus();
@@ -234,6 +256,12 @@ async function startSlotGame() {
   const bet = await pickCasinoBet("スロットの賭け金");
   if (bet <= 0) { showCasinoMenu(); return; }
 
+  changeSpeaker(casinoFacility.name || "スロット台");
+  await displayMessage("賭け額を決めた。ZかSpaceで続ける");
+  await waitForDecideKeyPresses(1, "");
+  await displayMessage("レバーを3回押して回す");
+  await waitForDecideKeyPresses(3, "");
+
   const finalBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
   const overlay = document.getElementById("casino-slot-board");
   const resultEl = document.getElementById("casino-slot-result");
@@ -272,8 +300,41 @@ async function startSlotGame() {
   showCasinoMenu();
 }
 
-// ===== ③ルーレット（矢印キー/タップでマスを選んでから賭け金を決める） =====
+// ===== ③ルーレット（複数の賭けをまとめて確定するまで追加できる） =====
 const CASINO_ROULETTE_RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+
+function updateRouletteSelectionSummary(bets) {
+  const statusEl = document.getElementById("casino-roulette-status");
+  if (!statusEl) return;
+  const total = bets.reduce((sum, bet) => sum + bet.amount, 0);
+  statusEl.textContent = `掛け済み: ${total}陳 / ${bets.length}箇所`;
+}
+
+function setRouletteSpinSceneVisible(visible) {
+  const scene = document.getElementById("casino-roulette-wheel-scene");
+  if (!scene) return;
+  if (visible) scene.classList.remove("hidden");
+  else scene.classList.add("hidden");
+}
+
+function animateRouletteSpin(resultNumber) {
+  const scene = document.getElementById("casino-roulette-wheel-scene");
+  const wheel = document.getElementById("casino-roulette-wheel");
+  const ball = document.getElementById("casino-roulette-ball");
+  if (!scene || !wheel || !ball) return Promise.resolve();
+
+  setRouletteSpinSceneVisible(true);
+  const duration = 1800;
+  wheel.style.animationDuration = `${duration}ms`;
+  ball.style.animationDuration = `${duration}ms`;
+
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      setRouletteSpinSceneVisible(false);
+      resolve();
+    }, duration + 150);
+  });
+}
 
 // 盤面のマス目データを組み立てる。座標(colStart, colSpan, row, rowSpan)はCSS Gridにそのまま使う
 function buildRouletteCells() {
@@ -320,11 +381,12 @@ function buildRouletteCells() {
 // ★通常の行き先メニュー（location-menu）は縦一列・2列グリッドしか対応しておらず、
 //   ルーレット卓のような「数字の升目＋幅の異なるアウトサイドベット」を矢印キーで
 //   自然に行き来させるのには向かないため、専用の2次元カーソル移動を実装する。
-//   （現在のマスの中心座標から見て、押した方向にある一番近いマスへジャンプする方式）
-function pickRouletteBet() {
+//   今回は「確定するまで何箇所でも掛けられる」ようにし、決定キーでその場に追加していく
+async function pickRouletteBets() {
   return new Promise((resolve) => {
     const cells = buildRouletteCells();
     let cursorIndex = Math.max(0, cells.findIndex(c => c.key === "red"));
+    const selections = [];
 
     const overlay = document.getElementById("casino-roulette-board");
     const gridEl = document.getElementById("casino-roulette-grid");
@@ -345,13 +407,18 @@ function pickRouletteBet() {
         el.style.gridColumn = `${cell.colStart} / span ${cell.colSpan}`;
         el.style.gridRow = `${cell.row} / span ${cell.rowSpan}`;
         el.textContent = cell.label;
-        el.onclick = (event) => {
+        el.onclick = async (event) => {
           event.stopPropagation();
           cursorIndex = i;
-          finish(cell);
+          const amount = await pickCasinoBet(`「${cell.label}」への賭け金`);
+          if (amount > 0) {
+            selections.push({ cell, amount });
+            updateRouletteSelectionSummary(selections);
+          }
         };
         gridEl.appendChild(el);
       });
+      updateRouletteSelectionSummary(selections);
     }
 
     function finish(result) {
@@ -359,8 +426,7 @@ function pickRouletteBet() {
       window.removeEventListener("keydown", handleKey);
       resolve(result);
     }
-    
-    // 現在のマスの中心座標から見て、指定方向(dx, dy)にある一番近いマスへカーソルを移す
+
     function moveCursor(dx, dy) {
       const cur = cells[cursorIndex];
       const curX = cur.colStart + cur.colSpan / 2;
@@ -374,34 +440,57 @@ function pickRouletteBet() {
         const relX = x - curX;
         const relY = y - curY;
         const primary = dx !== 0 ? relX * dx : relY * dy;
-        if (primary <= 0.05) return; // 押した方向と逆・真横のマスは候補にしない
+        if (primary <= 0.05) return;
         const secondary = dx !== 0 ? Math.abs(relY) : Math.abs(relX);
-        const score = primary + secondary * 3; // 方向がまっすぐ揃っているマスを優先
+        const score = primary + secondary * 3;
         if (score < bestScore) { bestScore = score; bestIndex = i; }
       });
-      if (bestIndex >= 0) { cursorIndex = bestIndex; render(); }
+      if (bestIndex >= 0) {
+        cursorIndex = bestIndex;
+        render();
+      }
     }
-    
-    function handleKey(event) {
+
+    async function addCurrentSelection() {
+      const cell = cells[cursorIndex];
+      if (!cell) return;
+      const amount = await pickCasinoBet(`「${cell.label}」への賭け金`);
+      if (amount > 0) {
+        selections.push({ cell, amount });
+        updateRouletteSelectionSummary(selections);
+      }
+    }
+
+    async function handleKey(event) {
       if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
       if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return;
       if (event.repeat) return;
-      if (event.key === "ArrowRight") { event.preventDefault(); event.stopImmediatePropagation(); moveCursor(1, 0); }
-      else if (event.key === "ArrowLeft") { event.preventDefault(); event.stopImmediatePropagation(); moveCursor(-1, 0); }
-      else if (event.key === "ArrowDown") { event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, 1); }
-      else if (event.key === "ArrowUp") { event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, -1); }
-      else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
+      if (event.key === "ArrowRight") {
+        event.preventDefault(); event.stopImmediatePropagation(); moveCursor(1, 0);
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault(); event.stopImmediatePropagation(); moveCursor(-1, 0);
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, 1);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, -1);
+      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
         event.preventDefault(); event.stopImmediatePropagation();
-        finish(cells[cursorIndex]);
+        await addCurrentSelection();
       } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
         event.preventDefault(); event.stopImmediatePropagation();
-        finish(null);
+        finish(selections.length ? selections : null);
       }
     }
-    
-    if (confirmBtn) confirmBtn.onclick = (event) => { event.stopPropagation(); finish(cells[cursorIndex]); };
-    if (cancelBtn) cancelBtn.onclick = (event) => { event.stopPropagation(); finish(null); };
-    
+
+    if (confirmBtn) confirmBtn.onclick = (event) => {
+      event.stopPropagation();
+      finish(selections.length ? selections : null);
+    };
+    if (cancelBtn) cancelBtn.onclick = (event) => {
+      event.stopPropagation();
+      finish(null);
+    };
+
     render();
     overlay.classList.remove("hidden");
     window.addEventListener("keydown", handleKey);
@@ -417,28 +506,45 @@ async function startRouletteGame() {
     showCasinoMenu();
     return;
   }
-  
-  const cell = await pickRouletteBet();
-  if (!cell) { showCasinoMenu(); return; }
-  
-  const bet = await pickCasinoBet(`「${cell.label}」への賭け金`);
-  if (bet <= 0) { showCasinoMenu(); return; }
-  
+
+  const bets = await pickRouletteBets();
+  if (!bets || bets.length === 0) { showCasinoMenu(); return; }
+
+  const totalBet = bets.reduce((sum, bet) => sum + bet.amount, 0);
+  if (totalBet <= 0) { showCasinoMenu(); return; }
+
   changeSpeaker(casinoFacility.name || "ルーレット台");
-  await displayMessage("ルーレットの球が回る……");
-  
+  await displayMessage("賭けを確定した。ZかSpaceで続ける");
+  await waitForDecideKeyPresses(1, "");
+  await displayMessage("球を3回押して回す");
+  await waitForDecideKeyPresses(3, "");
+
   const resultNumber = Math.floor(Math.random() * 37); // 0〜36
   const resultColorLabel = resultNumber === 0 ? "" : (CASINO_ROULETTE_RED.has(resultNumber) ? "・赤" : "・黒");
+  await displayMessage("ルーレットの球が回る……");
+  await animateRouletteSpin(resultNumber);
   await displayMessage(`球が止まった……「${resultNumber}${resultColorLabel}」だ！`);
-  
-  if (cell.matches(resultNumber)) {
-    const profit = bet * cell.payoutMultiple;
-    changeGold(profit);
-    await displayMessage(`大当たりだ！ ${profit}陳の儲けだ！`);
-  } else {
-    changeGold(-bet);
-    await displayMessage(`残念、外れだ。${bet}陳は没収だな……`);
+
+  let netResult = 0;
+  for (const bet of bets) {
+    if (bet.cell.matches(resultNumber)) {
+      const profit = bet.amount * bet.cell.payoutMultiple;
+      netResult += profit;
+      await displayMessage(`「${bet.cell.label}」に当たった！ ${profit}陳の儲けだ！`);
+    } else {
+      netResult -= bet.amount;
+    }
   }
+
+  if (netResult > 0) {
+    changeGold(netResult);
+    await displayMessage(`合計で${netResult}陳の儲けだ！`);
+  } else {
+    const loss = Math.abs(netResult);
+    changeGold(-loss);
+    await displayMessage(`残念、外れが多かった。合計${loss}陳は没収だな……`);
+  }
+
   renderStatusHUD();
   showCasinoMenu();
 }

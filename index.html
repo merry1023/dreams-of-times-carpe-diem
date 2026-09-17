@@ -96,11 +96,18 @@
       <div class="casino-roulette-panel">
         <div class="casino-roulette-header">
           <h3 class="casino-roulette-title">ルーレット</h3>
-          <span class="casino-roulette-hint">方向キーで賭ける場所を選ぶ</span>
+          <span class="casino-roulette-hint">方向キーで場所を選び、Zで追加</span>
+        </div>
+        <div id="casino-roulette-status" class="casino-roulette-status">掛け済み: 0陳 / 0箇所</div>
+        <div id="casino-roulette-wheel-scene" class="casino-roulette-wheel-scene hidden">
+          <div class="roulette-wheel-outer">
+            <div id="casino-roulette-wheel" class="roulette-wheel"></div>
+            <div id="casino-roulette-ball" class="roulette-ball"></div>
+          </div>
         </div>
         <div id="casino-roulette-grid" class="casino-roulette-grid"></div>
         <div class="casino-roulette-footer">
-          <button id="casino-roulette-confirm" class="devmode-btn">賭ける<span class="key-badge">Z</span></button>
+          <button id="casino-roulette-confirm" class="devmode-btn">確定<span class="key-badge">Z</span></button>
           <button id="casino-roulette-cancel" class="devmode-btn">やめる<span class="key-badge">X</span></button>
         </div>
       </div>
