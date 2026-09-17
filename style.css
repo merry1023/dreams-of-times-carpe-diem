@@ -3237,6 +3237,7 @@ html, body {
 
 .casino-roulette-cell {
   min-height: 34px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3249,6 +3250,38 @@ html, body {
   user-select: none;
   cursor: pointer;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
+  overflow: visible;
+}
+
+.casino-roulette-cell-label {
+  position: relative;
+  z-index: 1;
+}
+
+.roulette-chip-stack {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.roulette-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff8d9, #d7a624 55%, #a76d00 100%);
+  color: #2d1d00;
+  border: 1px solid rgba(0,0,0,0.38);
+  font-size: 10px;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
 
 .casino-roulette-cell.cursor {

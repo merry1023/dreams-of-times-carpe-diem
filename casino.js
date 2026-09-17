@@ -62,16 +62,18 @@ async function pickCasinoBet(label) {
   return bet;
 }
 
-async function waitForDecideKeyPresses(count, text) {
+async function waitForDecideKeyPresses(count, text, allowKeys = null) {
   if (text) {
     await displayMessage(text);
   }
 
+  const validKeys = allowKeys || (typeof KEY_CONFIG !== "undefined" ? KEY_CONFIG.decideKeys : []);
   return new Promise((resolve) => {
     let pressed = 0;
     const listener = (event) => {
       if (event.repeat) return;
-      if (typeof KEY_CONFIG === "undefined" || !KEY_CONFIG.decideKeys.includes(event.key)) return;
+      const key = event.key.toLowerCase ? event.key.toLowerCase() : event.key;
+      if (!validKeys.map(k => String(k).toLowerCase()).includes(key)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       pressed += 1;
@@ -493,6 +495,8 @@ function animateRouletteSpin(resultNumber) {
   const duration = 1800;
   wheel.style.animation = `roulette-wheel-spin ${duration}ms linear infinite`;
   ball.style.animation = `roulette-ball-orbit ${duration}ms linear infinite`;
+  wheel.style.display = "block";
+  ball.style.display = "block";
 
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -569,12 +573,36 @@ async function pickRouletteBets() {
 
     function render() {
       gridEl.innerHTML = "";
+      const chipTotals = new Map();
+      selections.forEach(({ cell }) => {
+        const subtotal = chipTotals.get(cell.key) || 0;
+        chipTotals.set(cell.key, subtotal + 1);
+      });
+
       cells.forEach((cell, i) => {
         const el = document.createElement("div");
         el.className = "casino-roulette-cell " + cell.className + (i === cursorIndex ? " cursor" : "");
         el.style.gridColumn = `${cell.colStart} / span ${cell.colSpan}`;
         el.style.gridRow = `${cell.row} / span ${cell.rowSpan}`;
-        el.textContent = cell.label;
+
+        const labelEl = document.createElement("span");
+        labelEl.className = "casino-roulette-cell-label";
+        labelEl.textContent = cell.label;
+        el.appendChild(labelEl);
+
+        const chipTotal = chipTotals.get(cell.key) || 0;
+        if (chipTotal > 0) {
+          const stackEl = document.createElement("div");
+          stackEl.className = "roulette-chip-stack";
+          stackEl.title = `賭け中: ${chipTotal}枚`;
+
+          const chip = document.createElement("span");
+          chip.className = "roulette-chip";
+          chip.textContent = `${chipTotal}`;
+          stackEl.appendChild(chip);
+          el.appendChild(stackEl);
+        }
+
         el.onclick = async (event) => {
           event.stopPropagation();
           cursorIndex = i;
@@ -582,6 +610,7 @@ async function pickRouletteBets() {
           if (amount > 0) {
             selections.push({ cell, amount });
             updateRouletteSelectionSummary(selections);
+            render();
           }
         };
         gridEl.appendChild(el);
@@ -660,7 +689,7 @@ async function pickRouletteBets() {
         } else {
           await addCurrentSelection();
         }
-      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
+      } else if (event.key === "c" || event.key === "C") {
         event.preventDefault(); event.stopImmediatePropagation();
         if (selections.length > 0) {
           finish(selections);
@@ -705,10 +734,10 @@ async function startRouletteGame() {
   if (totalBet <= 0) { showCasinoMenu(); return; }
 
   changeSpeaker(casinoFacility.name || "ルーレット台");
-  await displayMessage("賭けを確定した。ZかSpaceで続ける");
-  await waitForDecideKeyPresses(1, "");
+  await displayMessage("賭けを確定した。Cキーで続ける");
+  await waitForDecideKeyPresses(1, "", ["c", "C"]);
   await displayMessage("球を3回押して回す");
-  await waitForDecideKeyPresses(3, "");
+  await waitForDecideKeyPresses(3, "", ["c", "C"]);
 
   const resultNumber = Math.floor(Math.random() * 37); // 0〜36
   const resultColorLabel = resultNumber === 0 ? "" : (CASINO_ROULETTE_RED.has(resultNumber) ? "・赤" : "・黒");
