@@ -288,28 +288,86 @@ async function spinSlotBoard(finalBoard) {
 
 async function startSlotGame() {
   prepareCasinoConversationFocus();
-  const bet = await pickCasinoBet("スロットの賭け金");
-  if (bet <= 0) { showCasinoMenu(); return; }
 
   const overlay = document.getElementById("casino-slot-board");
   const stopButton = document.getElementById("casino-slot-stop-btn");
   const resultEl = document.getElementById("casino-slot-result");
+  const betDisplay = document.getElementById("casino-slot-bet-value");
+  const betDecBtn = document.getElementById("casino-slot-bet-dec");
+  const betIncBtn = document.getElementById("casino-slot-bet-inc");
+  const minBet = getCasinoMinBet();
+  const maxBet = getCasinoMaxBet();
+  const step = maxBet >= 2000 ? 100 : (maxBet >= 200 ? 10 : 1);
 
-  if (overlay) overlay.classList.remove("hidden");
-  if (stopButton) {
-    stopButton.disabled = false;
-    stopButton.textContent = "回す";
-    stopButton.innerHTML = "回す<span class=\"key-badge\">Z</span>";
-  }
+  if (!overlay) return;
+  overlay.classList.remove("hidden");
 
-  const waitForRoundStart = async () => {
-    const promptText = `掛け金${bet}陳。Zで回す`; 
-    changeSpeaker(casinoFacility.name || "スロット台");
-    await displayMessage(promptText);
-    await waitForSlotStopSignal(stopButton);
+  const updateBetDisplay = (nextBet) => {
+    if (betDisplay) betDisplay.textContent = `${nextBet}陳`;
+    if (betDecBtn) betDecBtn.disabled = nextBet <= minBet;
+    if (betIncBtn) betIncBtn.disabled = nextBet >= maxBet;
+    if (stopButton) {
+      stopButton.textContent = `開始（${nextBet}陳）`;
+      stopButton.innerHTML = `開始（${nextBet}陳）<span class="key-badge">Z</span>`;
+    }
   };
 
-  const runOneSlotRound = async () => {
+  const chooseBet = () => new Promise((resolve) => {
+    let currentBet = Math.max(minBet, Math.min(maxBet, minBet));
+    let settled = false;
+
+    const cleanup = () => {
+      if (betDecBtn) betDecBtn.removeEventListener("click", decClick);
+      if (betIncBtn) betIncBtn.removeEventListener("click", incClick);
+      if (stopButton) stopButton.removeEventListener("click", confirmClick);
+      window.removeEventListener("keydown", handleKey);
+    };
+
+    const resolveBet = (value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(value);
+    };
+
+    const confirmClick = () => {
+      resolveBet(currentBet);
+    };
+
+    const decClick = () => {
+      currentBet = Math.max(minBet, currentBet - step);
+      updateBetDisplay(currentBet);
+    };
+    const incClick = () => {
+      currentBet = Math.min(maxBet, currentBet + step);
+      updateBetDisplay(currentBet);
+    };
+
+    const handleKey = (event) => {
+      if (event.repeat) return;
+      if (event.key === "ArrowLeft") {
+        event.preventDefault(); event.stopImmediatePropagation();
+        decClick();
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault(); event.stopImmediatePropagation();
+        incClick();
+      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        resolveBet(currentBet);
+      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        resolveBet(null);
+      }
+    };
+
+    if (betDecBtn) betDecBtn.addEventListener("click", decClick);
+    if (betIncBtn) betIncBtn.addEventListener("click", incClick);
+    if (stopButton) stopButton.addEventListener("click", confirmClick);
+    window.addEventListener("keydown", handleKey);
+    updateBetDisplay(currentBet);
+  });
+
+  const runOneSlotRound = async (bet) => {
     changeGold(-bet);
     renderStatusHUD();
 
@@ -379,20 +437,32 @@ async function startSlotGame() {
 
     await sleep(500);
 
-    if (stopButton) {
-      stopButton.textContent = "回す";
-      stopButton.innerHTML = "回す<span class=\"key-badge\">Z</span>";
-    }
     if (resultEl) {
       resultEl.classList.add("hidden");
       resultEl.textContent = "";
     }
-    await displayMessage(`Zで次のゲームを回す。掛け金${bet}陳が自動で消費される。`);
   };
 
   while (true) {
-    await waitForRoundStart();
-    await runOneSlotRound();
+    if (gold < minBet) {
+      changeSpeaker(casinoFacility.name || "スロット台");
+      await displayMessage(`所持金が足りない。最低${minBet}陳必要だ。`);
+      overlay.classList.add("hidden");
+      showCasinoMenu();
+      return;
+    }
+
+    const bet = await chooseBet();
+    if (bet == null) {
+      overlay.classList.add("hidden");
+      showCasinoMenu();
+      return;
+    }
+
+    changeSpeaker(casinoFacility.name || "スロット台");
+    await displayMessage(`掛け金${bet}陳。レバーを引いて、3回Zで各リールを止める`);
+    await runOneSlotRound(bet);
+    await displayMessage(`次は左右キーまたはボタンで掛金を調整して、Zで回す。`);
   }
 }
 

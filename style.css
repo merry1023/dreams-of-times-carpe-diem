@@ -2992,6 +2992,51 @@ html, body {
   font-size: 14px;
 }
 
+.casino-slot-bet-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.casino-slot-bet-btn {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f8e6a5 0%, #d5a134 100%);
+  color: #2b1b06;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.casino-slot-bet-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.casino-slot-bet-value {
+  min-width: 90px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  text-align: center;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fff3c7;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.casino-slot-bet-hint {
+  margin-bottom: 8px;
+  text-align: center;
+  font-size: 12px;
+  color: #d9d0be;
+}
+
 .casino-slot-controls {
   display: flex;
   justify-content: center;
