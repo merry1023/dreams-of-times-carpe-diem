@@ -1331,17 +1331,19 @@ function applyPlayTabVisibility() {
 // ② Qキー / Eキーでタブを左右に切り替える（キーボード用）
 window.addEventListener("keydown", (event) => {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★要望対応：シナリオエディタ表示中は本編を操作させない
-  if (controlFocus !== "sub") return; // ★サブ画面を操作している時だけ、タブ切り替えを有効にする
-  
+  if (event.repeat) return;
+  if (!(controlFocus === "main" || controlFocus === "sub")) return; // ★メイン／サブどちらの画面でもタブ切り替え可能にする
+
   const tabIds = getVisiblePlayTabIds();
   if (!tabIds.length) return;
-  
+
   // 現在アクティブになっているタブのIDを探す
   const currentActive = document.querySelector('.tab-content.active');
   if (!currentActive) return;
-  
+
   let currentIndex = tabIds.indexOf(currentActive.id);
-  
+  if (currentIndex < 0) currentIndex = 0;
+
   // KEY_CONFIG に設定したキーが含まれているかで判定する
   if (KEY_CONFIG.tabLeftKey.includes(event.key)) {
     // 【左へ】
