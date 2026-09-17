@@ -100,6 +100,52 @@ function renderDevModePanel() {
   container.appendChild(buildDevModeNumberRow("HP(現在値)", () => player.gauges.hp.current, (v) => { player.gauges.hp.current = Math.max(0, Math.min(player.gauges.hp.max, Math.floor(v))); renderStatusHUD(); }));
   container.appendChild(buildDevModeNumberRow("HP(最大値)", () => player.gauges.hp.max, (v) => { player.gauges.hp.max = Math.max(1, Math.floor(v)); renderStatusHUD(); }));
   container.appendChild(buildDevModeNumberRow("SP(現在値)", () => player.gauges.sp.current, (v) => { player.gauges.sp.current = Math.max(0, Math.min(player.gauges.sp.max, Math.floor(v))); renderStatusHUD(); }));
+
+  container.appendChild(buildDevModeHeading("即時アイテム付与（デバッグ）"));
+  const itemGrantNote = document.createElement("p");
+  itemGrantNote.className = "devmode-note";
+  itemGrantNote.textContent = "シナリオブロックを使わずに、その場でアイテムを直接受け取ります。レベル変更のデバッグと同じ感覚で使えます。";
+  container.appendChild(itemGrantNote);
+
+  const itemGrantDatalist = document.createElement("datalist");
+  itemGrantDatalist.id = "devmode-item-datalist";
+  const itemKeys = typeof ITEM_MASTER !== "undefined" ? Object.keys(ITEM_MASTER) : [];
+  itemKeys.forEach((itemId) => {
+    const option = document.createElement("option");
+    option.value = itemId;
+    itemGrantDatalist.appendChild(option);
+  });
+  container.appendChild(itemGrantDatalist);
+
+  const itemGrantRow = document.createElement("div");
+  itemGrantRow.className = "devmode-row";
+
+  const itemIdInput = document.createElement("input");
+  itemIdInput.type = "text";
+  itemIdInput.placeholder = "アイテムID";
+  itemIdInput.setAttribute("list", "devmode-item-datalist");
+  itemIdInput.className = "devmode-title-input";
+
+  const qtyInput = document.createElement("input");
+  qtyInput.type = "number";
+  qtyInput.min = "1";
+  qtyInput.value = "1";
+  qtyInput.className = "devmode-condition-input";
+
+  const grantBtn = document.createElement("button");
+  grantBtn.className = "devmode-btn";
+  grantBtn.textContent = "その場で受け取る";
+  grantBtn.onclick = (event) => {
+    event.stopPropagation();
+    debugGiveItem(itemIdInput.value.trim(), qtyInput.value);
+    renderInventory();
+    renderStatusHUD();
+  };
+
+  itemGrantRow.appendChild(itemIdInput);
+  itemGrantRow.appendChild(qtyInput);
+  itemGrantRow.appendChild(grantBtn);
+  container.appendChild(itemGrantRow);
   
   // ★要望対応：仲間のレベルを、開発者モードから直接変更できるようにする
   //   （パーティー内・一時離脱中の両方。ステータス・HP/SP上限も、変更後のレベルで作り直す）
@@ -384,6 +430,17 @@ function debugSetPlayerLevel(newLevel) {
   }
   applyStatsForCurrentLevel();
   renderStatusHUD();
+}
+
+function debugGiveItem(itemId, quantity) {
+  if (!itemId || typeof addItem !== "function") return;
+  const qty = Math.max(1, Math.floor(Number(quantity) || 1));
+  addItem(itemId, qty);
+  if (typeof displayMessage === "function") {
+    const master = (typeof ITEM_MASTER !== "undefined" && ITEM_MASTER[itemId]) || null;
+    const label = master ? master.name : itemId;
+    displayMessage(`${label}を${qty}個受け取った。`);
+  }
 }
 
 // ★player.class / player.level の組み合わせから、ステータス・各ゲージの最大値を計算し直す共通処理。

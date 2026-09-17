@@ -1329,28 +1329,27 @@ function applyPlayTabVisibility() {
 }
 
 // ② Qキー / Eキーでタブを左右に切り替える（キーボード用）
+// ★要望対応：Q/Eのタブ切り替えは、メイン画面ではなく「サブ画面のメインタブ」だけで有効にする。
+//   これでメイン画面では勝手にタブが動かず、サブ画面のメインタブに戻った時だけ左右移動できる
 window.addEventListener("keydown", (event) => {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★要望対応：シナリオエディタ表示中は本編を操作させない
   if (event.repeat) return;
-  if (!(controlFocus === "main" || controlFocus === "sub")) return; // ★メイン／サブどちらの画面でもタブ切り替え可能にする
+  if (isGameDialogOpen) return; // ★確認ダイアログが開いている間は、そちらを優先する
+
+  const currentActive = document.querySelector('.tab-content.active');
+  if (!currentActive || currentActive.id !== "tab-main") return; // ★サブ画面のメインタブのときだけ有効にする
+  if (controlFocus !== "sub") return; // ★メイン画面側ではQ/Eでタブを動かさない
 
   const tabIds = getVisiblePlayTabIds();
   if (!tabIds.length) return;
 
-  // 現在アクティブになっているタブのIDを探す
-  const currentActive = document.querySelector('.tab-content.active');
-  if (!currentActive) return;
-
   let currentIndex = tabIds.indexOf(currentActive.id);
   if (currentIndex < 0) currentIndex = 0;
 
-  // KEY_CONFIG に設定したキーが含まれているかで判定する
   if (KEY_CONFIG.tabLeftKey.includes(event.key)) {
-    // 【左へ】
     currentIndex = (currentIndex - 1 + tabIds.length) % tabIds.length;
     switchTab(tabIds[currentIndex]);
   } else if (KEY_CONFIG.tabRightKey.includes(event.key)) {
-    // 【右へ】
     currentIndex = (currentIndex + 1) % tabIds.length;
     switchTab(tabIds[currentIndex]);
   }
