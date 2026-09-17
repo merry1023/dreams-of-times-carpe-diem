@@ -1308,15 +1308,17 @@ function applyPlayTabVisibility() {
     const onClickAttr = btn.getAttribute('onclick') || '';
     const tabId = onClickAttr.match(/switchTab\('([^']+)'\)/)?.[1];
     const enabled = tabId ? visibleTabIds.has(tabId) : true;
-    btn.style.display = enabled ? "" : "none";
+    // ★バグ修正：インラインstyleで直接非表示にすると、後からswitchTab()がクラスだけを
+    //   切り替えても表示が変わらなくなる（インラインstyleの方がCSSのクラス指定より優先される）。
+    //   非表示は専用クラス＋!importantで表現し、表示・非アクティブの切り替えはクラスだけに任せる
+    btn.classList.toggle('tab-hidden-by-setting', !enabled);
     btn.classList.toggle('active', tabId === targetTabId);
   });
 
   tabContents.forEach(content => {
     const enabled = visibleTabIds.has(content.id);
-    const shouldShow = enabled && content.id === targetTabId;
-    content.classList.toggle('active', shouldShow);
-    content.style.display = shouldShow ? 'block' : 'none';
+    content.classList.toggle('tab-hidden-by-setting', !enabled);
+    content.classList.toggle('active', enabled && content.id === targetTabId);
   });
 
   if (currentActiveTab && currentActiveTab.id !== targetTabId && typeof switchTab === 'function') {
