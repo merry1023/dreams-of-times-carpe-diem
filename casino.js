@@ -100,13 +100,24 @@ async function startDiceGame() {
   showCasinoMenu();
 }
 
-// ===== ②スロット（3リール。絵柄はシナリオエディタで画像を指定していればそちらを優先、無ければ絵文字） =====
+// ===== ②スロット（3×3の見た目付きジャグラー風UI） =====
 const CASINO_SLOT_SYMBOLS = [
   { key: "grape", emoji: "🍇", weight: 35, payout: 2 },
   { key: "bell",  emoji: "🔔", weight: 25, payout: 4 },
   { key: "star",  emoji: "⭐", weight: 20, payout: 6 },
   { key: "gem",   emoji: "💎", weight: 12, payout: 10 },
   { key: "seven", emoji: "7",  weight: 8,  payout: 20 }
+];
+
+const CASINO_SLOT_LINES = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+  [0, 4, 8],
+  [2, 4, 6]
 ];
 
 function pickWeightedSlotSymbol() {
@@ -119,9 +130,6 @@ function pickWeightedSlotSymbol() {
   return CASINO_SLOT_SYMBOLS[CASINO_SLOT_SYMBOLS.length - 1];
 }
 
-// ★施設編集タブ（scenariobuild.js）でfacility.slotImages[symbol.key]に画像パスが登録されていれば、
-//   絵文字の代わりにその画像を表示する。displayMessageの中身はtypeText側でHTMLタグとして解釈されるので、
-//   ここではメッセージ文中に埋め込む用のHTML文字列を組み立てる
 function getSlotSymbolMarkup(symbol) {
   const imagePath = casinoFacility && casinoFacility.slotImages && casinoFacility.slotImages[symbol.key];
   if (imagePath) {
@@ -130,34 +138,137 @@ function getSlotSymbolMarkup(symbol) {
   return `<span class="casino-slot-symbol-emoji">${symbol.emoji}</span>`;
 }
 
+function getSlotSymbolDisplay(symbol) {
+  if (!symbol) return "?";
+  const imagePath = casinoFacility && casinoFacility.slotImages && casinoFacility.slotImages[symbol.key];
+  if (imagePath) return `<img src="${imagePath}" class="casino-slot-symbol-img" alt="${symbol.key}">`;
+  return symbol.emoji;
+}
+
+function renderSlotBoard(boardSymbols, winningIndexes = []) {
+  const overlay = document.getElementById("casino-slot-board");
+  const grid = document.getElementById("casino-slot-grid");
+  const result = document.getElementById("casino-slot-result");
+  if (!overlay || !grid) return;
+
+  grid.innerHTML = "";
+  boardSymbols.forEach((symbol, index) => {
+    const cell = document.createElement("div");
+    cell.className = "casino-slot-cell" + (winningIndexes.includes(index) ? " is-winning" : "");
+    cell.innerHTML = getSlotSymbolDisplay(symbol);
+    grid.appendChild(cell);
+  });
+
+  if (result) {
+    result.classList.add("hidden");
+    result.textContent = "";
+  }
+}
+
+function getWinningSlotLineIndexes(boardSymbols) {
+  for (const line of CASINO_SLOT_LINES) {
+    const first = boardSymbols[line[0]];
+    if (!first) continue;
+    const allMatch = line.every(index => boardSymbols[index] && boardSymbols[index].key === first.key);
+    if (allMatch) return line;
+  }
+  return null;
+}
+
+function getSlotBoardResult(boardSymbols) {
+  const winningLine = getWinningSlotLineIndexes(boardSymbols);
+  if (winningLine) {
+    const symbol = boardSymbols[winningLine[0]];
+    return {
+      type: "win",
+      symbol,
+      line: winningLine,
+      payout: symbol.payout,
+      profit: symbol.payout
+    };
+  }
+
+  const counts = {};
+  boardSymbols.forEach(symbol => {
+    if (!symbol) return;
+    counts[symbol.key] = (counts[symbol.key] || 0) + 1;
+  });
+  const pairKey = Object.keys(counts).find(key => counts[key] >= 2);
+  if (pairKey) {
+    const symbol = CASINO_SLOT_SYMBOLS.find(s => s.key === pairKey) || CASINO_SLOT_SYMBOLS[0];
+    return {
+      type: "small",
+      symbol,
+      line: [],
+      payout: 1,
+      profit: 0.5
+    };
+  }
+
+  return { type: "lose", symbol: null, line: [], payout: 0, profit: 0 };
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function spinSlotBoard(finalBoard) {
+  const overlay = document.getElementById("casino-slot-board");
+  const grid = document.getElementById("casino-slot-grid");
+  if (!overlay || !grid) return;
+
+  overlay.classList.remove("hidden");
+
+  for (let frame = 0; frame < 12; frame++) {
+    const randomBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
+    renderSlotBoard(randomBoard, []);
+    await sleep(80);
+  }
+
+  renderSlotBoard(finalBoard, []);
+  await sleep(180);
+}
+
 async function startSlotGame() {
   prepareCasinoConversationFocus();
   const bet = await pickCasinoBet("スロットの賭け金");
   if (bet <= 0) { showCasinoMenu(); return; }
-  
-  changeSpeaker(casinoFacility.name || "スロット台");
-  await displayMessage("レバーを引いた……カラカラカラ……");
-  
-  const reels = [pickWeightedSlotSymbol(), pickWeightedSlotSymbol(), pickWeightedSlotSymbol()];
-  const reelMarkup = reels.map(getSlotSymbolMarkup).join("　");
-  await displayMessage(reelMarkup);
-  
-  const allMatch = reels[0].key === reels[1].key && reels[1].key === reels[2].key;
-  const twoMatch = !allMatch && (reels[0].key === reels[1].key || reels[1].key === reels[2].key || reels[0].key === reels[2].key);
-  
-  if (allMatch) {
-    const profit = bet * reels[0].payout;
-    changeGold(profit);
-    await displayMessage(`大当たりだ！ 絵柄が3つ揃って${profit}陳の儲けだ！`);
-  } else if (twoMatch) {
+
+  const finalBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
+  const overlay = document.getElementById("casino-slot-board");
+  const resultEl = document.getElementById("casino-slot-result");
+
+  await spinSlotBoard(finalBoard);
+  const result = getSlotBoardResult(finalBoard);
+  const winningIndexes = result.line.length ? result.line : [];
+  renderSlotBoard(finalBoard, winningIndexes);
+
+  if (resultEl) {
+    resultEl.classList.remove("hidden");
+    if (result.type === "win") {
+      resultEl.textContent = `大当たり！ ${result.symbol.emoji} が揃って${bet * result.payout}陳の儲けだ！`;
+    } else if (result.type === "small") {
+      resultEl.textContent = `惜しい、2つ揃った。${Math.ceil(bet * 0.5)}陳だけ戻ってきた。`;
+    } else {
+      resultEl.textContent = `残念、揃わなかった。${bet}陳は没収だな……`;
+    }
+  }
+
+  await sleep(450);
+
+  if (overlay) overlay.classList.add("hidden");
+
+  if (result.type === "win") {
+    changeGold(bet * result.payout);
+  } else if (result.type === "small") {
     const refund = Math.ceil(bet * 0.5);
-    changeGold(refund - bet); // 賭け金の半分だけ戻ってくる（小当たり＝実質は半損）
-    await displayMessage(`惜しい、2つだけ揃った。賭け金の半分、${refund}陳だけ戻ってきた。`);
+    changeGold(refund - bet);
   } else {
     changeGold(-bet);
-    await displayMessage(`残念、揃わなかった。${bet}陳は没収だな……`);
   }
+
   renderStatusHUD();
+  await sleep(150);
   showCasinoMenu();
 }
 
