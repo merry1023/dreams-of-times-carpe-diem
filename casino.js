@@ -256,17 +256,45 @@ async function startSlotGame() {
   const bet = await pickCasinoBet("スロットの賭け金");
   if (bet <= 0) { showCasinoMenu(); return; }
 
+  // 掛金は決定した時点で即時に減額して、以降はZ/Spaceで止めるだけにする
+  changeGold(-bet);
+  renderStatusHUD();
+
   changeSpeaker(casinoFacility.name || "スロット台");
-  await displayMessage("賭け額を決めた。ZかSpaceで続ける");
-  await waitForDecideKeyPresses(1, "");
-  await displayMessage("レバーを3回押して回す");
-  await waitForDecideKeyPresses(3, "");
+  await displayMessage(`掛け金${bet}陳を賭けた。レバーを引いて、あと3回Z/Spaceで各リールを止めろ！`);
 
   const finalBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
   const overlay = document.getElementById("casino-slot-board");
   const resultEl = document.getElementById("casino-slot-result");
+  const currentBoard = Array(9).fill(null);
 
-  await spinSlotBoard(finalBoard);
+  if (overlay) overlay.classList.remove("hidden");
+
+  for (let reel = 0; reel < 3; reel++) {
+    const stopIndexes = [reel, reel + 3, reel + 6];
+    await displayMessage(`リール${reel + 1}を止める`);
+    await waitForDecideKeyPresses(1, "");
+
+    for (let frame = 0; frame < 14; frame++) {
+      const tempBoard = currentBoard.slice();
+      for (let i = 0; i < 9; i++) {
+        if (stopIndexes.includes(i)) continue;
+        tempBoard[i] = pickWeightedSlotSymbol();
+      }
+      for (let i = 0; i < 9; i++) {
+        if (tempBoard[i] == null) tempBoard[i] = finalBoard[i];
+      }
+      renderSlotBoard(tempBoard, []);
+      await sleep(60);
+    }
+
+    for (const idx of stopIndexes) {
+      currentBoard[idx] = finalBoard[idx];
+    }
+    renderSlotBoard(currentBoard, []);
+    await sleep(180);
+  }
+
   const result = getSlotBoardResult(finalBoard);
   const winningIndexes = result.line.length ? result.line : [];
   renderSlotBoard(finalBoard, winningIndexes);
@@ -291,8 +319,6 @@ async function startSlotGame() {
   } else if (result.type === "small") {
     const refund = Math.ceil(bet * 0.5);
     changeGold(refund - bet);
-  } else {
-    changeGold(-bet);
   }
 
   renderStatusHUD();
