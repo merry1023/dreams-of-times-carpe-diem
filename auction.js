@@ -35,8 +35,19 @@ const AUCTION_POST_SALE_VARIANCE = 0.3;       // ★競り落とせなかった�
 const AUCTION_UNSOLD_CHANCE_LOWRANK = 0.5;    // ★F・Eランクは「流札」（誰にも落札されず返却）になりやすい
 const AUCTION_UNSOLD_CHANCE_NORMAL = 0.1;     // ★それ以外のランクでも、一定確率で「流札」になる
 
+// ★シナリオエディタの「ランダム名前管理」タブが空の場合に使う既定の名前プール（NPC入札者用）
+const AUCTION_FALLBACK_NAME_POOL = [
+  "ハルト", "ユウナ", "ソウマ", "アカリ", "リク", "サクラ", "ダイキ", "ミサキ",
+  "ケンタ", "ナナミ", "ショウ", "ユイ", "カイ", "メグミ", "タクマ", "ヒナタ",
+  "レオ", "アオイ", "シュン", "マナミ",
+];
+
 let auctionFacility = null; // 今開いているオークション施設のデータ（scenariobuild.jsのfacility）
 let auctionReturnTo = null; // 「戻る」で呼ぶ関数（町メニュー、または拠点の施設一覧）
+
+// ★要望対応：右上に常時出す「今回の出品／参加者リスト」パネルの表示内容
+//   { item, trueValue, roundLabel, totalRounds, lowRank, highRank, currentPrice, npcs, playerBid }
+let auctionRoundContext = null;
 
 // ===== 入り口 =====
 // openCustomFacility（town.js）から呼ばれる
@@ -65,6 +76,13 @@ function getAuctionIntervalDays() {
   return auctionFacility.auctionIntervalDays || AUCTION_DEFAULT_INTERVAL_DAYS;
 }
 
+// ★要望対応：開催日でない時に「あと何日後か」を案内するための計算
+function getDaysUntilNextAuction() {
+  const interval = Math.max(1, getAuctionIntervalDays());
+  const remainder = getCurrentGameDay() % interval;
+  return remainder === 0 ? interval : interval - remainder;
+}
+
 function getAuctionFee() {
   return auctionFacility.auctionFee != null ? auctionFacility.auctionFee : AUCTION_DEFAULT_FEE;
 }
@@ -82,6 +100,7 @@ function isAuctionDayToday() {
 
 // ===== メインメニュー =====
 function showAuctionMenu() {
+  hideAuctionParticipantPanel(); // ★念のため：メインメニューに戻ってきた時は必ずパネルを消しておく
   const state = getAuctionState();
   changeSpeaker(auctionFacility.name || "オークション会場");
   const resultCount = state.pendingResults.length;
@@ -108,8 +127,10 @@ async function tryStartAuctionDay() {
   // ★セッションが無い、または日付が変わっていたら、新しい開催日として作り直す
   if (!state.session || state.session.day !== today) {
     if (!isAuctionDayToday()) {
+      const daysLeft = getDaysUntilNextAuction();
       changeSpeaker(auctionFacility.name || "オークション会場");
-      await displayMessage("「本日は開催日ではないようだ。また次回お越しください。」", { allowSubFocus: true });
+      await displayMessage(`「本日はオークションが開催されていません。次のオークションはあと${daysLeft}日後です。」`, { allowSubFocus: true });
+      hideAuctionParticipantPanel();
       showAuctionMenu();
       return;
     }
@@ -120,6 +141,7 @@ async function tryStartAuctionDay() {
   if (state.session.roundIndex >= state.session.totalRounds) {
     changeSpeaker(auctionFacility.name || "オークション会場");
     await displayMessage("「本日の競りはもう全て終わってしまったようだ。また次回お越しください。」", { allowSubFocus: true });
+    hideAuctionParticipantPanel();
     showAuctionMenu();
     return;
   }
@@ -158,6 +180,7 @@ async function runAuctionRound() {
     });
   
   if (candidates.length === 0) {
+    hideAuctionParticipantPanel();
     changeSpeaker(auctionFacility.name || "オークション会場");
     await displayMessage("「今回の帯にふさわしい出品が用意できなかったようだ……。」", { allowSubFocus: true });
     session.roundIndex++;
@@ -168,9 +191,22 @@ async function runAuctionRound() {
   const chosenEntry = pickWeightedAuctionItem(candidates);
   const item = ITEM_MASTER[chosenEntry.itemId];
   const trueValue = rollAuctionTrueValue(item);
+  const roundLabel = session.roundIndex + 1;
+  
+  // ★要望対応：2回目以降の競りでも何が出品されたか見失わないよう、右上のパネルに
+  //   常時「今回の出品」を出しておく（メッセージが流れて消えても参照できる）
+  auctionRoundContext = {
+    item, trueValue,
+    roundLabel, totalRounds: session.totalRounds,
+    lowRank, highRank,
+    currentPrice: null,
+    npcs: [],
+    playerBid: null,
+  };
+  showAuctionParticipantPanel();
+  renderAuctionParticipantPanel();
   
   changeSpeaker(auctionFacility.name || "オークション会場");
-  const roundLabel = session.roundIndex + 1;
   await displayMessage(
     `（${roundLabel}回目の競り／ランク${lowRank}～${highRank}）\n「${item.name}」（ランク：${item.rank}）が出品された。\n${item.description || ""}`,
     { allowSubFocus: true }
@@ -233,12 +269,37 @@ async function useAuctionAppraisalHint(item, trueValue) {
 }
 
 // ===== 入札・競り合い =====
+// ★NPC名を、シナリオエディタ「ランダム名前管理」タブの登録名からランダムに取る（未登録なら既定の名前を使う）
+function getAuctionNamePool() {
+  if (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.randomNamePool) && scenarioProject.randomNamePool.length > 0) {
+    return scenarioProject.randomNamePool.filter(n => n && n.trim());
+  }
+  return AUCTION_FALLBACK_NAME_POOL;
+}
+
+// ★人数分の名前を、プールからできるだけ重複しないように選ぶ（プールが足りなければ「名前２」のように連番を足す）
+function pickAuctionNpcNames(count) {
+  const pool = getAuctionNamePool();
+  if (pool.length === 0) {
+    return Array.from({ length: count }, (_, i) => `入札者${i + 1}`);
+  }
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  const names = [];
+  for (let i = 0; i < count; i++) {
+    const base = shuffled[i % shuffled.length];
+    const cycle = Math.floor(i / shuffled.length);
+    names.push(cycle === 0 ? base : `${base}${cycle + 1}`);
+  }
+  return names;
+}
+
 function generateAuctionNpcs(trueValue) {
   const count = AUCTION_NPC_MIN_COUNT + Math.floor(Math.random() * (AUCTION_NPC_MAX_COUNT - AUCTION_NPC_MIN_COUNT + 1));
+  const names = pickAuctionNpcNames(count);
   const npcs = [];
   for (let i = 0; i < count; i++) {
     const ratio = AUCTION_NPC_BUDGET_MIN_RATIO + Math.random() * (AUCTION_NPC_BUDGET_MAX_RATIO - AUCTION_NPC_BUDGET_MIN_RATIO);
-    npcs.push({ budget: Math.max(1, Math.round(trueValue * ratio)), active: true });
+    npcs.push({ name: names[i], budget: Math.max(1, Math.round(trueValue * ratio)), active: true, currentBid: 0 });
   }
   return npcs;
 }
@@ -262,16 +323,24 @@ async function startAuctionBidding(item, trueValue) {
   }
   
   const npcs = generateAuctionNpcs(trueValue);
+  // ★要望対応：入札が始まったら、右上パネルに参加者（NPC名＋入札額）を出す
+  if (auctionRoundContext) {
+    auctionRoundContext.npcs = npcs;
+    auctionRoundContext.playerBid = initialBid;
+    auctionRoundContext.currentPrice = initialBid;
+    renderAuctionParticipantPanel();
+  }
   await runAuctionBiddingWar(item, trueValue, npcs, initialBid);
 }
 
 async function runAuctionBiddingWar(item, trueValue, npcs, playerBid) {
   let currentPrice = playerBid;
   let lastPlayerBid = playerBid;
+  let lastRaiserName = null; // ★要望対応：直前に上乗せしてきたNPCの名前（負けた時の演出に使う）
   
   for (;;) {
     // ★現在の価格を基準に、まだ生きているNPCそれぞれが「上乗せするか降りるか」を判定する
-    let bestChallenge = null; // { amount }
+    let bestChallenge = null; // { amount, npc }
     npcs.forEach(npc => {
       if (!npc.active) return;
       if (npc.budget <= currentPrice) { npc.active = false; return; } // ★既に予算オーバーなら黙って撤退
@@ -281,7 +350,7 @@ async function runAuctionBiddingWar(item, trueValue, npcs, playerBid) {
       const raiseAmount = Math.max(1, Math.round(currentPrice * raiseRatio));
       const proposedAmount = Math.min(npc.budget, currentPrice + raiseAmount);
       if (proposedAmount <= currentPrice) { npc.active = false; return; }
-      if (!bestChallenge || proposedAmount > bestChallenge.amount) bestChallenge = { amount: proposedAmount };
+      if (!bestChallenge || proposedAmount > bestChallenge.amount) bestChallenge = { amount: proposedAmount, npc };
     });
     
     if (!bestChallenge) {
@@ -290,19 +359,25 @@ async function runAuctionBiddingWar(item, trueValue, npcs, playerBid) {
     }
     
     currentPrice = bestChallenge.amount;
+    bestChallenge.npc.currentBid = currentPrice;
+    lastRaiserName = bestChallenge.npc.name;
+    if (auctionRoundContext) {
+      auctionRoundContext.currentPrice = currentPrice;
+      renderAuctionParticipantPanel();
+    }
     changeSpeaker(auctionFacility.name || "オークション会場");
-    await displayMessage(`他の入札者が「${item.name}」に${currentPrice}陳まで値を付けてきた！`, { allowSubFocus: true });
+    await displayMessage(`${bestChallenge.npc.name}が「${item.name}」に${currentPrice}陳まで上乗せしてきた！`, { allowSubFocus: true });
     
     if (currentPrice >= gold) {
       changeSpeaker(auctionFacility.name || "オークション会場");
       await displayMessage("「これ以上の持ち金が無く、諦めるしかなさそうだ……。」", { allowSubFocus: true });
-      await resolveAuctionRoundAsLost(item, trueValue, lastPlayerBid);
+      await resolveAuctionRoundAsLost(item, trueValue, lastPlayerBid, lastRaiserName, currentPrice);
       return;
     }
     
     const choice = await askAuctionRaiseOrGiveUp(item, currentPrice);
     if (choice === "giveup") {
-      await resolveAuctionRoundAsLost(item, trueValue, lastPlayerBid);
+      await resolveAuctionRoundAsLost(item, trueValue, lastPlayerBid, lastRaiserName, currentPrice);
       return;
     }
     
@@ -312,11 +387,16 @@ async function runAuctionBiddingWar(item, trueValue, npcs, playerBid) {
       max: gold,
     });
     if (nextBid === null) {
-      await resolveAuctionRoundAsLost(item, trueValue, lastPlayerBid);
+      await resolveAuctionRoundAsLost(item, trueValue, lastPlayerBid, lastRaiserName, currentPrice);
       return;
     }
     lastPlayerBid = nextBid;
     currentPrice = nextBid;
+    if (auctionRoundContext) {
+      auctionRoundContext.playerBid = nextBid;
+      auctionRoundContext.currentPrice = currentPrice;
+      renderAuctionParticipantPanel();
+    }
   }
 }
 
@@ -336,19 +416,20 @@ async function resolveAuctionRoundAsWon(item, price) {
   addItem(item.id, 1);
   renderStatusHUD();
   changeSpeaker(auctionFacility.name || "オークション会場");
-  await displayMessage(`${price}陳で「${item.name}」を競り落とした！`, { allowSubFocus: true });
+  await displayMessage(`${price}陳にて落札です！\n「${item.name}」を競り落とした！`, { allowSubFocus: true });
   
   const state = getAuctionState();
   state.session.roundIndex++;
   await proceedToNextRoundOrFinishDay();
 }
 
-async function resolveAuctionRoundAsLost(item, trueValue, lastBid) {
+async function resolveAuctionRoundAsLost(item, trueValue, lastBid, winnerName, winningPrice) {
   const penalty = Math.max(0, Math.round(lastBid * AUCTION_LOSE_PENALTY_RATIO));
   if (penalty > 0) changeGold(-penalty);
   renderStatusHUD();
   changeSpeaker(auctionFacility.name || "オークション会場");
-  await displayMessage(`競り負けてしまった……。入札額の一部、${penalty}陳を手数料として支払った。`, { allowSubFocus: true });
+  const winnerLine = winnerName ? `${winnerName}が${winningPrice}陳にて落札です！\n` : "";
+  await displayMessage(`${winnerLine}競り負けてしまった……。入札額の一部、${penalty}陳を手数料として支払った。`, { allowSubFocus: true });
   
   queueAuctionPendingResult(item, trueValue);
   const state = getAuctionState();
@@ -388,6 +469,7 @@ async function proceedToNextRoundOrFinishDay() {
     await runAuctionRound();
     return;
   }
+  hideAuctionParticipantPanel();
   changeSpeaker(auctionFacility.name || "オークション会場");
   await displayMessage("「本日の競りはこれで全て終わりだ。また次回お越しください。」", { allowSubFocus: true });
   showAuctionMenu();
@@ -413,6 +495,76 @@ async function hearAuctionResults() {
   
   state.pendingResults = [];
   showAuctionMenu();
+}
+
+// ===================================================================
+// ===== 要望対応：右上の参加者リストパネル（今回の出品・現在価格・参加者と入札額） =====
+// ===================================================================
+function showAuctionParticipantPanel() {
+  const panel = document.getElementById("auction-participant-panel");
+  if (panel) panel.classList.remove("hidden");
+}
+
+function hideAuctionParticipantPanel() {
+  const panel = document.getElementById("auction-participant-panel");
+  if (panel) panel.classList.add("hidden");
+  auctionRoundContext = null;
+}
+
+function renderAuctionParticipantPanel() {
+  const panel = document.getElementById("auction-participant-panel");
+  const ctx = auctionRoundContext;
+  if (!panel || !ctx) return;
+  panel.innerHTML = "";
+  
+  const header = document.createElement("p");
+  header.className = "auction-participant-panel-header";
+  header.textContent = `${ctx.roundLabel}回目の競り（${ctx.totalRounds}回中）`;
+  panel.appendChild(header);
+  
+  const itemLine = document.createElement("p");
+  itemLine.className = "auction-participant-panel-item";
+  itemLine.textContent = ctx.item ? `出品：「${ctx.item.name}」（ランク：${ctx.item.rank}）` : "出品：ー";
+  panel.appendChild(itemLine);
+  
+  if (ctx.currentPrice != null) {
+    const priceLine = document.createElement("p");
+    priceLine.className = "auction-participant-panel-price";
+    priceLine.textContent = `現在価格：${ctx.currentPrice}陳`;
+    panel.appendChild(priceLine);
+  }
+  
+  if ((ctx.npcs && ctx.npcs.length > 0) || ctx.playerBid != null) {
+    const list = document.createElement("div");
+    list.className = "auction-participant-panel-list";
+    
+    const rows = [];
+    if (ctx.playerBid != null) {
+      rows.push({ name: "あなた", bid: ctx.playerBid, active: true, isPlayer: true });
+    }
+    (ctx.npcs || []).forEach(npc => {
+      rows.push({ name: npc.name, bid: npc.currentBid || 0, active: npc.active, isPlayer: false });
+    });
+    rows.sort((a, b) => (b.bid || 0) - (a.bid || 0));
+    
+    rows.forEach(r => {
+      const row = document.createElement("div");
+      row.className = "auction-participant-row"
+        + (r.isPlayer ? " auction-participant-row-player" : "")
+        + (!r.active ? " auction-participant-row-inactive" : "");
+      const nameEl = document.createElement("span");
+      nameEl.className = "auction-participant-name";
+      nameEl.textContent = r.isPlayer ? `${r.name}（自分）` : r.name;
+      row.appendChild(nameEl);
+      const bidEl = document.createElement("span");
+      bidEl.className = "auction-participant-bid";
+      bidEl.textContent = r.active ? (r.bid > 0 ? `${r.bid}陳` : "様子見") : "降りた";
+      row.appendChild(bidEl);
+      list.appendChild(row);
+    });
+    
+    panel.appendChild(list);
+  }
 }
 
 // ===================================================================
@@ -460,6 +612,14 @@ function pickAuctionBidAmount({ title, min, max }) {
     const errorEl = document.getElementById("auction-bid-keypad-error");
     const gridEl = document.getElementById("auction-bid-keypad-grid");
     const buttons = gridEl ? Array.from(gridEl.querySelectorAll(".auction-bid-keypad-btn")) : [];
+    
+    // ★バグ修正：入札額入力中も裏の行き先メニュー（入札する／見送る等のボタン列）が
+    //   非表示クラス無しのまま残っていると、mainfunc.js側のArrowUp/Down用リスナーが
+    //   このテンキーより先にキー入力を横取りしてしまい、上下キーが一切効かなくなっていた。
+    //   テンキーを開いている間だけ行き先メニューを隠し、閉じたら元の表示状態に戻す
+    const locationMenuEl = document.getElementById("location-menu");
+    const locationMenuWasVisible = !!locationMenuEl && !locationMenuEl.classList.contains("hidden");
+    if (locationMenuWasVisible) locationMenuEl.classList.add("hidden");
     
     let valueStr = "";
     let cursorIndex = AUCTION_KEYPAD_LAYOUT.findIndex(c => c.type === "confirm");
@@ -512,6 +672,7 @@ function pickAuctionBidAmount({ title, min, max }) {
     
     function finish(result) {
       if (overlay) overlay.classList.add("hidden");
+      if (locationMenuWasVisible && locationMenuEl) locationMenuEl.classList.remove("hidden"); // ★隠した行き先メニューを元に戻す
       buttons.forEach(btn => { btn.onclick = null; });
       window.removeEventListener("keydown", handleKey);
       resolve(result);

@@ -2922,6 +2922,81 @@ html, body {
   margin: 0;
 }
 
+/* ★要望対応：オークション中に右上へ常時出す「今回の出品／参加者リスト」パネル（auction.js） */
+.auction-participant-panel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  width: 190px;
+  max-height: min(70vh, 480px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  background-color: rgba(0, 0, 0, 0.72);
+  border: 2px solid #ffc107;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 12px;
+}
+
+.auction-participant-panel.hidden {
+  display: none !important;
+}
+
+.auction-participant-panel-header {
+  color: #ffc107;
+  font-weight: bold;
+  font-size: 12px;
+  margin: 0 0 4px 0;
+}
+
+.auction-participant-panel-item {
+  color: #eee;
+  margin: 0 0 2px 0;
+  line-height: 1.4;
+}
+
+.auction-participant-panel-price {
+  color: #ffd700;
+  font-weight: bold;
+  margin: 0 0 6px 0;
+}
+
+.auction-participant-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-top: 1px solid #555;
+  padding-top: 6px;
+}
+
+.auction-participant-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #ccc;
+}
+
+.auction-participant-row-player {
+  color: #7fdcff;
+  font-weight: bold;
+}
+
+.auction-participant-row-inactive {
+  color: #777;
+  text-decoration: line-through;
+}
+
+.auction-participant-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auction-participant-bid {
+  flex-shrink: 0;
+}
+
 /* ===== カジノのスロット盤 ===== */
 .casino-slot-overlay {
   position: fixed;
