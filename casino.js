@@ -421,11 +421,13 @@ function animateRouletteSpin(resultNumber) {
 
   setRouletteSpinSceneVisible(true);
   const duration = 1800;
-  wheel.style.animationDuration = `${duration}ms`;
-  ball.style.animationDuration = `${duration}ms`;
+  wheel.style.animation = `roulette-wheel-spin ${duration}ms linear infinite`;
+  ball.style.animation = `roulette-ball-orbit ${duration}ms linear infinite`;
 
   return new Promise((resolve) => {
     setTimeout(() => {
+      wheel.style.animation = "none";
+      ball.style.animation = "none";
       setRouletteSpinSceneVisible(false);
       resolve();
     }, duration + 150);
@@ -525,22 +527,32 @@ async function pickRouletteBets() {
 
     function moveCursor(dx, dy) {
       const cur = cells[cursorIndex];
+      if (!cur) return;
+
       const curX = cur.colStart + cur.colSpan / 2;
       const curY = cur.row + cur.rowSpan / 2;
       let bestIndex = -1;
-      let bestScore = Infinity;
-      cells.forEach((c, i) => {
+      let bestDistance = Infinity;
+
+      cells.forEach((cell, i) => {
         if (i === cursorIndex) return;
-        const x = c.colStart + c.colSpan / 2;
-        const y = c.row + c.rowSpan / 2;
+        const x = cell.colStart + cell.colSpan / 2;
+        const y = cell.row + cell.rowSpan / 2;
         const relX = x - curX;
         const relY = y - curY;
-        const primary = dx !== 0 ? relX * dx : relY * dy;
-        if (primary <= 0.05) return;
-        const secondary = dx !== 0 ? Math.abs(relY) : Math.abs(relX);
-        const score = primary + secondary * 3;
-        if (score < bestScore) { bestScore = score; bestIndex = i; }
+
+        const dirX = dx !== 0 ? Math.sign(dx) : 0;
+        const dirY = dy !== 0 ? Math.sign(dy) : 0;
+        if (dirX !== 0 && relX * dirX <= 0) return;
+        if (dirY !== 0 && relY * dirY <= 0) return;
+
+        const distance = Math.abs(relX) + Math.abs(relY);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = i;
+        }
       });
+
       if (bestIndex >= 0) {
         cursorIndex = bestIndex;
         render();
@@ -571,9 +583,20 @@ async function pickRouletteBets() {
         event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, 1);
       } else if (event.key === "ArrowUp") {
         event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, -1);
+      } else if (event.key === "Enter" || event.key === "e" || event.key === "E") {
+        event.preventDefault(); event.stopImmediatePropagation();
+        if (selections.length > 0) {
+          finish(selections);
+        } else {
+          await addCurrentSelection();
+        }
       } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
         event.preventDefault(); event.stopImmediatePropagation();
-        await addCurrentSelection();
+        if (selections.length > 0) {
+          finish(selections);
+        } else {
+          await addCurrentSelection();
+        }
       } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
         event.preventDefault(); event.stopImmediatePropagation();
         finish(selections.length ? selections : null);
