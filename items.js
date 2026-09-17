@@ -322,14 +322,6 @@ const ITEM_MASTER = {
     rank: "S",
     listedPrice: 3000,
     trueValue: 3000,
-    // ★専用スキル「静かなる権威」：装備中に道具コマンドから発動できる。効果はbattle.jsのuseEquipmentBattleSkillが処理する
-    battleSkill: {
-      name: "静かなる権威",
-      description: "2ターンの間、相手の攻撃によるダメージを1/3にする。",
-      effect: "damageReduction",
-      duration: 2,
-      reductionRatio: 1 / 3
-    },
     params: {
       最大HP: 45,
       装備部位: "盾"
@@ -343,14 +335,6 @@ const ITEM_MASTER = {
     listedPrice: 5000,
     trueValue: 5000,
     restrictedClass: "性騎士", // ★この職業でないと装備できない
-    // ★専用スキル「約束された絶頂の剣♂」：装備中に道具コマンドから発動できる
-    battleSkill: {
-      name: "約束された絶頂の剣♂",
-      description: "1/3の確率で、相手に絶頂による行動不能を3ターン付与する。",
-      effect: "stunChance",
-      chance: 1 / 3,
-      duration: 3
-    },
     params: {
       攻撃力: 25,
       装備部位: "武器"

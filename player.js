@@ -346,6 +346,10 @@ function sanitizeLoadedPlayer(loadedPlayer) {
   if (!Array.isArray(loadedPlayer.disabledPassives)) loadedPlayer.disabledPassives = [];
   if (!loadedPlayer.enemyKillCounts || typeof loadedPlayer.enemyKillCounts !== "object") loadedPlayer.enemyKillCounts = {};
   if (typeof loadedPlayer.totalKillCount !== "number") loadedPlayer.totalKillCount = 0;
+  if (typeof loadedPlayer.totalDamageDealt !== "number") loadedPlayer.totalDamageDealt = 0;
+  if (typeof loadedPlayer.totalHealingDone !== "number") loadedPlayer.totalHealingDone = 0;
+  if (typeof loadedPlayer.totalDamageTaken !== "number") loadedPlayer.totalDamageTaken = 0;
+  if (!Array.isArray(loadedPlayer.unlockedAchievementIds)) loadedPlayer.unlockedAchievementIds = [];
   if (!loadedPlayer.areaVisitCounts || typeof loadedPlayer.areaVisitCounts !== "object") loadedPlayer.areaVisitCounts = {}; // ★旧セーブとの互換用
   if (!Array.isArray(loadedPlayer.completedQuestIds)) loadedPlayer.completedQuestIds = [];
   if (!Array.isArray(loadedPlayer.questsCompletedToday)) loadedPlayer.questsCompletedToday = []; // ★旧セーブとの互換用
