@@ -206,6 +206,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.facilities = data.facilities || [];
   scenarioProject.portraitCharacters = data.portraitCharacters || [];
   scenarioProject.recipes = data.recipes || [];
+  if (Array.isArray(data.randomNamePool)) scenarioProject.randomNamePool = data.randomNamePool; // ★要望対応：ランダム名前管理タブ
   scenarioProject.bgmTracks = data.bgmTracks || [];
   scenarioProject.mapAreas = data.mapAreas || [];
   scenarioProject.mapEdges = data.mapEdges || [];
@@ -391,6 +392,14 @@ function normalizeScenarioProject() {
   if (!Array.isArray(scenarioProject.flagDefs)) scenarioProject.flagDefs = []; // [{ name, description }, ...]（フラグ管理タブ）
   if (!Array.isArray(scenarioProject.variableDefs)) scenarioProject.variableDefs = []; // [{ name, description }, ...]（ゲーム変数管理タブ。値自体はscenarioVariablesに保存される）
   if (!Array.isArray(scenarioProject.recipes)) scenarioProject.recipes = []; // [{ id, name, shopType, mode, materials, baseItemId, resultItemId, resultCount, cost, description }, ...]（レシピ管理タブ）
+  // ★要望対応：オークションNPC等で使うランダム名前プール（ランダム名前管理タブ）。未設定時は既定の名前一覧を入れておく
+  if (!Array.isArray(scenarioProject.randomNamePool)) {
+    scenarioProject.randomNamePool = [
+      "ハルト", "ユウナ", "ソウマ", "アカリ", "リク", "サクラ", "ダイキ", "ミサキ",
+      "ケンタ", "ナナミ", "ショウ", "ユイ", "カイ", "メグミ", "タクマ", "ヒナタ",
+      "レオ", "アオイ", "シュン", "マナミ",
+    ];
+  }
   // ★要望対応：ログインボーナス。常に必ず7日分（1〜7日目）が揃った状態にしておく
   if (!Array.isArray(scenarioProject.loginBonusDays)) scenarioProject.loginBonusDays = [];
   for (let day = 0; day < 7; day++) {
@@ -1352,6 +1361,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "flags", label: "フラグ管理" },
   { view: "gamevars", label: "ゲーム変数管理" }, // ★要望対応：話ブロックのifで参照できる数値変数の管理タブ（システム変数一覧の「変数一覧」とは別物）
   { view: "recipes", label: "レシピ管理" },
+  { view: "randomnames", label: "ランダム名前管理" }, // ★要望対応：オークションNPC等のランダム名前バリエーション管理
   { view: "loginbonus", label: "ログボ報酬" }, // ★要望対応：ログインボーナス（7日分の報酬編集）
   { view: "companionchat", label: "会話AI設定", enabledByDefault: false }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集。安定するまで非表示
   { view: "companions", label: "仲間編集" },
@@ -1497,6 +1507,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "flags") renderFlagManager(bodyEl);
   else if (scenarioBuildSubView === "gamevars") renderVariableManager(bodyEl);
   else if (scenarioBuildSubView === "recipes") renderRecipeManager(bodyEl);
+  else if (scenarioBuildSubView === "randomnames") renderRandomNameManager(bodyEl);
   else if (scenarioBuildSubView === "companions") renderCompanionManager(bodyEl);
   else if (scenarioBuildSubView === "classes") renderClassStatsManager(bodyEl);
   else if (scenarioBuildSubView === "bgm") renderEntityManager(bodyEl, getBgmManagerConfig());
@@ -5455,6 +5466,91 @@ function buildFlagDefRow(def) {
   row.appendChild(deleteBtn);
   
   return row;
+}
+
+// ===================================================================
+// ===== 要望対応：ランダム名前管理（オークションNPC等の名前バリエーション） =====
+// ===================================================================
+function renderRandomNameManager(container) {
+  const introEl = document.createElement("p");
+  introEl.className = "devmode-note";
+  introEl.textContent = "オークションのNPC入札者など、ゲーム内でランダムに名前が必要な場面で使うファーストネームの一覧です。多めに登録しておくと、同じ名前ばかりにならず多様になります。";
+  container.appendChild(introEl);
+  
+  const list = document.createElement("div");
+  list.className = "scenariobuild-list";
+  container.appendChild(list);
+  
+  scenarioProject.randomNamePool.forEach((name, i) => {
+    const row = document.createElement("div");
+    row.className = "scenariobuild-condition-row";
+    row.style.justifyContent = "space-between";
+    row.style.gap = "8px";
+    
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "scenariobuild-title-input";
+    nameInput.value = name || "";
+    nameInput.placeholder = "例：ハルト";
+    nameInput.onchange = () => {
+      scenarioProject.randomNamePool[i] = nameInput.value.trim();
+      markScenarioBuildDirty();
+      if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
+    };
+    row.appendChild(nameInput);
+    
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "devmode-btn devmode-btn-danger";
+    deleteBtn.textContent = "削除";
+    deleteBtn.onclick = (event) => {
+      event.stopPropagation();
+      scenarioProject.randomNamePool.splice(i, 1);
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    row.appendChild(deleteBtn);
+    
+    list.appendChild(row);
+  });
+  
+  const addBtn = document.createElement("button");
+  addBtn.className = "devmode-btn";
+  addBtn.textContent = "＋ 名前を追加";
+  addBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioProject.randomNamePool.push("");
+    markScenarioBuildDirty();
+    renderScenarioBuildPanel();
+  };
+  container.appendChild(addBtn);
+  
+  // ★何件も手入力するのは大変なので、改行・読点区切りでまとめて貼り付けられる欄も用意する
+  const bulkHeading = document.createElement("h4");
+  bulkHeading.className = "scenariobuild-subheading";
+  bulkHeading.textContent = "まとめて追加（改行または「、」「,」区切りで貼り付け）";
+  container.appendChild(bulkHeading);
+  
+  const bulkTextarea = document.createElement("textarea");
+  bulkTextarea.className = "scenariobuild-textarea";
+  bulkTextarea.rows = 3;
+  bulkTextarea.placeholder = "例：ハルト、ユウナ、ソウマ";
+  container.appendChild(bulkTextarea);
+  
+  const bulkAddBtn = document.createElement("button");
+  bulkAddBtn.className = "devmode-btn";
+  bulkAddBtn.textContent = "まとめて追加する";
+  bulkAddBtn.onclick = (event) => {
+    event.stopPropagation();
+    const names = bulkTextarea.value
+      .split(/[\n,、]/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    if (names.length === 0) return;
+    scenarioProject.randomNamePool.push(...names);
+    markScenarioBuildDirty();
+    renderScenarioBuildPanel();
+  };
+  container.appendChild(bulkAddBtn);
 }
 
 // ★状態管理タブは他のシナリオビルド画面と逆に、左のメイン画面に状態異常/状態強化の一覧を出し、
@@ -10286,7 +10382,7 @@ function renderDataManager(container) {
   
   const statsEl = document.createElement("p");
   statsEl.className = "devmode-note";
-  statsEl.textContent = `現在：話${scenarioProject.chapters.length}件／キャラ${scenarioProject.characters.length}件／敵${scenarioProject.enemies.length}件／ボス${scenarioProject.bosses.length}件／アイテム${scenarioProject.items.length}件／技${scenarioProject.skills.length}件／仲間${scenarioProject.companions.length}件／マップ${scenarioProject.mapAreas.length}件／フラグ${scenarioProject.flagDefs.length}件／変数${scenarioProject.variableDefs.length}件／レシピ${scenarioProject.recipes.length}件`;
+  statsEl.textContent = `現在：話${scenarioProject.chapters.length}件／キャラ${scenarioProject.characters.length}件／敵${scenarioProject.enemies.length}件／ボス${scenarioProject.bosses.length}件／アイテム${scenarioProject.items.length}件／技${scenarioProject.skills.length}件／仲間${scenarioProject.companions.length}件／マップ${scenarioProject.mapAreas.length}件／フラグ${scenarioProject.flagDefs.length}件／変数${scenarioProject.variableDefs.length}件／レシピ${scenarioProject.recipes.length}件／ランダム名前${scenarioProject.randomNamePool.length}件`;
   container.appendChild(statsEl);
 }
 
@@ -10345,6 +10441,7 @@ function exportGameSettingsAsJsFile() {
     facilities: scenarioProject.facilities,
     portraitCharacters: scenarioProject.portraitCharacters,
     recipes: scenarioProject.recipes,
+    randomNamePool: scenarioProject.randomNamePool, // ★要望対応：ランダム名前管理タブ
     bgmTracks: scenarioProject.bgmTracks,
     mapAreas: scenarioProject.mapAreas,
     mapEdges: scenarioProject.mapEdges,
