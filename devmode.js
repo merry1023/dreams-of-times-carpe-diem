@@ -112,7 +112,11 @@ function renderDevModePanel() {
   const itemKeys = typeof ITEM_MASTER !== "undefined" ? Object.keys(ITEM_MASTER) : [];
   itemKeys.forEach((itemId) => {
     const option = document.createElement("option");
+    const master = ITEM_MASTER[itemId];
+    const label = master && master.name ? `${master.name} (${itemId})` : itemId;
     option.value = itemId;
+    option.label = label;
+    option.textContent = label;
     itemGrantDatalist.appendChild(option);
   });
   container.appendChild(itemGrantDatalist);
