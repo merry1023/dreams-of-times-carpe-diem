@@ -1199,6 +1199,11 @@ function updateMiniStatusHudVisibility(tabId) {
 }
 
 function switchTab(tabId) {
+  if (!tabId || !isPlayTabEnabled(tabId)) {
+    const fallbackTabId = getVisiblePlayTabIds()[0] || "tab-main";
+    tabId = fallbackTabId;
+  }
+
   const contents = document.querySelectorAll('.tab-content');
   const buttons = document.querySelectorAll('.tab-btn');
   
@@ -1291,26 +1296,63 @@ function switchTab(tabId) {
   });
 }
 
+function applyPlayTabVisibility() {
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+  const visibleTabIds = new Set(getVisiblePlayTabIds());
+  const currentActiveTab = document.querySelector('.tab-content.active');
+  const fallbackTabId = getVisiblePlayTabIds()[0] || 'tab-main';
+  const targetTabId = currentActiveTab && visibleTabIds.has(currentActiveTab.id) ? currentActiveTab.id : fallbackTabId;
+
+  tabButtons.forEach(btn => {
+    const onClickAttr = btn.getAttribute('onclick') || '';
+    const tabId = onClickAttr.match(/switchTab\('([^']+)'\)/)?.[1];
+    const enabled = tabId ? visibleTabIds.has(tabId) : true;
+    // ★バグ修正：インラインstyleで直接非表示にすると、後からswitchTab()がクラスだけを
+    //   切り替えても表示が変わらなくなる（インラインstyleの方がCSSのクラス指定より優先される）。
+    //   非表示は専用クラス＋!importantで表現し、表示・非アクティブの切り替えはクラスだけに任せる
+    btn.classList.toggle('tab-hidden-by-setting', !enabled);
+    btn.classList.toggle('active', tabId === targetTabId);
+  });
+
+  tabContents.forEach(content => {
+    const enabled = visibleTabIds.has(content.id);
+    content.classList.toggle('tab-hidden-by-setting', !enabled);
+    content.classList.toggle('active', enabled && content.id === targetTabId);
+  });
+
+  if (currentActiveTab && currentActiveTab.id !== targetTabId && typeof switchTab === 'function') {
+    switchTab(targetTabId);
+  }
+
+  if (typeof updateMiniStatusHudVisibility === 'function') {
+    updateMiniStatusHudVisibility(targetTabId);
+  }
+}
+
 // ② Qキー / Eキーでタブを左右に切り替える（キーボード用）
+// ★要望対応：Q/Eのタブ切り替えは、メイン画面ではなくサブ画面全体で有効に戻す。
+//   直前の不具合は「モーダルの選択は変わっているが、画面側のアクティブタブがそのまま残っていた」ことだったため、
+//   サブ画面側ではタブの見た目と実際の選択を常に同じにする運用に戻す
 window.addEventListener("keydown", (event) => {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★要望対応：シナリオエディタ表示中は本編を操作させない
-  if (controlFocus !== "sub") return; // ★サブ画面を操作している時だけ、タブ切り替えを有効にする
-  
-  const tabIds = ["tab-main", "tab-inventory", "tab-skill", "tab-companions", "tab-companionchat", "tab-strength", "tab-equipment", "tab-convenience", "tab-log", "tab-setting"]; // ★要望対応：会話タブをQ/E切り替えの対象に追加
-  
-  // 現在アクティブになっているタブのIDを探す
+  if (event.repeat) return;
+  if (isGameDialogOpen) return; // ★確認ダイアログが開いている間は、そちらを優先する
+  if (controlFocus !== "sub") return; // ★メイン画面ではQ/Eでタブを動かさない
+
   const currentActive = document.querySelector('.tab-content.active');
   if (!currentActive) return;
-  
+
+  const tabIds = getVisiblePlayTabIds();
+  if (!tabIds.length) return;
+
   let currentIndex = tabIds.indexOf(currentActive.id);
-  
-  // KEY_CONFIG に設定したキーが含まれているかで判定する
+  if (currentIndex < 0) currentIndex = 0;
+
   if (KEY_CONFIG.tabLeftKey.includes(event.key)) {
-    // 【左へ】
     currentIndex = (currentIndex - 1 + tabIds.length) % tabIds.length;
     switchTab(tabIds[currentIndex]);
   } else if (KEY_CONFIG.tabRightKey.includes(event.key)) {
-    // 【右へ】
     currentIndex = (currentIndex + 1) % tabIds.length;
     switchTab(tabIds[currentIndex]);
   }

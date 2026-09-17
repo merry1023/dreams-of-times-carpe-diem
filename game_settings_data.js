@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789536284690,
+  "version": 1789611172950,
   "enemies": [
     {
       "id": "goblin",
@@ -10041,6 +10041,30 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         }
       ],
       "shopOffers": []
+    },
+    {
+      "id": "facility_1789601498255_1",
+      "type": "casino",
+      "name": "スペル=マ・ギア・ザ・カジノ",
+      "bgTrack": "",
+      "bgImage": "",
+      "ownerDialogue": "",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "enterBlocks": [
+        {
+          "type": "dialogue",
+          "speaker": "バニーガール",
+          "text": "こんにちは！ここではいろんな賭け事ができますよ！"
+        },
+        {
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "うおお！"
+        }
+      ]
     }
   ],
   "portraitCharacters": [],
@@ -10940,7 +10964,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "facility_1789441646679_1",
         "facility_1787795897389_1",
         "facility_1788244866711_1",
-        "facility_1788134408511_1"
+        "facility_1788134408511_1",
+        "facility_1789601498255_1",
+        "facility_1789442530326_5"
       ],
       "mapNodeSize": 20,
       "leftTarget": "custom_area_1788853853599_1",

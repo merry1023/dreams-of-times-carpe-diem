@@ -24,6 +24,19 @@ const TEXT_SPEED_LEVELS = [
   { id: "instant", label: "瞬間", ms: 0 }
 ];
 
+const PLAY_SCREEN_TAB_DEFS = [
+  { id: "tab-main", label: "メイン", enabledByDefault: true },
+  { id: "tab-inventory", label: "インベントリ", enabledByDefault: true },
+  { id: "tab-skill", label: "スキル", enabledByDefault: true },
+  { id: "tab-companions", label: "仲間", enabledByDefault: true },
+  { id: "tab-companionchat", label: "会話", enabledByDefault: false },
+  { id: "tab-strength", label: "強さ", enabledByDefault: true },
+  { id: "tab-equipment", label: "装備", enabledByDefault: true },
+  { id: "tab-convenience", label: "便利", enabledByDefault: true },
+  { id: "tab-log", label: "ログ", enabledByDefault: true },
+  { id: "tab-setting", label: "設定", enabledByDefault: true }
+];
+
 // ログの記憶件数の選択肢
 const LOG_MAX_LEVELS = [50, 100, 200, 300];
 
@@ -34,9 +47,82 @@ let gameSettings = {
   showCorrectChoice: false, // ★ONにすると、選択肢のうち「正解」（話が進む方）に印を付けて表示する
   developerModeUnlocked: false, // ★開発者モード（devmode.js）のロック状態
   focusMainSwitchesToMainTab: false, // ★ONの時、Aキーでメイン画面に移行すると、サブ画面もメインタブに戻る（要望対応）
-  showMainTabParams: false // ★ONにすると主人公・仲間のパラメータをメインタブ内に表示する。OFF（デフォルト）だと
+  showMainTabParams: false, // ★ONにすると主人公・仲間のパラメータをメインタブ内に表示する。OFF（デフォルト）だと
                             //   メインタブには表示せず、常時左上に表示する（要望対応）
+  playTabVisibility: {}
 };
+
+function getPlayTabVisibilityMap() {
+  if (!gameSettings || typeof gameSettings !== "object") return {};
+  if (!gameSettings.playTabVisibility || typeof gameSettings.playTabVisibility !== "object") {
+    gameSettings.playTabVisibility = {};
+  }
+  PLAY_SCREEN_TAB_DEFS.forEach(tab => {
+    if (typeof gameSettings.playTabVisibility[tab.id] !== "boolean") {
+      gameSettings.playTabVisibility[tab.id] = tab.enabledByDefault !== false;
+    }
+  });
+  return gameSettings.playTabVisibility;
+}
+
+function isPlayTabEnabled(tabId) {
+  if (!tabId) return false;
+  const map = getPlayTabVisibilityMap();
+  return map[tabId] !== false;
+}
+
+function getVisiblePlayTabIds() {
+  return PLAY_SCREEN_TAB_DEFS.filter(tab => isPlayTabEnabled(tab.id)).map(tab => tab.id);
+}
+
+function renderPlayTabVisibilityManagerPanel() {
+  const container = document.getElementById("settings-list-container");
+  if (!container) return;
+
+  const panel = document.createElement("div");
+  panel.className = "setting-list";
+  panel.style.marginTop = "16px";
+  panel.style.borderTop = "1px solid rgba(255,255,255,0.2)";
+  panel.style.paddingTop = "12px";
+
+  const title = document.createElement("div");
+  title.className = "setting-label";
+  title.style.marginBottom = "8px";
+  title.textContent = "プレイ画面タブ管理";
+  panel.appendChild(title);
+
+  PLAY_SCREEN_TAB_DEFS.forEach(tab => {
+    const row = document.createElement("label");
+    row.style.display = "flex";
+    row.style.justifyContent = "space-between";
+    row.style.alignItems = "center";
+    row.style.padding = "6px 0";
+    row.style.color = "#fff";
+
+    const label = document.createElement("span");
+    label.textContent = tab.label;
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = isPlayTabEnabled(tab.id);
+    checkbox.onchange = () => {
+      const map = getPlayTabVisibilityMap();
+      map[tab.id] = checkbox.checked;
+      saveSettings();
+      if (typeof applyPlayTabVisibility === "function") applyPlayTabVisibility();
+      if (document.querySelector('.tab-content.active') && !isPlayTabEnabled(document.querySelector('.tab-content.active').id)) {
+        const fallbackTab = getVisiblePlayTabIds()[0] || "tab-main";
+        if (typeof switchTab === "function") switchTab(fallbackTab);
+      }
+    };
+
+    row.appendChild(label);
+    row.appendChild(checkbox);
+    panel.appendChild(row);
+  });
+
+  container.appendChild(panel);
+}
 
 // ★ページ読み込み時に一度だけ呼ぶ（script.js）。保存済みの設定があれば読み込み、無ければ初期値のまま
 function loadSettings() {
@@ -49,7 +135,9 @@ function loadSettings() {
   } catch (e) {
     console.error("設定の読み込みに失敗しました", e);
   }
+  getPlayTabVisibilityMap();
   applySettings();
+  if (typeof applyPlayTabVisibility === "function") applyPlayTabVisibility();
   if (typeof showDevModeToggleButton === "function") showDevModeToggleButton(); // devmode.js
   startAutoSaveTimer(); // ★要望対応：5分ごとの自動セーブを開始する（gameSettings.autoSaveEnabledがOFFなら中では何もしない）
 }
@@ -140,9 +228,10 @@ window.addEventListener("beforeunload", () => autoSaveToSlot("onclose"));
 // ===== 設定タブの描画・操作 =====
 
 let settingsCursorIndex = 0;
-const SETTINGS_ROW_COUNT = 11; // 0:文字送り速度 1:ログ記憶数 2:オートセーブON/OFF 3:オートセーブから再開する
+let isPlayTabVisibilityPanelOpen = false;
+const SETTINGS_ROW_COUNT = 12; // 0:文字送り速度 1:ログ記憶数 2:オートセーブON/OFF 3:オートセーブから再開する
                                // 4:正解の選択肢を表示 5:Aキーでメインタブに戻す 6:メインタブのパラメータ表示
-                               // 7:全画面表示 8:開発者ボタン 9:Googleアカウント（auth.js） 10:メインメニューに戻る
+                               // 7:全画面表示 8:開発者ボタン 9:Googleアカウント（auth.js） 10:プレイ画面のタブ管理 11:メインメニューに戻る
 
 function renderSettingsTab() {
   // ★バグ修正：以前はtab-setting自体のinnerHTMLを毎回まるごと書き換えていたため、
@@ -170,6 +259,7 @@ function renderSettingsTab() {
     { label: "全画面表示", value: isFullscreenActive() ? "ON" : "OFF", hint: "決定／タップで切替（対応していない端末・ブラウザでは反応しません）" },
     { label: "開発者ボタン", value: gameSettings.developerModeUnlocked ? "解除済み" : "未解除", hint: gameSettings.developerModeUnlocked ? "画面左端のタブから開発者モードを開けます" : "決定でパスワードを入力" },
     (typeof getGoogleAccountSettingsRow === "function") ? getGoogleAccountSettingsRow() : { label: "Googleアカウント", value: "未ログイン", hint: "決定でログイン" }, // auth.js（要望対応）
+    { label: "プレイ画面のタブ管理", value: "開く", hint: "決定で表示／非表示を切り替える" },
     { label: "メインメニューに戻る", value: "", hint: "決定で実行（セーブしていない進行状況は失われます）" }
   ];
   
@@ -238,6 +328,10 @@ function renderSettingsTab() {
   });
   
   container.appendChild(list);
+
+  if (isPlayTabVisibilityPanelOpen) {
+    renderPlayTabVisibilityManagerPanel();
+  }
   
   const hintEl = document.createElement("p");
   hintEl.className = "setting-hint";
@@ -346,6 +440,9 @@ function executeSettingsDecideAction(index) {
   } else if (index === 9) {
     if (typeof handleGoogleAccountSettingsDecide === "function") handleGoogleAccountSettingsDecide(); // auth.js（要望対応：Googleアカウントログイン/ログアウト）
   } else if (index === 10) {
+    isPlayTabVisibilityPanelOpen = !isPlayTabVisibilityPanelOpen;
+    renderSettingsTab();
+  } else if (index === 11) {
     handleReturnToMainMenuFromSettings();
   }
 }

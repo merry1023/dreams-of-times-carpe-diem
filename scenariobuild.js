@@ -49,6 +49,7 @@ let scenarioProject = {
     protagonistPersonality: "", // 主人公の性格・口調の指針（会話AIが参考にする）
     companions: {}               // { [仲間のid]: { epithet: "", personality: "" }, ... }
   },
+  scenarioBuildTabVisibility: {},
   // ★組み込み（builtin）のデータを削除した時、次回読み込み時に自動で復活してしまわないように記録しておく置き場所。
   //   「編集・削除できない」問題の多くは、実は削除できていたのに毎回ここでの記録が無く復活していたことが原因だった
   deletedBuiltinIds: { chapters: [], characters: [], enemies: [], bosses: [], items: [], bgmTracks: [], mapAreas: [], skills: [], companions: [] }
@@ -1337,6 +1338,7 @@ window.addEventListener("beforeunload", (event) => {
 
 // ★左（メイン）＝話一覧／ブロックエディタ、右（サブ）＝キャラ・敵・ボス・アイテム・BGM・データ管理。
 //   ゲームの画面構成（メイン画面／サブ画面）と同じ考え方で、常に両方が見えている状態にする
+//   タブ管理を追加し、会話AI設定は安定するまで非表示にする（デフォルトOFF）
 const SCENARIOBUILD_SUB_TABS = [
   { view: "characters", label: "キャラ管理" },
   { view: "enemies", label: "敵設定" },
@@ -1351,7 +1353,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "gamevars", label: "ゲーム変数管理" }, // ★要望対応：話ブロックのifで参照できる数値変数の管理タブ（システム変数一覧の「変数一覧」とは別物）
   { view: "recipes", label: "レシピ管理" },
   { view: "loginbonus", label: "ログボ報酬" }, // ★要望対応：ログインボーナス（7日分の報酬編集）
-  { view: "companionchat", label: "会話AI設定" }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集
+  { view: "companionchat", label: "会話AI設定", enabledByDefault: false }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集。安定するまで非表示
   { view: "companions", label: "仲間編集" },
   { view: "classes", label: "職業編集" },
   { view: "bgm", label: "BGM設定" },
@@ -1360,8 +1362,36 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "portraits", label: "立ち絵管理" },
   { view: "endings", label: "エンディング一覧" },
   { view: "variables", label: "変数一覧" }, // ★要望対応：式の中で使えるシステム変数の名前が分かるよう、サブ画面に一覧を出す
-  { view: "data", label: "データ管理" }
+  { view: "data", label: "データ管理" },
+  { view: "tabmanager", label: "タブ管理" }
 ];
+
+function getScenarioBuildTabVisibilityMap() {
+  if (!scenarioProject || !scenarioProject.scenarioBuildTabVisibility || typeof scenarioProject.scenarioBuildTabVisibility !== "object") {
+    scenarioProject.scenarioBuildTabVisibility = {};
+  }
+  SCENARIOBUILD_SUB_TABS.forEach(tab => {
+    if (tab.view === "tabmanager") return;
+    const hasExplicitValue = typeof scenarioProject.scenarioBuildTabVisibility[tab.view] === "boolean";
+    if (!hasExplicitValue) {
+      scenarioProject.scenarioBuildTabVisibility[tab.view] = tab.enabledByDefault !== false;
+    }
+  });
+  if (typeof scenarioProject.scenarioBuildTabVisibility.companionchat !== "boolean") {
+    scenarioProject.scenarioBuildTabVisibility.companionchat = false;
+  }
+  return scenarioProject.scenarioBuildTabVisibility;
+}
+
+function isScenarioBuildTabEnabled(view) {
+  if (view === "tabmanager") return true;
+  const visibility = getScenarioBuildTabVisibilityMap();
+  return visibility[view] !== false;
+}
+
+function getScenarioBuildVisibleTabs() {
+  return SCENARIOBUILD_SUB_TABS.filter(tab => tab.view === "tabmanager" || isScenarioBuildTabEnabled(tab.view));
+}
 
 function renderScenarioBuildPanel() {
   updateUndoRedoButtons();
@@ -1425,9 +1455,13 @@ function renderScenarioBuildSub() {
   const tabsEl = document.getElementById("scenariobuild-sub-tabs");
   const bodyEl = document.getElementById("scenariobuild-sub-content");
   if (!tabsEl || !bodyEl) return;
+  const visibleTabs = getScenarioBuildVisibleTabs();
+  if (!visibleTabs.some(tab => tab.view === scenarioBuildSubView)) {
+    scenarioBuildSubView = visibleTabs[0] ? visibleTabs[0].view : "characters";
+  }
   
   tabsEl.innerHTML = "";
-  SCENARIOBUILD_SUB_TABS.forEach(tab => {
+  visibleTabs.forEach(tab => {
     const btn = document.createElement("button");
     btn.className = "devmode-btn scenariobuild-tab-btn" + (scenarioBuildSubView === tab.view ? " scenariobuild-tab-btn-active" : "");
     btn.textContent = tab.label;
@@ -1472,11 +1506,49 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "endings") renderEndingListManager(bodyEl);
   else if (scenarioBuildSubView === "variables") renderSkillVariableReference(bodyEl); // ★要望対応
   else if (scenarioBuildSubView === "data") renderDataManager(bodyEl);
+  else if (scenarioBuildSubView === "tabmanager") renderScenarioBuildTabManager(bodyEl);
 }
 
 // ===================================================================
 // ===== 変数一覧（要望対応：式の中で使えるシステム変数の名前が分からないので一覧を出してほしい） =====
 // ===================================================================
+function renderScenarioBuildTabManager(container) {
+  const introEl = document.createElement("p");
+  introEl.className = "devmode-note";
+  introEl.textContent = "シナリオエディタの右側タブを有効／無効に切り替えられます。会話AI設定はまだ安定していないため、デフォルトでは非表示です。";
+  container.appendChild(introEl);
+  
+  const rows = document.createElement("div");
+  rows.className = "scenariobuild-list";
+  container.appendChild(rows);
+  
+  SCENARIOBUILD_SUB_TABS.filter(tab => tab.view !== "tabmanager").forEach(tab => {
+    const row = document.createElement("label");
+    row.className = "scenariobuild-condition-row";
+    row.style.justifyContent = "space-between";
+    row.style.gap = "12px";
+    
+    const label = document.createElement("span");
+    label.textContent = tab.label;
+    row.appendChild(label);
+    
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = isScenarioBuildTabEnabled(tab.view);
+    checkbox.onchange = () => {
+      getScenarioBuildTabVisibilityMap();
+      scenarioProject.scenarioBuildTabVisibility[tab.view] = checkbox.checked;
+      if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
+      if (!isScenarioBuildTabEnabled(scenarioBuildSubView)) {
+        scenarioBuildSubView = getScenarioBuildVisibleTabs()[0].view;
+      }
+      renderScenarioBuildPanel();
+    };
+    row.appendChild(checkbox);
+    rows.appendChild(row);
+  });
+}
+
 function renderSkillVariableReference(container) {
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
@@ -7335,7 +7407,7 @@ function buildClassStatsRow(className) {
 // ===================================================================
 // ===== サブ画面：施設編集（村に追加できる「酒場/宿屋/店/冒険する」以外の施設） =====
 // ===================================================================
-const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", flavor: "その他（セリフのみ）" };
+const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", flavor: "その他（セリフのみ）" };
 
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
@@ -9825,17 +9897,19 @@ function renderMaintenanceModeManager(container) {
   container.appendChild(permissionNote);
   
   // ★取得した状態に合わせて、状態表示・ボタンの文言・押せるかどうかを更新する
-  const refreshUi = (enabled) => {
-    statusValue.textContent = enabled ? "🔴 メンテナンス中（ON）" : "🟢 通常稼働中（OFF）";
+  const refreshUi = async (enabled) => {
+    if (typeof authReadyPromise !== "undefined") await authReadyPromise; // auth.js：ログイン状態が確定してから表示を決める
+    const currentEnabled = typeof enabled === "boolean" ? enabled : await fetchMaintenanceModeEnabled();
     const canToggle = typeof isDeveloperAccount === "function" && isDeveloperAccount(); // auth.js
+    statusValue.textContent = currentEnabled ? "🔴 メンテナンス中（ON）" : "🟢 通常稼働中（OFF）";
     toggleBtn.disabled = !canToggle;
-    toggleBtn.textContent = enabled ? "メンテナンスモードをOFFにする" : "メンテナンスモードをONにする";
+    toggleBtn.textContent = currentEnabled ? "メンテナンスモードをOFFにする" : "メンテナンスモードをONにする";
     permissionNote.textContent = canToggle ? "" : "※この切り替えはGoogleでログインした開発者アカウントのみ実行できます。";
     
     toggleBtn.onclick = async (event) => {
       event.stopPropagation();
       if (!canToggle) return;
-      const nextEnabled = !enabled;
+      const nextEnabled = !currentEnabled;
       const confirmMessage = nextEnabled
         ? "メンテナンスモードをONにしますか？\n以後、セーブデータをロードした全プレイヤーの画面が真っ黒になり、操作できなくなります。"
         : "メンテナンスモードをOFFにしますか？";
@@ -9850,14 +9924,15 @@ function renderMaintenanceModeManager(container) {
         refreshUi(nextEnabled);
       } else {
         if (typeof showGameAlert === "function") await showGameAlert("更新に失敗しました。通信状態やログイン状態（開発者アカウントか）を確認してもう一度お試しください。");
-        refreshUi(enabled); // ★失敗時は元の状態のまま表示し直す
+        refreshUi(currentEnabled); // ★失敗時は元の状態のまま表示し直す
       }
     };
   };
   
+  window.refreshMaintenanceModeManagerUi = refreshUi;
   refreshUi(false); // ★Firestoreへの問い合わせが終わるまでの仮表示（OFF扱い）
   if (typeof fetchMaintenanceModeEnabled === "function") {
-    fetchMaintenanceModeEnabled().then(refreshUi); // maintenance.js
+    fetchMaintenanceModeEnabled().then((enabled) => refreshUi(enabled)); // maintenance.js
   }
 }
 // ===================================================================

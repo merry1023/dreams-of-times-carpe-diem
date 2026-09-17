@@ -47,15 +47,30 @@ async function fetchMaintenanceModeEnabled() {
 
 // シナリオビルドの「データ管理」タブから呼ぶ：ON/OFFをFirestoreに書き込む。成否をboolで返す
 // ★書き込みの可否自体はFirestore側のセキュリティルール（開発者アカウントのメールアドレスのみ許可）で守る想定。
-//   ここでのcurrentUserチェックは、未ログイン時に無駄な通信を発生させないための事前チェック
+//   ここではauthReadyPromiseとfirebase.auth().currentUserの両方を確認して、ログイン直後や認証遅延のケースでも
+//   「未ログイン扱い」にならないようにする。
+async function getCurrentAuthUserForMaintenance() {
+  try {
+    if (typeof firebase !== "undefined" && firebase.auth && typeof firebase.auth === "function") {
+      const signedInUser = firebase.auth().currentUser;
+      if (signedInUser) return signedInUser;
+    }
+  } catch (e) {
+    // 認証情報の取得に失敗した場合は次のフォールバックへ進む
+  }
+  return (typeof currentUser !== "undefined" && currentUser) ? currentUser : null;
+}
+
 async function setMaintenanceModeEnabled(enabled) {
   try {
-    if (typeof firebase === "undefined" || !firebase.firestore) return false;
-    if (typeof currentUser === "undefined" || !currentUser) return false; // auth.js
+    if (typeof firebase === "undefined" || !firebase.firestore || !firebase.auth) return false;
+    if (typeof authReadyPromise !== "undefined") await authReadyPromise; // auth.js：ログイン状態が確定するまで待つ
+    const user = await getCurrentAuthUserForMaintenance();
+    if (!user) return false;
     await firebase.firestore().collection(MAINTENANCE_CONFIG_COLLECTION).doc(MAINTENANCE_CONFIG_DOC).set({
       maintenanceMode: !!enabled,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedByEmail: currentUser.email || null
+      updatedByEmail: user.email || null
     }, { merge: true });
     return true;
   } catch (e) {

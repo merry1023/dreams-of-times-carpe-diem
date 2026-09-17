@@ -80,6 +80,53 @@
         </div>
       </div>
     </div>
+
+    <div id="casino-slot-board" class="casino-slot-overlay hidden">
+      <div class="casino-slot-panel">
+        <div class="casino-slot-header">
+          <h3 class="casino-slot-title">ジャグラー</h3>
+          <span class="casino-slot-hint">盤面が揃えば当たり！</span>
+        </div>
+        <div class="casino-slot-machine">
+          <div id="casino-slot-lever" class="casino-slot-lever">
+            <div class="casino-slot-lever-handle"></div>
+            <div class="casino-slot-lever-knob"></div>
+          </div>
+          <div id="casino-slot-grid" class="casino-slot-grid"></div>
+        </div>
+        <div id="casino-slot-bet-panel" class="casino-slot-bet-panel">
+          <button id="casino-slot-bet-dec" class="casino-slot-bet-btn" type="button" aria-label="掛金を減らす">◀</button>
+          <div id="casino-slot-bet-value" class="casino-slot-bet-value">10陳</div>
+          <button id="casino-slot-bet-inc" class="casino-slot-bet-btn" type="button" aria-label="掛金を増やす">▶</button>
+        </div>
+        <div class="casino-slot-bet-hint">左右キーまたはボタンで掛金を調整してZで開始</div>
+        <div id="casino-slot-result" class="casino-slot-result hidden"></div>
+        <div class="casino-slot-controls">
+          <button id="casino-slot-stop-btn" class="casino-slot-stop-btn" type="button">開始<span class="key-badge">Z</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="casino-roulette-board" class="casino-roulette-overlay hidden">
+      <div class="casino-roulette-panel">
+        <div class="casino-roulette-header">
+          <h3 class="casino-roulette-title">ルーレット</h3>
+          <span class="casino-roulette-hint">方向キーで場所を選び、Cで追加</span>
+        </div>
+        <div id="casino-roulette-status" class="casino-roulette-status">掛け済み: 0陳 / 0箇所</div>
+        <div id="casino-roulette-wheel-scene" class="casino-roulette-wheel-scene hidden">
+          <div class="roulette-wheel-outer">
+            <div id="casino-roulette-wheel" class="roulette-wheel"></div>
+            <div id="casino-roulette-ball" class="roulette-ball"></div>
+          </div>
+        </div>
+        <div id="casino-roulette-grid" class="casino-roulette-grid"></div>
+        <div class="casino-roulette-footer">
+          <button id="casino-roulette-confirm" class="devmode-btn">確定<span class="key-badge">C</span></button>
+          <button id="casino-roulette-cancel" class="devmode-btn">やめる<span class="key-badge">X</span></button>
+        </div>
+      </div>
+    </div>
     
     <!-- ★オークションの入札額入力（auction.js pickAuctionBidAmount）。テンキー方式。スマホはタップ、
          キーボードは矢印キーでボタンを選んでZ/スペースで入力、Xでキャンセル -->
@@ -407,6 +454,7 @@
 <script src="builtin_chapters_seed.js"></script>
 <script src="scenario_only_data.js"></script>
 <script src="game_settings_data.js"></script>
+<script src="casino.js"></script>
 <script src="town.js"></script>
 <script src="crafting.js"></script>
 <script src="questboard.js"></script>

@@ -6,6 +6,12 @@
 let casinoFacility = null;      // 今開いているカジノ施設のデータ（scenariobuild.jsのfacility）
 let casinoReturnTo = null;      // 「戻る」で呼ぶ関数（村メニュー、または拠点の施設一覧）
 
+function prepareCasinoConversationFocus() {
+  controlFocus = "main";
+  if (typeof updateControlFocusIndicator === "function") updateControlFocusIndicator();
+  hideLocationMenu();
+}
+
 // カジノの入り口。openCustomFacility（town.js）から呼ばれる
 function openCasino(facility, returnTo) {
   casinoFacility = facility;
@@ -56,8 +62,33 @@ async function pickCasinoBet(label) {
   return bet;
 }
 
+async function waitForDecideKeyPresses(count, text, allowKeys = null) {
+  if (text) {
+    await displayMessage(text);
+  }
+
+  const validKeys = allowKeys || (typeof KEY_CONFIG !== "undefined" ? KEY_CONFIG.decideKeys : []);
+  return new Promise((resolve) => {
+    let pressed = 0;
+    const listener = (event) => {
+      if (event.repeat) return;
+      const key = event.key.toLowerCase ? event.key.toLowerCase() : event.key;
+      if (!validKeys.map(k => String(k).toLowerCase()).includes(key)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      pressed += 1;
+      if (pressed >= count) {
+        window.removeEventListener("keydown", listener);
+        resolve();
+      }
+    };
+    window.addEventListener("keydown", listener);
+  });
+}
+
 // ===== ①丁半博打（サイコロ2つの合計が偶数＝丁／奇数＝半） =====
 async function startDiceGame() {
+  prepareCasinoConversationFocus();
   const bet = await pickCasinoBet("丁半博打の賭け金");
   if (bet <= 0) { showCasinoMenu(); return; }
   
@@ -93,13 +124,24 @@ async function startDiceGame() {
   showCasinoMenu();
 }
 
-// ===== ②スロット（3リール。絵柄はシナリオエディタで画像を指定していればそちらを優先、無ければ絵文字） =====
+// ===== ②スロット（3×3の見た目付きジャグラー風UI） =====
 const CASINO_SLOT_SYMBOLS = [
   { key: "grape", emoji: "🍇", weight: 35, payout: 2 },
   { key: "bell",  emoji: "🔔", weight: 25, payout: 4 },
   { key: "star",  emoji: "⭐", weight: 20, payout: 6 },
   { key: "gem",   emoji: "💎", weight: 12, payout: 10 },
   { key: "seven", emoji: "7",  weight: 8,  payout: 20 }
+];
+
+const CASINO_SLOT_LINES = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+  [0, 4, 8],
+  [2, 4, 6]
 ];
 
 function pickWeightedSlotSymbol() {
@@ -112,9 +154,6 @@ function pickWeightedSlotSymbol() {
   return CASINO_SLOT_SYMBOLS[CASINO_SLOT_SYMBOLS.length - 1];
 }
 
-// ★施設編集タブ（scenariobuild.js）でfacility.slotImages[symbol.key]に画像パスが登録されていれば、
-//   絵文字の代わりにその画像を表示する。displayMessageの中身はtypeText側でHTMLタグとして解釈されるので、
-//   ここではメッセージ文中に埋め込む用のHTML文字列を組み立てる
 function getSlotSymbolMarkup(symbol) {
   const imagePath = casinoFacility && casinoFacility.slotImages && casinoFacility.slotImages[symbol.key];
   if (imagePath) {
@@ -123,38 +162,351 @@ function getSlotSymbolMarkup(symbol) {
   return `<span class="casino-slot-symbol-emoji">${symbol.emoji}</span>`;
 }
 
-async function startSlotGame() {
-  const bet = await pickCasinoBet("スロットの賭け金");
-  if (bet <= 0) { showCasinoMenu(); return; }
-  
-  changeSpeaker(casinoFacility.name || "スロット台");
-  await displayMessage("レバーを引いた……カラカラカラ……");
-  
-  const reels = [pickWeightedSlotSymbol(), pickWeightedSlotSymbol(), pickWeightedSlotSymbol()];
-  const reelMarkup = reels.map(getSlotSymbolMarkup).join("　");
-  await displayMessage(reelMarkup);
-  
-  const allMatch = reels[0].key === reels[1].key && reels[1].key === reels[2].key;
-  const twoMatch = !allMatch && (reels[0].key === reels[1].key || reels[1].key === reels[2].key || reels[0].key === reels[2].key);
-  
-  if (allMatch) {
-    const profit = bet * reels[0].payout;
-    changeGold(profit);
-    await displayMessage(`大当たりだ！ 絵柄が3つ揃って${profit}陳の儲けだ！`);
-  } else if (twoMatch) {
-    const refund = Math.ceil(bet * 0.5);
-    changeGold(refund - bet); // 賭け金の半分だけ戻ってくる（小当たり＝実質は半損）
-    await displayMessage(`惜しい、2つだけ揃った。賭け金の半分、${refund}陳だけ戻ってきた。`);
-  } else {
-    changeGold(-bet);
-    await displayMessage(`残念、揃わなかった。${bet}陳は没収だな……`);
-  }
-  renderStatusHUD();
-  showCasinoMenu();
+function getSlotSymbolDisplay(symbol) {
+  if (!symbol) return "?";
+  const imagePath = casinoFacility && casinoFacility.slotImages && casinoFacility.slotImages[symbol.key];
+  if (imagePath) return `<img src="${imagePath}" class="casino-slot-symbol-img" alt="${symbol.key}">`;
+  return symbol.emoji;
 }
 
-// ===== ③ルーレット（矢印キー/タップでマスを選んでから賭け金を決める） =====
+function renderSlotBoard(boardSymbols, winningIndexes = [], isSpinning = false) {
+  const overlay = document.getElementById("casino-slot-board");
+  const grid = document.getElementById("casino-slot-grid");
+  const result = document.getElementById("casino-slot-result");
+  if (!overlay || !grid) return;
+
+  grid.innerHTML = "";
+  boardSymbols.forEach((symbol, index) => {
+    const cell = document.createElement("div");
+    const classes = ["casino-slot-cell"];
+    if (winningIndexes.includes(index)) classes.push("is-winning");
+    if (isSpinning) classes.push("is-spinning");
+    cell.className = classes.join(" ");
+    cell.style.animationDelay = `${(index % 3) * 40}ms`;
+    cell.innerHTML = getSlotSymbolDisplay(symbol);
+    grid.appendChild(cell);
+  });
+
+  if (result) {
+    result.classList.add("hidden");
+    result.textContent = "";
+  }
+}
+
+function getWinningSlotLineIndexes(boardSymbols) {
+  for (const line of CASINO_SLOT_LINES) {
+    const first = boardSymbols[line[0]];
+    if (!first) continue;
+    const allMatch = line.every(index => boardSymbols[index] && boardSymbols[index].key === first.key);
+    if (allMatch) return line;
+  }
+  return null;
+}
+
+function getSlotBoardResult(boardSymbols) {
+  const winningLine = getWinningSlotLineIndexes(boardSymbols);
+  if (winningLine) {
+    const symbol = boardSymbols[winningLine[0]];
+    return {
+      type: "win",
+      symbol,
+      line: winningLine,
+      payout: symbol.payout,
+      profit: symbol.payout
+    };
+  }
+
+  const counts = {};
+  boardSymbols.forEach(symbol => {
+    if (!symbol) return;
+    counts[symbol.key] = (counts[symbol.key] || 0) + 1;
+  });
+  const pairKey = Object.keys(counts).find(key => counts[key] >= 2);
+  if (pairKey) {
+    const symbol = CASINO_SLOT_SYMBOLS.find(s => s.key === pairKey) || CASINO_SLOT_SYMBOLS[0];
+    return {
+      type: "small",
+      symbol,
+      line: [],
+      payout: 1,
+      profit: 0.5
+    };
+  }
+
+  return { type: "lose", symbol: null, line: [], payout: 0, profit: 0 };
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function setSlotLeverPulled(pulled) {
+  const lever = document.getElementById("casino-slot-lever");
+  if (!lever) return;
+  lever.classList.toggle("is-pulled", !!pulled);
+}
+
+async function waitForSlotStopSignal(buttonEl) {
+  return new Promise((resolve) => {
+    let settled = false;
+
+    const finalize = () => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("keydown", handleKey);
+      if (buttonEl) buttonEl.removeEventListener("click", finalize);
+      resolve();
+    };
+
+    const handleKey = (event) => {
+      if (event.repeat) return;
+      if (typeof KEY_CONFIG === "undefined" || !KEY_CONFIG.decideKeys.includes(event.key)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      finalize();
+    };
+
+    window.addEventListener("keydown", handleKey);
+    if (buttonEl) buttonEl.addEventListener("click", finalize);
+  });
+}
+
+async function spinSlotBoard(finalBoard) {
+  const overlay = document.getElementById("casino-slot-board");
+  const grid = document.getElementById("casino-slot-grid");
+  if (!overlay || !grid) return;
+
+  overlay.classList.remove("hidden");
+
+  for (let frame = 0; frame < 14; frame++) {
+    const randomBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
+    renderSlotBoard(randomBoard, [], true);
+    await sleep(70);
+  }
+
+  renderSlotBoard(finalBoard, [], false);
+  await sleep(220);
+}
+
+async function startSlotGame() {
+  prepareCasinoConversationFocus();
+
+  const overlay = document.getElementById("casino-slot-board");
+  const stopButton = document.getElementById("casino-slot-stop-btn");
+  const resultEl = document.getElementById("casino-slot-result");
+  const betDisplay = document.getElementById("casino-slot-bet-value");
+  const betDecBtn = document.getElementById("casino-slot-bet-dec");
+  const betIncBtn = document.getElementById("casino-slot-bet-inc");
+  const minBet = getCasinoMinBet();
+  const maxBet = getCasinoMaxBet();
+  const step = maxBet >= 2000 ? 100 : (maxBet >= 200 ? 10 : 1);
+
+  if (!overlay) return;
+  overlay.classList.remove("hidden");
+
+  const updateBetDisplay = (nextBet) => {
+    if (betDisplay) betDisplay.textContent = `${nextBet}陳`;
+    if (betDecBtn) betDecBtn.disabled = nextBet <= minBet;
+    if (betIncBtn) betIncBtn.disabled = nextBet >= maxBet;
+    if (stopButton) {
+      stopButton.textContent = `開始（${nextBet}陳）`;
+      stopButton.innerHTML = `開始（${nextBet}陳）<span class="key-badge">Z</span>`;
+    }
+  };
+
+  const chooseBet = () => new Promise((resolve) => {
+    let currentBet = Math.max(minBet, Math.min(maxBet, minBet));
+    let settled = false;
+
+    const cleanup = () => {
+      if (betDecBtn) betDecBtn.removeEventListener("click", decClick);
+      if (betIncBtn) betIncBtn.removeEventListener("click", incClick);
+      if (stopButton) stopButton.removeEventListener("click", confirmClick);
+      window.removeEventListener("keydown", handleKey);
+    };
+
+    const resolveBet = (value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(value);
+    };
+
+    const confirmClick = () => {
+      resolveBet(currentBet);
+    };
+
+    const decClick = () => {
+      currentBet = Math.max(minBet, currentBet - step);
+      updateBetDisplay(currentBet);
+    };
+    const incClick = () => {
+      currentBet = Math.min(maxBet, currentBet + step);
+      updateBetDisplay(currentBet);
+    };
+
+    const handleKey = (event) => {
+      if (event.repeat) return;
+      if (event.key === "ArrowLeft") {
+        event.preventDefault(); event.stopImmediatePropagation();
+        decClick();
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault(); event.stopImmediatePropagation();
+        incClick();
+      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        resolveBet(currentBet);
+      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        resolveBet(null);
+      }
+    };
+
+    if (betDecBtn) betDecBtn.addEventListener("click", decClick);
+    if (betIncBtn) betIncBtn.addEventListener("click", incClick);
+    if (stopButton) stopButton.addEventListener("click", confirmClick);
+    window.addEventListener("keydown", handleKey);
+    updateBetDisplay(currentBet);
+  });
+
+  const runOneSlotRound = async (bet) => {
+    changeGold(-bet);
+    renderStatusHUD();
+
+    const finalBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
+    const currentBoard = Array(9).fill(null);
+
+    const startBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
+    renderSlotBoard(startBoard, [], false);
+    setSlotLeverPulled(true);
+    await sleep(160);
+    setSlotLeverPulled(false);
+
+    for (let reel = 0; reel < 3; reel++) {
+      const stopIndexes = [reel, reel + 3, reel + 6];
+      if (stopButton) {
+        stopButton.textContent = `リール${reel + 1}を止める`;
+        stopButton.innerHTML = `リール${reel + 1}を止める<span class="key-badge">Z</span>`;
+      }
+      await displayMessage(`リール${reel + 1}を止める`);
+      await waitForSlotStopSignal(stopButton);
+
+      for (let frame = 0; frame < 10; frame++) {
+        const tempBoard = currentBoard.slice();
+        for (let i = 0; i < 9; i++) {
+          if (stopIndexes.includes(i)) {
+            if (tempBoard[i] == null) tempBoard[i] = finalBoard[i];
+            continue;
+          }
+          tempBoard[i] = pickWeightedSlotSymbol();
+        }
+        for (let i = 0; i < 9; i++) {
+          if (tempBoard[i] == null) tempBoard[i] = finalBoard[i];
+        }
+        renderSlotBoard(tempBoard, [], true);
+        await sleep(80);
+      }
+
+      for (const idx of stopIndexes) {
+        currentBoard[idx] = finalBoard[idx];
+      }
+      renderSlotBoard(currentBoard, [], false);
+      await sleep(180);
+    }
+
+    const result = getSlotBoardResult(finalBoard);
+    const winningIndexes = result.line.length ? result.line : [];
+    renderSlotBoard(finalBoard, winningIndexes);
+
+    if (resultEl) {
+      resultEl.classList.remove("hidden");
+      if (result.type === "win") {
+        resultEl.textContent = `大当たり！ ${result.symbol.emoji} が揃って${bet * result.payout}陳の儲けだ！`;
+      } else if (result.type === "small") {
+        resultEl.textContent = `惜しい、2つ揃った。${Math.ceil(bet * 0.5)}陳だけ戻ってきた。`;
+      } else {
+        resultEl.textContent = `残念、揃わなかった。${bet}陳は没収だな……`;
+      }
+    }
+
+    if (result.type === "win") {
+      changeGold(bet * result.payout);
+    } else if (result.type === "small") {
+      const refund = Math.ceil(bet * 0.5);
+      changeGold(refund);
+    }
+    renderStatusHUD();
+
+    await sleep(500);
+
+    if (resultEl) {
+      resultEl.classList.add("hidden");
+      resultEl.textContent = "";
+    }
+  };
+
+  while (true) {
+    if (gold < minBet) {
+      changeSpeaker(casinoFacility.name || "スロット台");
+      await displayMessage(`所持金が足りない。最低${minBet}陳必要だ。`);
+      overlay.classList.add("hidden");
+      showCasinoMenu();
+      return;
+    }
+
+    const bet = await chooseBet();
+    if (bet == null) {
+      overlay.classList.add("hidden");
+      showCasinoMenu();
+      return;
+    }
+
+    changeSpeaker(casinoFacility.name || "スロット台");
+    await displayMessage(`掛け金${bet}陳。レバーを引いて、3回Zで各リールを止める`);
+    await runOneSlotRound(bet);
+    await displayMessage(`次は左右キーまたはボタンで掛金を調整して、Zで回す。`);
+  }
+}
+
+// ===== ③ルーレット（複数の賭けをまとめて確定するまで追加できる） =====
 const CASINO_ROULETTE_RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+
+function updateRouletteSelectionSummary(bets) {
+  const statusEl = document.getElementById("casino-roulette-status");
+  if (!statusEl) return;
+  const total = bets.reduce((sum, bet) => sum + bet.amount, 0);
+  statusEl.textContent = `掛け済み: ${total}陳 / ${bets.length}箇所`;
+}
+
+function setRouletteSpinSceneVisible(visible) {
+  const scene = document.getElementById("casino-roulette-wheel-scene");
+  if (!scene) return;
+  if (visible) scene.classList.remove("hidden");
+  else scene.classList.add("hidden");
+}
+
+function animateRouletteSpin(resultNumber) {
+  const scene = document.getElementById("casino-roulette-wheel-scene");
+  const wheel = document.getElementById("casino-roulette-wheel");
+  const ball = document.getElementById("casino-roulette-ball");
+  if (!scene || !wheel || !ball) return Promise.resolve();
+
+  setRouletteSpinSceneVisible(true);
+  const duration = 1800;
+  wheel.style.animation = `roulette-wheel-spin ${duration}ms linear infinite`;
+  ball.style.animation = `roulette-ball-orbit ${duration}ms linear infinite`;
+  wheel.style.display = "block";
+  ball.style.display = "block";
+
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      wheel.style.animation = "none";
+      ball.style.animation = "none";
+      setRouletteSpinSceneVisible(false);
+      resolve();
+    }, duration + 150);
+  });
+}
 
 // 盤面のマス目データを組み立てる。座標(colStart, colSpan, row, rowSpan)はCSS Gridにそのまま使う
 function buildRouletteCells() {
@@ -201,82 +553,164 @@ function buildRouletteCells() {
 // ★通常の行き先メニュー（location-menu）は縦一列・2列グリッドしか対応しておらず、
 //   ルーレット卓のような「数字の升目＋幅の異なるアウトサイドベット」を矢印キーで
 //   自然に行き来させるのには向かないため、専用の2次元カーソル移動を実装する。
-//   （現在のマスの中心座標から見て、押した方向にある一番近いマスへジャンプする方式）
-function pickRouletteBet() {
+//   今回は「確定するまで何箇所でも掛けられる」ようにし、決定キーでその場に追加していく
+async function pickRouletteBets() {
   return new Promise((resolve) => {
     const cells = buildRouletteCells();
     let cursorIndex = Math.max(0, cells.findIndex(c => c.key === "red"));
-    
+    const selections = [];
+
     const overlay = document.getElementById("casino-roulette-board");
     const gridEl = document.getElementById("casino-roulette-grid");
     const confirmBtn = document.getElementById("casino-roulette-confirm");
     const cancelBtn = document.getElementById("casino-roulette-cancel");
-    
+
+    if (!overlay || !gridEl) {
+      console.error("ルーレット盤のDOM要素が見つかりません。casino-roulette-board / casino-roulette-grid が index.html に存在するか確認してください。");
+      resolve(null);
+      return;
+    }
+
     function render() {
       gridEl.innerHTML = "";
+      const chipTotals = new Map();
+      selections.forEach(({ cell }) => {
+        const subtotal = chipTotals.get(cell.key) || 0;
+        chipTotals.set(cell.key, subtotal + 1);
+      });
+
       cells.forEach((cell, i) => {
         const el = document.createElement("div");
         el.className = "casino-roulette-cell " + cell.className + (i === cursorIndex ? " cursor" : "");
         el.style.gridColumn = `${cell.colStart} / span ${cell.colSpan}`;
         el.style.gridRow = `${cell.row} / span ${cell.rowSpan}`;
-        el.textContent = cell.label;
-        el.onclick = (event) => {
+
+        const labelEl = document.createElement("span");
+        labelEl.className = "casino-roulette-cell-label";
+        labelEl.textContent = cell.label;
+        el.appendChild(labelEl);
+
+        const chipTotal = chipTotals.get(cell.key) || 0;
+        if (chipTotal > 0) {
+          const stackEl = document.createElement("div");
+          stackEl.className = "roulette-chip-stack";
+          stackEl.title = `賭け中: ${chipTotal}枚`;
+
+          const chip = document.createElement("span");
+          chip.className = "roulette-chip";
+          chip.textContent = `${chipTotal}`;
+          stackEl.appendChild(chip);
+          el.appendChild(stackEl);
+        }
+
+        el.onclick = async (event) => {
           event.stopPropagation();
           cursorIndex = i;
-          finish(cell);
+          const amount = await pickCasinoBet(`「${cell.label}」への賭け金`);
+          if (amount > 0) {
+            selections.push({ cell, amount });
+            updateRouletteSelectionSummary(selections);
+            render();
+          }
         };
         gridEl.appendChild(el);
       });
+      updateRouletteSelectionSummary(selections);
     }
-    
+
     function finish(result) {
       overlay.classList.add("hidden");
       window.removeEventListener("keydown", handleKey);
       resolve(result);
     }
-    
-    // 現在のマスの中心座標から見て、指定方向(dx, dy)にある一番近いマスへカーソルを移す
+
     function moveCursor(dx, dy) {
       const cur = cells[cursorIndex];
+      if (!cur) return;
+
       const curX = cur.colStart + cur.colSpan / 2;
       const curY = cur.row + cur.rowSpan / 2;
       let bestIndex = -1;
-      let bestScore = Infinity;
-      cells.forEach((c, i) => {
+      let bestDistance = Infinity;
+
+      cells.forEach((cell, i) => {
         if (i === cursorIndex) return;
-        const x = c.colStart + c.colSpan / 2;
-        const y = c.row + c.rowSpan / 2;
+        const x = cell.colStart + cell.colSpan / 2;
+        const y = cell.row + cell.rowSpan / 2;
         const relX = x - curX;
         const relY = y - curY;
-        const primary = dx !== 0 ? relX * dx : relY * dy;
-        if (primary <= 0.05) return; // 押した方向と逆・真横のマスは候補にしない
-        const secondary = dx !== 0 ? Math.abs(relY) : Math.abs(relX);
-        const score = primary + secondary * 3; // 方向がまっすぐ揃っているマスを優先
-        if (score < bestScore) { bestScore = score; bestIndex = i; }
+
+        const dirX = dx !== 0 ? Math.sign(dx) : 0;
+        const dirY = dy !== 0 ? Math.sign(dy) : 0;
+        if (dirX !== 0 && relX * dirX <= 0) return;
+        if (dirY !== 0 && relY * dirY <= 0) return;
+
+        const distance = Math.abs(relX) + Math.abs(relY);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = i;
+        }
       });
-      if (bestIndex >= 0) { cursorIndex = bestIndex; render(); }
-    }
-    
-    function handleKey(event) {
-      if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
-      if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return;
-      if (event.repeat) return;
-      if (event.key === "ArrowRight") { event.preventDefault(); event.stopImmediatePropagation(); moveCursor(1, 0); }
-      else if (event.key === "ArrowLeft") { event.preventDefault(); event.stopImmediatePropagation(); moveCursor(-1, 0); }
-      else if (event.key === "ArrowDown") { event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, 1); }
-      else if (event.key === "ArrowUp") { event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, -1); }
-      else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
-        event.preventDefault(); event.stopImmediatePropagation();
-        finish(cells[cursorIndex]);
-      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
-        event.preventDefault(); event.stopImmediatePropagation();
-        finish(null);
+
+      if (bestIndex >= 0) {
+        cursorIndex = bestIndex;
+        render();
       }
     }
-    
-    if (confirmBtn) confirmBtn.onclick = (event) => { event.stopPropagation(); finish(cells[cursorIndex]); };
-    if (cancelBtn) cancelBtn.onclick = (event) => { event.stopPropagation(); finish(null); };
-    
+
+    async function addCurrentSelection() {
+      const cell = cells[cursorIndex];
+      if (!cell) return;
+      const amount = await pickCasinoBet(`「${cell.label}」への賭け金`);
+      if (amount > 0) {
+        selections.push({ cell, amount });
+        updateRouletteSelectionSummary(selections);
+      }
+    }
+
+    async function handleKey(event) {
+      if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
+      if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return;
+      const quantityPicker = document.getElementById("quantity-picker");
+      if (quantityPicker && !quantityPicker.classList.contains("hidden")) return;
+      if (event.repeat) return;
+      if (event.key === "ArrowRight") {
+        event.preventDefault(); event.stopImmediatePropagation(); moveCursor(1, 0);
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault(); event.stopImmediatePropagation(); moveCursor(-1, 0);
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, 1);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, -1);
+      } else if (event.key === "Enter" || event.key === "e" || event.key === "E") {
+        event.preventDefault(); event.stopImmediatePropagation();
+        if (selections.length > 0) {
+          finish(selections);
+        } else {
+          await addCurrentSelection();
+        }
+      } else if (event.key === "c" || event.key === "C") {
+        event.preventDefault(); event.stopImmediatePropagation();
+        if (selections.length > 0) {
+          finish(selections);
+        } else {
+          await addCurrentSelection();
+        }
+      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        finish(selections.length ? selections : null);
+      }
+    }
+
+    if (confirmBtn) confirmBtn.onclick = (event) => {
+      event.stopPropagation();
+      finish(selections.length ? selections : null);
+    };
+    if (cancelBtn) cancelBtn.onclick = (event) => {
+      event.stopPropagation();
+      finish(null);
+    };
+
     render();
     overlay.classList.remove("hidden");
     window.addEventListener("keydown", handleKey);
@@ -284,6 +718,7 @@ function pickRouletteBet() {
 }
 
 async function startRouletteGame() {
+  prepareCasinoConversationFocus();
   const minBet = getCasinoMinBet();
   if (gold < minBet) {
     changeSpeaker(casinoFacility.name || "ルーレット台");
@@ -291,29 +726,45 @@ async function startRouletteGame() {
     showCasinoMenu();
     return;
   }
-  
-  hideLocationMenu();
-  const cell = await pickRouletteBet();
-  if (!cell) { showCasinoMenu(); return; }
-  
-  const bet = await pickCasinoBet(`「${cell.label}」への賭け金`);
-  if (bet <= 0) { showCasinoMenu(); return; }
-  
+
+  const bets = await pickRouletteBets();
+  if (!bets || bets.length === 0) { showCasinoMenu(); return; }
+
+  const totalBet = bets.reduce((sum, bet) => sum + bet.amount, 0);
+  if (totalBet <= 0) { showCasinoMenu(); return; }
+
   changeSpeaker(casinoFacility.name || "ルーレット台");
-  await displayMessage("ルーレットの球が回る……");
-  
+  await displayMessage("賭けを確定した。Cキーで続ける");
+  await waitForDecideKeyPresses(1, "", ["c", "C"]);
+  await displayMessage("球を3回押して回す");
+  await waitForDecideKeyPresses(3, "", ["c", "C"]);
+
   const resultNumber = Math.floor(Math.random() * 37); // 0〜36
   const resultColorLabel = resultNumber === 0 ? "" : (CASINO_ROULETTE_RED.has(resultNumber) ? "・赤" : "・黒");
+  await displayMessage("ルーレットの球が回る……");
+  await animateRouletteSpin(resultNumber);
   await displayMessage(`球が止まった……「${resultNumber}${resultColorLabel}」だ！`);
-  
-  if (cell.matches(resultNumber)) {
-    const profit = bet * cell.payoutMultiple;
-    changeGold(profit);
-    await displayMessage(`大当たりだ！ ${profit}陳の儲けだ！`);
-  } else {
-    changeGold(-bet);
-    await displayMessage(`残念、外れだ。${bet}陳は没収だな……`);
+
+  let netResult = 0;
+  for (const bet of bets) {
+    if (bet.cell.matches(resultNumber)) {
+      const profit = bet.amount * bet.cell.payoutMultiple;
+      netResult += profit;
+      await displayMessage(`「${bet.cell.label}」に当たった！ ${profit}陳の儲けだ！`);
+    } else {
+      netResult -= bet.amount;
+    }
   }
+
+  if (netResult > 0) {
+    changeGold(netResult);
+    await displayMessage(`合計で${netResult}陳の儲けだ！`);
+  } else {
+    const loss = Math.abs(netResult);
+    changeGold(-loss);
+    await displayMessage(`残念、外れが多かった。合計${loss}陳は没収だな……`);
+  }
+
   renderStatusHUD();
   showCasinoMenu();
 }
