@@ -214,12 +214,18 @@ function pickRouletteBet() {
   return new Promise((resolve) => {
     const cells = buildRouletteCells();
     let cursorIndex = Math.max(0, cells.findIndex(c => c.key === "red"));
-    
+
     const overlay = document.getElementById("casino-roulette-board");
     const gridEl = document.getElementById("casino-roulette-grid");
     const confirmBtn = document.getElementById("casino-roulette-confirm");
     const cancelBtn = document.getElementById("casino-roulette-cancel");
-    
+
+    if (!overlay || !gridEl) {
+      console.error("ルーレット盤のDOM要素が見つかりません。casino-roulette-board / casino-roulette-grid が index.html に存在するか確認してください。");
+      resolve(null);
+      return;
+    }
+
     function render() {
       gridEl.innerHTML = "";
       cells.forEach((cell, i) => {
@@ -236,7 +242,7 @@ function pickRouletteBet() {
         gridEl.appendChild(el);
       });
     }
-    
+
     function finish(result) {
       overlay.classList.add("hidden");
       window.removeEventListener("keydown", handleKey);

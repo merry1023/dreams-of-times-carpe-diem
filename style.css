@@ -2822,6 +2822,110 @@ html, body {
   gap: 10px;
 }
 
+/* ===== カジノのルーレット盤 ===== */
+.casino-roulette-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 200000;
+}
+
+.casino-roulette-overlay.hidden {
+  display: none !important;
+  pointer-events: none;
+}
+
+.casino-roulette-panel {
+  width: min(92vw, 760px);
+  background-color: #1a1a1a;
+  border: 3px solid #ffc107;
+  border-radius: 16px;
+  padding: 16px;
+  box-sizing: border-box;
+  box-shadow: 0 0 20px rgba(255, 193, 7, 0.35);
+}
+
+.casino-roulette-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: #fff;
+}
+
+.casino-roulette-title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.casino-roulette-hint {
+  font-size: 12px;
+  color: #d0d0d0;
+}
+
+.casino-roulette-grid {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(18px, 1fr));
+  gap: 4px;
+  background-color: #0e0e0e;
+  border: 2px solid #4d432d;
+  border-radius: 10px;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.casino-roulette-cell {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.25);
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+  background-color: #2a2a2a;
+  user-select: none;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.casino-roulette-cell.cursor {
+  outline: 2px solid #ffc107;
+  box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.25);
+  transform: translateY(-1px);
+}
+
+.casino-cell-zero {
+  background: #e9db9f;
+  color: #1a1a1a;
+}
+
+.casino-cell-red {
+  background: #9d1c1c;
+}
+
+.casino-cell-black {
+  background: #222;
+}
+
+.casino-cell-outside {
+  background: #173d5b;
+}
+
+.casino-roulette-footer {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+}
 
 .game-dialog-box {
   width: 420px;
