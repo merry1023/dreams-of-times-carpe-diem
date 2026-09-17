@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1789462129955,
+  "version": 1789611172621,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -6227,6 +6227,254 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "type": "dialogue",
           "speaker": "コリスギウス",
           "text": "この屋敷広すぎるだろ。どんだけ部屋あるんだ..."
+        },
+        {
+          "id": "block_1789599831277_1",
+          "type": "narration",
+          "text": "アテもなく探していたら治郎達のほうが持たないだろうな..."
+        },
+        {
+          "id": "block_1789599880521_3",
+          "type": "choice",
+          "prompt": "どっちの通路へ行くべきか...",
+          "options": [
+            {
+              "id": "opt_1789599880521_4",
+              "text": "このまままっすぐ。",
+              "blocks": [
+                {
+                  "id": "block_1789599950160_5",
+                  "type": "narration",
+                  "text": "まっすぐ突き進む。\nその判断力は鱗滝右近次も唸る速さだ。ちにみに左の鱗滝さんではない。"
+                },
+                {
+                  "id": "block_1789600052415_6",
+                  "type": "dialogue",
+                  "speaker": "コリスギウス",
+                  "text": "ここは、、"
+                },
+                {
+                  "id": "block_1789600220928_7",
+                  "type": "narration",
+                  "text": "眼の前に広がっていたのは財宝の山..."
+                },
+                {
+                  "id": "block_1789600253759_8",
+                  "type": "choice",
+                  "prompt": "どうやら宝物庫のようだ。どうする？",
+                  "options": [
+                    {
+                      "id": "opt_1789600253759_9",
+                      "text": "いただきます。",
+                      "blocks": [
+                        {
+                          "id": "block_1789600283175_10",
+                          "type": "narration",
+                          "text": "手に持てるだけいただいた。"
+                        },
+                        {
+                          "id": "block_1789600301210_11",
+                          "type": "flag",
+                          "flagName": "ドロボー！",
+                          "mode": "on"
+                        },
+                        {
+                          "id": "block_1789600366509_14",
+                          "type": "give",
+                          "itemId": "item_1788135707492_4",
+                          "quantity": 10
+                        },
+                        {
+                          "id": "block_1789600325409_12",
+                          "type": "dialogue",
+                          "speaker": "コリスギウス",
+                          "text": "うへ、うへうへ。"
+                        },
+                        {
+                          "id": "block_1789600346256_13",
+                          "type": "dialogue",
+                          "speaker": "コリスギウス",
+                          "text": ".......いったん戻るか..."
+                        },
+                        {
+                          "id": "block_1789600428724_15",
+                          "type": "jump",
+                          "targetBlockId": "block_1789599880521_3"
+                        }
+                      ],
+                      "jumpBlockId": null,
+                      "loops": false,
+                      "isCorrect": false
+                    },
+                    {
+                      "id": "opt_1789600864170_17",
+                      "text": "引き返す。",
+                      "blocks": [
+                        {
+                          "id": "block_1789600868730_18",
+                          "type": "narration",
+                          "text": "ここは違うみたいだな。他を当たろう..."
+                        },
+                        {
+                          "id": "block_1789600901555_19",
+                          "type": "jump",
+                          "targetBlockId": "block_1789599880521_3"
+                        }
+                      ],
+                      "jumpBlockId": null,
+                      "loops": false,
+                      "isCorrect": false
+                    }
+                  ]
+                }
+              ],
+              "jumpBlockId": null,
+              "loops": true,
+              "isCorrect": false
+            },
+            {
+              "id": "opt_1789600915786_20",
+              "text": "細めの階段を降りる。",
+              "blocks": [
+                {
+                  "id": "block_1789603761151_1",
+                  "type": "narration",
+                  "text": "あまり目立たない細い階段を見つけた。\n息を潜めながらゆっくりと降りていく。"
+                },
+                {
+                  "id": "block_1789603796170_2",
+                  "type": "dialogue",
+                  "speaker": "コリスギウス",
+                  "text": "な、なんだここは..."
+                },
+                {
+                  "id": "block_1789603804875_3",
+                  "type": "narration",
+                  "text": "階段の先には独房のような空間が広がっていた。\n広さは二、三畳といったところか。その真中には鎖のようなもので繋がれた人影があった。"
+                },
+                {
+                  "id": "block_1789603876853_4",
+                  "type": "dialogue",
+                  "speaker": "コリスギウス",
+                  "text": "(！？この人が例のお姉さんなのか...？)"
+                },
+                {
+                  "id": "block_1789603906607_5",
+                  "type": "narration",
+                  "text": "慌てて人影に駆け寄る。\n数日飯を摂っていないのか衰弱状態にあるようで、服は汚れ、虚ろな目をしていた。"
+                },
+                {
+                  "id": "block_1789604048995_6",
+                  "type": "dialogue",
+                  "speaker": "コリスギウス",
+                  "text": "だ、大丈夫か！？"
+                },
+                {
+                  "id": "block_1789604067738_7",
+                  "type": "narration",
+                  "text": "急いで手持ちの薬草と食料を取り出し、無理の無いように少しづつ口元へ運ぶ。\nそれにしてもひどい悪臭である。数日間監禁されていたのだろう。この空間には寝床も無ければトイレもない。その場で漏らしてしまっていたようだ。"
+                },
+                {
+                  "id": "block_1789604191022_8",
+                  "type": "dialogue",
+                  "speaker": "女性",
+                  "text": "っっ...ゴホッゴホッ...っ"
+                },
+                {
+                  "id": "block_1789604243054_9",
+                  "type": "narration",
+                  "text": "女性は多少咳き込みながらだが少しばかりのパンの一切れを食べてくれた。"
+                },
+                {
+                  "id": "block_1789604301877_10",
+                  "type": "dialogue",
+                  "speaker": "コリスギウス",
+                  "text": "....よかった...\n今助けてやるからな...."
+                },
+                {
+                  "id": "block_1789604346253_11",
+                  "type": "narration",
+                  "text": "女性に繋がれていた鎖のようなものを断ち斬り、お姫様抱っこで治郎の元へ戻る。"
+                }
+              ],
+              "jumpBlockId": null,
+              "loops": false,
+              "isCorrect": true
+            }
+          ]
+        },
+        {
+          "id": "block_1789604925865_12",
+          "type": "narration",
+          "text": "走る。監禁されていた女性を抱えて走った。\n抱えたまま陰移動は出来ないため普通にきつい。\n女性を抱えたまま走るのってこんなにきついのか..."
+        },
+        {
+          "id": "block_1789605078783_16",
+          "type": "telop",
+          "text": "そのころ治郎は"
+        },
+        {
+          "id": "block_1789605098877_17",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "もうこれで満足だろ？金はちゃんと見せたはずだ。\n早くロリルを渡せ！"
+        },
+        {
+          "id": "block_1789605158334_18",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "(ま、まずいぞ！もう話を引き延ばすネタが無ぇ！！)"
+        },
+        {
+          "id": "block_1789605328707_21",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "だ、大丈夫なの...？"
+        },
+        {
+          "id": "block_1789605339560_22",
+          "type": "narration",
+          "text": "ツァナが小声で聞いてくる。\n大丈夫なワケねぇ！"
+        },
+        {
+          "id": "block_1789605323961_20",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "もしかしてお前ら、最初から渡す気が無いのか！！！？"
+        },
+        {
+          "id": "block_1789605388764_23",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "い、いや！えっと...！"
+        },
+        {
+          "id": "block_1789605261977_19",
+          "type": "narration",
+          "text": "本当にまずい。言葉が出てこない..."
+        },
+        {
+          "id": "block_1789605029854_13",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "すまん！遅くなった！治郎！やるぞ！！"
+        },
+        {
+          "id": "block_1789605054627_15",
+          "type": "narration",
+          "text": "希望の光登場である。"
+        },
+        {
+          "id": "block_1789605050849_14",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "兄貴！ナイスタイミング！\nやりましょう！"
+        },
+        {
+          "id": "block_1789605461602_24",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "な、何だお前は！やっぱり騙していたのか！"
         }
       ],
       "enabled": false,
@@ -6350,6 +6598,10 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
   "flagDefs": [
     {
       "name": "echichi",
+      "description": ""
+    },
+    {
+      "name": "ドロボー！",
       "description": ""
     }
   ],
