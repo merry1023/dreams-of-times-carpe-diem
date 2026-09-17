@@ -1329,16 +1329,17 @@ function applyPlayTabVisibility() {
 }
 
 // ② Qキー / Eキーでタブを左右に切り替える（キーボード用）
-// ★要望対応：Q/Eのタブ切り替えは、メイン画面ではなく「サブ画面のメインタブ」だけで有効にする。
-//   これでメイン画面では勝手にタブが動かず、サブ画面のメインタブに戻った時だけ左右移動できる
+// ★要望対応：Q/Eのタブ切り替えは、メイン画面ではなくサブ画面全体で有効に戻す。
+//   直前の不具合は「モーダルの選択は変わっているが、画面側のアクティブタブがそのまま残っていた」ことだったため、
+//   サブ画面側ではタブの見た目と実際の選択を常に同じにする運用に戻す
 window.addEventListener("keydown", (event) => {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★要望対応：シナリオエディタ表示中は本編を操作させない
   if (event.repeat) return;
   if (isGameDialogOpen) return; // ★確認ダイアログが開いている間は、そちらを優先する
+  if (controlFocus !== "sub") return; // ★メイン画面ではQ/Eでタブを動かさない
 
   const currentActive = document.querySelector('.tab-content.active');
-  if (!currentActive || currentActive.id !== "tab-main") return; // ★サブ画面のメインタブのときだけ有効にする
-  if (controlFocus !== "sub") return; // ★メイン画面側ではQ/Eでタブを動かさない
+  if (!currentActive) return;
 
   const tabIds = getVisiblePlayTabIds();
   if (!tabIds.length) return;
