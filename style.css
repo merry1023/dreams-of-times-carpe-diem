@@ -4848,6 +4848,27 @@ html, body {
   gap: 6px;
 }
 
+/* ★要望対応：一覧の項目ごとの折りたたみ見出し（実績管理タブなど） */
+.scenariobuild-collapsible-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 2px;
+  user-select: none;
+}
+
+.scenariobuild-collapsible-toggle-icon {
+  font-size: 11px;
+  color: #ffc107;
+  flex-shrink: 0;
+}
+
+.scenariobuild-collapsible-summary {
+  font-weight: bold;
+  word-break: break-all;
+}
+
 .scenariobuild-condition {
   margin: 0 !important;
   font-size: 12px;

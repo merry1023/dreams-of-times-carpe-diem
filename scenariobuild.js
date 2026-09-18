@@ -2128,6 +2128,9 @@ function moveCustomScenarioChapter(index, direction) {
 // ★三本線ハンドルのドラッグ&ドロップによる並び替え（組み込みの話をまたぐ移動は無視する）
 let scenarioChapterDragFromIndex = null;
 let scenarioEntityDragFromIndex = null; // ★クエスト・アイテム等の一覧（renderEntityManager）の並び替え用
+// ★要望対応：一覧の各項目を折りたためるようにする（config.collapsible === true の一覧のみ対象。実績管理タブなど）。
+//   展開中のIDだけをここに記録する（＝ここに無いIDはデフォルトで折りたたみ状態として表示する）
+let scenarioBuildExpandedEntityIds = new Set();
 function dropCustomScenarioChapter(fromIndex, toIndex) {
   if (scenarioProject.chapters[fromIndex].builtin || scenarioProject.chapters[toIndex].builtin) return;
   pushUndoSnapshot();
@@ -4636,6 +4639,8 @@ function getAchievementManagerConfig() {
       + "フラグ→対象のフラグ名／"
       + "変数→対象の変数名＋必要な数値",
     category: "achievements",
+    collapsible: true, // ★要望対応：実績が増えても一覧が長くなりすぎないよう、項目ごとに編集欄を折りたためるようにする
+    getEntitySummary: (entity) => (entity.hidden ? "🔒 " : "🏆 ") + (entity.name || "（名前未設定）"),
     getList: () => scenarioProject.achievements,
     fields: [
       { key: "name", label: "実績名", type: "text", placeholder: "例：はじめの一歩" },
@@ -4816,7 +4821,9 @@ function renderEntityManager(container, config) {
       btn.onclick = (event) => {
         event.stopPropagation();
         pushUndoSnapshot();
-        config.getList().push(opt.build());
+        const newEntity = opt.build();
+        config.getList().push(newEntity);
+        if (config.collapsible) scenarioBuildExpandedEntityIds.add(newEntity.id); // ★追加した項目はすぐ編集できるよう展開しておく
         markScenarioBuildDirty();
         if (config.onChange) config.onChange();
         renderScenarioBuildPanel();
@@ -4831,7 +4838,9 @@ function renderEntityManager(container, config) {
     addBtn.onclick = (event) => {
       event.stopPropagation();
       pushUndoSnapshot();
-      config.getList().push(config.newEntity());
+      const newEntity = config.newEntity();
+      config.getList().push(newEntity);
+      if (config.collapsible) scenarioBuildExpandedEntityIds.add(newEntity.id); // ★追加した項目はすぐ編集できるよう展開しておく
       markScenarioBuildDirty();
       if (config.onChange) config.onChange();
       renderScenarioBuildPanel();
@@ -9859,7 +9868,31 @@ function buildEntityRow(config, entity, index) {
     return row;
   }
   
-  appendEntityFieldInputs(config, entity, infoEl);
+  // ★要望対応：項目数が多くなりがちな一覧（実績管理など）で、config.collapsible === true が
+  //   指定されていれば、名前だけの見出し行をクリックして編集欄を開閉できるようにする
+  if (config.collapsible) {
+    const isExpanded = scenarioBuildExpandedEntityIds.has(entity.id);
+    const headerRow = document.createElement("div");
+    headerRow.className = "scenariobuild-collapsible-header";
+    const toggleIcon = document.createElement("span");
+    toggleIcon.className = "scenariobuild-collapsible-toggle-icon";
+    toggleIcon.textContent = isExpanded ? "▼" : "▶";
+    headerRow.appendChild(toggleIcon);
+    const summaryEl = document.createElement("span");
+    summaryEl.className = "scenariobuild-collapsible-summary";
+    summaryEl.textContent = config.getEntitySummary ? config.getEntitySummary(entity) : (entity.name || "（名前未設定）");
+    headerRow.appendChild(summaryEl);
+    headerRow.onclick = (event) => {
+      event.stopPropagation();
+      if (isExpanded) scenarioBuildExpandedEntityIds.delete(entity.id);
+      else scenarioBuildExpandedEntityIds.add(entity.id);
+      renderScenarioBuildPanel();
+    };
+    infoEl.appendChild(headerRow);
+    if (isExpanded) appendEntityFieldInputs(config, entity, infoEl);
+  } else {
+    appendEntityFieldInputs(config, entity, infoEl);
+  }
   
   if (config.showLevelPreview) {
     infoEl.appendChild(buildMonsterLevelPreview(entity));
