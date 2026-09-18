@@ -191,6 +191,36 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// ★要望対応：揃った際の報酬（配当）を常に一覧で確認できるようにする
+function renderCasinoSlotPayoutTable() {
+  const container = document.getElementById("casino-slot-payout-table");
+  if (!container) return;
+  container.innerHTML = "";
+  
+  const chipRow = document.createElement("div");
+  chipRow.className = "casino-slot-payout-chip-row";
+  // ★配当の高い絵柄から並べて見やすくする
+  const sortedSymbols = [...CASINO_SLOT_SYMBOLS].sort((a, b) => b.payout - a.payout);
+  sortedSymbols.forEach(symbol => {
+    const chip = document.createElement("div");
+    chip.className = "casino-slot-payout-chip";
+    const symbolEl = document.createElement("span");
+    symbolEl.className = "casino-slot-payout-chip-symbol";
+    symbolEl.innerHTML = getSlotSymbolDisplay(symbol);
+    chip.appendChild(symbolEl);
+    const multiplierEl = document.createElement("span");
+    multiplierEl.textContent = `×${symbol.payout}`;
+    chip.appendChild(multiplierEl);
+    chipRow.appendChild(chip);
+  });
+  container.appendChild(chipRow);
+  
+  const note = document.createElement("div");
+  note.className = "casino-slot-payout-note";
+  note.textContent = "同じ絵柄が3つ揃うと掛け金×倍率、2つだけ揃うと掛け金の半分が戻ってくる";
+  container.appendChild(note);
+}
+
 function setSlotLeverPulled(pulled) {
   const lever = document.getElementById("casino-slot-lever");
   if (!lever) return;
@@ -390,6 +420,7 @@ async function startSlotGame() {
   overlay.classList.remove("hidden");
   casinoSlotQuitRequested = false;
   initCasinoSlotReels();
+  renderCasinoSlotPayoutTable(); // ★要望対応：配当表を毎回最新の状態で描画（施設ごとの絵柄差し替えに追従）
 
   if (quitButton) {
     quitButton.disabled = false;
@@ -511,7 +542,12 @@ async function startSlotGame() {
     }
     renderStatusHUD();
 
-    await sleep(900);
+    // ★要望対応：結果メッセージが一瞬（0.9秒）で消えてしまい読めない問題を修正。
+    //   自動で消すのではなく、プレイヤーが確認してから自分でボタン/Zキーで次に進める形にする
+    if (stopButton) {
+      stopButton.innerHTML = `つづける<span class="key-badge">Z</span>`;
+    }
+    await waitForSlotStopSignal(stopButton);
 
     if (resultEl) {
       resultEl.classList.add("hidden");
