@@ -62,30 +62,6 @@ async function pickCasinoBet(label) {
   return bet;
 }
 
-async function waitForDecideKeyPresses(count, text, allowKeys = null) {
-  if (text) {
-    await displayMessage(text);
-  }
-
-  const validKeys = allowKeys || (typeof KEY_CONFIG !== "undefined" ? KEY_CONFIG.decideKeys : []);
-  return new Promise((resolve) => {
-    let pressed = 0;
-    const listener = (event) => {
-      if (event.repeat) return;
-      const key = event.key.toLowerCase ? event.key.toLowerCase() : event.key;
-      if (!validKeys.map(k => String(k).toLowerCase()).includes(key)) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      pressed += 1;
-      if (pressed >= count) {
-        window.removeEventListener("keydown", listener);
-        resolve();
-      }
-    };
-    window.addEventListener("keydown", listener);
-  });
-}
-
 // ===== ①丁半博打（サイコロ2つの合計が偶数＝丁／奇数＝半） =====
 async function startDiceGame() {
   prepareCasinoConversationFocus();
@@ -168,26 +144,32 @@ function getSlotSymbolDisplay(symbol) {
   return s.emoji;
 }
 
-function getWinningSlotLineIndexes(boardSymbols) {
+// ★修正：以前は最初に見つかった1本だけを返していたので、2列同時に揃っても1列分しか
+//   判定されなかった。揃っている列を全部集めて返すようにする
+function getWinningSlotLines(boardSymbols) {
+  const winners = [];
   for (const line of CASINO_SLOT_LINES) {
     const first = boardSymbols[line[0]];
     if (!first) continue;
     const allMatch = line.every(index => boardSymbols[index] && boardSymbols[index].key === first.key);
-    if (allMatch) return line;
+    if (allMatch) winners.push({ line, symbol: first });
   }
-  return null;
+  return winners;
 }
 
 function getSlotBoardResult(boardSymbols) {
-  const winningLine = getWinningSlotLineIndexes(boardSymbols);
-  if (winningLine) {
-    const symbol = boardSymbols[winningLine[0]];
+  const winningLines = getWinningSlotLines(boardSymbols);
+  if (winningLines.length > 0) {
+    const totalPayout = winningLines.reduce((sum, w) => sum + w.symbol.payout, 0);
+    const winningIndexes = Array.from(new Set(winningLines.flatMap(w => w.line)));
     return {
       type: "win",
-      symbol,
-      line: winningLine,
-      payout: symbol.payout,
-      profit: symbol.payout
+      symbol: winningLines[0].symbol, // ★1列だけ揃った時の従来の表示に使う
+      symbols: winningLines.map(w => w.symbol),
+      lineCount: winningLines.length,
+      line: winningIndexes,
+      payout: totalPayout,
+      profit: totalPayout
     };
   }
 
@@ -213,6 +195,36 @@ function getSlotBoardResult(boardSymbols) {
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ★要望対応：揃った際の報酬（配当）を常に一覧で確認できるようにする
+function renderCasinoSlotPayoutTable() {
+  const container = document.getElementById("casino-slot-payout-table");
+  if (!container) return;
+  container.innerHTML = "";
+  
+  const chipRow = document.createElement("div");
+  chipRow.className = "casino-slot-payout-chip-row";
+  // ★配当の高い絵柄から並べて見やすくする
+  const sortedSymbols = [...CASINO_SLOT_SYMBOLS].sort((a, b) => b.payout - a.payout);
+  sortedSymbols.forEach(symbol => {
+    const chip = document.createElement("div");
+    chip.className = "casino-slot-payout-chip";
+    const symbolEl = document.createElement("span");
+    symbolEl.className = "casino-slot-payout-chip-symbol";
+    symbolEl.innerHTML = getSlotSymbolDisplay(symbol);
+    chip.appendChild(symbolEl);
+    const multiplierEl = document.createElement("span");
+    multiplierEl.textContent = `×${symbol.payout}`;
+    chip.appendChild(multiplierEl);
+    chipRow.appendChild(chip);
+  });
+  container.appendChild(chipRow);
+  
+  const note = document.createElement("div");
+  note.className = "casino-slot-payout-note";
+  note.textContent = "同じ絵柄が3つ揃うと掛け金×倍率、2つだけ揃うと掛け金の半分が戻ってくる";
+  container.appendChild(note);
 }
 
 function setSlotLeverPulled(pulled) {
@@ -348,6 +360,7 @@ function highlightCasinoSlotWinningLine(winningIndexes) {
 //   リールが回っている最中に押した場合は、区切りの良い所（今の掛けの決着後）まで来たら終了する予約フラグを立てる
 let casinoSlotCancelResolver = null;
 let casinoSlotQuitRequested = false;
+let casinoSlotLastBet = null; // ★要望対応：直前に使った掛け金を覚えておき、次回の初期値にする（毎回リセットしない）
 
 function requestCasinoSlotQuit() {
   casinoSlotQuitRequested = true;
@@ -414,6 +427,7 @@ async function startSlotGame() {
   overlay.classList.remove("hidden");
   casinoSlotQuitRequested = false;
   initCasinoSlotReels();
+  renderCasinoSlotPayoutTable(); // ★要望対応：配当表を毎回最新の状態で描画（施設ごとの絵柄差し替えに追従）
 
   if (quitButton) {
     quitButton.disabled = false;
@@ -431,7 +445,9 @@ async function startSlotGame() {
   };
 
   const chooseBet = () => new Promise((resolve) => {
-    let currentBet = Math.max(minBet, Math.min(maxBet, minBet));
+    // ★要望対応：初回や前回の掛け金があればそれを初期値にする（無ければ最低額）。
+    //   施設が変わってmin/maxが変化していても範囲内に収まるようclampする
+    let currentBet = Math.max(minBet, Math.min(maxBet, casinoSlotLastBet !== null ? casinoSlotLastBet : minBet));
     let settled = false;
 
     const cleanup = () => {
@@ -446,6 +462,7 @@ async function startSlotGame() {
       if (settled) return;
       settled = true;
       cleanup();
+      if (value !== null) casinoSlotLastBet = value; // ★要望対応：確定した掛け金を次回の初期値として覚えておく
       resolve(value);
     };
 
@@ -519,7 +536,12 @@ async function startSlotGame() {
     if (resultEl) {
       resultEl.classList.remove("hidden");
       if (result.type === "win") {
-        resultEl.textContent = `大当たり！ ${result.symbol.emoji} が揃って${bet * result.payout}陳の儲けだ！`;
+        if (result.lineCount > 1) {
+          const emojiList = result.symbols.map(s => s.emoji).join("、");
+          resultEl.textContent = `大当たり！ ${result.lineCount}列同時に揃った！（${emojiList}）合計${bet * result.payout}陳の儲けだ！`;
+        } else {
+          resultEl.textContent = `大当たり！ ${result.symbol.emoji} が揃って${bet * result.payout}陳の儲けだ！`;
+        }
       } else if (result.type === "small") {
         resultEl.textContent = `惜しい、2つ揃った。${Math.ceil(bet * 0.5)}陳だけ戻ってきた。`;
       } else {
@@ -535,7 +557,12 @@ async function startSlotGame() {
     }
     renderStatusHUD();
 
-    await sleep(900);
+    // ★要望対応：結果メッセージが一瞬（0.9秒）で消えてしまい読めない問題を修正。
+    //   自動で消すのではなく、プレイヤーが確認してから自分でボタン/Zキーで次に進める形にする
+    if (stopButton) {
+      stopButton.innerHTML = `つづける<span class="key-badge">Z</span>`;
+    }
+    await waitForSlotStopSignal(stopButton);
 
     if (resultEl) {
       resultEl.classList.add("hidden");
@@ -575,6 +602,12 @@ async function startSlotGame() {
 // ===== ③ルーレット（複数の賭けをまとめて確定するまで追加できる） =====
 const CASINO_ROULETTE_RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 
+// ★本物のヨーロピアンルーレットと同じ、盤面に並んでいる順番（時計回り）。0から始まる37マス
+const CASINO_ROULETTE_WHEEL_ORDER = [
+  0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23,
+  10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
+];
+
 function updateRouletteSelectionSummary(bets) {
   const statusEl = document.getElementById("casino-roulette-status");
   if (!statusEl) return;
@@ -589,13 +622,56 @@ function setRouletteSpinSceneVisible(visible) {
   else scene.classList.add("hidden");
 }
 
+// ★色帯（本物と同じ配色）と、外周ぞいの数字ラベルを一度だけ組み立てる
+let casinoRouletteWheelBuilt = false;
+function buildCasinoRouletteWheelOnce() {
+  if (casinoRouletteWheelBuilt) return;
+  const wheelEl = document.getElementById("casino-roulette-wheel");
+  if (!wheelEl) return;
+
+  const segmentDeg = 360 / CASINO_ROULETTE_WHEEL_ORDER.length;
+  const stops = CASINO_ROULETTE_WHEEL_ORDER.map((num, i) => {
+    const color = num === 0 ? "#1c7a3d" : (CASINO_ROULETTE_RED.has(num) ? "#9d1c1c" : "#1d1d1d");
+    const from = i * segmentDeg;
+    const to = from + segmentDeg;
+    return `${color} ${from}deg ${to}deg`;
+  }).join(", ");
+  wheelEl.style.background = `conic-gradient(${stops})`;
+
+  wheelEl.innerHTML = "";
+  CASINO_ROULETTE_WHEEL_ORDER.forEach((num, i) => {
+    const wrap = document.createElement("div");
+    wrap.className = "roulette-wheel-number-wrap";
+    wrap.style.transform = `rotate(${i * segmentDeg + segmentDeg / 2}deg)`;
+    const label = document.createElement("span");
+    label.className = "roulette-wheel-number";
+    label.textContent = String(num);
+    wrap.appendChild(label);
+    wheelEl.appendChild(wrap);
+  });
+
+  casinoRouletteWheelBuilt = true;
+}
+
+// ★resultNumberのマスが、真上の固定ポインターに来るのに必要な回転角（セグメント中心基準）
+function getCasinoRouletteTargetSegmentAngle(resultNumber) {
+  const index = CASINO_ROULETTE_WHEEL_ORDER.indexOf(resultNumber);
+  const segmentDeg = 360 / CASINO_ROULETTE_WHEEL_ORDER.length;
+  return (index >= 0 ? index : 0) * segmentDeg + segmentDeg / 2;
+}
+
+// ★玉が転がって、だんだん減速しながら当たりの数字へピタッと収まる演出。
+//   盤（ホイール）と玉は別々に、逆回りで何周かしてから、同時に止まるように角度を合わせておく
 function animateRouletteSpin(resultNumber) {
   const boardOverlay = document.getElementById("casino-roulette-board");
   const panel = boardOverlay ? boardOverlay.querySelector(".casino-roulette-panel") : null;
   const scene = document.getElementById("casino-roulette-wheel-scene");
   const wheel = document.getElementById("casino-roulette-wheel");
   const ball = document.getElementById("casino-roulette-ball");
+  const resultLabelEl = document.getElementById("casino-roulette-spin-result");
   if (!boardOverlay || !scene || !wheel || !ball) return Promise.resolve();
+
+  buildCasinoRouletteWheelOnce();
 
   // ★バグ修正：賭けを確定した時点でpickRouletteBets()側が#casino-roulette-board自体を非表示にしていたため、
   //   その中にある#casino-roulette-wheel-sceneだけ表示クラスを付けても、親ごと隠れたままで演出が一切見えなかった。
@@ -603,19 +679,57 @@ function animateRouletteSpin(resultNumber) {
   boardOverlay.classList.remove("hidden");
   if (panel) panel.classList.add("spin-only");
   setRouletteSpinSceneVisible(true);
-  const duration = 1800;
-  wheel.style.animation = `roulette-wheel-spin ${duration}ms linear infinite`;
-  ball.style.animation = `roulette-ball-orbit ${duration}ms linear infinite`;
+  if (resultLabelEl) resultLabelEl.textContent = "";
+
+  const SPIN_DURATION_MS = 4200;
+  const WHEEL_EXTRA_TURNS = 5;
+  const BALL_EXTRA_TURNS = 9;
+  const BALL_RADIUS = 112;
+
+  const targetSegmentAngle = getCasinoRouletteTargetSegmentAngle(resultNumber);
+  const wheelFinalRotation = WHEEL_EXTRA_TURNS * 360 - targetSegmentAngle;
+  const ballFinalRotation = -(BALL_EXTRA_TURNS * 360); // ★玉の軌道自体は数字と無関係な固定トラックなので、真上（ポインター）に戻ってくればOK
+
+  wheel.style.transition = "none";
+  ball.style.transition = "none";
+  wheel.style.transform = "rotate(0deg)";
+  ball.style.transform = `rotate(0deg) translateY(-${BALL_RADIUS}px)`;
+
+  requestAnimationFrame(() => {
+    wheel.style.transition = `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.11, 0.62, 0.16, 1)`;
+    ball.style.transition = `transform ${SPIN_DURATION_MS - 200}ms cubic-bezier(0.08, 0.55, 0.12, 1)`;
+    requestAnimationFrame(() => {
+      wheel.style.transform = `rotate(${wheelFinalRotation}deg)`;
+      ball.style.transform = `rotate(${ballFinalRotation}deg) translateY(-${BALL_RADIUS}px)`;
+    });
+  });
 
   return new Promise((resolve) => {
     setTimeout(() => {
-      wheel.style.animation = "none";
-      ball.style.animation = "none";
-      setRouletteSpinSceneVisible(false);
-      if (panel) panel.classList.remove("spin-only");
-      boardOverlay.classList.add("hidden"); // ★演出が終わったらまた盤面ごと隠す
-      resolve();
-    }, duration + 150);
+      // ★止まる瞬間、玉が数字のマスに弾かれて少し沈み込むような、小さな着地の揺れを付ける
+      ball.style.transition = "transform 260ms ease-out";
+      ball.style.transform = `rotate(${ballFinalRotation}deg) translateY(-${BALL_RADIUS - 8}px)`;
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          ball.style.transition = "transform 200ms ease-in-out";
+          ball.style.transform = `rotate(${ballFinalRotation}deg) translateY(-${BALL_RADIUS}px)`;
+        }, 260);
+      });
+
+      if (resultLabelEl) {
+        const colorLabel = resultNumber === 0 ? "緑" : (CASINO_ROULETTE_RED.has(resultNumber) ? "赤" : "黒");
+        resultLabelEl.textContent = `${resultNumber}・${colorLabel}`;
+      }
+
+      setTimeout(() => {
+        wheel.style.transition = "none";
+        ball.style.transition = "none";
+        setRouletteSpinSceneVisible(false);
+        if (panel) panel.classList.remove("spin-only");
+        boardOverlay.classList.add("hidden"); // ★演出が終わったらまた盤面ごと隠す
+        resolve();
+      }, 950);
+    }, SPIN_DURATION_MS);
   });
 }
 
@@ -793,18 +907,17 @@ async function pickRouletteBets() {
         event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, 1);
       } else if (event.key === "ArrowUp") {
         event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, -1);
-      } else if (event.key === "Enter" || event.key === "e" || event.key === "E") {
+      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
+        // ★要望対応：チップを置くのはZキー（決定キー）に統一。Cキーは確定専用にする
         event.preventDefault(); event.stopImmediatePropagation();
-        // ★バグ修正：ここで「選択済みなら即確定」にしていたせいで、1つ目のチップを置いた後は
-        //   Enter/Eキーで2つ目以降のチップが置けなくなっていた。確定はConfirmボタンかXキーで行う
         await addCurrentSelection();
       } else if (event.key === "c" || event.key === "C") {
-        event.preventDefault(); event.stopImmediatePropagation();
-        // ★バグ修正：同上。Cキーも常にチップを置くだけにする
-        await addCurrentSelection();
-      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
+        // ★要望対応：Cキーは「置き終えたマスをまとめて確定する」専用。置く操作はここでは行わない
         event.preventDefault(); event.stopImmediatePropagation();
         finish(selections.length ? selections : null);
+      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        finish(null);
       }
     }
 
@@ -840,14 +953,10 @@ async function startRouletteGame() {
   if (totalBet <= 0) { showCasinoMenu(); return; }
 
   changeSpeaker(casinoFacility.name || "ルーレット台");
-  await displayMessage("賭けを確定した。Cキーで続ける");
-  await waitForDecideKeyPresses(1, "", ["c", "C"]);
-  await displayMessage("球を3回押して回す");
-  await waitForDecideKeyPresses(3, "", ["c", "C"]);
-
+  await displayMessage("賭けを確定した。ルーレットの球が回る……");
+  
   const resultNumber = Math.floor(Math.random() * 37); // 0〜36
   const resultColorLabel = resultNumber === 0 ? "" : (CASINO_ROULETTE_RED.has(resultNumber) ? "・赤" : "・黒");
-  await displayMessage("ルーレットの球が回る……");
   await animateRouletteSpin(resultNumber);
   await displayMessage(`球が止まった……「${resultNumber}${resultColorLabel}」だ！`);
 

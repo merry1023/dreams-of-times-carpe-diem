@@ -2997,6 +2997,30 @@ html, body {
   flex-shrink: 0;
 }
 
+/* ★要望対応：リアルタイム競りの残り秒数カウントダウン表示 */
+.auction-participant-panel-countdown {
+  color: #ff8a65;
+  font-weight: bold;
+  margin: 0 0 6px 0;
+}
+
+/* ★要望対応：リアルタイム競り中の直近の出来事ログ */
+.auction-participant-panel-log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid #555;
+  margin-top: 6px;
+  padding-top: 6px;
+}
+
+.auction-participant-panel-log-line {
+  color: #aaa;
+  font-size: 11px;
+  margin: 0;
+  line-height: 1.3;
+}
+
 /* ===== カジノのスロット盤 ===== */
 .casino-slot-overlay {
   position: fixed;
@@ -3077,6 +3101,55 @@ html, body {
   gap: 12px;
   color: #fff;
   margin-bottom: 14px;
+}
+
+/* ★要望対応：スロットの配当（揃った際の報酬）を常に見える形で一覧表示する */
+.casino-slot-payout-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.casino-slot-payout-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.casino-slot-payout-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 193, 7, 0.45);
+  color: #fff3c7;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.casino-slot-payout-chip-symbol {
+  font-size: 15px;
+  line-height: 1;
+  display: inline-flex;
+}
+
+.casino-slot-payout-chip-symbol img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.casino-slot-payout-note {
+  text-align: center;
+  font-size: 11px;
+  color: #c9bfa8;
+  margin-top: -4px;
+  margin-bottom: 10px;
 }
 
 .casino-slot-title {
@@ -3299,8 +3372,11 @@ html, body {
 
 .casino-roulette-wheel-scene {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 14px;
+  padding: 6px 0 10px;
   margin-bottom: 12px;
 }
 
@@ -3310,11 +3386,28 @@ html, body {
 
 .roulette-wheel-outer {
   position: relative;
-  width: 180px;
-  height: 180px;
+  width: 260px;
+  height: 260px;
+  max-width: 68vw;
+  max-height: 68vw;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* ★止まる場所の目印。回転しない固定のポインター（本物の卓の「フレット」の代わり） */
+.roulette-wheel-pointer {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 14px solid #ffc107;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.6));
+  z-index: 3;
 }
 
 .roulette-wheel {
@@ -3322,64 +3415,61 @@ html, body {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background:
-    conic-gradient(
-      #9d1c1c 0deg 18deg,
-      #1d1d1d 18deg 36deg,
-      #9d1c1c 36deg 54deg,
-      #1d1d1d 54deg 72deg,
-      #9d1c1c 72deg 90deg,
-      #1d1d1d 90deg 108deg,
-      #9d1c1c 108deg 126deg,
-      #1d1d1d 126deg 144deg,
-      #9d1c1c 144deg 162deg,
-      #1d1d1d 162deg 180deg,
-      #9d1c1c 180deg 198deg,
-      #1d1d1d 198deg 216deg,
-      #9d1c1c 216deg 234deg,
-      #1d1d1d 234deg 252deg,
-      #9d1c1c 252deg 270deg,
-      #1d1d1d 270deg 288deg,
-      #9d1c1c 288deg 306deg,
-      #1d1d1d 306deg 324deg,
-      #9d1c1c 324deg 342deg,
-      #1d1d1d 342deg 360deg
-    );
-  border: 8px solid rgba(255, 255, 255, 0.35);
+  /* ★JS側（buildCasinoRouletteWheelOnce）が本物と同じ並び順・配色のconic-gradientに差し替える。
+     これは読み込み直後などJSがまだ動く前の、念のためのフォールバック見た目 */
+  background: conic-gradient(#9d1c1c 0deg 9.7deg, #1d1d1d 9.7deg 19.4deg);
+  border: 6px solid rgba(255, 255, 255, 0.35);
   box-shadow: inset 0 0 18px rgba(0,0,0,0.5), 0 0 18px rgba(255,193,7,0.35);
-  animation: roulette-wheel-spin 1.4s linear infinite;
 }
 
 .roulette-wheel::before {
   content: "";
   position: absolute;
-  inset: 18px;
+  inset: 30%;
   border-radius: 50%;
-  background: rgba(0,0,0,0.2);
-  border: 3px solid rgba(255,255,255,0.26);
+  background: radial-gradient(circle at 35% 30%, #4a3212, #241a0c 70%);
+  border: 3px solid rgba(255,255,255,0.28);
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.7);
 }
 
-.roulette-wheel::after {
-  content: "";
+.roulette-wheel-number-wrap {
   position: absolute;
-  inset: 48px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.08);
-  border: 2px solid rgba(255,255,255,.12);
+  inset: 0;
+}
+
+.roulette-wheel-number {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+  pointer-events: none;
 }
 
 .roulette-ball {
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   background: radial-gradient(circle at 30% 30%, #fff7d1, #e0b12c 60%, #a66a00 100%);
   border-radius: 50%;
   border: 1px solid rgba(0,0,0,0.4);
-  top: 18px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
-  box-shadow: 0 0 8px rgba(255, 193, 7, 0.7);
-  animation: roulette-ball-orbit 1.4s linear infinite;
+  margin: -6px 0 0 -6px;
+  box-shadow: 0 0 8px rgba(255, 193, 7, 0.8);
+  transform: rotate(0deg) translateY(-112px);
+  z-index: 2;
+}
+
+.roulette-spin-result {
+  min-height: 22px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff6d7;
+  text-align: center;
 }
 
 .casino-roulette-panel.spin-only .casino-roulette-header,
@@ -3387,17 +3477,6 @@ html, body {
 .casino-roulette-panel.spin-only .casino-roulette-grid,
 .casino-roulette-panel.spin-only .casino-roulette-footer {
   display: none;
-}
-
-@keyframes roulette-wheel-spin {
-  0% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(180deg) scale(1.04); }
-  100% { transform: rotate(360deg) scale(1); }
-}
-
-@keyframes roulette-ball-orbit {
-  0% { transform: translate(-50%, 0) rotate(0deg) translateY(-72px) rotate(0deg); }
-  100% { transform: translate(-50%, 0) rotate(360deg) translateY(-72px) rotate(-360deg); }
 }
 
 .casino-roulette-header {
@@ -4767,6 +4846,27 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* ★要望対応：一覧の項目ごとの折りたたみ見出し（実績管理タブなど） */
+.scenariobuild-collapsible-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 2px;
+  user-select: none;
+}
+
+.scenariobuild-collapsible-toggle-icon {
+  font-size: 11px;
+  color: #ffc107;
+  flex-shrink: 0;
+}
+
+.scenariobuild-collapsible-summary {
+  font-weight: bold;
+  word-break: break-all;
 }
 
 .scenariobuild-condition {

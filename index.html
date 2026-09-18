@@ -87,6 +87,8 @@
           <h3 class="casino-slot-title">ジャグラー</h3>
           <button id="casino-slot-quit-btn" class="casino-slot-quit-btn" type="button">やめる<span class="key-badge">X</span></button>
         </div>
+        <!-- ★要望対応：揃った時の報酬（配当）を常に一覧で確認できるようにする -->
+        <div id="casino-slot-payout-table" class="casino-slot-payout-table"></div>
         <div class="casino-slot-machine">
           <div id="casino-slot-lever" class="casino-slot-lever">
             <div class="casino-slot-lever-handle"></div>
@@ -127,18 +129,20 @@
       <div class="casino-roulette-panel">
         <div class="casino-roulette-header">
           <h3 class="casino-roulette-title">ルーレット</h3>
-          <span class="casino-roulette-hint">方向キーで場所を選び、Cで追加</span>
+          <span class="casino-roulette-hint">方向キーで場所を選び、Zで追加</span>
         </div>
         <div id="casino-roulette-status" class="casino-roulette-status">掛け済み: 0陳 / 0箇所</div>
         <div id="casino-roulette-wheel-scene" class="casino-roulette-wheel-scene hidden">
           <div class="roulette-wheel-outer">
+            <div class="roulette-wheel-pointer"></div>
             <div id="casino-roulette-wheel" class="roulette-wheel"></div>
             <div id="casino-roulette-ball" class="roulette-ball"></div>
           </div>
+          <div id="casino-roulette-spin-result" class="roulette-spin-result"></div>
         </div>
         <div id="casino-roulette-grid" class="casino-roulette-grid"></div>
         <div class="casino-roulette-footer">
-          <button id="casino-roulette-confirm" class="devmode-btn">確定<span class="key-badge">X</span></button>
+          <button id="casino-roulette-confirm" class="devmode-btn">確定<span class="key-badge">C</span></button>
           <button id="casino-roulette-cancel" class="devmode-btn">やめる<span class="key-badge">X</span></button>
         </div>
       </div>
