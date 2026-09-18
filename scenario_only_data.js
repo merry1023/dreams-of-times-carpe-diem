@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1789611172621,
+  "version": 1789717207072,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -6086,7 +6086,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1789459567122_1",
           "type": "background",
-          "path": "/workspaces/dreams-of-times-carpe-diem/img/豪邸部屋.jpg"
+          "path": "/img/豪邸部屋.jpg"
         },
         {
           "id": "block_1789145748073_100",
@@ -6218,6 +6218,11 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "text": "慌てて金を取りに行くミタメを背に、ツァナに小さくグッドサインを送る。\n渾身のドヤ顔で返された。"
         },
         {
+          "id": "block_1789612324909_1",
+          "type": "background",
+          "path": "/img/豪邸廊下.jpg"
+        },
+        {
           "id": "block_1789399792502_23",
           "type": "telop",
           "text": "一方その頃コリスギウスは..."
@@ -6243,9 +6248,20 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
               "text": "このまままっすぐ。",
               "blocks": [
                 {
+                  "id": "block_1789622068460_2",
+                  "type": "dialogue",
+                  "speaker": "鱗滝右近次",
+                  "text": "判断が早い！"
+                },
+                {
                   "id": "block_1789599950160_5",
                   "type": "narration",
-                  "text": "まっすぐ突き進む。\nその判断力は鱗滝右近次も唸る速さだ。ちにみに左の鱗滝さんではない。"
+                  "text": "まっすぐ突き進む。\nその判断力は鱗滝右近次も唸る速さだ。"
+                },
+                {
+                  "id": "block_1789612462304_3",
+                  "type": "background",
+                  "path": "img/宝箱.jpg"
                 },
                 {
                   "id": "block_1789600052415_6",
@@ -6297,6 +6313,11 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                           "text": ".......いったん戻るか..."
                         },
                         {
+                          "id": "block_1789612482474_4",
+                          "type": "background",
+                          "path": "img/豪邸廊下.jpg"
+                        },
+                        {
                           "id": "block_1789600428724_15",
                           "type": "jump",
                           "targetBlockId": "block_1789599880521_3"
@@ -6314,6 +6335,11 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                           "id": "block_1789600868730_18",
                           "type": "narration",
                           "text": "ここは違うみたいだな。他を当たろう..."
+                        },
+                        {
+                          "id": "block_1789612507758_5",
+                          "type": "background",
+                          "path": "img/豪邸廊下.jpg"
                         },
                         {
                           "id": "block_1789600901555_19",
@@ -6346,6 +6372,11 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "type": "dialogue",
                   "speaker": "コリスギウス",
                   "text": "な、なんだここは..."
+                },
+                {
+                  "id": "block_1789612547187_6",
+                  "type": "background",
+                  "path": "img/独房.jpg"
                 },
                 {
                   "id": "block_1789603804875_3",
@@ -6407,6 +6438,11 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1789604925865_12",
           "type": "narration",
           "text": "走る。監禁されていた女性を抱えて走った。\n抱えたまま陰移動は出来ないため普通にきつい。\n女性を抱えたまま走るのってこんなにきついのか..."
+        },
+        {
+          "id": "block_1789612385772_2",
+          "type": "background",
+          "path": "/img/豪邸部屋.jpg"
         },
         {
           "id": "block_1789605078783_16",
@@ -6475,15 +6511,347 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "type": "dialogue",
           "speaker": "ミタメ",
           "text": "な、何だお前は！やっぱり騙していたのか！"
+        },
+        {
+          "id": "block_1789612579200_8",
+          "type": "narration",
+          "text": "ミタメは怒り心頭激おこぷんぷん丸のようだ。"
+        },
+        {
+          "id": "block_1789612574189_7",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "こ、こうなったら....."
+        },
+        {
+          "id": "block_1789612633987_9",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "な、何をする気なの....？"
+        },
+        {
+          "id": "block_1789612666943_10",
+          "type": "narration",
+          "text": "するとミタメは、右手を天井に向かってかざし、呪文のようなものを唱え始めた。"
+        },
+        {
+          "id": "block_1789612718590_11",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "我が精霊よ、召喚に応じよ！\n出よ！ブヒーモス！"
+        },
+        {
+          "id": "block_1789612782681_12",
+          "type": "narration",
+          "text": "そう唱えたミタメの右手の中指が怪しく紅に光った。"
+        },
+        {
+          "id": "block_1789612823094_13",
+          "type": "dialogue",
+          "speaker": "？？？",
+          "text": "ウォオオオオオオオ！！"
+        },
+        {
+          "id": "block_1789621977333_1",
+          "type": "narration",
+          "text": "紅に染まる空気の中で、巨大な影がこちらを睨みつけるのを感じた。"
+        },
+        {
+          "id": "block_1789623451073_1",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "あれは...."
+        },
+        {
+          "id": "block_1789623464563_2",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "なんなの！？この光は！！"
+        },
+        {
+          "id": "block_1789623479728_3",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "これは嫌な予感がするぜ..."
+        },
+        {
+          "id": "block_1789623510022_5",
+          "type": "narration",
+          "text": "ミタメは誇らしげな顔で目を合わせてくる。\nこっち見んな。"
+        },
+        {
+          "id": "block_1789623504443_4",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "はっはっはっはっ！！！！\nブヒーモスはもはやだれにも止められんぞ！！！！！！"
+        },
+        {
+          "id": "block_1789624884636_6",
+          "type": "narration",
+          "text": "光が収まり、魔のオーラをまとった怪物がその紅から現れた。"
+        },
+        {
+          "id": "block_1789624964777_7",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "征け！！！ブヒーモス！このいけ好かないガキ共を殺せ！いたぶりつくして殺せ！！！！"
+        },
+        {
+          "id": "block_1789625016212_8",
+          "type": "dialogue",
+          "speaker": "ブヒーモス",
+          "text": "ﾌﾞﾋﾌﾞﾋｨｰｰｰｰ！！！"
+        },
+        {
+          "id": "block_1789625053943_9",
+          "type": "bossbattle",
+          "bossKey": "boss_1789622131499_3",
+          "escorts": [],
+          "winJumpBlockId": "block_1789625343635_12",
+          "defeatJumpBlockId": null,
+          "defeatMessage": ""
+        },
+        {
+          "id": "block_1789625168980_10",
+          "type": "narration",
+          "text": "まさか...こんな....ところで....\nすまない....ロリル...."
+        },
+        {
+          "id": "block_1789625210003_11",
+          "type": "gameover",
+          "message": "ブヒーモスの巨大な腹に押しつぶされ圧死した。",
+          "endingName": "バッドエンディング7:腹下死(デブノブレイク)",
+          "retryJumpBlockId": "block_1789625016212_8"
+        },
+        {
+          "id": "block_1789625343635_12",
+          "type": "narration",
+          "text": "なんとか倒せた..."
+        },
+        {
+          "id": "block_1789625395798_14",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "そんな....\nブヒーモスの体が…ボロボロに...."
+        },
+        {
+          "id": "block_1789625557976_15",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "嘘だ..."
+        },
+        {
+          "id": "block_1789625564559_16",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "嘘だそんなこと！！！！"
+        },
+        {
+          "id": "block_1789625362395_13",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "嘘じゃあないんだなァーこれがよォー\n....で？どうするんだ？ミタメさんよォ。"
+        },
+        {
+          "id": "block_1789625620524_17",
+          "type": "narration",
+          "text": "溢れんばかりのミタメへの怒りを必死に抑えて冷静に言う。"
+        },
+        {
+          "id": "block_1789625753070_20",
+          "type": "narration",
+          "text": "地面に這いつくばりながら涙でくしゃくしゃのミタメの顔面が嗤えて吹きそうになった。"
+        },
+        {
+          "id": "block_1789625727225_19",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "ど、どうが！！どうが命だげば！！だずげでぐだざい！！！"
+        },
+        {
+          "id": "block_1789625690325_18",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "えー？どうしよっかなぁー♪"
+        },
+        {
+          "id": "block_1789625870851_21",
+          "type": "narration",
+          "text": "ツァナがいつになくご機嫌でなによりだ。"
+        },
+        {
+          "id": "block_1789625898132_23",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "ぞ、ぞうだ！！どで...どでい！！奴隷にでもなんでもなってやる！！\nだから、だから殺さないでくれ！！なんならこの金で新しく君たちに奴隷を買ってやっても良いぞ！！！！！！"
+        },
+        {
+          "id": "block_1789625888901_22",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "へぇ、そうかい。"
+        },
+        {
+          "id": "block_1789625982231_24",
+          "type": "narration",
+          "text": "最期まで救えないやつだ。\n最期まで自分のことしか考えてないのか。奴隷を買ってやるなどと簡単に、吐き捨てるように言うのか。"
+        },
+        {
+          "id": "block_1789626059690_25",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "いいよ。殺さないであげる。\n奴隷になってくれるんだろ？"
+        },
+        {
+          "id": "block_1789626087293_26",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "え？そんな！こんなやつを生かしておくっていうの！？"
+        },
+        {
+          "id": "block_1789626114014_27",
+          "type": "narration",
+          "text": "ツァナは分かってないみたいだが、まあ見てなとニコニコ笑顔で返してやる。"
+        },
+        {
+          "id": "block_1789626169400_28",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "な、なります！！\n奴隷にならせてください！！！"
+        },
+        {
+          "id": "block_1789626201128_29",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "ロリル。あとは任せるぞ。"
+        },
+        {
+          "id": "block_1789626218325_30",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "うん。"
+        },
+        {
+          "id": "block_1789626227903_31",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "ミタメ。\nあなたの真名をおしえて。"
+        },
+        {
+          "id": "block_1789626247080_32",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "く、くそったれ！なぜお前なんかに真名を教えなくちゃいけないんだ！"
+        },
+        {
+          "id": "block_1789626291352_34",
+          "type": "narration",
+          "text": "いつまで足掻く気だろうか。\nもうそろそろ素直になってもらわねば。"
+        },
+        {
+          "id": "block_1789626284669_33",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "殺されたくないんじゃないの。"
+        },
+        {
+          "id": "block_1789626435576_35",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "...っっ....\nっっくそっ...."
+        },
+        {
+          "id": "block_1789626457473_36",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "あぁわかった、、、言ってやる....\n言ってやるぞ...！！"
+        },
+        {
+          "id": "block_1789626482609_37",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "俺の名前は...！"
+        },
+        {
+          "id": "block_1789626493285_38",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "おれの、、、名前、、、は！！！"
+        },
+        {
+          "id": "block_1789626513620_39",
+          "type": "narration",
+          "text": "やっと、か。"
+        },
+        {
+          "id": "block_1789626612312_40",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "ミタメ=トン・カツ...............\nだ。"
+        },
+        {
+          "id": "block_1789626642566_41",
+          "type": "narration",
+          "text": ".......言えたじゃねぇか..."
+        },
+        {
+          "id": "block_1789626654950_42",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "........そう、、、、\nあなたにふさわしい名前ね。"
+        },
+        {
+          "id": "block_1789626678614_43",
+          "type": "narration",
+          "text": "ーーーー分かってる。\nロリル、お前が決めろーーーー。"
+        },
+        {
+          "id": "block_1789626719020_44",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "じゃぁ、"
+        },
+        {
+          "id": "block_1789626735190_45",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "キ◯タマ噛み切って死ね。"
+        },
+        {
+          "id": "block_1789626782452_46",
+          "type": "narration",
+          "text": "え。"
+        },
+        {
+          "id": "block_1789626838797_47",
+          "type": "narration",
+          "text": "予想の斜め上を行く殺し方するなぁ..."
+        },
+        {
+          "id": "block_1789626855223_48",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "な、なんだとォォッッ！！この俺に向かって！\nゆるさ"
+        },
+        {
+          "id": "block_1789626886238_49",
+          "type": "narration",
+          "text": "突然。"
+        },
+        {
+          "id": "block_1789626897524_50",
+          "type": "narration",
+          "text": "ミタメの目の色が"
         }
       ],
-      "enabled": false,
+      "enabled": true,
       "requiredChapterId": "custom_1788780588914_1",
       "requiredRank": null,
       "requiredProgress": null,
       "requiredDays": null,
       "requiredFlag": null,
-      "isInterlude": false
+      "isInterlude": false,
+      "synopsis": "a"
     }
   ],
   "characters": [

@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789611172950,
+  "version": 1789717329211,
   "enemies": [
     {
       "id": "goblin",
@@ -996,6 +996,106 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "statusImmunities": [],
       "statusResistances": {}
+    },
+    {
+      "id": "boss_1789622131499_3",
+      "name": "魔精霊「ブヒーモス」",
+      "description": "ミタメの召喚に応じ現れた魔精霊で、巨大な豚のような外見をしている。",
+      "level": 25,
+      "fixedStats": "",
+      "maxHp": 230,
+      "atk": 18,
+      "exp": 800,
+      "bgmTrack": "",
+      "bgmFinalTrack": "",
+      "bgmCrisisTrack": "",
+      "imagePath": "",
+      "sizeMultiplier": 1,
+      "invincibilityBreakItemId": "",
+      "dropItemId": null,
+      "dropRate": 0,
+      "killFlavor": "ﾌﾞﾋｨｰｰ！",
+      "spareFlavor": "",
+      "giftItemId": null,
+      "uniqueSkill": {
+        "name": "肉拳",
+        "chance": 0.25,
+        "multiplier": 1.4,
+        "flavor": "巨大な肉の塊が迫ってくる！！",
+        "kind": "normal",
+        "hpDrainRatio": 0,
+        "spDrain": 0
+      },
+      "statusInflictions": [
+        {
+          "kind": "confuse",
+          "chance": 0.5,
+          "duration": 3,
+          "power": 0
+        },
+        {
+          "kind": "defDown",
+          "chance": 0.5,
+          "duration": 3,
+          "power": 35
+        }
+      ],
+      "normalAttackStatusInflictions": [
+        {
+          "kind": "dullPain",
+          "chance": 0.3,
+          "duration": 3,
+          "power": 35
+        }
+      ],
+      "statusImmunities": [
+        "stun",
+        "paralyze",
+        "confuse"
+      ],
+      "statusResistances": {
+        "atkDown": 0.5
+      },
+      "battleEvents": [
+        {
+          "id": "bossevent_1789622528444_4",
+          "conditionType": "bossHpBelow",
+          "conditionValue": 50,
+          "action": "blocks",
+          "messageText": "ﾌﾞﾋｨｰｰ！！！",
+          "blocks": [
+            {
+              "id": "block_1789622574356_5",
+              "type": "bossChangeForm",
+              "messageText": "ﾌﾞﾋﾌﾞﾋｨ！(どうやら本気を出したみたいだ)",
+              "formName": "魔精霊「ﾌﾞﾋｨモス」",
+              "formAtkMultiplier": 1.3,
+              "formHealRatio": 1
+            },
+            {
+              "id": "block_1789622620907_6",
+              "type": "bossUseSkill",
+              "skillName": "ブヒーモスの波動",
+              "skillMultiplier": 1.5
+            },
+            {
+              "id": "block_1789622650735_7",
+              "type": "bossChangeForm",
+              "messageText": "",
+              "formName": "",
+              "formAtkMultiplier": 1.3,
+              "formHealRatio": 0
+            }
+          ]
+        }
+      ],
+      "killBlocks": [],
+      "spareBlocks": [],
+      "restSkillBlocks": [],
+      "affectionGainRange": [
+        5,
+        10
+      ]
     }
   ],
   "items": [
@@ -10047,7 +10147,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "type": "casino",
       "name": "スペル=マ・ギア・ザ・カジノ",
       "bgTrack": "",
-      "bgImage": "",
+      "bgImage": "img/カジノ.png",
       "ownerDialogue": "",
       "price": 20,
       "sleepinessRecovery": 40,
@@ -10064,7 +10164,83 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "speaker": "田中治郎",
           "text": "うおお！"
         }
-      ]
+      ],
+      "slotImages": {}
+    },
+    {
+      "id": "facility_1789648540174_1",
+      "type": "auction",
+      "name": "スペル=マ・ギアズオークション",
+      "bgTrack": "",
+      "bgImage": "img/会場.jpg",
+      "ownerDialogue": "",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "enterBlocks": [
+        {
+          "type": "dialogue",
+          "speaker": "オーナー",
+          "text": "ここではいろんな品が競り落とされます。見ていきますか？"
+        }
+      ],
+      "auctionItemPool": [
+        {
+          "itemId": "excalibur",
+          "weight": 1
+        },
+        {
+          "itemId": "material_002",
+          "weight": 1
+        },
+        {
+          "itemId": "weapon_001",
+          "weight": 1
+        },
+        {
+          "itemId": "armor_004",
+          "weight": 1
+        },
+        {
+          "itemId": "item_1788135780001_5",
+          "weight": 6
+        },
+        {
+          "itemId": "item_1788595270345_5",
+          "weight": 3
+        },
+        {
+          "itemId": "item_1789108283549_3",
+          "weight": 1
+        },
+        {
+          "itemId": "potion_001",
+          "weight": 8
+        },
+        {
+          "itemId": "item_1788350425965_30",
+          "weight": 5
+        }
+      ],
+      "auctionIntervalDays": 5,
+      "auctionFee": 10000
+    },
+    {
+      "id": "facility_1789717294561_1",
+      "type": "rustRemoval",
+      "name": "錆取りジョージ7号店",
+      "bgTrack": "",
+      "bgImage": "",
+      "ownerDialogue": "",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "minBet": 10,
+      "maxBet": 1000,
+      "slotImages": {},
+      "enterBlocks": []
     }
   ],
   "portraitCharacters": [],
@@ -10216,6 +10392,13 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "description": "継続回復、全体回復が可能で魔力、攻撃力ともに頼れる片手剣",
       "facilityId": "facility_1789442044424_3"
     }
+  ],
+  "randomNamePool": [
+    "ポンチ",
+    "アホ",
+    "バカ",
+    "ヘタイン",
+    "ドケスベェ"
   ],
   "bgmTracks": [
     {
@@ -10966,7 +11149,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "facility_1788244866711_1",
         "facility_1788134408511_1",
         "facility_1789601498255_1",
-        "facility_1789442530326_5"
+        "facility_1789442530326_5",
+        "facility_1789648540174_1"
       ],
       "mapNodeSize": 20,
       "leftTarget": "custom_area_1788853853599_1",
@@ -10980,7 +11164,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "x": 164.06450704036183,
       "y": 10.145609711257613,
       "bgTrack": "field_cave",
-      "bgImage": "/img/洞窟.jpg",
+      "bgImage": "img/洞窟2.png",
       "bossId": "cave_boss",
       "bossTriggerTypes": [
         "examine"
