@@ -616,10 +616,13 @@ function pickAuctionBidAmount({ title, min, max }) {
     // ★バグ修正：入札額入力中も裏の行き先メニュー（入札する／見送る等のボタン列）が
     //   非表示クラス無しのまま残っていると、mainfunc.js側のArrowUp/Down用リスナーが
     //   このテンキーより先にキー入力を横取りしてしまい、上下キーが一切効かなくなっていた。
-    //   テンキーを開いている間だけ行き先メニューを隠し、閉じたら元の表示状態に戻す
-    const locationMenuEl = document.getElementById("location-menu");
-    const locationMenuWasVisible = !!locationMenuEl && !locationMenuEl.classList.contains("hidden");
-    if (locationMenuWasVisible) locationMenuEl.classList.add("hidden");
+    //   テンキーを開いている間は行き先メニューを隠しておく。
+    //   ★閉じた後は元に戻さない：この時点の行き先メニューは「今回は見送る」等、入札前の
+    //   古い選択肢のままなので、うっかり元へ戻すとテンキーを閉じた後の新しいメッセージに
+    //   古い選択肢ボタンが重なって隠れてしまったり、古いボタンを押せてしまって二重に
+    //   ラウンドが進んでしまう不具合になる。閉じた後に選択肢が必要な場面は、呼び出し側が
+    //   showAuctionRoundMenu()／askAuctionRaiseOrGiveUp()で毎回新しく出し直す
+    if (typeof hideLocationMenu === "function") hideLocationMenu();
     
     let valueStr = "";
     let cursorIndex = AUCTION_KEYPAD_LAYOUT.findIndex(c => c.type === "confirm");
@@ -672,7 +675,6 @@ function pickAuctionBidAmount({ title, min, max }) {
     
     function finish(result) {
       if (overlay) overlay.classList.add("hidden");
-      if (locationMenuWasVisible && locationMenuEl) locationMenuEl.classList.remove("hidden"); // ★隠した行き先メニューを元に戻す
       buttons.forEach(btn => { btn.onclick = null; });
       window.removeEventListener("keydown", handleKey);
       resolve(result);
