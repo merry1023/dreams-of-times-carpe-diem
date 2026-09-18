@@ -102,12 +102,13 @@ function isAuctionDayToday() {
   return getCurrentGameDay() % interval === 0;
 }
 
-// ★要望対応：「出品した品の行方を聞く」は、本日の競りが（開催日でない／全ラウンド終了で）
-//   進行中でない時だけ選べるようにする。競りの真っ最中に自分の出品結果を確認できてしまうと
-//   都合が良すぎる（結果を見てから入札額を調整できてしまう）ため
-function isAuctionSessionInProgress() {
+// ★要望対応：「出品した品の行方を聞く」は、本日の競りが完全に終わった後だけ選べるようにする。
+//   （出品した直後、まだ今日の競りに参加すらしていない状態でもすぐ結果が見えてしまわないように）
+function hasTodaysAuctionConcluded() {
+  if (!isAuctionDayToday()) return true; // ★今日が開催日でなければ、少なくとも直近の競りはもう終わっている
   const state = getAuctionState();
-  return !!(state.session && state.session.day === getCurrentGameDay() && state.session.roundIndex < state.session.totalRounds);
+  const today = getCurrentGameDay();
+  return !!(state.session && state.session.day === today && state.session.roundIndex >= state.session.totalRounds);
 }
 
 // ===== メインメニュー =====
@@ -120,12 +121,13 @@ function showAuctionMenu() {
   const options = [
     { label: "オークションに参加する", action: () => runWithLocationMenuHidden(tryStartAuctionDay) },
     { label: "アイテムを出品する", action: () => runWithLocationMenuHidden(tryListPlayerItem) }, // ★要望対応：自分のアイテムを出品して売る
+    { label: "オークションの説明を聞く", action: () => runWithLocationMenuHidden(hearAuctionExplanation) }, // ★要望対応
     { label: "やめる", action: () => auctionReturnTo() },
   ];
 
   // ★要望対応：「入札に負けた／見送った品の行方」と「自分が出品した品の結果」を混同しないよう、
   //   ラベルと貯め先（pendingResults／pendingSellResults）をはっきり分けておく
-  if (sellCount > 0 && !isAuctionSessionInProgress()) {
+  if (sellCount > 0 && hasTodaysAuctionConcluded()) {
     options.splice(-1, 0, {
       label: `出品の結果を聞く（${sellCount}件）`,
       action: () => runWithLocationMenuHidden(hearAuctionSellResults),
@@ -177,6 +179,14 @@ async function tryStartAuctionDay() {
       return;
     }
     if (fee > 0) {
+      // ★要望対応：手数料を提示し、確認を取ってから支払う（無言でいきなり引かれないように）
+      changeSpeaker(auctionFacility.name || "オークション会場");
+      await displayMessage(`「参加するには手数料${fee}陳がかかるが、よろしいか？」`, { allowSubFocus: true });
+      const confirmed = await confirmAuctionFee(fee);
+      if (!confirmed) {
+        showAuctionMenu();
+        return;
+      }
       changeGold(-fee);
       renderStatusHUD();
       changeSpeaker(auctionFacility.name || "オークション会場");
@@ -445,6 +455,17 @@ function askAuctionRaiseOrGiveUp(item, currentPrice) {
   });
 }
 
+// ★要望対応：参加料を提示して確認を取る
+function confirmAuctionFee(fee) {
+  return new Promise(resolve => {
+    changeSpeaker(auctionFacility.name || "オークション会場");
+    showLocationMenu([
+      { label: `参加する（手数料${fee}陳）`, action: () => resolve(true) },
+      { label: "やめておく", action: () => resolve(false) },
+    ]);
+  });
+}
+
 // ===== ラウンドの決着 =====
 async function resolveAuctionRoundAsWon(item, price) {
   // ★バグ修正：直前に表示されていた行き先メニュー（さらに上乗せする／諦める、等）を隠さずに
@@ -517,6 +538,39 @@ async function proceedToNextRoundOrFinishDay() {
   hideAuctionParticipantPanel();
   changeSpeaker(auctionFacility.name || "オークション会場");
   await displayMessage("「本日の競りはこれで全て終わりだ。また次回お越しください。」", { allowSubFocus: true });
+  showAuctionMenu();
+}
+
+// ===== 要望対応：オークションの説明を聞く =====
+async function hearAuctionExplanation() {
+  const fee = getAuctionFee();
+  const interval = getAuctionIntervalDays();
+  const maxRounds = AUCTION_ROUND3_CHANCE > 0 ? 3 : 2;
+  
+  changeSpeaker(auctionFacility.name || "オークション会場");
+  await displayMessage(
+    `「ようこそ、${auctionFacility.name || "オークション会場"}へ。ここでは${interval}日に一度、掘り出し物が競りにかけられるのだ。」`,
+    { allowSubFocus: true }
+  );
+  await displayMessage(
+    fee > 0
+      ? `「参加には一日ごとに手数料${fee}陳をいただく。その日最初に参加する時だけでよいぞ。」`
+      : `「参加に手数料は要らぬ。気軽に参加してくれ。」`,
+    { allowSubFocus: true }
+  );
+  await displayMessage(
+    `「一日に２〜${maxRounds}回、ランクの低い品から高い品へと順に競りが行われる。各回、まず品を鑑定するか、入札するか、見送るかを選んでもらう。」`,
+    { allowSubFocus: true }
+  );
+  await displayMessage(
+    `「入札すれば、他の客と値をせり上げ合うことになる。競り勝てばその場で品が手に入るが、競り負けたり自分から諦めたりすると、入札額の一部を手数料として引かれてしまうので気をつけるのだぞ。」`,
+    { allowSubFocus: true }
+  );
+  await displayMessage(
+    `「なに、買うだけではないぞ。「アイテムを出品する」を選べば、お前さんの持ち物をここで売りに出すこともできる。ただし結果はその日の競りが全て終わるまで分からぬ。売れれば代金を、売れ残れば品そのものを後で返そう。」`,
+    { allowSubFocus: true }
+  );
+  
   showAuctionMenu();
 }
 
