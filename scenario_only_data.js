@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1789742548338,
+  "version": 1789773823850,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -5539,7 +5539,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
     {
       "id": "custom_1788854370721_3",
       "title": "第五話:紅の愚豚",
-      "cleared": true,
+      "cleared": false,
       "builtin": false,
       "requiredChapterNumber": 6,
       "blocks": [
