@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1789717207072,
+  "version": 1789742548338,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -6787,7 +6787,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1789626612312_40",
           "type": "dialogue",
           "speaker": "ミタメ",
-          "text": "ミタメ=トン・カツ...............\nだ。"
+          "text": "ミタメ=トン・カツ...............\nだ。\nこれで良いか！煮るなり焼くなり二宮◯也"
         },
         {
           "id": "block_1789626642566_41",
@@ -6812,10 +6812,39 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "text": "じゃぁ、"
         },
         {
+          "id": "block_1789741908737_2",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "...た....."
+        },
+        {
+          "id": "block_1789741919411_3",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "....あ？"
+        },
+        {
+          "id": "block_1789741989532_4",
+          "type": "dialogue",
+          "speaker": "",
+          "text": "き◯たま..."
+        },
+        {
+          "id": "block_1789742002389_5",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "キ◯タマ...？"
+        },
+        {
+          "id": "block_1789742021650_6",
+          "type": "narration",
+          "text": "ロリルは振り絞るような大声で叫んだ。"
+        },
+        {
           "id": "block_1789626735190_45",
           "type": "dialogue",
           "speaker": "ロリル",
-          "text": "キ◯タマ噛み切って死ね。"
+          "text": "キ◯タマ噛み切って死ね！！！"
         },
         {
           "id": "block_1789626782452_46",
@@ -6825,7 +6854,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1789626838797_47",
           "type": "narration",
-          "text": "予想の斜め上を行く殺し方するなぁ..."
+          "text": "予想の斜め上を行くなこの子は..."
         },
         {
           "id": "block_1789626855223_48",
@@ -6841,10 +6870,65 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1789626897524_50",
           "type": "narration",
-          "text": "ミタメの目の色が"
+          "text": "ミタメの目の色が深い、底なしの闇に変わった。\nそれは一瞬であった。"
+        },
+        {
+          "id": "block_1789741861365_1",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "っっ...クソッ！\n身体が...言うことを...聞かねぇッッ！！"
+        },
+        {
+          "id": "block_1789742084066_7",
+          "type": "narration",
+          "text": "バキ、バキバキ....\n背骨が折れる音が聞こえる。"
+        },
+        {
+          "id": "block_1789742105495_8",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "ぐぁぁぁぁあああああ！！\nこんなこと許されるとでも...ぉぉおおお！！♡♡"
+        },
+        {
+          "id": "block_1789742145694_9",
+          "type": "dialogue",
+          "speaker": "ミタメ",
+          "text": "こん...な...\n屈...辱お\"お\"お\"お\"お\"♡♡"
+        },
+        {
+          "id": "block_1789742195774_12",
+          "type": "telop",
+          "text": "ブチッ"
+        },
+        {
+          "id": "block_1789742184183_10",
+          "type": "narration",
+          "text": "まるで糸が切れたように、、、、\nあるいはこたつのスイッチを消したかのように、、、、"
+        },
+        {
+          "id": "block_1789742283883_13",
+          "type": "narration",
+          "text": "ミタメはあっけなく死亡した、、、、、、、"
+        },
+        {
+          "id": "block_1789742327410_15",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "死んだ.....のか...."
+        },
+        {
+          "id": "block_1789742321805_14",
+          "type": "narration",
+          "text": "ミタメの死体をただ見つめる。\n右手の中指には紅に輝く宝石が埋め込まれた「指輪」がはめられていた。\nさっき光ったのはこれか。"
+        },
+        {
+          "id": "block_1789742439962_16",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "ミタメはこの指輪でブヒーモスを召喚したわけね。"
         }
       ],
-      "enabled": true,
+      "enabled": false,
       "requiredChapterId": "custom_1788780588914_1",
       "requiredRank": null,
       "requiredProgress": null,
