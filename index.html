@@ -85,14 +85,30 @@
       <div class="casino-slot-panel">
         <div class="casino-slot-header">
           <h3 class="casino-slot-title">ジャグラー</h3>
-          <span class="casino-slot-hint">盤面が揃えば当たり！</span>
+          <button id="casino-slot-quit-btn" class="casino-slot-quit-btn" type="button">やめる<span class="key-badge">X</span></button>
         </div>
         <div class="casino-slot-machine">
           <div id="casino-slot-lever" class="casino-slot-lever">
             <div class="casino-slot-lever-handle"></div>
             <div class="casino-slot-lever-knob"></div>
           </div>
-          <div id="casino-slot-grid" class="casino-slot-grid"></div>
+          <div id="casino-slot-reels" class="casino-slot-reels">
+            <div class="casino-slot-reel" data-reel="0">
+              <div class="casino-slot-reel-window">
+                <div id="casino-slot-reel-strip-0" class="casino-slot-reel-strip"></div>
+              </div>
+            </div>
+            <div class="casino-slot-reel" data-reel="1">
+              <div class="casino-slot-reel-window">
+                <div id="casino-slot-reel-strip-1" class="casino-slot-reel-strip"></div>
+              </div>
+            </div>
+            <div class="casino-slot-reel" data-reel="2">
+              <div class="casino-slot-reel-window">
+                <div id="casino-slot-reel-strip-2" class="casino-slot-reel-strip"></div>
+              </div>
+            </div>
+          </div>
         </div>
         <div id="casino-slot-bet-panel" class="casino-slot-bet-panel">
           <button id="casino-slot-bet-dec" class="casino-slot-bet-btn" type="button" aria-label="掛金を減らす">◀</button>
