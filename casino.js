@@ -144,26 +144,32 @@ function getSlotSymbolDisplay(symbol) {
   return s.emoji;
 }
 
-function getWinningSlotLineIndexes(boardSymbols) {
+// ★修正：以前は最初に見つかった1本だけを返していたので、2列同時に揃っても1列分しか
+//   判定されなかった。揃っている列を全部集めて返すようにする
+function getWinningSlotLines(boardSymbols) {
+  const winners = [];
   for (const line of CASINO_SLOT_LINES) {
     const first = boardSymbols[line[0]];
     if (!first) continue;
     const allMatch = line.every(index => boardSymbols[index] && boardSymbols[index].key === first.key);
-    if (allMatch) return line;
+    if (allMatch) winners.push({ line, symbol: first });
   }
-  return null;
+  return winners;
 }
 
 function getSlotBoardResult(boardSymbols) {
-  const winningLine = getWinningSlotLineIndexes(boardSymbols);
-  if (winningLine) {
-    const symbol = boardSymbols[winningLine[0]];
+  const winningLines = getWinningSlotLines(boardSymbols);
+  if (winningLines.length > 0) {
+    const totalPayout = winningLines.reduce((sum, w) => sum + w.symbol.payout, 0);
+    const winningIndexes = Array.from(new Set(winningLines.flatMap(w => w.line)));
     return {
       type: "win",
-      symbol,
-      line: winningLine,
-      payout: symbol.payout,
-      profit: symbol.payout
+      symbol: winningLines[0].symbol, // ★1列だけ揃った時の従来の表示に使う
+      symbols: winningLines.map(w => w.symbol),
+      lineCount: winningLines.length,
+      line: winningIndexes,
+      payout: totalPayout,
+      profit: totalPayout
     };
   }
 
@@ -530,7 +536,12 @@ async function startSlotGame() {
     if (resultEl) {
       resultEl.classList.remove("hidden");
       if (result.type === "win") {
-        resultEl.textContent = `大当たり！ ${result.symbol.emoji} が揃って${bet * result.payout}陳の儲けだ！`;
+        if (result.lineCount > 1) {
+          const emojiList = result.symbols.map(s => s.emoji).join("、");
+          resultEl.textContent = `大当たり！ ${result.lineCount}列同時に揃った！（${emojiList}）合計${bet * result.payout}陳の儲けだ！`;
+        } else {
+          resultEl.textContent = `大当たり！ ${result.symbol.emoji} が揃って${bet * result.payout}陳の儲けだ！`;
+        }
       } else if (result.type === "small") {
         resultEl.textContent = `惜しい、2つ揃った。${Math.ceil(bet * 0.5)}陳だけ戻ってきた。`;
       } else {
