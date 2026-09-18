@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789773823013,
+  "version": 1789774455326,
   "enemies": [
     {
       "id": "goblin",
@@ -10924,7 +10924,12 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "examineMessages": [
         "花たちを見つめていると、心が和やかになった。"
       ],
-      "unlockConditions": [],
+      "unlockConditions": [
+        {
+          "type": "chapterCleared",
+          "chapterId": "custom_1788854370721_3"
+        }
+      ],
       "bossTriggerTypes": [
         "step"
       ],
