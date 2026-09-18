@@ -3079,6 +3079,55 @@ html, body {
   margin-bottom: 14px;
 }
 
+/* ★要望対応：スロットの配当（揃った際の報酬）を常に見える形で一覧表示する */
+.casino-slot-payout-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.casino-slot-payout-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.casino-slot-payout-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 193, 7, 0.45);
+  color: #fff3c7;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.casino-slot-payout-chip-symbol {
+  font-size: 15px;
+  line-height: 1;
+  display: inline-flex;
+}
+
+.casino-slot-payout-chip-symbol img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.casino-slot-payout-note {
+  text-align: center;
+  font-size: 11px;
+  color: #c9bfa8;
+  margin-top: -4px;
+  margin-bottom: 10px;
+}
+
 .casino-slot-title {
   margin: 0;
   font-size: 20px;
