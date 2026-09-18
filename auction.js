@@ -102,6 +102,14 @@ function isAuctionDayToday() {
   return getCurrentGameDay() % interval === 0;
 }
 
+// ★要望対応：「出品した品の行方を聞く」は、本日の競りが（開催日でない／全ラウンド終了で）
+//   進行中でない時だけ選べるようにする。競りの真っ最中に自分の出品結果を確認できてしまうと
+//   都合が良すぎる（結果を見てから入札額を調整できてしまう）ため
+function isAuctionSessionInProgress() {
+  const state = getAuctionState();
+  return !!(state.session && state.session.day === getCurrentGameDay() && state.session.roundIndex < state.session.totalRounds);
+}
+
 // ===== メインメニュー =====
 function showAuctionMenu() {
   hideAuctionParticipantPanel(); // ★念のため：メインメニューに戻ってきた時は必ずパネルを消しておく
@@ -117,7 +125,7 @@ function showAuctionMenu() {
 
   // ★要望対応：「入札に負けた／見送った品の行方」と「自分が出品した品の結果」を混同しないよう、
   //   ラベルと貯め先（pendingResults／pendingSellResults）をはっきり分けておく
-  if (sellCount > 0) {
+  if (sellCount > 0 && !isAuctionSessionInProgress()) {
     options.splice(-1, 0, {
       label: `出品の結果を聞く（${sellCount}件）`,
       action: () => runWithLocationMenuHidden(hearAuctionSellResults),
@@ -182,6 +190,7 @@ async function tryStartAuctionDay() {
 
 // ===== ラウンド進行 =====
 async function runAuctionRound() {
+  hideLocationMenu(); // ★バグ修正：念のため、ここでも必ず行き先メニューを隠してから出品メッセージを出す
   const state = getAuctionState();
   const session = state.session;
   const [lowRank, highRank] = AUCTION_ROUND_RANK_RANGES[session.roundIndex];
@@ -271,6 +280,9 @@ function showAuctionRoundMenu(item, trueValue, hintRange) {
 }
 
 async function useAuctionAppraisalHint(item, trueValue) {
+  // ★バグ修正：直前まで表示されていた行き先メニュー（鑑定/入札する/見送る）を隠さずに
+  //   displayMessageを呼ぶと、メニューの裏にメッセージが隠れて見えなくなってしまう
+  hideLocationMenu();
   // ★通常の「なんでも鑑定」と同じく、自分の冒険者ランク+1までしか鑑定できない
   if (rankIndex(item.rank) > rankIndex(player.rank) + 1) {
     changeSpeaker("鑑定士");
@@ -323,6 +335,7 @@ function generateAuctionNpcs(trueValue) {
 
 async function startAuctionBidding(item, trueValue) {
   if (gold <= 0) {
+    hideLocationMenu(); // ★バグ修正：同上、メッセージが行き先メニューの裏に隠れないように
     changeSpeaker(auctionFacility.name || "オークション会場");
     await displayMessage("「持ち金が無くては入札できないようだ。」", { allowSubFocus: true });
     showAuctionRoundMenu(item, trueValue, null);
@@ -434,6 +447,10 @@ function askAuctionRaiseOrGiveUp(item, currentPrice) {
 
 // ===== ラウンドの決着 =====
 async function resolveAuctionRoundAsWon(item, price) {
+  // ★バグ修正：直前に表示されていた行き先メニュー（さらに上乗せする／諦める、等）を隠さずに
+  //   displayMessageを呼ぶと、メニューの裏にメッセージが隠れて見えなくなる（2回目以降の
+  //   出品が見えない不具合の一因にもなっていた）
+  hideLocationMenu();
   changeGold(-price);
   addItem(item.id, 1);
   renderStatusHUD();
@@ -446,6 +463,7 @@ async function resolveAuctionRoundAsWon(item, price) {
 }
 
 async function resolveAuctionRoundAsLost(item, trueValue, lastBid, winnerName, winningPrice) {
+  hideLocationMenu(); // ★同上：ここでも行き先メニューを隠しておかないとメッセージが裏に隠れる
   const penalty = Math.max(0, Math.round(lastBid * AUCTION_LOSE_PENALTY_RATIO));
   if (penalty > 0) changeGold(-penalty);
   renderStatusHUD();
@@ -460,6 +478,11 @@ async function resolveAuctionRoundAsLost(item, trueValue, lastBid, winnerName, w
 }
 
 async function resolveAuctionRoundAsSkipped(item, trueValue) {
+  // ★バグ修正：「今回は見送る」を選んだ直後、行き先メニュー（鑑定/入札する/見送る）が
+  //   隠されないままdisplayMessageを呼んでいたため、「今回は見送ることにした。」のメッセージが
+  //   メニューの裏に隠れて表示されず、さらにそのメニューが消えずに残ったまま次の回に進むため
+  //   2回目・3回目の出品メッセージまでずっと隠れたままになっていた
+  hideLocationMenu();
   changeSpeaker(auctionFacility.name || "オークション会場");
   await displayMessage(`今回は見送ることにした。`, { allowSubFocus: true });
   
