@@ -63,7 +63,11 @@ function ensureAuctionPlayerState(facilityId) {
   if (!player) return null;
   if (!player.auctionState || typeof player.auctionState !== "object") player.auctionState = {};
   if (!player.auctionState[facilityId] || typeof player.auctionState[facilityId] !== "object") {
-    player.auctionState[facilityId] = { session: null, pendingResults: [] };
+    player.auctionState[facilityId] = { session: null, pendingResults: [], pendingSellResults: [] };
+  }
+  // ★要望対応：既存セーブ（出品機能追加前）にもpendingSellResultsを補っておく
+  if (!Array.isArray(player.auctionState[facilityId].pendingSellResults)) {
+    player.auctionState[facilityId].pendingSellResults = [];
   }
   return player.auctionState[facilityId];
 }
@@ -103,16 +107,26 @@ function showAuctionMenu() {
   hideAuctionParticipantPanel(); // ★念のため：メインメニューに戻ってきた時は必ずパネルを消しておく
   const state = getAuctionState();
   changeSpeaker(auctionFacility.name || "オークション会場");
-  const resultCount = state.pendingResults.length;
+  const lostCount = state.pendingResults.length;
+  const sellCount = state.pendingSellResults.length;
   const options = [
     { label: "オークションに参加する", action: () => runWithLocationMenuHidden(tryStartAuctionDay) },
+    { label: "アイテムを出品する", action: () => runWithLocationMenuHidden(tryListPlayerItem) }, // ★要望対応：自分のアイテムを出品して売る
     { label: "やめる", action: () => auctionReturnTo() },
   ];
 
-  if (resultCount > 0) {
-    options.splice(1, 0, {
-      label: `出品の結果を聞く（${resultCount}件）`,
-      action: () => runWithLocationMenuHidden(hearAuctionResults),
+  // ★要望対応：「入札に負けた／見送った品の行方」と「自分が出品した品の結果」を混同しないよう、
+  //   ラベルと貯め先（pendingResults／pendingSellResults）をはっきり分けておく
+  if (sellCount > 0) {
+    options.splice(-1, 0, {
+      label: `出品の結果を聞く（${sellCount}件）`,
+      action: () => runWithLocationMenuHidden(hearAuctionSellResults),
+    });
+  }
+  if (lostCount > 0) {
+    options.splice(-1, 0, {
+      label: `入札を逃した品の行方を聞く（${lostCount}件）`,
+      action: () => runWithLocationMenuHidden(hearAuctionLostResults),
     });
   }
 
@@ -189,7 +203,10 @@ async function runAuctionRound() {
   }
   
   const chosenEntry = pickWeightedAuctionItem(candidates);
-  const item = ITEM_MASTER[chosenEntry.itemId];
+  // ★バグ修正：ITEM_MASTERの中身自体にはidフィールドが無いため、そのままだと
+  //   落札時のaddItem(item.id, 1)がaddItem(undefined, 1)になり、
+  //   お金だけ払ってアイテムは手に入らない（console.errorが出るだけで気づきにくい）不具合になっていた
+  const item = { ...ITEM_MASTER[chosenEntry.itemId], id: chosenEntry.itemId };
   const trueValue = rollAuctionTrueValue(item);
   const roundLabel = session.roundIndex + 1;
   
@@ -344,7 +361,12 @@ async function runAuctionBiddingWar(item, trueValue, npcs, playerBid) {
     npcs.forEach(npc => {
       if (!npc.active) return;
       if (npc.budget <= currentPrice) { npc.active = false; return; } // ★既に予算オーバーなら黙って撤退
-      const giveUpChance = Math.min(1, currentPrice / npc.budget); // ★価格が予算に近づくほど降りやすくなる
+      // ★要望対応：以前は giveUpChance = currentPrice/budget という単純な比例式だったため、
+      //   まだ予算の半分にも満たない安い価格の段階から次々に降りてしまい、
+      //   「序盤からほとんど降りて一人しか入札してくれない」状態になっていた。
+      //   予算の半分に達するまでは降りず、そこを超えてから徐々に（２乗カーブで）降りやすくする
+      const priceRatio = currentPrice / npc.budget;
+      const giveUpChance = priceRatio <= 0.5 ? 0 : Math.min(1, Math.pow((priceRatio - 0.5) / 0.5, 2));
       if (Math.random() < giveUpChance) { npc.active = false; return; }
       const raiseRatio = AUCTION_NPC_RAISE_MIN_RATIO + Math.random() * (AUCTION_NPC_RAISE_MAX_RATIO - AUCTION_NPC_RAISE_MIN_RATIO);
       const raiseAmount = Math.max(1, Math.round(currentPrice * raiseRatio));
@@ -475,8 +497,8 @@ async function proceedToNextRoundOrFinishDay() {
   showAuctionMenu();
 }
 
-// ===== 出品の結果を聞く =====
-async function hearAuctionResults() {
+// ===== 出品を見て入札を見送った／負けた品の行方を聞く（自分が出品したものではない） =====
+async function hearAuctionLostResults() {
   const state = getAuctionState();
   if (state.pendingResults.length === 0) {
     changeSpeaker(auctionFacility.name || "オークション会場");
@@ -494,6 +516,115 @@ async function hearAuctionResults() {
   await displayMessage(lines.join("\n"), { allowSubFocus: true });
   
   state.pendingResults = [];
+  showAuctionMenu();
+}
+
+// ===================================================================
+// ===== 要望対応：プレイヤー自身のアイテムを出品して売る =====
+// ===================================================================
+async function tryListPlayerItem() {
+  if (!isAuctionDayToday()) {
+    const daysLeft = getDaysUntilNextAuction();
+    changeSpeaker(auctionFacility.name || "オークション会場");
+    await displayMessage(`「本日はオークションが開催されていません。次のオークションはあと${daysLeft}日後です。」`, { allowSubFocus: true });
+    showAuctionMenu();
+    return;
+  }
+  
+  // ★装備中のものと、売値が付いていないもの（お礼の品など）は出品対象から除外（買取屋と同じ基準）
+  const equippedInstanceIds = Object.values(player.equipment).filter(Boolean);
+  const seenItemIds = new Set();
+  const entries = [];
+  inventorySlots.forEach((slot) => {
+    if (!slot || seenItemIds.has(slot.itemId)) return;
+    const master = ITEM_MASTER[slot.itemId];
+    if (!master || !(master.listedPrice > 0) || master.unsellable) return;
+    if (equippedInstanceIds.includes(slot.instanceId)) return;
+    seenItemIds.add(slot.itemId);
+    const totalQty = inventorySlots
+      .filter(s => s && s.itemId === slot.itemId)
+      .reduce((sum, s) => sum + s.quantity, 0);
+    entries.push({ itemId: slot.itemId, master, totalQty });
+  });
+  
+  if (entries.length === 0) {
+    changeSpeaker(auctionFacility.name || "オークション会場");
+    await displayMessage("「悪いが、出品できそうな物は持っていないようだな。」", { allowSubFocus: true });
+    showAuctionMenu();
+    return;
+  }
+  
+  const choices = entries.map(e => ({
+    text: `${e.master.name} ×${e.totalQty}（ランク：${e.master.rank || "―"}）`,
+    next: e.itemId,
+  }));
+  choices.push({ text: "やめる", next: "back", isBack: true });
+  
+  changeSpeaker(auctionFacility.name || "オークション会場");
+  await displayMessage("「何を出品するんだ？」", { allowSubFocus: true });
+  const picked = await displayChoices(choices);
+  if (picked.next === "back") {
+    showAuctionMenu();
+    return;
+  }
+  
+  const entry = entries.find(e => e.itemId === picked.next);
+  const qty = await pickQuantity(entry.totalQty, entry.master.name);
+  if (qty <= 0) {
+    tryListPlayerItem();
+    return;
+  }
+  
+  // ★出品した時点でアイテムは手元から離れる（結果は「出品の結果を聞く」で後から分かる）
+  removeItem(entry.itemId, qty);
+  renderStatusHUD();
+  changeSpeaker(auctionFacility.name || "オークション会場");
+  await displayMessage(`「${entry.master.name}」×${qty}を出品した。結果は後で「出品の結果を聞く」から聞けるはずだ。`, { allowSubFocus: true });
+  
+  queueAuctionSellResult(entry.itemId, entry.master, qty);
+  showAuctionMenu();
+}
+
+// ★出品した品の行方を今すぐ決めておき、「出品の結果を聞く」で後から見られるように貯めておく
+function queueAuctionSellResult(itemId, master, qty) {
+  const state = getAuctionState();
+  const trueValue = rollAuctionTrueValue(master);
+  const isLowRank = master.rank === "F" || master.rank === "E";
+  const unsoldChance = isLowRank ? AUCTION_UNSOLD_CHANCE_LOWRANK : AUCTION_UNSOLD_CHANCE_NORMAL;
+  
+  if (Math.random() < unsoldChance) {
+    state.pendingSellResults.push({ itemId, itemName: master.name, qty, outcome: "unsold" });
+  } else {
+    const perUnitPrice = Math.max(1, Math.round(trueValue * (1 + (Math.random() * 2 - 1) * AUCTION_POST_SALE_VARIANCE)));
+    state.pendingSellResults.push({ itemId, itemName: master.name, qty, outcome: "sold", price: perUnitPrice * qty });
+  }
+}
+
+// ===== 自分が出品した品の結果を聞く（売れていればお金、売れ残っていればアイテムが返ってくる） =====
+async function hearAuctionSellResults() {
+  const state = getAuctionState();
+  if (state.pendingSellResults.length === 0) {
+    changeSpeaker(auctionFacility.name || "オークション会場");
+    await displayMessage("「特に報告することは無いようだ。」", { allowSubFocus: true });
+    showAuctionMenu();
+    return;
+  }
+  
+  changeSpeaker(auctionFacility.name || "オークション会場");
+  let totalGold = 0;
+  const lines = state.pendingSellResults.map(r => {
+    if (r.outcome === "sold") {
+      totalGold += r.price;
+      return `・「${r.itemName}」×${r.qty}は${r.price}陳で買い取られたそうだ。`;
+    }
+    addItem(r.itemId, r.qty); // ★売れ残った分は手元に戻ってくる
+    return `・「${r.itemName}」×${r.qty}は結局買い手が付かず、蔵に返されたそうだ。`;
+  });
+  if (totalGold > 0) changeGold(totalGold);
+  renderStatusHUD();
+  await displayMessage(lines.join("\n"), { allowSubFocus: true });
+  
+  state.pendingSellResults = [];
   showAuctionMenu();
 }
 
