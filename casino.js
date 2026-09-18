@@ -354,6 +354,7 @@ function highlightCasinoSlotWinningLine(winningIndexes) {
 //   リールが回っている最中に押した場合は、区切りの良い所（今の掛けの決着後）まで来たら終了する予約フラグを立てる
 let casinoSlotCancelResolver = null;
 let casinoSlotQuitRequested = false;
+let casinoSlotLastBet = null; // ★要望対応：直前に使った掛け金を覚えておき、次回の初期値にする（毎回リセットしない）
 
 function requestCasinoSlotQuit() {
   casinoSlotQuitRequested = true;
@@ -438,7 +439,9 @@ async function startSlotGame() {
   };
 
   const chooseBet = () => new Promise((resolve) => {
-    let currentBet = Math.max(minBet, Math.min(maxBet, minBet));
+    // ★要望対応：初回や前回の掛け金があればそれを初期値にする（無ければ最低額）。
+    //   施設が変わってmin/maxが変化していても範囲内に収まるようclampする
+    let currentBet = Math.max(minBet, Math.min(maxBet, casinoSlotLastBet !== null ? casinoSlotLastBet : minBet));
     let settled = false;
 
     const cleanup = () => {
@@ -453,6 +456,7 @@ async function startSlotGame() {
       if (settled) return;
       settled = true;
       cleanup();
+      if (value !== null) casinoSlotLastBet = value; // ★要望対応：確定した掛け金を次回の初期値として覚えておく
       resolve(value);
     };
 
