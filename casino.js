@@ -124,7 +124,7 @@ async function startDiceGame() {
   showCasinoMenu();
 }
 
-// ===== ②スロット（3×3の見た目付きジャグラー風UI） =====
+// ===== ②スロット（3リール・滑らかに回り続けるジャグラー風UI） =====
 const CASINO_SLOT_SYMBOLS = [
   { key: "grape", emoji: "🍇", weight: 35, payout: 2 },
   { key: "bell",  emoji: "🔔", weight: 25, payout: 4 },
@@ -144,6 +144,12 @@ const CASINO_SLOT_LINES = [
   [2, 4, 6]
 ];
 
+// ★リール演出まわりの定数。CELL_HEIGHTはstyle.cssの.casino-slot-reel-cellの高さと必ず合わせる
+const CASINO_SLOT_CELL_HEIGHT = 76;
+const CASINO_SLOT_SPIN_SPEED = 0.55;        // px/ms（1マス=76pxを約138msで通過する速さ）
+const CASINO_SLOT_BUFFER_CELLS = 8;         // ★見えている範囲より、常にこの数ぶん先まで帯を伸ばしておく
+const CASINO_SLOT_STOP_TRANSITION_MS = 550; // ★止める時の「滑らかに減速して着地する」アニメーションの長さ
+
 function pickWeightedSlotSymbol() {
   const total = CASINO_SLOT_SYMBOLS.reduce((sum, s) => sum + s.weight, 0);
   let r = Math.random() * total;
@@ -154,43 +160,12 @@ function pickWeightedSlotSymbol() {
   return CASINO_SLOT_SYMBOLS[CASINO_SLOT_SYMBOLS.length - 1];
 }
 
-function getSlotSymbolMarkup(symbol) {
-  const imagePath = casinoFacility && casinoFacility.slotImages && casinoFacility.slotImages[symbol.key];
-  if (imagePath) {
-    return `<img src="${imagePath}" class="casino-slot-symbol-img" alt="${symbol.key}">`;
-  }
-  return `<span class="casino-slot-symbol-emoji">${symbol.emoji}</span>`;
-}
-
+// ★要望対応：「？」は使わず、万一symbolが渡されなかった場合も必ず何かしらの絵柄を出す
 function getSlotSymbolDisplay(symbol) {
-  if (!symbol) return "?";
-  const imagePath = casinoFacility && casinoFacility.slotImages && casinoFacility.slotImages[symbol.key];
-  if (imagePath) return `<img src="${imagePath}" class="casino-slot-symbol-img" alt="${symbol.key}">`;
-  return symbol.emoji;
-}
-
-function renderSlotBoard(boardSymbols, winningIndexes = [], isSpinning = false) {
-  const overlay = document.getElementById("casino-slot-board");
-  const grid = document.getElementById("casino-slot-grid");
-  const result = document.getElementById("casino-slot-result");
-  if (!overlay || !grid) return;
-
-  grid.innerHTML = "";
-  boardSymbols.forEach((symbol, index) => {
-    const cell = document.createElement("div");
-    const classes = ["casino-slot-cell"];
-    if (winningIndexes.includes(index)) classes.push("is-winning");
-    if (isSpinning) classes.push("is-spinning");
-    cell.className = classes.join(" ");
-    cell.style.animationDelay = `${(index % 3) * 40}ms`;
-    cell.innerHTML = getSlotSymbolDisplay(symbol);
-    grid.appendChild(cell);
-  });
-
-  if (result) {
-    result.classList.add("hidden");
-    result.textContent = "";
-  }
+  const s = symbol || CASINO_SLOT_SYMBOLS[0];
+  const imagePath = casinoFacility && casinoFacility.slotImages && casinoFacility.slotImages[s.key];
+  if (imagePath) return `<img src="${imagePath}" class="casino-slot-symbol-img" alt="${s.key}">`;
+  return s.emoji;
 }
 
 function getWinningSlotLineIndexes(boardSymbols) {
@@ -246,6 +221,150 @@ function setSlotLeverPulled(pulled) {
   lever.classList.toggle("is-pulled", !!pulled);
 }
 
+// ===================================================================
+// ===== リール（1列ぶん）を「途切れず滑らかに回り続ける帯」として扱う =====
+// ===================================================================
+// 帯（strip）は下方向に伸び続けるだけで、ループも巻き戻しもしない。
+// 止める時は、帯の一番先に「本当の結果」を3マスぶん追加して、そこにピタッと着地させる。
+// ラウンドの最初（renderCasinoSlotIdleBoard）で帯を作り直すので、DOMが際限なく増え続けることはない。
+let casinoSlotReels = []; // [{ stripEl, cellCount, offset, spinning }] ×3
+
+function createCasinoSlotReelCell(symbol) {
+  const cell = document.createElement("div");
+  cell.className = "casino-slot-reel-cell";
+  cell.innerHTML = getSlotSymbolDisplay(symbol);
+  return cell;
+}
+
+// ★見えている範囲＋バッファぶんまで、帯の先に絵柄を継ぎ足しておく
+function ensureCasinoSlotReelStripAhead(reel) {
+  const neededCells = Math.ceil(reel.offset / CASINO_SLOT_CELL_HEIGHT) + 3 + CASINO_SLOT_BUFFER_CELLS;
+  while (reel.cellCount < neededCells) {
+    reel.stripEl.appendChild(createCasinoSlotReelCell(pickWeightedSlotSymbol()));
+    reel.cellCount++;
+  }
+}
+
+function renderCasinoSlotIdleBoard() {
+  casinoSlotReels.forEach(reel => {
+    reel.stripEl.innerHTML = "";
+    reel.cellCount = 0;
+    reel.offset = 0;
+    reel.spinning = false;
+    reel.stripEl.style.transition = "none";
+    reel.stripEl.style.transform = "translateY(0px)";
+    for (let row = 0; row < 3; row++) {
+      reel.stripEl.appendChild(createCasinoSlotReelCell(pickWeightedSlotSymbol()));
+      reel.cellCount++;
+    }
+  });
+}
+
+function initCasinoSlotReels() {
+  casinoSlotReels = [0, 1, 2].map(i => ({
+    stripEl: document.getElementById(`casino-slot-reel-strip-${i}`),
+    cellCount: 0,
+    offset: 0,
+    spinning: false
+  }));
+  renderCasinoSlotIdleBoard();
+}
+
+let casinoSlotAnimationRunning = false;
+function casinoSlotAnimationLoop(lastTimestamp) {
+  return (timestamp) => {
+    const dt = lastTimestamp == null ? 0 : (timestamp - lastTimestamp);
+    let anySpinning = false;
+    casinoSlotReels.forEach(reel => {
+      if (!reel.spinning) return;
+      anySpinning = true;
+      reel.offset += CASINO_SLOT_SPIN_SPEED * dt;
+      ensureCasinoSlotReelStripAhead(reel);
+      reel.stripEl.style.transform = `translateY(-${reel.offset}px)`;
+    });
+    if (anySpinning) {
+      requestAnimationFrame(casinoSlotAnimationLoop(timestamp));
+    } else {
+      casinoSlotAnimationRunning = false;
+    }
+  };
+}
+
+function startAllCasinoSlotReelsSpinning() {
+  casinoSlotReels.forEach(reel => {
+    reel.spinning = true;
+    reel.stripEl.style.transition = "none";
+  });
+  if (!casinoSlotAnimationRunning) {
+    casinoSlotAnimationRunning = true;
+    requestAnimationFrame(casinoSlotAnimationLoop(null));
+  }
+}
+
+// ★指定したリールを、finalSymbols=[上段,中段,下段]がぴったり窓に収まるよう滑らかに減速させて止める
+function stopCasinoSlotReel(reelIndex, finalSymbols) {
+  return new Promise((resolve) => {
+    const reel = casinoSlotReels[reelIndex];
+    if (!reel) { resolve(); return; }
+
+    // ★帯の一番先に「本当の結果」を3マスぶん追加し、そこへ着地させる
+    //   （既に回転中に継ぎ足されているダミーの絵柄ぶんを通り過ぎてから止まるので、自然な減速に見える）
+    finalSymbols.forEach(symbol => {
+      reel.stripEl.appendChild(createCasinoSlotReelCell(symbol));
+      reel.cellCount++;
+    });
+    const targetOffset = (reel.cellCount - 3) * CASINO_SLOT_CELL_HEIGHT;
+
+    reel.spinning = false; // ★以後はRAFループの対象から外れ、CSSトランジションに任せる
+
+    requestAnimationFrame(() => {
+      reel.stripEl.style.transition = `transform ${CASINO_SLOT_STOP_TRANSITION_MS}ms cubic-bezier(0.15, 0.7, 0.3, 1.15)`;
+      requestAnimationFrame(() => {
+        reel.stripEl.style.transform = `translateY(-${targetOffset}px)`;
+      });
+    });
+
+    setTimeout(() => {
+      reel.offset = targetOffset;
+      reel.stripEl.style.transition = "none";
+      resolve();
+    }, CASINO_SLOT_STOP_TRANSITION_MS + 30);
+  });
+}
+
+// ★止まった後の盤面（3リール×3段）に対して、揃った列だけ光らせる
+function highlightCasinoSlotWinningLine(winningIndexes) {
+  casinoSlotReels.forEach((reel, reelIndex) => {
+    const cells = Array.from(reel.stripEl.children).slice(-3); // ★今見えている3マス（帯の一番先）
+    cells.forEach((cell, row) => {
+      const boardIndex = row * 3 + reelIndex; // 0-8のマス番号（CASINO_SLOT_LINESと同じ並び）
+      cell.classList.toggle("is-winning", winningIndexes.includes(boardIndex));
+    });
+  });
+}
+
+// ★「やめる」ボタン／Xキーで、いつでも抜け出せるようにする。
+//   賭け金選択中（casinoSlotCancelResolver登録中）ならその場で即終了、
+//   リールが回っている最中に押した場合は、区切りの良い所（今の掛けの決着後）まで来たら終了する予約フラグを立てる
+let casinoSlotCancelResolver = null;
+let casinoSlotQuitRequested = false;
+
+function requestCasinoSlotQuit() {
+  casinoSlotQuitRequested = true;
+  if (casinoSlotCancelResolver) {
+    const resolver = casinoSlotCancelResolver;
+    casinoSlotCancelResolver = null;
+    resolver();
+    return;
+  }
+  // ★回っている最中に押された場合、即座には抜けられないので「予約された」ことだけ分かるようにする
+  const quitButton = document.getElementById("casino-slot-quit-btn");
+  if (quitButton) {
+    quitButton.textContent = "区切りが来次第退店";
+    quitButton.disabled = true;
+  }
+}
+
 async function waitForSlotStopSignal(buttonEl) {
   return new Promise((resolve) => {
     let settled = false;
@@ -260,6 +379,12 @@ async function waitForSlotStopSignal(buttonEl) {
 
     const handleKey = (event) => {
       if (event.repeat) return;
+      if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        requestCasinoSlotQuit(); // ★回っている最中でもXキーで退店予約できるようにする
+        return;
+      }
       if (typeof KEY_CONFIG === "undefined" || !KEY_CONFIG.decideKeys.includes(event.key)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -271,28 +396,12 @@ async function waitForSlotStopSignal(buttonEl) {
   });
 }
 
-async function spinSlotBoard(finalBoard) {
-  const overlay = document.getElementById("casino-slot-board");
-  const grid = document.getElementById("casino-slot-grid");
-  if (!overlay || !grid) return;
-
-  overlay.classList.remove("hidden");
-
-  for (let frame = 0; frame < 14; frame++) {
-    const randomBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
-    renderSlotBoard(randomBoard, [], true);
-    await sleep(70);
-  }
-
-  renderSlotBoard(finalBoard, [], false);
-  await sleep(220);
-}
-
 async function startSlotGame() {
   prepareCasinoConversationFocus();
 
   const overlay = document.getElementById("casino-slot-board");
   const stopButton = document.getElementById("casino-slot-stop-btn");
+  const quitButton = document.getElementById("casino-slot-quit-btn");
   const resultEl = document.getElementById("casino-slot-result");
   const betDisplay = document.getElementById("casino-slot-bet-value");
   const betDecBtn = document.getElementById("casino-slot-bet-dec");
@@ -303,13 +412,20 @@ async function startSlotGame() {
 
   if (!overlay) return;
   overlay.classList.remove("hidden");
+  casinoSlotQuitRequested = false;
+  initCasinoSlotReels();
+
+  if (quitButton) {
+    quitButton.disabled = false;
+    quitButton.innerHTML = `やめる<span class="key-badge">X</span>`;
+    quitButton.onclick = () => requestCasinoSlotQuit();
+  }
 
   const updateBetDisplay = (nextBet) => {
     if (betDisplay) betDisplay.textContent = `${nextBet}陳`;
     if (betDecBtn) betDecBtn.disabled = nextBet <= minBet;
     if (betIncBtn) betIncBtn.disabled = nextBet >= maxBet;
     if (stopButton) {
-      stopButton.textContent = `開始（${nextBet}陳）`;
       stopButton.innerHTML = `開始（${nextBet}陳）<span class="key-badge">Z</span>`;
     }
   };
@@ -323,6 +439,7 @@ async function startSlotGame() {
       if (betIncBtn) betIncBtn.removeEventListener("click", incClick);
       if (stopButton) stopButton.removeEventListener("click", confirmClick);
       window.removeEventListener("keydown", handleKey);
+      casinoSlotCancelResolver = null;
     };
 
     const resolveBet = (value) => {
@@ -366,6 +483,8 @@ async function startSlotGame() {
     if (betIncBtn) betIncBtn.addEventListener("click", incClick);
     if (stopButton) stopButton.addEventListener("click", confirmClick);
     window.addEventListener("keydown", handleKey);
+    // ★「やめる」ボタン・Xキーどちらでも、ここにいる間は即座に抜けられるようにしておく
+    casinoSlotCancelResolver = () => resolveBet(null);
     updateBetDisplay(currentBet);
   });
 
@@ -374,50 +493,28 @@ async function startSlotGame() {
     renderStatusHUD();
 
     const finalBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
-    const currentBoard = Array(9).fill(null);
 
-    const startBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
-    renderSlotBoard(startBoard, [], false);
+    renderCasinoSlotIdleBoard();
     setSlotLeverPulled(true);
     await sleep(160);
     setSlotLeverPulled(false);
+    startAllCasinoSlotReelsSpinning();
 
     for (let reel = 0; reel < 3; reel++) {
-      const stopIndexes = [reel, reel + 3, reel + 6];
       if (stopButton) {
-        // ★要望対応：スロット画面のみで完結させたいので、通常のメッセージウィンドウは出さず
+        // ★スロット画面のみで完結させたいので、通常のメッセージウィンドウは出さず
         //   ボタン自体のテキストで「リールNを止める」を伝える
-        stopButton.textContent = `リール${reel + 1}を止める`;
-        stopButton.innerHTML = `リール${reel + 1}を止める<span class="key-badge">Z</span>`;
+        stopButton.innerHTML = `${reel + 1}列目を止める<span class="key-badge">Z</span>`;
       }
       await waitForSlotStopSignal(stopButton);
 
-      for (let frame = 0; frame < 10; frame++) {
-        const tempBoard = currentBoard.slice();
-        for (let i = 0; i < 9; i++) {
-          if (stopIndexes.includes(i)) {
-            if (tempBoard[i] == null) tempBoard[i] = finalBoard[i];
-            continue;
-          }
-          tempBoard[i] = pickWeightedSlotSymbol();
-        }
-        for (let i = 0; i < 9; i++) {
-          if (tempBoard[i] == null) tempBoard[i] = finalBoard[i];
-        }
-        renderSlotBoard(tempBoard, [], true);
-        await sleep(80);
-      }
-
-      for (const idx of stopIndexes) {
-        currentBoard[idx] = finalBoard[idx];
-      }
-      renderSlotBoard(currentBoard, [], false);
-      await sleep(180);
+      const finalSymbols = [finalBoard[reel], finalBoard[reel + 3], finalBoard[reel + 6]];
+      await stopCasinoSlotReel(reel, finalSymbols);
     }
 
     const result = getSlotBoardResult(finalBoard);
     const winningIndexes = result.line.length ? result.line : [];
-    renderSlotBoard(finalBoard, winningIndexes);
+    highlightCasinoSlotWinningLine(winningIndexes);
 
     if (resultEl) {
       resultEl.classList.remove("hidden");
@@ -438,7 +535,7 @@ async function startSlotGame() {
     }
     renderStatusHUD();
 
-    await sleep(500);
+    await sleep(900);
 
     if (resultEl) {
       resultEl.classList.add("hidden");
@@ -447,14 +544,15 @@ async function startSlotGame() {
   };
 
   while (true) {
-    if (gold < minBet) {
-      // ★要望対応：スロット画面のみで完結させるため、通常のメッセージウィンドウではなく
+    if (casinoSlotQuitRequested || gold < minBet) {
+      // ★スロット画面のみで完結させるため、通常のメッセージウィンドウではなく
       //   スロット画面内の結果表示欄を使って一瞬伝えてから閉じる
-      if (resultEl) {
+      if (gold < minBet && !casinoSlotQuitRequested && resultEl) {
         resultEl.classList.remove("hidden");
         resultEl.textContent = `所持金が足りない。最低${minBet}陳必要だ。`;
+        await sleep(1400);
       }
-      await sleep(1400);
+      if (quitButton) quitButton.onclick = null;
       overlay.classList.add("hidden");
       showCasinoMenu();
       return;
@@ -462,6 +560,7 @@ async function startSlotGame() {
 
     const bet = await chooseBet();
     if (bet == null) {
+      if (quitButton) quitButton.onclick = null;
       overlay.classList.add("hidden");
       showCasinoMenu();
       return;
