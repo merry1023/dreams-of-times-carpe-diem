@@ -62,30 +62,6 @@ async function pickCasinoBet(label) {
   return bet;
 }
 
-async function waitForDecideKeyPresses(count, text, allowKeys = null) {
-  if (text) {
-    await displayMessage(text);
-  }
-
-  const validKeys = allowKeys || (typeof KEY_CONFIG !== "undefined" ? KEY_CONFIG.decideKeys : []);
-  return new Promise((resolve) => {
-    let pressed = 0;
-    const listener = (event) => {
-      if (event.repeat) return;
-      const key = event.key.toLowerCase ? event.key.toLowerCase() : event.key;
-      if (!validKeys.map(k => String(k).toLowerCase()).includes(key)) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      pressed += 1;
-      if (pressed >= count) {
-        window.removeEventListener("keydown", listener);
-        resolve();
-      }
-    };
-    window.addEventListener("keydown", listener);
-  });
-}
-
 // ===== ①丁半博打（サイコロ2つの合計が偶数＝丁／奇数＝半） =====
 async function startDiceGame() {
   prepareCasinoConversationFocus();
@@ -694,18 +670,17 @@ async function pickRouletteBets() {
         event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, 1);
       } else if (event.key === "ArrowUp") {
         event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, -1);
-      } else if (event.key === "Enter" || event.key === "e" || event.key === "E") {
+      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
+        // ★要望対応：チップを置くのはZキー（決定キー）に統一。Cキーは確定専用にする
         event.preventDefault(); event.stopImmediatePropagation();
-        // ★バグ修正：ここで「選択済みなら即確定」にしていたせいで、1つ目のチップを置いた後は
-        //   Enter/Eキーで2つ目以降のチップが置けなくなっていた。確定はConfirmボタンかXキーで行う
         await addCurrentSelection();
       } else if (event.key === "c" || event.key === "C") {
-        event.preventDefault(); event.stopImmediatePropagation();
-        // ★バグ修正：同上。Cキーも常にチップを置くだけにする
-        await addCurrentSelection();
-      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
+        // ★要望対応：Cキーは「置き終えたマスをまとめて確定する」専用。置く操作はここでは行わない
         event.preventDefault(); event.stopImmediatePropagation();
         finish(selections.length ? selections : null);
+      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        finish(null);
       }
     }
 
@@ -741,14 +716,10 @@ async function startRouletteGame() {
   if (totalBet <= 0) { showCasinoMenu(); return; }
 
   changeSpeaker(casinoFacility.name || "ルーレット台");
-  await displayMessage("賭けを確定した。Cキーで続ける");
-  await waitForDecideKeyPresses(1, "", ["c", "C"]);
-  await displayMessage("球を3回押して回す");
-  await waitForDecideKeyPresses(3, "", ["c", "C"]);
-
+  await displayMessage("賭けを確定した。ルーレットの球が回る……");
+  
   const resultNumber = Math.floor(Math.random() * 37); // 0〜36
   const resultColorLabel = resultNumber === 0 ? "" : (CASINO_ROULETTE_RED.has(resultNumber) ? "・赤" : "・黒");
-  await displayMessage("ルーレットの球が回る……");
   await animateRouletteSpin(resultNumber);
   await displayMessage(`球が止まった……「${resultNumber}${resultColorLabel}」だ！`);
 
