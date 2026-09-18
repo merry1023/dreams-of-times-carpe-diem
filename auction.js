@@ -396,6 +396,8 @@ function runAuctionBiddingWar(item, trueValue, npcs, playerBid) {
   return new Promise(resolve => {
     const round = {
       active: true,
+      paused: false,
+      pausedAt: null,
       item, trueValue, npcs,
       currentPrice: playerBid,
       highestBidderName: "あなた",
@@ -437,7 +439,9 @@ function pushAuctionLiveLog(round, line) {
 }
 
 function scheduleNpcAuctionBid(round, npc, delayMs) {
+  npc._fireAt = Date.now() + delayMs; // ★要望対応：一時停止時に「あと何ms残っていたか」を計算するため予定時刻を覚えておく
   const id = setTimeout(() => attemptNpcAuctionBid(round, npc), delayMs);
+  npc._timeoutId = id;
   round.timeouts.add(id);
 }
 
@@ -446,7 +450,7 @@ function scheduleNpcAuctionBid(round, npc, delayMs) {
 //   違いは「全NPCをその場で一斉判定する」のではなく、NPCごとに独立したタイマーで
 //   1〜7秒おきに1回だけ判定する点
 function attemptNpcAuctionBid(round, npc) {
-  if (!round.active || !npc.active) return;
+  if (!round.active || round.paused || !npc.active) return; // ★要望対応：一時停止中は判定しない（本来ここに来る前にタイマー自体を止めているが念のため）
   const currentPrice = round.currentPrice;
   if (npc.budget <= currentPrice) { npc.active = false; renderAuctionParticipantPanel(); return; } // ★既に予算オーバーなら黙って撤退
   const priceRatio = currentPrice / npc.budget;
@@ -486,9 +490,64 @@ function clearAuctionLiveTimers(round) {
   round.tickIntervalId = null;
 }
 
+// ===== 要望対応：入札額を入力している間、NPCの自動入札と締切タイマーを一時停止する =====
+// テンキーで金額を入力する間もNPCが裏で入札を続けたり、その間に12秒の締切が来て
+// 勝手に落札されてしまったりしないよう、入力中はNPCのタイマーと締切タイマーを丸ごと止めておく。
+// 再開時は「一時停止していた分だけ締切を後ろ倒しにする」ことで、入力にかけた時間が
+// 締切のカウントに含まれないようにする（＝入力中は時間が進まない）
+function pauseAuctionLiveRound(round) {
+  if (!round.active || round.paused) return;
+  round.paused = true;
+  round.pausedAt = Date.now();
+  
+  if (round.closeTimeoutId) {
+    clearTimeout(round.closeTimeoutId);
+    round.timeouts.delete(round.closeTimeoutId);
+    round.closeTimeoutId = null;
+  }
+  round.npcs.forEach(npc => {
+    if (!npc.active || npc._timeoutId == null) return;
+    clearTimeout(npc._timeoutId);
+    round.timeouts.delete(npc._timeoutId);
+    npc._remainingMs = Math.max(0, (npc._fireAt || round.pausedAt) - round.pausedAt); // ★あと何ms残っていたかを覚えておく
+    npc._timeoutId = null;
+  });
+  if (round.tickIntervalId) {
+    clearInterval(round.tickIntervalId);
+    round.tickIntervalId = null;
+  }
+  renderAuctionParticipantPanel();
+}
+
+// ★要望対応：一時停止を解除する。呼び出し側で、入札が無かった場合はround.lastBidAtを
+//   一時停止していた分だけ後ろへずらしておくこと（＝締切カウントを止めていたことにする）。
+//   新たに入札があった場合はround.lastBidAtをその時刻にしてから呼べば、普通に12秒フルで再開する
+function resumeAuctionLiveRound(round) {
+  if (!round.active || !round.paused) return;
+  round.paused = false;
+  round.pausedAt = null;
+  
+  const remainingCloseMs = Math.max(0, AUCTION_NO_NEW_BID_TIMEOUT_MS - (Date.now() - round.lastBidAt));
+  round.closeTimeoutId = setTimeout(() => finishAuctionLiveRound(round), remainingCloseMs);
+  round.timeouts.add(round.closeTimeoutId);
+  
+  round.npcs.forEach(npc => {
+    if (!npc.active) return;
+    const remaining = npc._remainingMs != null ? npc._remainingMs : randomAuctionBidDelayMs();
+    npc._remainingMs = null;
+    scheduleNpcAuctionBid(round, npc, remaining);
+  });
+  
+  round.tickIntervalId = setInterval(() => {
+    if (round.active && !round.paused) renderAuctionParticipantPanel();
+  }, 500);
+  
+  renderAuctionParticipantPanel();
+}
+
 // ★要望対応：最後の入札から12秒間、新たな入札（NPC・自分どちらも）が無ければここで落札とする
 function finishAuctionLiveRound(round) {
-  if (!round.active) return;
+  if (!round.active || round.paused) return; // ★一時停止中はそもそもこのタイマー自体が止まっているはずだが、念のため
   round.active = false;
   clearAuctionLiveTimers(round);
   hideLocationMenu(); // ★「入札する」ボタンをここで消し、これ以上の入札は受け付けない
@@ -518,31 +577,44 @@ async function handleAuctionLiveBidAction(item) {
   if (!round || !round.active) return;
   
   if (round.currentPrice >= gold) {
+    pauseAuctionLiveRound(round); // ★要望対応：メッセージを読んでいる間も締切が進まないようにする
     hideLocationMenu();
     changeSpeaker(auctionFacility.name || "オークション会場");
     await displayMessage("「これ以上の持ち金が無く、これ以上は入札できないようだ。」", { allowSubFocus: true });
-    if (auctionLiveRound && auctionLiveRound.active) showAuctionLiveBidMenu(item);
+    if (auctionLiveRound === round && round.active) {
+      round.lastBidAt += (Date.now() - round.pausedAt); // ★読んでいた時間ぶん締切を後ろへずらす
+      resumeAuctionLiveRound(round);
+      showAuctionLiveBidMenu(item);
+    }
     return;
   }
+  
+  // ★要望対応：入札額を入力している間はNPCの自動入札と締切タイマーを一時停止する
+  pauseAuctionLiveRound(round);
   
   const nextBid = await pickAuctionBidAmount({
     title: `「${item.name}」への入札額（現在${round.currentPrice}陳）`,
     min: round.currentPrice + 1,
     max: gold,
   });
-  // ★テンキー入力中もNPCは自動で入札を続けているため、戻ってきた時点で
-  //   既に12秒ルールで自動落札済み（ラウンド終了）になっている可能性がある
-  if (!auctionLiveRound || !auctionLiveRound.active) return;
+  // ★一時停止しているので、入力中に12秒ルールで自動落札されることは無い。
+  //   ただし念のため：ラウンド自体が別の理由で終わっていないかだけは確認する
+  if (auctionLiveRound !== round || !round.active) return;
   
-  if (nextBid !== null && nextBid > auctionLiveRound.currentPrice) {
-    auctionLiveRound.currentPrice = nextBid;
-    auctionLiveRound.highestBidderName = "あなた";
-    auctionLiveRound.lastPlayerBidAmount = nextBid;
-    auctionLiveRound.lastBidAt = Date.now();
-    pushAuctionLiveLog(auctionLiveRound, `あなたが${nextBid}陳まで上乗せした。`);
+  if (nextBid !== null && nextBid > round.currentPrice) {
+    round.currentPrice = nextBid;
+    round.highestBidderName = "あなた";
+    round.lastPlayerBidAmount = nextBid;
+    round.lastBidAt = Date.now(); // ★新しい入札なので締切をフルの12秒に戻す
+    pushAuctionLiveLog(round, `あなたが${nextBid}陳まで上乗せした。`);
     renderAuctionParticipantPanel();
-    resetAuctionCloseTimer(auctionLiveRound);
+  } else {
+    // ★入札しなかった（キャンセルした）場合は、入力にかけていた時間ぶん締切を後ろへずらし、
+    //   一時停止していた分は締切のカウントに含めない
+    round.lastBidAt += (Date.now() - round.pausedAt);
   }
+  
+  resumeAuctionLiveRound(round);
   
   showAuctionLiveBidMenu(item);
 }
@@ -851,13 +923,17 @@ function renderAuctionParticipantPanel() {
     panel.appendChild(priceLine);
   }
   
-  // ★要望対応：リアルタイム競り中は、締切までの残り秒数を表示する
+  // ★要望対応：リアルタイム競り中は、締切までの残り秒数を表示する（入力中は一時停止表示にする）
   if (auctionLiveRound && auctionLiveRound.active) {
-    const remainingMs = AUCTION_NO_NEW_BID_TIMEOUT_MS - (Date.now() - auctionLiveRound.lastBidAt);
-    const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
     const countdownLine = document.createElement("p");
     countdownLine.className = "auction-participant-panel-countdown";
-    countdownLine.textContent = `残り${remainingSec}秒、新たな入札が無ければ落札`;
+    if (auctionLiveRound.paused) {
+      countdownLine.textContent = "入札額を入力中…（締切は一時停止中）";
+    } else {
+      const remainingMs = AUCTION_NO_NEW_BID_TIMEOUT_MS - (Date.now() - auctionLiveRound.lastBidAt);
+      const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
+      countdownLine.textContent = `残り${remainingSec}秒、新たな入札が無ければ落札`;
+    }
     panel.appendChild(countdownLine);
   }
   
