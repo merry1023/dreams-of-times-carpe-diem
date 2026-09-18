@@ -591,6 +591,12 @@ async function startSlotGame() {
 // ===== ③ルーレット（複数の賭けをまとめて確定するまで追加できる） =====
 const CASINO_ROULETTE_RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 
+// ★本物のヨーロピアンルーレットと同じ、盤面に並んでいる順番（時計回り）。0から始まる37マス
+const CASINO_ROULETTE_WHEEL_ORDER = [
+  0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23,
+  10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
+];
+
 function updateRouletteSelectionSummary(bets) {
   const statusEl = document.getElementById("casino-roulette-status");
   if (!statusEl) return;
@@ -605,13 +611,56 @@ function setRouletteSpinSceneVisible(visible) {
   else scene.classList.add("hidden");
 }
 
+// ★色帯（本物と同じ配色）と、外周ぞいの数字ラベルを一度だけ組み立てる
+let casinoRouletteWheelBuilt = false;
+function buildCasinoRouletteWheelOnce() {
+  if (casinoRouletteWheelBuilt) return;
+  const wheelEl = document.getElementById("casino-roulette-wheel");
+  if (!wheelEl) return;
+
+  const segmentDeg = 360 / CASINO_ROULETTE_WHEEL_ORDER.length;
+  const stops = CASINO_ROULETTE_WHEEL_ORDER.map((num, i) => {
+    const color = num === 0 ? "#1c7a3d" : (CASINO_ROULETTE_RED.has(num) ? "#9d1c1c" : "#1d1d1d");
+    const from = i * segmentDeg;
+    const to = from + segmentDeg;
+    return `${color} ${from}deg ${to}deg`;
+  }).join(", ");
+  wheelEl.style.background = `conic-gradient(${stops})`;
+
+  wheelEl.innerHTML = "";
+  CASINO_ROULETTE_WHEEL_ORDER.forEach((num, i) => {
+    const wrap = document.createElement("div");
+    wrap.className = "roulette-wheel-number-wrap";
+    wrap.style.transform = `rotate(${i * segmentDeg + segmentDeg / 2}deg)`;
+    const label = document.createElement("span");
+    label.className = "roulette-wheel-number";
+    label.textContent = String(num);
+    wrap.appendChild(label);
+    wheelEl.appendChild(wrap);
+  });
+
+  casinoRouletteWheelBuilt = true;
+}
+
+// ★resultNumberのマスが、真上の固定ポインターに来るのに必要な回転角（セグメント中心基準）
+function getCasinoRouletteTargetSegmentAngle(resultNumber) {
+  const index = CASINO_ROULETTE_WHEEL_ORDER.indexOf(resultNumber);
+  const segmentDeg = 360 / CASINO_ROULETTE_WHEEL_ORDER.length;
+  return (index >= 0 ? index : 0) * segmentDeg + segmentDeg / 2;
+}
+
+// ★玉が転がって、だんだん減速しながら当たりの数字へピタッと収まる演出。
+//   盤（ホイール）と玉は別々に、逆回りで何周かしてから、同時に止まるように角度を合わせておく
 function animateRouletteSpin(resultNumber) {
   const boardOverlay = document.getElementById("casino-roulette-board");
   const panel = boardOverlay ? boardOverlay.querySelector(".casino-roulette-panel") : null;
   const scene = document.getElementById("casino-roulette-wheel-scene");
   const wheel = document.getElementById("casino-roulette-wheel");
   const ball = document.getElementById("casino-roulette-ball");
+  const resultLabelEl = document.getElementById("casino-roulette-spin-result");
   if (!boardOverlay || !scene || !wheel || !ball) return Promise.resolve();
+
+  buildCasinoRouletteWheelOnce();
 
   // ★バグ修正：賭けを確定した時点でpickRouletteBets()側が#casino-roulette-board自体を非表示にしていたため、
   //   その中にある#casino-roulette-wheel-sceneだけ表示クラスを付けても、親ごと隠れたままで演出が一切見えなかった。
@@ -619,19 +668,57 @@ function animateRouletteSpin(resultNumber) {
   boardOverlay.classList.remove("hidden");
   if (panel) panel.classList.add("spin-only");
   setRouletteSpinSceneVisible(true);
-  const duration = 1800;
-  wheel.style.animation = `roulette-wheel-spin ${duration}ms linear infinite`;
-  ball.style.animation = `roulette-ball-orbit ${duration}ms linear infinite`;
+  if (resultLabelEl) resultLabelEl.textContent = "";
+
+  const SPIN_DURATION_MS = 4200;
+  const WHEEL_EXTRA_TURNS = 5;
+  const BALL_EXTRA_TURNS = 9;
+  const BALL_RADIUS = 112;
+
+  const targetSegmentAngle = getCasinoRouletteTargetSegmentAngle(resultNumber);
+  const wheelFinalRotation = WHEEL_EXTRA_TURNS * 360 - targetSegmentAngle;
+  const ballFinalRotation = -(BALL_EXTRA_TURNS * 360); // ★玉の軌道自体は数字と無関係な固定トラックなので、真上（ポインター）に戻ってくればOK
+
+  wheel.style.transition = "none";
+  ball.style.transition = "none";
+  wheel.style.transform = "rotate(0deg)";
+  ball.style.transform = `rotate(0deg) translateY(-${BALL_RADIUS}px)`;
+
+  requestAnimationFrame(() => {
+    wheel.style.transition = `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.11, 0.62, 0.16, 1)`;
+    ball.style.transition = `transform ${SPIN_DURATION_MS - 200}ms cubic-bezier(0.08, 0.55, 0.12, 1)`;
+    requestAnimationFrame(() => {
+      wheel.style.transform = `rotate(${wheelFinalRotation}deg)`;
+      ball.style.transform = `rotate(${ballFinalRotation}deg) translateY(-${BALL_RADIUS}px)`;
+    });
+  });
 
   return new Promise((resolve) => {
     setTimeout(() => {
-      wheel.style.animation = "none";
-      ball.style.animation = "none";
-      setRouletteSpinSceneVisible(false);
-      if (panel) panel.classList.remove("spin-only");
-      boardOverlay.classList.add("hidden"); // ★演出が終わったらまた盤面ごと隠す
-      resolve();
-    }, duration + 150);
+      // ★止まる瞬間、玉が数字のマスに弾かれて少し沈み込むような、小さな着地の揺れを付ける
+      ball.style.transition = "transform 260ms ease-out";
+      ball.style.transform = `rotate(${ballFinalRotation}deg) translateY(-${BALL_RADIUS - 8}px)`;
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          ball.style.transition = "transform 200ms ease-in-out";
+          ball.style.transform = `rotate(${ballFinalRotation}deg) translateY(-${BALL_RADIUS}px)`;
+        }, 260);
+      });
+
+      if (resultLabelEl) {
+        const colorLabel = resultNumber === 0 ? "緑" : (CASINO_ROULETTE_RED.has(resultNumber) ? "赤" : "黒");
+        resultLabelEl.textContent = `${resultNumber}・${colorLabel}`;
+      }
+
+      setTimeout(() => {
+        wheel.style.transition = "none";
+        ball.style.transition = "none";
+        setRouletteSpinSceneVisible(false);
+        if (panel) panel.classList.remove("spin-only");
+        boardOverlay.classList.add("hidden"); // ★演出が終わったらまた盤面ごと隠す
+        resolve();
+      }, 950);
+    }, SPIN_DURATION_MS);
   });
 }
 
