@@ -77,6 +77,17 @@ let scenarioBuildEditingItemSkillId = null; // ★武器・防具の「スキル
 //   特殊スキル編集の未宣言変数と同じ種類の危険なパターンだったため、ここで正式に宣言しておく）
 let scenarioBuildEditingEntityRef = null; // ★敵/ボス/アイテムの詳細編集の専用全画面エディタで、今何を編集中か（{ category, id }）
 
+// ★要望対応：話一覧の「テストプレイ用：クリア済み扱いにする」チェックは、実際のクリア状況
+//   （chapter.cleared。エンディング/話クリアブロックの通過で本当にtrueになり、保存もされる）とは
+//   完全に切り離した「今開いているだけの一時的な上書き」として持つ。scenarioProject本体には一切含めず、
+//   ページの再読み込みやシナリオビルドの保存（💾）をしても絶対に残らない（＝保存されない）ようにする
+let scenarioTestClearedChapterIds = new Set();
+// ★話の開始条件などを判定する箇所は、実際にクリア済みか／テストプレイ用に一時的にクリア済み扱いにしているかを
+//   区別せず「どちらか」で判定したいので、判定側は基本的に chapter.cleared を直接見ず、ここを通す
+function isChapterEffectivelyCleared(chapter) {
+  return !!(chapter && (chapter.cleared || scenarioTestClearedChapterIds.has(chapter.id)));
+}
+
 // ===== データの読み書き（自動保存） =====
 // ★JSファイルとして書き出した「シナリオのみ」「ゲームの基本設定のみ」データを、
 //   ブラウザ保存データより優先して取り込んだかどうかの記録（バージョン＝書き出した時刻）
@@ -1986,21 +1997,25 @@ function buildScenarioChapterRow(chapter, index) {
   clearedLabel.className = "scenariobuild-cleared-label";
   const clearedCheckbox = document.createElement("input");
   clearedCheckbox.type = "checkbox";
-  clearedCheckbox.checked = !!chapter.cleared;
+  // ★要望対応：本当にクリア済み（chapter.cleared）か、テストプレイ用に一時的にクリア済み扱いにしているか
+  //   （scenarioTestClearedChapterIds）のどちらかがtrueならチェックを入れて見せる
+  clearedCheckbox.checked = isChapterEffectivelyCleared(chapter);
   clearedCheckbox.onchange = () => {
-    chapter.cleared = clearedCheckbox.checked;
-    // ★チェックを入れた話より前にある話は、普通にプレイしていれば当然クリア済みのはずなので、
-    //   テストプレイ用にまとめてクリア済み扱いにする時は、それより前の話も一緒にクリア済みにする。
-    //   以前はこの話だけしかクリア済みにならず、「3話までクリア済みにしたつもりが進行度は2話のまま」
-    //   になる不具合の原因になっていた（間の話が未クリアのまま抜けてしまっていたため）
+    // ★要望対応：ここでchapter.clearedそのものは一切書き換えない。あくまでこのタブを開いている間だけの
+    //   一時的な上書き（scenarioTestClearedChapterIds）を出し入れするだけなので、markScenarioBuildDirty()も呼ばない
+    //   ＝「💾保存」しても、テストプレイ用のこのチェックは絶対に保存されない
     if (clearedCheckbox.checked) {
-      scenarioProject.chapters.slice(0, index).forEach(c => { c.cleared = true; });
+      scenarioTestClearedChapterIds.add(chapter.id);
+      // ★チェックを入れた話より前にある話は、普通にプレイしていれば当然クリア済みのはずなので、
+      //   テストプレイ用にまとめてクリア済み扱いにする時は、それより前の話も一緒にクリア済みにする
+      scenarioProject.chapters.slice(0, index).forEach(c => { scenarioTestClearedChapterIds.add(c.id); });
+    } else {
+      scenarioTestClearedChapterIds.delete(chapter.id);
     }
-    markScenarioBuildDirty();
     renderScenarioBuildPanel(); // ★前の話のチェックボックスの見た目にも即座に反映する
   };
   clearedLabel.appendChild(clearedCheckbox);
-  clearedLabel.append(" テストプレイ用：クリア済み扱いにする");
+  clearedLabel.append(" テストプレイ用：クリア済み扱いにする（一時的なもので保存はされません）");
   
   // ★「閑話」として、話数のカウントに含めず（一覧では「閑話」と表示）、他の話の間に挟み込めるようにする。
   //   挟む位置自体は、一覧のドラッグ＆ドロップ（☰）で自由に並び替えられる
@@ -2091,7 +2106,7 @@ function buildScenarioChapterRow(chapter, index) {
   // ★いまの進行状況で、この話の開始条件をもう満たしているかどうかを表示し、満たしていればその場ですぐ始められるボタンを出す
   //   （わざわざ酒場で話しかけたり街に着いたりし直さなくても、条件を満たした話をここから直接確認・開始できる）
   let startNowBtn = null;
-  if (!chapter.cleared && chapter.blocks.length > 0 && evaluateChapterUnlockConditions(chapter)) {
+  if (!isChapterEffectivelyCleared(chapter) && chapter.blocks.length > 0 && evaluateChapterUnlockConditions(chapter)) {
     startNowBtn = document.createElement("button");
     startNowBtn.className = "devmode-btn scenariobuild-condition-met-btn";
     startNowBtn.textContent = "✓ 条件達成中：今すぐ開始";
@@ -10575,7 +10590,7 @@ function importScenarioProjectFromFile(file) {
 //     実際に話が自動的に始まるかどうかの判定とは切り離した
 function getCurrentChapterObjectiveText() {
   if (typeof scenarioProject === "undefined" || !Array.isArray(scenarioProject.chapters)) return null;
-  const chapter = scenarioProject.chapters.find(c => !c.cleared && !c.started && c.objectiveText && chapterPrecedingChapterCleared(c));
+  const chapter = scenarioProject.chapters.find(c => !isChapterEffectivelyCleared(c) && !c.started && c.objectiveText && chapterPrecedingChapterCleared(c));
   return chapter ? chapter.objectiveText : null;
 }
 
@@ -10584,7 +10599,7 @@ function chapterPrecedingChapterCleared(chapter) {
   if (chapter.enabled === false) return false; // ★「実装済み」チェックがオフの話は、実際のプレイには一切出てこない（編集・テストプレイは可能）
   if (chapter.requiredChapterId) {
     const req = scenarioProject.chapters.find(c => c.id === chapter.requiredChapterId);
-    if (!req || !req.cleared) return false;
+    if (!req || !isChapterEffectivelyCleared(req)) return false;
   }
   return true;
 }
@@ -10593,7 +10608,7 @@ function evaluateChapterUnlockConditions(chapter) {
   if (chapter.enabled === false) return false; // ★「実装済み」チェックがオフの話は、実際のプレイには一切出てこない（編集・テストプレイは可能）
   if (chapter.requiredChapterId) {
     const req = scenarioProject.chapters.find(c => c.id === chapter.requiredChapterId);
-    if (!req || !req.cleared) return false;
+    if (!req || !isChapterEffectivelyCleared(req)) return false;
   }
   if (chapter.requiredRank && typeof rankIndex === "function" && typeof player !== "undefined") {
     if (rankIndex(player.rank) < rankIndex(chapter.requiredRank)) return false;
@@ -10684,14 +10699,14 @@ async function checkAndAutoRunNextCustomChapter(triggerType = "tavern", location
   if (triggerType === "areaVisit" && typeof console !== "undefined") {
     scenarioProject.chapters.filter(c => (c.startTrigger || "tavern") === "areaVisit").forEach(c => {
       const reasons = [];
-      if (c.cleared) reasons.push("既にクリア済み");
+      if (isChapterEffectivelyCleared(c)) reasons.push("既にクリア済み");
       if (c.builtin) reasons.push("組み込みの話（対象外）");
       if (!c.blocks || c.blocks.length === 0) reasons.push("ブロックが1つも無い");
       if (c.enabled === false) reasons.push("「実装済み」チェックがOFF");
       if (c.requiredChapterId) {
         const req = scenarioProject.chapters.find(rc => rc.id === c.requiredChapterId);
         if (!req) reasons.push(`前の話の指定(requiredChapterId=${c.requiredChapterId})が見つからない`);
-        else if (!req.cleared) reasons.push(`前の話「${req.title}」が未クリア`);
+        else if (!isChapterEffectivelyCleared(req)) reasons.push(`前の話「${req.title}」が未クリア`);
       }
       if (c.startTriggerAreaKey !== locationKey) reasons.push(`対象エリア不一致（設定：${c.startTriggerAreaKey} / 今来た場所：${locationKey}）`);
       else {
@@ -10711,14 +10726,14 @@ async function checkAndAutoRunNextCustomChapter(triggerType = "tavern", location
   if (triggerType === "tavern" && typeof console !== "undefined") {
     scenarioProject.chapters.filter(c => (c.startTrigger || "tavern") === "tavern").forEach(c => {
       const reasons = [];
-      if (c.cleared) reasons.push("既にクリア済み");
+      if (isChapterEffectivelyCleared(c)) reasons.push("既にクリア済み");
       if (c.builtin) reasons.push("組み込みの話（対象外）");
       if (!c.blocks || c.blocks.length === 0) reasons.push("ブロックが1つも無い");
       if (c.enabled === false) reasons.push("「実装済み」チェックがOFF");
       if (c.requiredChapterId) {
         const req = scenarioProject.chapters.find(rc => rc.id === c.requiredChapterId);
         if (!req) reasons.push(`前の話の指定(requiredChapterId=${c.requiredChapterId})が見つからない`);
-        else if (!req.cleared) reasons.push(`前の話「${req.title}」が未クリア`);
+        else if (!isChapterEffectivelyCleared(req)) reasons.push(`前の話「${req.title}」が未クリア`);
       }
       if (c.startTriggerTavernKey && c.startTriggerTavernKey !== locationKey) {
         const tavernList = scenarioProject.facilities.filter(f => f.type === "tavern").map(f => `${f.name}(facility_${f.id})`).join("、");
@@ -10728,7 +10743,7 @@ async function checkAndAutoRunNextCustomChapter(triggerType = "tavern", location
     });
   }
   const candidate = scenarioProject.chapters.find(c => {
-    if (c.cleared || c.builtin || !c.blocks || c.blocks.length === 0) return false;
+    if (isChapterEffectivelyCleared(c) || c.builtin || !c.blocks || c.blocks.length === 0) return false;
     if (!evaluateChapterUnlockConditions(c)) return false;
     const trigger = c.startTrigger || "tavern";
     if (trigger === "areaVisit") {
