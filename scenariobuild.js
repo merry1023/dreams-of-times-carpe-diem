@@ -2057,8 +2057,13 @@ function buildScenarioChapterRow(chapter, index) {
       areaSelect.className = "scenariobuild-jump-select";
       scenarioProject.mapAreas.forEach(a => {
         const option = document.createElement("option");
-        option.value = a.locationKey;
-        option.textContent = a.name || a.locationKey;
+        // ★バグ修正：カスタム（拠点以外の自作）エリアは a.locationKey を持たないため、
+        //   そのまま使うと全カスタムエリアの値が文字列"undefined"で衝突し、
+        //   選び直しても保存・リロード後に必ず先頭のエリアに戻ってしまっていた。
+        //   実際のゲーム側（adventure.jsのenterAdventureLocation）と同じフォールバック規則に合わせる
+        const key = a.locationKey || ("custom_" + a.id);
+        option.value = key;
+        option.textContent = a.name || key;
         areaSelect.appendChild(option);
       });
       areaSelect.value = (chapter.startTrigger === "townArrival") ? "village" : (chapter.startTriggerAreaKey || "village");
@@ -4034,8 +4039,10 @@ function buildBlockFormFields(chapter, block) {
     areaSelect.className = "scenariobuild-jump-select";
     scenarioProject.mapAreas.forEach(a => {
       const option = document.createElement("option");
-      option.value = a.locationKey;
-      option.textContent = a.name || a.locationKey;
+      // ★バグ修正：上の開始トリガーと同じ理由で、カスタムエリアのフォールバックキーに合わせる
+      const key = a.locationKey || ("custom_" + a.id);
+      option.value = key;
+      option.textContent = a.name || key;
       areaSelect.appendChild(option);
     });
     areaSelect.value = block.areaKey || "";
@@ -11577,6 +11584,20 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
   if (block.type === "ending") {
     changeSpeaker("");
     await showSpecialScene(block.title || "END"); // mainfunc.js
+    
+    // ★バグ修正（要望対応）：テストプレイでエンディング/話クリアブロックに到達しても、
+    //   本当にクリアした事にはしない。以前はテストプレイかどうかを見ておらず、chapter.cleared=trueを
+    //   本当に保存し、実績解放やセーブデータの自動保存まで走っていたため、「テストプレイ用：クリア済み
+    //   扱いにする」チェック（一時的なだけのはず）と、本編の本当のクリア状態が実質同じものになって
+    //   しまっていた
+    if (isScenarioTestPlay) {
+      const testEndrollEnabled = block.endrollEnabled !== false;
+      if (testEndrollEnabled && block.endroll && typeof playEndRoll === "function") {
+        await playEndRoll(block.endroll, block.endrollBgm || null, block.endrollScrollSeconds || 20);
+      }
+      return "TITLE";
+    }
+    
     chapter.cleared = true;
     if (typeof player !== "undefined") player.progressPoints = 0; // ★話が終わるごとに進行度をリセットする
     
@@ -11604,6 +11625,14 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
   }
   
   if (block.type === "clearchapter") {
+    // ★バグ修正（要望対応）：上のendingブロックと同じ理由で、テストプレイ中は本当にクリア済みにしない
+    if (isScenarioTestPlay) {
+      if (block.endrollEnabled === true && block.endroll && typeof playEndRoll === "function") {
+        await playEndRoll(block.endroll, block.endrollBgm || null, block.endrollScrollSeconds || 20);
+      }
+      return nextDefaultId;
+    }
+    
     chapter.cleared = true; // ★エンディングと違い、タイトル画面には戻らずそのまま続く
     if (block.resetProgress !== false && typeof player !== "undefined") player.progressPoints = 0;
     markScenarioBuildDirty();
