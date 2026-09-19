@@ -1418,6 +1418,33 @@ html, body {
     font-size: 13px;
 }
 
+/* ★要望対応：BGM音量を「┃」20本の色分けバーで表示する行 */
+.setting-volume-bar-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.setting-volume-bar {
+    display: inline-flex;
+    gap: 1px;
+    line-height: 1;
+}
+
+.setting-volume-bar-segment {
+    color: #444; /* まだ音量が届いていない部分は暗い色 */
+    font-size: 13px;
+}
+
+.setting-volume-bar-segment.filled {
+    color: #ffc107; /* 現在の音量まではアクセントカラーで塗る */
+}
+
+.setting-volume-bar-number {
+    color: #999;
+    font-size: 11px;
+}
+
 /* ★スマホ対応：タップ範囲（ラベル＋値）と、◀▶タップボタン部分を分離 */
 .setting-row-main {
     display: flex;
