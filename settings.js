@@ -44,6 +44,7 @@ let gameSettings = {
   autoSaveEnabled: false,
   textSpeedId: "normal",
   logMaxCount: 100,
+  bgmVolumeLevel: 20, // ★要望対応：BGM音量（0〜20の20段階。既定値20＝これまで通りの音量）
   showCorrectChoice: false, // ★ONにすると、選択肢のうち「正解」（話が進む方）に印を付けて表示する
   developerModeUnlocked: false, // ★開発者モード（devmode.js）のロック状態
   focusMainSwitchesToMainTab: false, // ★ONの時、Aキーでメイン画面に移行すると、サブ画面もメインタブに戻る（要望対応）
@@ -152,6 +153,12 @@ function applySettings() {
   textSpead = level.ms; // mainfunc.js（タイプ音演出の待ち時間）
   MESSAGE_LOG_MAX = gameSettings.logMaxCount; // mainfunc.js
   trimMessageLogIfNeeded(); // ★上限を下げた直後にログが超過していたら、その場で切り詰める
+  // ★要望対応：保存データが壊れている/古い場合の保険として、0〜20の整数に収める
+  if (typeof gameSettings.bgmVolumeLevel !== "number" || !isFinite(gameSettings.bgmVolumeLevel)) {
+    gameSettings.bgmVolumeLevel = 20;
+  }
+  gameSettings.bgmVolumeLevel = Math.max(0, Math.min(20, Math.round(gameSettings.bgmVolumeLevel)));
+  if (typeof applyBgmVolumeSettingToCurrentAudio === "function") applyBgmVolumeSettingToCurrentAudio(); // bgm.js（既に何か鳴っていれば音量を反映）
 }
 
 // ===== オートセーブ本体（3スロット：5分ごと／話直前／終了時） =====
@@ -229,9 +236,29 @@ window.addEventListener("beforeunload", () => autoSaveToSlot("onclose"));
 
 let settingsCursorIndex = 0;
 let isPlayTabVisibilityPanelOpen = false;
-const SETTINGS_ROW_COUNT = 12; // 0:文字送り速度 1:ログ記憶数 2:オートセーブON/OFF 3:オートセーブから再開する
-                               // 4:正解の選択肢を表示 5:Aキーでメインタブに戻す 6:メインタブのパラメータ表示
-                               // 7:全画面表示 8:開発者ボタン 9:Googleアカウント（auth.js） 10:プレイ画面のタブ管理 11:メインメニューに戻る
+const SETTINGS_ROW_COUNT = 13; // 0:文字送り速度 1:ログ記憶数 2:BGM音量 3:オートセーブON/OFF 4:オートセーブから再開する
+                               // 5:正解の選択肢を表示 6:Aキーでメインタブに戻す 7:メインタブのパラメータ表示
+                               // 8:全画面表示 9:開発者ボタン 10:Googleアカウント（auth.js） 11:プレイ画面のタブ管理 12:メインメニューに戻る
+
+// ★要望対応：BGM音量を「┃」を20本並べたバーで表示する。現在の音量までを塗り、それ以降は薄い色のままにする
+function renderVolumeBarSegments(container, level, max) {
+  container.innerHTML = "";
+  container.classList.add("setting-volume-bar-wrap");
+  const clampedLevel = Math.max(0, Math.min(max, level));
+  const barsEl = document.createElement("span");
+  barsEl.className = "setting-volume-bar";
+  for (let i = 0; i < max; i++) {
+    const seg = document.createElement("span");
+    seg.className = "setting-volume-bar-segment" + (i < clampedLevel ? " filled" : "");
+    seg.textContent = "┃";
+    barsEl.appendChild(seg);
+  }
+  const numEl = document.createElement("span");
+  numEl.className = "setting-volume-bar-number";
+  numEl.textContent = ` ${clampedLevel}/${max}`;
+  container.appendChild(barsEl);
+  container.appendChild(numEl);
+}
 
 function renderSettingsTab() {
   // ★バグ修正：以前はtab-setting自体のinnerHTMLを毎回まるごと書き換えていたため、
@@ -251,6 +278,7 @@ function renderSettingsTab() {
   const rows = [
     { label: "文字送り速度", value: textSpeedLevel.label, hint: "◀／▶で変更" },
     { label: "ログの記憶件数", value: `直近${gameSettings.logMaxCount}件`, hint: "◀／▶で変更" },
+    { label: "BGM音量", renderBar: true, hint: "◀／▶で変更（20段階）" },
     { label: "オートセーブ", value: gameSettings.autoSaveEnabled ? "ON" : "OFF", hint: "◀／▶／決定で切替" },
     { label: "オートセーブ一覧", value: "", hint: "決定で「5分ごと／話直前／終了時／話をやり直す」から選ぶ" },
     { label: "正解の選択肢を表示", value: gameSettings.showCorrectChoice ? "ON" : "OFF", hint: "◀／▶／決定で切替（選択肢のうち話が進む方に★が付く）" },
@@ -268,7 +296,7 @@ function renderSettingsTab() {
   //   ・◀／▶キー相当のタップ用ボタンを、左右キーで値を変える行にだけ追加する。
   //   ・行本体（ラベル／値の部分）をタップした時は、カーソルをその行に合わせつつ、
   //     決定キーを押した時と同じ動作（ON/OFF切替や各種実行）もその場で行う。
-  const ADJUSTABLE_ROW_INDEXES = [0, 1]; // ◀▶ボタンで段階的に変える行（文字送り速度・ログ件数）
+  const ADJUSTABLE_ROW_INDEXES = [0, 1, 2]; // ◀▶ボタンで段階的に変える行（文字送り速度・ログ件数・BGM音量）
   
   rows.forEach((row, i) => {
     const rowEl = document.createElement("div");
@@ -289,7 +317,11 @@ function renderSettingsTab() {
     
     const valueEl = document.createElement("span");
     valueEl.className = "setting-value";
-    valueEl.textContent = row.value;
+    if (row.renderBar) {
+      renderVolumeBarSegments(valueEl, gameSettings.bgmVolumeLevel, 20); // ★要望対応：BGM音量を┃20本の色分けバーで表示
+    } else {
+      valueEl.textContent = row.value;
+    }
     
     mainEl.appendChild(labelEl);
     mainEl.appendChild(valueEl);
@@ -362,24 +394,32 @@ function adjustCurrentSetting(direction) {
     renderSettingsTab();
     
   } else if (settingsCursorIndex === 2) {
+    // ★要望対応：BGM音量（0〜20の20段階）
+    const level = typeof gameSettings.bgmVolumeLevel === "number" ? gameSettings.bgmVolumeLevel : 20;
+    gameSettings.bgmVolumeLevel = Math.max(0, Math.min(20, level + direction));
+    saveSettings();
+    if (typeof applyBgmVolumeSettingToCurrentAudio === "function") applyBgmVolumeSettingToCurrentAudio(); // bgm.js（今鳴っている曲にもすぐ反映する）
+    renderSettingsTab();
+    
+  } else if (settingsCursorIndex === 3) {
     // オートセーブON/OFF（左右どちらでもトグルする）
     gameSettings.autoSaveEnabled = !gameSettings.autoSaveEnabled;
     saveSettings();
     renderSettingsTab();
     
-  } else if (settingsCursorIndex === 4) {
+  } else if (settingsCursorIndex === 5) {
     // 正解の選択肢を表示 ON/OFF（左右どちらでもトグルする）
     gameSettings.showCorrectChoice = !gameSettings.showCorrectChoice;
     saveSettings();
     renderSettingsTab();
     
-  } else if (settingsCursorIndex === 5) {
+  } else if (settingsCursorIndex === 6) {
     // メイン画面に移行する時、メインタブに切り替える ON/OFF（左右どちらでもトグルする）
     gameSettings.focusMainSwitchesToMainTab = !gameSettings.focusMainSwitchesToMainTab;
     saveSettings();
     renderSettingsTab();
     
-  } else if (settingsCursorIndex === 6) {
+  } else if (settingsCursorIndex === 7) {
     // メインタブのパラメータ表示 ON/OFF（左右どちらでもトグルする）
     gameSettings.showMainTabParams = !gameSettings.showMainTabParams;
     saveSettings();
@@ -423,26 +463,26 @@ window.addEventListener("keydown", (event) => {
 
 // ★決定キー操作／行タップ操作の共通処理（スマホでのタップ操作対応のため関数化）
 function executeSettingsDecideAction(index) {
-  if (index === 2) {
+  if (index === 3) {
     adjustCurrentSetting(1); // ★オートセーブ行は決定でもトグルできるようにする
-  } else if (index === 3) {
-    openAutoSavePanel(); // convenience.js
   } else if (index === 4) {
-    adjustCurrentSetting(1); // ★正解の選択肢を表示 行も決定でトグルできるようにする
+    openAutoSavePanel(); // convenience.js
   } else if (index === 5) {
-    adjustCurrentSetting(1); // ★メイン画面に移行する時、メインタブに切り替える 行も決定でトグルできるようにする
+    adjustCurrentSetting(1); // ★正解の選択肢を表示 行も決定でトグルできるようにする
   } else if (index === 6) {
-    adjustCurrentSetting(1); // ★メインタブのパラメータ表示 行も決定でトグルできるようにする
+    adjustCurrentSetting(1); // ★メイン画面に移行する時、メインタブに切り替える 行も決定でトグルできるようにする
   } else if (index === 7) {
-    toggleFullscreen().then(() => renderSettingsTab()); // mainfunc.js（要望対応：設定から全画面表示）
+    adjustCurrentSetting(1); // ★メインタブのパラメータ表示 行も決定でトグルできるようにする
   } else if (index === 8) {
-    handleDevModeButtonDecide(); // ★未解除ならパスワード入力を開く。解除済みなら特に何もしない（左端タブから操作する）
+    toggleFullscreen().then(() => renderSettingsTab()); // mainfunc.js（要望対応：設定から全画面表示）
   } else if (index === 9) {
-    if (typeof handleGoogleAccountSettingsDecide === "function") handleGoogleAccountSettingsDecide(); // auth.js（要望対応：Googleアカウントログイン/ログアウト）
+    handleDevModeButtonDecide(); // ★未解除ならパスワード入力を開く。解除済みなら特に何もしない（左端タブから操作する）
   } else if (index === 10) {
+    if (typeof handleGoogleAccountSettingsDecide === "function") handleGoogleAccountSettingsDecide(); // auth.js（要望対応：Googleアカウントログイン/ログアウト）
+  } else if (index === 11) {
     isPlayTabVisibilityPanelOpen = !isPlayTabVisibilityPanelOpen;
     renderSettingsTab();
-  } else if (index === 11) {
+  } else if (index === 12) {
     handleReturnToMainMenuFromSettings();
   }
 }
