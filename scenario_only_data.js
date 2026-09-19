@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1789786533228,
+  "version": 1789798372429,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -2256,7 +2256,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
       "requiredDays": 3,
       "requiredFlag": null,
       "started": true,
-      "objectiveText": "レベルを5以上にし、進行度を40以上にしよう。また、3日間生き延びて酒場の店主に話しかけよう！",
+      "objectiveText": "レベルを5以上にし、進行度を40以上にしよう。また、3日間生き延びて酒場の店主に話しかけよう！(推奨Lv5)",
       "synopsis": "酒場で、酒場の主人と話していると、主人からマッド・サイエンティストの「デッパ」が村へ訪れた際に置いていったという謎の液体が入った小瓶を渡された。その時竜殺しが依頼内容に対して文句を言っているのが聞こえた。主人が竜殺しをなだめていると、突然絶望した様子の男性が酒場に現れる。「青椒」と名乗るその男は、妻の「𰻞𰻞」を攫われたという。治郎は青椒の妻を探しに最近見つかったという不審な村外れの洞穴に訪れる。洞穴の中にいたホブゴブリンとゴブリンの群れを、決死の覚悟で投げつけた謎の液体入りの小瓶である「プシ硫酸」により、ホブゴブリンを弱体化させ、討伐に成功。最終的には心配になり着いてきていた竜殺しの助けにより囚われていた女性たちを解放。村に戻り青椒夫婦から乳搾り機をもらい、歩いている途中に「竜殺し」またの名を「ケツァナ」からパーティに誘われる。承諾した治郎は酒場へ申請に行くのだった。"
     },
     {
@@ -4046,7 +4046,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
       "requiredChapterId": "builtin_chapter2",
       "requiredRank": "E",
       "startTrigger": "areaVisit",
-      "objectiveText": "ランクをEにし、進行度を30にし、7日間生き延び、カデリクの街へ行こう。",
+      "objectiveText": "ランクをEにし、進行度を30にし、7日間生き延び、カデリクの街へ行こう。(推奨Lv15)",
       "requiredDays": 5,
       "requiredProgress": 30,
       "requiredFlag": null,
@@ -5539,7 +5539,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
     {
       "id": "custom_1788854370721_3",
       "title": "第五話:紅の愚豚",
-      "cleared": false,
+      "cleared": true,
       "builtin": false,
       "requiredChapterNumber": 6,
       "blocks": [
@@ -7163,14 +7163,16 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "text": "いや受け入れるの早っ！"
         }
       ],
-      "enabled": true,
+      "enabled": false,
       "requiredChapterId": "custom_1788780588914_1",
-      "requiredRank": null,
-      "requiredProgress": null,
-      "requiredDays": null,
+      "requiredRank": "D",
+      "requiredProgress": 25,
+      "requiredDays": 13,
       "requiredFlag": null,
       "isInterlude": false,
-      "synopsis": "a"
+      "synopsis": "a",
+      "startTriggerTavernKey": "facility_facility_1788351639721_33",
+      "objectiveText": "進行度を25にし、13日生き延び、セドレイの酒場の店主に話しかけよう！(推奨Lv25)"
     }
   ],
   "characters": [
