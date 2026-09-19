@@ -55,6 +55,21 @@ let currentBgmAudio = null; // 今再生中の Audio インスタンス（無け
 let currentBgmName = null; // 今再生中の曲名（重複再生を避けるための判定に使う）
 const bgmFailedTracks = new Set(); // ★一度読み込みに失敗した（＝ファイルが無い）曲名。毎ターン無駄に再挑戦しないための記録
 
+// ★要望対応：設定タブのBGM音量（20段階。既定値20＝これまで通りの音量で、下げるほど小さくなる）。
+//   曲ごとのvolumeオプション（探索中は0.5、など）に、ここで求めた倍率(0〜1)を掛け合わせて最終的な音量にする
+function getBgmVolumeMultiplier() {
+  if (typeof gameSettings === "undefined" || !gameSettings || typeof gameSettings.bgmVolumeLevel !== "number") return 1;
+  return Math.max(0, Math.min(1, gameSettings.bgmVolumeLevel / 20));
+}
+
+// ★要望対応：設定タブで音量を変更した瞬間、今まさに鳴っている曲にもすぐ反映させるために呼ぶ
+//   （_bgmBaseVolumeに、乗算前の「曲本来の音量」を覚えておき、そこへ毎回改めて倍率を掛け直す）
+function applyBgmVolumeSettingToCurrentAudio() {
+  if (!currentBgmAudio) return;
+  const base = currentBgmAudio._bgmBaseVolume != null ? currentBgmAudio._bgmBaseVolume : BGM_DEFAULT_VOLUME;
+  currentBgmAudio.volume = base * getBgmVolumeMultiplier();
+}
+
 // ★ブラウザの自動再生ポリシーにより、ページ読み込み直後などユーザーが一度も操作していない状態で
 //   audio.play()を呼んでも再生がブロックされてしまう（曲ファイル自体は正しく置けていても鳴らない）。
 //   ブロックされた再生はここに控えておき、最初のクリック・キー入力・タップがあった瞬間に再試行する
@@ -111,7 +126,8 @@ function playBgmTrack(trackName, options = {}) {
   
   const audio = new Audio(resolveBgmTrackPath(trackName));
   audio.loop = options.loop !== undefined ? options.loop : true;
-  audio.volume = volume;
+  audio._bgmBaseVolume = volume; // ★要望対応：設定の音量調整を後から掛け直せるよう、乗算前の基準音量を覚えておく
+  audio.volume = volume * getBgmVolumeMultiplier();
   
   let failHandled = false;
   audio.addEventListener("error", () => {
@@ -129,7 +145,8 @@ function playBgmTrack(trackName, options = {}) {
     
     console.warn(`BGM「${trackName}」の再生に失敗しました（${resolveBgmTrackPath(trackName)} が無い可能性があります）。直前の曲があれば継続します。`);
     if (fallbackAudio) {
-      fallbackAudio.volume = volume; // ★フェードアウト済みで音量が0になっている場合があるので戻す
+      fallbackAudio._bgmBaseVolume = volume; // ★要望対応：以後の音量設定の掛け直しにも使えるよう更新しておく
+      fallbackAudio.volume = volume * getBgmVolumeMultiplier(); // ★フェードアウト済みで音量が0になっている場合があるので戻す
       fallbackAudio.play().catch(() => {});
       currentBgmAudio = fallbackAudio;
       currentBgmName = fallbackName;
