@@ -1536,7 +1536,18 @@ async function enemyTeamTurn() {
   for (const enemy of alive) {
     if (!battleState) return; // ★途中で戦闘が終わっていたら中断
     if (enemy.hp <= 0) continue; // ★このターン中に既に倒された相手は行動させない
-    await runSingleEnemyTurn(enemy);
+    
+    // ★要望対応：ボスが1ターンに複数回行動できるようにする（MONSTER_MASTER[...].actionsPerTurn。未指定/1以下なら今まで通り1回）
+    const master = MONSTER_MASTER[enemy.monsterKey];
+    const actionsPerTurn = (master && typeof master.actionsPerTurn === "number" && master.actionsPerTurn > 1) ? Math.floor(master.actionsPerTurn) : 1;
+    
+    for (let actionIndex = 0; actionIndex < actionsPerTurn; actionIndex++) {
+      if (!battleState) return;
+      if (enemy.hp <= 0) break; // ★行動の合間に倒された場合、残りの行動はしない
+      if (isPartyDefeated()) return;
+      await runSingleEnemyTurn(enemy);
+    }
+    
     if (!battleState) return;
     if (isPartyDefeated()) return; // ★力尽きたら、残りの敵は行動させず終了（battleLoop側で敗北処理する）
   }
@@ -1613,8 +1624,9 @@ function checkAndApplyBossFormTransition(enemy) {
   if (atkMultiplier !== 1) enemy.atk = Math.round((enemy.baseAtk || enemy.atk) * atkMultiplier); // ★形態ごとの倍率は、常に素の攻撃力を基準にする（前の形態からの複利にはしない）
   const healRatio = Number(nextForm.healRatioOnEnter) || 0;
   if (healRatio > 0) enemy.hp = Math.min(enemy.maxHp, enemy.hp + Math.round(enemy.maxHp * healRatio));
-  if (nextForm.bgmTrack && typeof switchScenarioBGM === "function") {
-    // ★形態専用のBGM未指定なら、BGMは変えず直前の曲のまま鳴り続ける
+  if (nextForm.bgmTrack && nextForm.inheritBgm === false && typeof switchScenarioBGM === "function") {
+    // ★要望対応：「BGM引き継ぎ」がOFFの時だけ専用BGMに切り替える。ONの場合（既定）や専用BGM未指定の場合は、
+    //   直前まで流れていた曲をそのまま流し続ける（BGMには一切触れない）
     switchScenarioBGM(nextForm.bgmTrack, { fadeMs: 600, onFailFallbackTrack: (typeof BATTLE_BGM_TRACKS !== "undefined" ? BATTLE_BGM_TRACKS.boss : undefined) });
   }
   if (typeof updateBattleHud === "function") updateBattleHud();

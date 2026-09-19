@@ -1026,6 +1026,7 @@ function ensureCustomMonstersRegistered() {
       uniqueSkill: (boss.uniqueSkill && boss.uniqueSkill.name) ? boss.uniqueSkill : undefined,
       imagePath: boss.imagePath || undefined,
       sizeMultiplier: (typeof boss.sizeMultiplier === "number" && boss.sizeMultiplier > 0) ? boss.sizeMultiplier : undefined,
+      actionsPerTurn: (typeof boss.actionsPerTurn === "number" && boss.actionsPerTurn > 1) ? Math.floor(boss.actionsPerTurn) : undefined, // ★要望対応：1ターンの行動回数（battle.js参照）
       bgmTrack: boss.bgmTrack || undefined,
       bgmFinalTrack: boss.bgmFinalTrack || undefined,
       bgmCrisisTrack: boss.bgmCrisisTrack || undefined,
@@ -4497,7 +4498,7 @@ function ensureCustomFameThresholdsRegistered() {
 
 function getBossManagerConfig() {
   return {
-    note: "既にいるボス（boss.js）も一覧に出ており、直接編集・削除できます（実際のゲームデータそのものが変わります）。戦闘ブロックの魔物IDにこのIDを入れると、ボス扱い（専用BGM込み）でテストプレイできます。BGM欄はBGM設定タブで登録した曲名、または直接ファイルパスを貼り付けられます。「レベル」を設定すると、エリアの固定レベル設定や主人公のレベルに関わらず、必ずそのレベルで出現します（空欄ならエリア設定または主人公基準）。「ステータスを固定する」をONにすると、レベルによる自動計算はせず、HP・攻撃力・経験値をここで入力した数値そのままで戦えます（レベルは表示だけに使われます）。「無敵解除アイテムID」を指定すると、そのボスは最初ダメージが一切通らない無敵状態になり、戦闘中にプレイヤーがそのアイテムを実際に「使う」まで攻撃が効きません（空欄なら今まで通り最初からダメージが通ります。持っているだけでは解除されず、道具コマンドから使う必要があります）。詳細設定の「形態」欄の「編集」ボタンから開く専用画面では、好きな数だけ形態（第2形態以降）を追加・削除でき、形態ごとに名前・画像・大きさ・攻撃力倍率・出現時の回復割合・専用BGM・発動条件（ボスの体力/主人公のHP・SP/経過ターン数）を個別に設定できます。条件を満たすと自動で切り替わり、その瞬間の演出（セリフ等）は「戦闘イベント」側で条件を「形態が◯になった瞬間」にすることで組み立てます。「戦闘イベント」欄の「編集」ボタンから開く専用画面では、ボスの体力/主人公のHP・SP/経過ターン数/形態の切り替わりを条件に、戦闘中セリフ・無敵解除・仲間を呼ぶ・回復・特定の技、または「演出ブロックで自由に組む」（if・変数操作・パラメータ変更なども使える、話のブロックと同じ仕組み）を組み合わせて演出できます（1つのイベントは戦闘中1回だけ発火します）。",
+    note: "既にいるボス（boss.js）も一覧に出ており、直接編集・削除できます（実際のゲームデータそのものが変わります）。戦闘ブロックの魔物IDにこのIDを入れると、ボス扱い（専用BGM込み）でテストプレイできます。BGM欄はBGM設定タブで登録した曲名、または直接ファイルパスを貼り付けられます。「レベル」を設定すると、エリアの固定レベル設定や主人公のレベルに関わらず、必ずそのレベルで出現します（空欄ならエリア設定または主人公基準）。「ステータスを固定する」をONにすると、レベルによる自動計算はせず、HP・攻撃力・経験値をここで入力した数値そのままで戦えます（レベルは表示だけに使われます）。「1ターンの行動回数」を2以上にすると、このボスは1ターンに指定した回数だけ連続で行動します（途中で力尽きたら残りの行動はしません）。「無敵解除アイテムID」を指定すると、そのボスは最初ダメージが一切通らない無敵状態になり、戦闘中にプレイヤーがそのアイテムを実際に「使う」まで攻撃が効きません（空欄なら今まで通り最初からダメージが通ります。持っているだけでは解除されず、道具コマンドから使う必要があります）。詳細設定の「形態」欄の「編集」ボタンから開く専用画面では、好きな数だけ形態（第2形態以降）を追加・削除でき、形態ごとに名前・画像・大きさ・攻撃力倍率・出現時の回復割合・専用BGM（「BGM引き継ぎ」ONなら曲を変えずそのまま流し続けます）・発動条件（ボスの体力/主人公のHP・SP/経過ターン数）を個別に設定できます。条件を満たすと自動で切り替わり、その瞬間の演出（セリフ等）は「戦闘イベント」側で条件を「形態が◯になった瞬間」にすることで組み立てます。「戦闘イベント」欄の「編集」ボタンから開く専用画面では、ボスの体力/主人公のHP・SP/経過ターン数/形態の切り替わりを条件に、戦闘中セリフ・無敵解除・仲間を呼ぶ・回復・特定の技、または「演出ブロックで自由に組む」（if・変数操作・パラメータ変更なども使える、話のブロックと同じ仕組み）を組み合わせて演出できます（1つのイベントは戦闘中1回だけ発火します）。",
     category: "bosses",
     useDetailEditor: true,
     showLevelPreview: true,
@@ -4515,9 +4516,10 @@ function getBossManagerConfig() {
       { key: "bgmCrisisTrack", label: "緊迫用BGM", type: "text", placeholder: "曲名 or パス（任意）", list: "scenariobuild-bgm-datalist" },
       { key: "imagePath", label: "画像パス", type: "text", placeholder: "例：img/敵/hobgoblin.png（空欄なら img/敵/名前.png を使う）" },
       { key: "sizeMultiplier", label: "大きさ倍率", type: "number", placeholder: "1.0（例：1.5で大きく、ボスらしく強調できます）" },
+      { key: "actionsPerTurn", label: "1ターンの行動回数", type: "number", placeholder: "1（例：2にすると1ターンに2回連続で行動します）" },
       { key: "invincibilityBreakItemId", label: "無敵解除アイテムID", type: "text", placeholder: "空欄＝最初からダメージが通る", list: "scenariobuild-item-datalist" }
     ],
-    newEntity: () => ({ id: generateId("boss"), name: "", description: "", level: null, fixedStats: "", maxHp: 50, atk: 10, exp: 50, bgmTrack: "", bgmFinalTrack: "", bgmCrisisTrack: "", imagePath: "", sizeMultiplier: 1, invincibilityBreakItemId: "", dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], normalAttackStatusInflictions: [], statusImmunities: [], statusResistances: {}, battleEvents: [], forms: [] }),
+    newEntity: () => ({ id: generateId("boss"), name: "", description: "", level: null, fixedStats: "", maxHp: 50, atk: 10, exp: 50, bgmTrack: "", bgmFinalTrack: "", bgmCrisisTrack: "", imagePath: "", sizeMultiplier: 1, actionsPerTurn: 1, invincibilityBreakItemId: "", dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], normalAttackStatusInflictions: [], statusImmunities: [], statusResistances: {}, battleEvents: [], forms: [] }),
     onChange: ensureCustomMonstersRegistered,
     getDefaultFromMaster: (id) => {
       const master = typeof BOSS_MASTER !== "undefined" ? BOSS_MASTER[id] : null;
@@ -4526,6 +4528,7 @@ function getBossManagerConfig() {
         name: master.name, description: master.description || "", level: master.level || null, fixedStats: master.fixedStats ? "on" : "", maxHp: master.maxHp, atk: master.atk, exp: master.exp,
         bgmTrack: master.bgmTrack || "", bgmFinalTrack: master.bgmFinalTrack || "", bgmCrisisTrack: master.bgmCrisisTrack || "",
         imagePath: master.imagePath || "", sizeMultiplier: (typeof master.sizeMultiplier === "number" && master.sizeMultiplier > 0) ? master.sizeMultiplier : 1,
+        actionsPerTurn: (typeof master.actionsPerTurn === "number" && master.actionsPerTurn > 0) ? master.actionsPerTurn : 1, // ★要望対応：1ターンの行動回数
         invincibilityBreakItemId: master.invincibilityBreakItemId || "",
         dropItemId: master.dropItemId || null, dropRate: master.dropRate || 0,
         killFlavor: master.killFlavor || "", spareFlavor: master.spareFlavor || "", giftItemId: master.giftItemId || null,
@@ -9651,6 +9654,23 @@ function buildBossFormEditor(entity, persist) {
     bgmRow.appendChild(bgmInput);
     box.appendChild(bgmRow);
     
+    // ★要望対応：BGM引き継ぎ。ONの場合、専用BGMを入力していてもBGMは一切切り替えず、
+    //   この形態になる直前まで流れていた曲をそのまま流し続ける（既定でON）
+    const inheritLabel = document.createElement("label");
+    inheritLabel.className = "scenariobuild-cleared-label";
+    const inheritCheckbox = document.createElement("input");
+    inheritCheckbox.type = "checkbox";
+    inheritCheckbox.checked = form.inheritBgm !== false; // ★未設定（既存データ含む）なら既定でON
+    bgmInput.disabled = inheritCheckbox.checked;
+    inheritCheckbox.onchange = () => {
+      form.inheritBgm = inheritCheckbox.checked;
+      bgmInput.disabled = inheritCheckbox.checked;
+      persist();
+    };
+    inheritLabel.appendChild(inheritCheckbox);
+    inheritLabel.append(" BGM引き継ぎ（ONだと専用BGMを設定していても切り替えず、直前の曲をそのまま流し続けます）");
+    box.appendChild(inheritLabel);
+    
     const condRow = document.createElement("div");
     condRow.className = "scenariobuild-condition-row";
     condRow.style.flexWrap = "wrap";
@@ -9697,7 +9717,7 @@ function buildBossFormEditor(entity, persist) {
     evt.stopPropagation();
     entity.forms.push({
       id: generateId("bossform"), name: "", imagePath: "", sizeMultiplier: null,
-      atkMultiplier: 1.3, healRatioOnEnter: 0, bgmTrack: "",
+      atkMultiplier: 1.3, healRatioOnEnter: 0, bgmTrack: "", inheritBgm: true,
       triggerConditionType: "bossHpBelow", triggerConditionValue: 50
     });
     persist();
