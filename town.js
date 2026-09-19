@@ -673,7 +673,19 @@ async function useTownhallClassChange(facility, returnTo) {
     return;
   }
   
-  const confirmed = await showGameConfirm(`${cost}陳を払って、職業を「${picked.next}」に変更しますか？`); // mainfunc.js
+  // ★要望対応：今装備している物があれば、職業変更でロックされてしまうことを確認画面で伝える
+  const equippedItemNames = ["武器", "胴", "盾"]
+    .filter(slot => player.equipment[slot])
+    .map(slot => {
+      const data = (typeof getEquippedItemData === "function") ? getEquippedItemData(slot) : null; // player.js
+      return data ? data.master.name : null;
+    })
+    .filter(Boolean);
+  const lockWarning = equippedItemNames.length > 0
+    ? `\n※今「${equippedItemNames.join("」「")}」を装備していますが、職業を変更すると外れて「${player.class}」専用になります。もう一度「${player.class}」に戻って外すまで、他の職業では使えなくなります。`
+    : "";
+  
+  const confirmed = await showGameConfirm(`${cost}陳を払って、職業を「${picked.next}」に変更しますか？${lockWarning}`); // mainfunc.js
   if (!confirmed) {
     showCustomFacilityMenu(facility, goBack); // ★enterBlocksを再生しないメニュー再表示（受付セリフの重複再生バグ修正）
     return;
