@@ -28,13 +28,29 @@ const BGM_TRACK_PATHS = {
   battle_boss_hobgoblin: "battleBgm/boss/ホブゴブリン/GOODRUSH"
 };
 
+// ★曲名やファイルパスの表記ゆれ（拡張子つき/なし、bgm/フォルダを含む/含まない、先頭の"/"の有無）を
+//   まとめて吸収するための正規化。BGM管理タブでの登録・シナリオの「BGM切り替え」ブロックへの直接貼り付け、
+//   どちらから来た文字列でも同じ形（拡張子・フォルダ抜きの相対パス）に揃えてから使う
+function normalizeBgmRelativePath(path) {
+  if (!path) return path;
+  return path
+    .trim()
+    .replace(/^\/+/, "")       // 先頭の "/" を除去
+    .replace(/^bgm\//i, "")    // 先頭の "bgm/" フォルダ名を除去（二重にならないように）
+    .replace(/\.mp3$/i, "");   // 拡張子を除去（呼び出し側で付け直す）
+}
+
 function resolveBgmTrackPath(trackName) {
   // ★バグ修正：シナリオ設定で追加したBGMの名前解決（BGM_TRACK_PATHSへの登録）は本来loadCustomScenarioData()の
   //   タイミングで行われるが、エンディングなど呼ばれるタイミングが早い/特殊な画面から再生しようとすると、
   //   登録が間に合わずファイルが見つからず失敗→bgmFailedTracksに載って以後ずっと再生されなくなっていた。
   //   曲を探す直前に必ず登録し直すことで、タイミングに関わらず常に最新のパスで解決できるようにする
   if (typeof ensureCustomBgmRegistered === "function") ensureCustomBgmRegistered();
-  const relativePath = BGM_TRACK_PATHS[trackName] || trackName;
+  // ★バグ修正：BGM管理タブで曲名として登録したものは事前に正規化済みだが、「BGM切り替え」ブロックへ
+  //   ファイルパスを直接貼り付けた場合は生の文字列のままここに届く。「.mp3」付きや「bgm/」フォルダ込みで
+  //   貼られると、下でさらに ".mp3" を付け足してしまい二重（例："xxx.mp3.mp3"）になって読み込めず、
+  //   結果として「BGM管理タブで名前登録した曲以外は鳴らない」ように見えていた。ここで同じ正規化をかける
+  const relativePath = normalizeBgmRelativePath(BGM_TRACK_PATHS[trackName] || trackName);
   return `${BGM_BASE_PATH}${relativePath}.mp3`;
 }
 

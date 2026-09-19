@@ -82,10 +82,18 @@ let scenarioBuildEditingEntityRef = null; // ★敵/ボス/アイテムの詳細
 //   完全に切り離した「今開いているだけの一時的な上書き」として持つ。scenarioProject本体には一切含めず、
 //   ページの再読み込みやシナリオビルドの保存（💾）をしても絶対に残らない（＝保存されない）ようにする
 let scenarioTestClearedChapterIds = new Set();
+// ★バグ修正（要望対応）：chapter.cleared が本当にtrue（以前のテストプレイ漏れ等で実際にクリア済みに
+//   なってしまっている話も含む）の場合、上のSetから外すだけではチェックを外せなかった
+//   （isChapterEffectivelyClearedがchapter.clearedの方でtrueを返し続けるため）。
+//   「本当はクリア済みだが、テストプレイ用に一時的に未クリア扱いで見たい」場合の上書きを別に持つことで、
+//   実際のchapter.clearedには一切触れずに、チェックを確実にON/OFFできるようにする
+let scenarioTestUnclearedChapterIds = new Set();
 // ★話の開始条件などを判定する箇所は、実際にクリア済みか／テストプレイ用に一時的にクリア済み扱いにしているかを
 //   区別せず「どちらか」で判定したいので、判定側は基本的に chapter.cleared を直接見ず、ここを通す
 function isChapterEffectivelyCleared(chapter) {
-  return !!(chapter && (chapter.cleared || scenarioTestClearedChapterIds.has(chapter.id)));
+  if (!chapter) return false;
+  if (scenarioTestUnclearedChapterIds.has(chapter.id)) return false; // ★テストプレイ用「未クリア扱い」の上書きを最優先
+  return !!(chapter.cleared || scenarioTestClearedChapterIds.has(chapter.id));
 }
 
 // ===== データの読み書き（自動保存） =====
@@ -1053,7 +1061,12 @@ function ensureCustomBgmRegistered() {
   if (typeof BGM_TRACK_PATHS === "undefined") return;
   scenarioProject.bgmTracks.forEach(entry => {
     if (!entry.name || !entry.path) return;
-    BGM_TRACK_PATHS[entry.name] = entry.path.replace(/\.mp3$/i, ""); // ★.mp3を付けて貼られても、付けずに貼られても対応する
+    // ★バグ修正：ここでの正規化がBGM管理タブ経由の登録専用になっていたため、末尾の拡張子しか
+    //   吸収できていなかった。resolveBgmTrackPath側（bgm.js）で直接貼り付けたパスにもかける
+    //   正規化と同じ関数（先頭の"/"・"bgm/"・末尾".mp3"を除去）に統一する
+    BGM_TRACK_PATHS[entry.name] = typeof normalizeBgmRelativePath === "function"
+      ? normalizeBgmRelativePath(entry.path)
+      : entry.path.replace(/\.mp3$/i, ""); // ★.mp3を付けて貼られても、付けずに貼られても対応する
     // ★バグ修正：登録が間に合う前に一度再生に失敗し「読み込めない曲」として覚えられてしまっていた場合、
     //   正しいパスが分かった今、その記録を消しておく（でないと二度と再生されないまま）
     if (typeof bgmFailedTracks !== "undefined") bgmFailedTracks.delete(entry.name);
@@ -2057,8 +2070,13 @@ function buildScenarioChapterRow(chapter, index) {
       areaSelect.className = "scenariobuild-jump-select";
       scenarioProject.mapAreas.forEach(a => {
         const option = document.createElement("option");
-        option.value = a.locationKey;
-        option.textContent = a.name || a.locationKey;
+        // ★バグ修正：カスタム（拠点以外の自作）エリアは a.locationKey を持たないため、
+        //   そのまま使うと全カスタムエリアの値が文字列"undefined"で衝突し、
+        //   選び直しても保存・リロード後に必ず先頭のエリアに戻ってしまっていた。
+        //   実際のゲーム側（adventure.jsのenterAdventureLocation）と同じフォールバック規則に合わせる
+        const key = a.locationKey || ("custom_" + a.id);
+        option.value = key;
+        option.textContent = a.name || key;
         areaSelect.appendChild(option);
       });
       areaSelect.value = (chapter.startTrigger === "townArrival") ? "village" : (chapter.startTriggerAreaKey || "village");
@@ -2108,18 +2126,31 @@ function buildScenarioChapterRow(chapter, index) {
   clearedCheckbox.type = "checkbox";
   // ★要望対応：本当にクリア済み（chapter.cleared）か、テストプレイ用に一時的にクリア済み扱いにしているか
   //   （scenarioTestClearedChapterIds）のどちらかがtrueならチェックを入れて見せる
+  //   （scenarioTestUnclearedChapterIdsに入っていれば、それより優先して外れた状態で見せる）
   clearedCheckbox.checked = isChapterEffectivelyCleared(chapter);
   clearedCheckbox.onchange = () => {
     // ★要望対応：ここでchapter.clearedそのものは一切書き換えない。あくまでこのタブを開いている間だけの
-    //   一時的な上書き（scenarioTestClearedChapterIds）を出し入れするだけなので、markScenarioBuildDirty()も呼ばない
-    //   ＝「💾保存」しても、テストプレイ用のこのチェックは絶対に保存されない
+    //   一時的な上書き（scenarioTestClearedChapterIds／scenarioTestUnclearedChapterIds）を出し入れするだけ
+    //   なので、markScenarioBuildDirty()も呼ばない＝「💾保存」しても、テストプレイ用のこのチェックは
+    //   絶対に保存されない
     if (clearedCheckbox.checked) {
+      scenarioTestUnclearedChapterIds.delete(chapter.id); // ★ONにする時は「未クリア扱い」の上書きを解除
       scenarioTestClearedChapterIds.add(chapter.id);
       // ★チェックを入れた話より前にある話は、普通にプレイしていれば当然クリア済みのはずなので、
       //   テストプレイ用にまとめてクリア済み扱いにする時は、それより前の話も一緒にクリア済みにする
-      scenarioProject.chapters.slice(0, index).forEach(c => { scenarioTestClearedChapterIds.add(c.id); });
+      scenarioProject.chapters.slice(0, index).forEach(c => {
+        scenarioTestUnclearedChapterIds.delete(c.id);
+        scenarioTestClearedChapterIds.add(c.id);
+      });
     } else {
       scenarioTestClearedChapterIds.delete(chapter.id);
+      // ★バグ修正：chapter.cleared が本当にtrueの話は、Setから消すだけではチェックが外れなかった。
+      //   本当のクリア状態には触れず、テストプレイ用に「未クリア扱い」として上書きしておく
+      if (chapter.cleared) {
+        scenarioTestUnclearedChapterIds.add(chapter.id);
+      } else {
+        scenarioTestUnclearedChapterIds.delete(chapter.id);
+      }
     }
     renderScenarioBuildPanel(); // ★前の話のチェックボックスの見た目にも即座に反映する
   };
@@ -4034,8 +4065,10 @@ function buildBlockFormFields(chapter, block) {
     areaSelect.className = "scenariobuild-jump-select";
     scenarioProject.mapAreas.forEach(a => {
       const option = document.createElement("option");
-      option.value = a.locationKey;
-      option.textContent = a.name || a.locationKey;
+      // ★バグ修正：上の開始トリガーと同じ理由で、カスタムエリアのフォールバックキーに合わせる
+      const key = a.locationKey || ("custom_" + a.id);
+      option.value = key;
+      option.textContent = a.name || key;
       areaSelect.appendChild(option);
     });
     areaSelect.value = block.areaKey || "";
@@ -11577,6 +11610,20 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
   if (block.type === "ending") {
     changeSpeaker("");
     await showSpecialScene(block.title || "END"); // mainfunc.js
+    
+    // ★バグ修正（要望対応）：テストプレイでエンディング/話クリアブロックに到達しても、
+    //   本当にクリアした事にはしない。以前はテストプレイかどうかを見ておらず、chapter.cleared=trueを
+    //   本当に保存し、実績解放やセーブデータの自動保存まで走っていたため、「テストプレイ用：クリア済み
+    //   扱いにする」チェック（一時的なだけのはず）と、本編の本当のクリア状態が実質同じものになって
+    //   しまっていた
+    if (isScenarioTestPlay) {
+      const testEndrollEnabled = block.endrollEnabled !== false;
+      if (testEndrollEnabled && block.endroll && typeof playEndRoll === "function") {
+        await playEndRoll(block.endroll, block.endrollBgm || null, block.endrollScrollSeconds || 20);
+      }
+      return "TITLE";
+    }
+    
     chapter.cleared = true;
     if (typeof player !== "undefined") player.progressPoints = 0; // ★話が終わるごとに進行度をリセットする
     
@@ -11604,6 +11651,14 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
   }
   
   if (block.type === "clearchapter") {
+    // ★バグ修正（要望対応）：上のendingブロックと同じ理由で、テストプレイ中は本当にクリア済みにしない
+    if (isScenarioTestPlay) {
+      if (block.endrollEnabled === true && block.endroll && typeof playEndRoll === "function") {
+        await playEndRoll(block.endroll, block.endrollBgm || null, block.endrollScrollSeconds || 20);
+      }
+      return nextDefaultId;
+    }
+    
     chapter.cleared = true; // ★エンディングと違い、タイトル画面には戻らずそのまま続く
     if (block.resetProgress !== false && typeof player !== "undefined") player.progressPoints = 0;
     markScenarioBuildDirty();
