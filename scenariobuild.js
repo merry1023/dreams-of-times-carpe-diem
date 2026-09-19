@@ -82,10 +82,18 @@ let scenarioBuildEditingEntityRef = null; // ★敵/ボス/アイテムの詳細
 //   完全に切り離した「今開いているだけの一時的な上書き」として持つ。scenarioProject本体には一切含めず、
 //   ページの再読み込みやシナリオビルドの保存（💾）をしても絶対に残らない（＝保存されない）ようにする
 let scenarioTestClearedChapterIds = new Set();
+// ★バグ修正（要望対応）：chapter.cleared が本当にtrue（以前のテストプレイ漏れ等で実際にクリア済みに
+//   なってしまっている話も含む）の場合、上のSetから外すだけではチェックを外せなかった
+//   （isChapterEffectivelyClearedがchapter.clearedの方でtrueを返し続けるため）。
+//   「本当はクリア済みだが、テストプレイ用に一時的に未クリア扱いで見たい」場合の上書きを別に持つことで、
+//   実際のchapter.clearedには一切触れずに、チェックを確実にON/OFFできるようにする
+let scenarioTestUnclearedChapterIds = new Set();
 // ★話の開始条件などを判定する箇所は、実際にクリア済みか／テストプレイ用に一時的にクリア済み扱いにしているかを
 //   区別せず「どちらか」で判定したいので、判定側は基本的に chapter.cleared を直接見ず、ここを通す
 function isChapterEffectivelyCleared(chapter) {
-  return !!(chapter && (chapter.cleared || scenarioTestClearedChapterIds.has(chapter.id)));
+  if (!chapter) return false;
+  if (scenarioTestUnclearedChapterIds.has(chapter.id)) return false; // ★テストプレイ用「未クリア扱い」の上書きを最優先
+  return !!(chapter.cleared || scenarioTestClearedChapterIds.has(chapter.id));
 }
 
 // ===== データの読み書き（自動保存） =====
@@ -2113,18 +2121,31 @@ function buildScenarioChapterRow(chapter, index) {
   clearedCheckbox.type = "checkbox";
   // ★要望対応：本当にクリア済み（chapter.cleared）か、テストプレイ用に一時的にクリア済み扱いにしているか
   //   （scenarioTestClearedChapterIds）のどちらかがtrueならチェックを入れて見せる
+  //   （scenarioTestUnclearedChapterIdsに入っていれば、それより優先して外れた状態で見せる）
   clearedCheckbox.checked = isChapterEffectivelyCleared(chapter);
   clearedCheckbox.onchange = () => {
     // ★要望対応：ここでchapter.clearedそのものは一切書き換えない。あくまでこのタブを開いている間だけの
-    //   一時的な上書き（scenarioTestClearedChapterIds）を出し入れするだけなので、markScenarioBuildDirty()も呼ばない
-    //   ＝「💾保存」しても、テストプレイ用のこのチェックは絶対に保存されない
+    //   一時的な上書き（scenarioTestClearedChapterIds／scenarioTestUnclearedChapterIds）を出し入れするだけ
+    //   なので、markScenarioBuildDirty()も呼ばない＝「💾保存」しても、テストプレイ用のこのチェックは
+    //   絶対に保存されない
     if (clearedCheckbox.checked) {
+      scenarioTestUnclearedChapterIds.delete(chapter.id); // ★ONにする時は「未クリア扱い」の上書きを解除
       scenarioTestClearedChapterIds.add(chapter.id);
       // ★チェックを入れた話より前にある話は、普通にプレイしていれば当然クリア済みのはずなので、
       //   テストプレイ用にまとめてクリア済み扱いにする時は、それより前の話も一緒にクリア済みにする
-      scenarioProject.chapters.slice(0, index).forEach(c => { scenarioTestClearedChapterIds.add(c.id); });
+      scenarioProject.chapters.slice(0, index).forEach(c => {
+        scenarioTestUnclearedChapterIds.delete(c.id);
+        scenarioTestClearedChapterIds.add(c.id);
+      });
     } else {
       scenarioTestClearedChapterIds.delete(chapter.id);
+      // ★バグ修正：chapter.cleared が本当にtrueの話は、Setから消すだけではチェックが外れなかった。
+      //   本当のクリア状態には触れず、テストプレイ用に「未クリア扱い」として上書きしておく
+      if (chapter.cleared) {
+        scenarioTestUnclearedChapterIds.add(chapter.id);
+      } else {
+        scenarioTestUnclearedChapterIds.delete(chapter.id);
+      }
     }
     renderScenarioBuildPanel(); // ★前の話のチェックボックスの見た目にも即座に反映する
   };
