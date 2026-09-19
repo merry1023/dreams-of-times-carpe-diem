@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789786534315,
+  "version": 1789842738059,
   "enemies": [
     {
       "id": "goblin",
@@ -1006,11 +1006,11 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "maxHp": 230,
       "atk": 18,
       "exp": 800,
-      "bgmTrack": "",
+      "bgmTrack": "bgm/battleBgm/boss/ブヒーモス/lirva.mp3",
       "bgmFinalTrack": "",
       "bgmCrisisTrack": "",
-      "imagePath": "",
-      "sizeMultiplier": 1,
+      "imagePath": "img/敵/ボス/ブヒーモス/魔精霊ブヒーモス.png",
+      "sizeMultiplier": 2,
       "invincibilityBreakItemId": "",
       "dropItemId": null,
       "dropRate": 0,
@@ -2109,9 +2109,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "錆びた剣",
       "category": "weapon",
       "description": "長年放置されていたのか、刃はぼろぼろに錆びついている。",
-      "rank": "E",
-      "listedPrice": 500,
-      "trueValue": 500,
+      "rank": "C",
+      "listedPrice": 1000,
+      "trueValue": 1000,
       "unsellable": false,
       "params": {
         "武器種類": "剣",
@@ -2129,7 +2129,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "rustyRankOutcomes": {
         "E": "weapon_004",
         "B": "item_1788351958488_36",
-        "A": "item_1788351958488_36"
+        "A": "item_1788351958488_36",
+        "AA": "item_1789443087577_12"
       }
     }
   ],
@@ -8230,9 +8231,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "コリスギウス",
       "description": "40過ぎてもDTという激しい自己嫌悪に苛まれ、王国騎士部隊長を辞職した陰騎士(シェイド・ナイト)",
       "class": "陰騎士",
-      "initialWeaponId": "",
-      "initialArmorId": "",
-      "initialShieldId": "",
+      "initialWeaponId": "item_1789443087577_12",
+      "initialArmorId": "item_1788352336659_40",
+      "initialShieldId": "item_1788352242273_39",
       "baseStats": {
         "maxHp": 70,
         "maxSp": 15,
@@ -10159,7 +10160,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "facility_1789601498255_1",
       "type": "casino",
       "name": "スペル=マ・ギア・ザ・カジノ",
-      "bgTrack": "",
+      "bgTrack": "casino",
       "bgImage": "img/カジノ.png",
       "ownerDialogue": "",
       "price": 20,
@@ -10185,7 +10186,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "facility_1789648540174_1",
       "type": "auction",
       "name": "スペル=マ・ギアズオークション",
-      "bgTrack": "",
+      "bgTrack": "auction",
       "bgImage": "img/会場.jpg",
       "ownerDialogue": "",
       "price": 20,
@@ -10209,8 +10210,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "weight": 1
         },
         {
-          "itemId": "weapon_001",
-          "weight": 1
+          "itemId": "item_1789775859004_1",
+          "weight": 2
         },
         {
           "itemId": "armor_004",
@@ -10238,7 +10239,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         }
       ],
       "auctionIntervalDays": 5,
-      "auctionFee": 10000
+      "auctionFee": 5000
     },
     {
       "id": "facility_1789717294561_1",
@@ -10255,6 +10256,21 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "maxBet": 1000,
       "slotImages": {},
       "enterBlocks": []
+    },
+    {
+      "id": "facility_1789842669507_3",
+      "type": "townhall",
+      "name": "新しい施設",
+      "bgTrack": "",
+      "bgImage": "",
+      "ownerDialogue": "",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "minBet": 10,
+      "maxBet": 1000,
+      "slotImages": {}
     }
   ],
   "portraitCharacters": [],
@@ -10532,6 +10548,16 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "field_custom_area_1788854418149_4",
       "path": "冒険/洞窟/宵露洞窟",
       "builtin": true
+    },
+    {
+      "id": "bgmtrack_1789842130543_1",
+      "name": "casino",
+      "path": "施設/カジノ/burglar.mp3"
+    },
+    {
+      "id": "bgmtrack_1789842624563_2",
+      "name": "auction",
+      "path": "施設/オークション/06. maroyu - Existenz.mp3"
     }
   ],
   "mapAreas": [
@@ -11140,8 +11166,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "area_1788854113373_2",
       "name": "魔導王国 スペル=マ・ギア",
       "type": "country",
-      "x": 213.4818338426993,
-      "y": -55.180805816837875,
+      "x": 218.2057410206693,
+      "y": -47.42746008818605,
       "bgTrack": "",
       "bgImage": "/img/城下町.jpg",
       "bossId": "",
@@ -11709,8 +11735,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       }
     }
   },
-  "creditsText": "敵などのデザインは僕が描いたものです。まだ下手ですが上手くなれるよう精進します...\nその他「フリー素材/コンポーザー様の楽曲等」を使用させていただいています\n\n背景\n<ゲームまてりあるず>様\n<AIPICT>様\n\n使用させていただいたBGM\n\n<クリエイター【オト】（https://creatoroto-blog.com/）>様\n「Oak-Village」\n\n<かずち>様\n「宵露洞窟」\n\n<ハルト>様\n「月明かりの草原」\n\n<松浦洋介>様\n「The Murmuring Forest」\n\n<Masuo>様\n「森へ」\n\n<dingerbox>様\n「haptime」\n「vacsina」\n\n<蒲鉾さちこ>様\n「哀愁と憂いの春に」\n「闇夜にたゆたう海」\n\n<しゃぐま>様\n「穢れ無き水面」\n\n<EBIMAYO>様\n「GOODRUSH」",
-  "introText": "これから始める方へ。\nこのゲームはクソゲーです。\n開発者がノリで作ったしょうもないシナリオで、\n場が凍りつく会話や一部下ネタがふくまれます。\nキャラクターのイラストは開発者が描いたものですが、\nあまり上手とは言えませんので我慢してください。\n苦手な方はこの場でブラウザバックすることを\nおすすめしマスカット。",
+  "creditsText": "敵などのデザインは僕が描いたものです。まだ下手ですが上手くなれるよう精進します...\nその他「フリー素材/コンポーザー様の楽曲等」を使用させていただいています\n\n背景\n<ゲームまてりあるず>様\n<AIPICT>様\n\n使用させていただいたBGM\n\n<クリエイター【オト】（https://creatoroto-blog.com/）>様\n「Oak-Village」\n\n<かずち>様\n「宵露洞窟」\n\n<ハルト>様\n「月明かりの草原」\n\n<松浦洋介>様\n「The Murmuring Forest」\n\n<Masuo>様\n「森へ」\n\n<dingerbox>様\n「haptime」\n「vacsina」\n「lirva」\n\n<蒲鉾さちこ>様\n「哀愁と憂いの春に」\n「闇夜にたゆたう海」\n\n<しゃぐま>様\n「穢れ無き水面」\n\n<EBIMAYO>様\n「GOODRUSH」\n\n<アキラの音楽空間 https://www.akira-m.net/index.php>様\n「メヌエット」(ルイージ・ボッケリーニ作曲)\n\n<おみー>様\n「Alfredia」\n\n<ああああ>様、<daph>様\n「C'est la Vie」\n\n<CYLTIE>様\n「Life music,Life work」",
+  "introText": "これから始める方へ。\nこのゲームはクソゲーです。\n開発者がノリで作ったしょうもないシナリオで、\n場が凍りつく会話や一部下ネタがふくまれます。立ち絵管理\n\nキャラクターのイラストは開発者が描いたものですが、\nあまり上手とは言えませんので我慢してください。\n苦手な方はこの場でブラウザバックすることを\nおすすめしマスカット。",
   "deletedBuiltinIds": {
     "enemies": [],
     "bosses": [],
