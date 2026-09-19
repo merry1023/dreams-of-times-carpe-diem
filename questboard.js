@@ -625,7 +625,11 @@ async function acceptQuest(quest) {
     await displayMessage(`「${quest.title}」の依頼を受注した。必要な物を集めに、冒険に出よう。`);
   }
   
-  openTownMenu(); // ★ここでは完了させず、実際に冒険に出てもらうため町に戻すだけ
+  // ★バグ修正：以前はここで必ずopenTownMenu()（カリの村）へ戻していたため、カデリクの街など
+  //   村以外の拠点の酒場でクエストを受注すると、その場では酒場の中にいたのに
+  //   受注直後だけカリの村へ飛ばされてしまっていた。酒場の「戻る」と同じくtavernReturnTo
+  //   （酒場を開いた側が設定した、正しい戻り先）を使うようにする
+  (tavernReturnTo || openTownMenu)();
 }
 
 // 冒険中に対象の魔物を倒した時、battle.js から呼ばれる（進捗を1つ進める）

@@ -49,12 +49,15 @@ async function pickCasinoBet(label) {
   }
   
   const maxBet = getCasinoMaxBet();
-  // ★金額なので1ずつだと選ぶのが大変。上限額の桁に応じて刻み幅を自動で大きくする
-  const step = maxBet >= 2000 ? 100 : (maxBet >= 200 ? 10 : 1);
+  // ★要望対応：以前は上限額の桁に応じて刻み幅を自動でひとつ選ぶだけで、その場で変更できなかった。
+  //   Q/Eキーまたは専用ボタンで、1回の±で増減する額（1／10／100／1000）をその場で切り替えられるようにした
+  const defaultStep = maxBet >= 2000 ? 100 : (maxBet >= 200 ? 10 : 1);
+  const stepOptions = [1, 10, 100, 1000].filter(s => s <= maxBet);
   
   const bet = await pickQuantity(maxBet, label, {
     min: minBet,
-    step,
+    step: defaultStep,
+    stepOptions,
     formatValue: v => `${v}陳`,
     formatLabel: max => `${label}（所持金${gold}陳／最大${max}陳）`,
     cancelValue: 0
@@ -419,9 +422,17 @@ async function startSlotGame() {
   const betDisplay = document.getElementById("casino-slot-bet-value");
   const betDecBtn = document.getElementById("casino-slot-bet-dec");
   const betIncBtn = document.getElementById("casino-slot-bet-inc");
+  const betStepDisplay = document.getElementById("casino-slot-bet-step-value");
+  const betStepDecBtn = document.getElementById("casino-slot-bet-step-dec");
+  const betStepIncBtn = document.getElementById("casino-slot-bet-step-inc");
   const minBet = getCasinoMinBet();
   const maxBet = getCasinoMaxBet();
-  const step = maxBet >= 2000 ? 100 : (maxBet >= 200 ? 10 : 1);
+  // ★要望対応：以前は上限額の桁に応じて刻み幅（1回の±で増減する額）を自動でひとつ選ぶだけだったが、
+  //   Q/Eキーまたは専用ボタンでその場で切り替えられるようにした
+  const defaultStep = maxBet >= 2000 ? 100 : (maxBet >= 200 ? 10 : 1);
+  const stepOptions = [1, 10, 100, 1000].filter(s => s <= maxBet);
+  let stepIndex = Math.max(0, stepOptions.indexOf(defaultStep));
+  let step = stepOptions[stepIndex] || defaultStep;
 
   if (!overlay) return;
   overlay.classList.remove("hidden");
@@ -434,6 +445,12 @@ async function startSlotGame() {
     quitButton.innerHTML = `やめる<span class="key-badge">X</span>`;
     quitButton.onclick = () => requestCasinoSlotQuit();
   }
+
+  const updateBetStepDisplay = () => {
+    if (betStepDisplay) betStepDisplay.textContent = `刻み幅：${step}陳`;
+    if (betStepDecBtn) betStepDecBtn.disabled = stepIndex <= 0;
+    if (betStepIncBtn) betStepIncBtn.disabled = stepIndex >= stepOptions.length - 1;
+  };
 
   const updateBetDisplay = (nextBet) => {
     if (betDisplay) betDisplay.textContent = `${nextBet}陳`;
@@ -449,10 +466,18 @@ async function startSlotGame() {
     //   施設が変わってmin/maxが変化していても範囲内に収まるようclampする
     let currentBet = Math.max(minBet, Math.min(maxBet, casinoSlotLastBet !== null ? casinoSlotLastBet : minBet));
     let settled = false;
+    
+    const changeStep = (delta) => {
+      stepIndex = Math.max(0, Math.min(stepOptions.length - 1, stepIndex + delta));
+      step = stepOptions[stepIndex];
+      updateBetStepDisplay();
+    };
 
     const cleanup = () => {
       if (betDecBtn) betDecBtn.removeEventListener("click", decClick);
       if (betIncBtn) betIncBtn.removeEventListener("click", incClick);
+      if (betStepDecBtn) betStepDecBtn.removeEventListener("click", stepDecClick);
+      if (betStepIncBtn) betStepIncBtn.removeEventListener("click", stepIncClick);
       if (stopButton) stopButton.removeEventListener("click", confirmClick);
       window.removeEventListener("keydown", handleKey);
       casinoSlotCancelResolver = null;
@@ -478,6 +503,8 @@ async function startSlotGame() {
       currentBet = Math.min(maxBet, currentBet + step);
       updateBetDisplay(currentBet);
     };
+    const stepDecClick = () => changeStep(-1);
+    const stepIncClick = () => changeStep(1);
 
     const handleKey = (event) => {
       if (event.repeat) return;
@@ -487,6 +514,12 @@ async function startSlotGame() {
       } else if (event.key === "ArrowRight") {
         event.preventDefault(); event.stopImmediatePropagation();
         incClick();
+      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.tabLeftKey.includes(event.key)) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        changeStep(-1);
+      } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.tabRightKey.includes(event.key)) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        changeStep(1);
       } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
         event.preventDefault(); event.stopImmediatePropagation();
         resolveBet(currentBet);
@@ -498,10 +531,13 @@ async function startSlotGame() {
 
     if (betDecBtn) betDecBtn.addEventListener("click", decClick);
     if (betIncBtn) betIncBtn.addEventListener("click", incClick);
+    if (betStepDecBtn) betStepDecBtn.addEventListener("click", stepDecClick);
+    if (betStepIncBtn) betStepIncBtn.addEventListener("click", stepIncClick);
     if (stopButton) stopButton.addEventListener("click", confirmClick);
     window.addEventListener("keydown", handleKey);
     // ★「やめる」ボタン・Xキーどちらでも、ここにいる間は即座に抜けられるようにしておく
     casinoSlotCancelResolver = () => resolveBet(null);
+    updateBetStepDisplay();
     updateBetDisplay(currentBet);
   });
 
@@ -856,7 +892,7 @@ async function pickRouletteBets() {
       const curX = cur.colStart + cur.colSpan / 2;
       const curY = cur.row + cur.rowSpan / 2;
       let bestIndex = -1;
-      let bestDistance = Infinity;
+      let bestScore = Infinity;
 
       cells.forEach((cell, i) => {
         if (i === cursorIndex) return;
@@ -870,9 +906,18 @@ async function pickRouletteBets() {
         if (dirX !== 0 && relX * dirX <= 0) return;
         if (dirY !== 0 && relY * dirY <= 0) return;
 
-        const distance = Math.abs(relX) + Math.abs(relY);
-        if (distance < bestDistance) {
-          bestDistance = distance;
+        // ★バグ修正：以前は進みたい向きに合っているマスの中から「縦距離＋横距離の合計」が
+        //   一番小さいものを選んでいたため、例えば右へ動きたいだけなのに、真右のマスより
+        //   合計距離が小さい斜め上のマスへカーソルが飛んでしまうことがあった
+        //   （1〜12などの枠から右に動こうとすると数字マスへ上に飛ぶ、など）。
+        //   進みたい向き（主軸）と直角方向（垂直方向）のズレを最優先で小さくし、
+        //   同じ行・同じ列にあるマスをできるだけ優先して選ぶようにする
+        const primaryDist = dx !== 0 ? Math.abs(relX) : Math.abs(relY);
+        const perpDist = dx !== 0 ? Math.abs(relY) : Math.abs(relX);
+        const score = perpDist * 1000 + primaryDist;
+
+        if (score < bestScore) {
+          bestScore = score;
           bestIndex = i;
         }
       });

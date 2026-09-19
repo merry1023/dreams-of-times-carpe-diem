@@ -714,9 +714,24 @@ async function useTownhallClassChange(facility, returnTo) {
 // ★カジノの賭け金選択（casino.js）でも同じ操作感の±UIを使いたいので、最小値・刻み幅・表示文言を
 //   optionsで差し替えられるように拡張した。呼び出し側で何も指定しなければ、これまで通り
 //   「1個から」「1個ずつ」「◯個」の個数選択として動く（既存の呼び出し箇所には一切影響しない）
+// ★要望対応：options.stepOptionsに刻み幅の候補（例：[1,10,100]）を渡すと、Q/Eキーまたは専用の
+//   ±ボタンで「1回の←→（や±ボタン）で増減する量」自体をその場で切り替えられるようになる
+//   （カジノの掛け金で、毎回1ずつしか動かせず大きい額を張るのが大変だった問題への対応）
 function pickQuantity(maxQty, itemLabel, options = {}) {
   const minQty = options.min != null ? options.min : 1;
-  const step = options.step != null ? options.step : 1;
+  const stepOptions = Array.isArray(options.stepOptions) && options.stepOptions.length > 0
+    ? options.stepOptions.slice().sort((a, b) => a - b)
+    : null;
+  let step = options.step != null ? options.step : 1;
+  let stepIndex = 0;
+  if (stepOptions) {
+    stepIndex = stepOptions.indexOf(step);
+    if (stepIndex === -1) {
+      // ★渡されたstepが候補に無ければ、一番近い候補を初期値にする
+      stepIndex = stepOptions.reduce((bestI, v, i) => Math.abs(v - step) < Math.abs(stepOptions[bestI] - step) ? i : bestI, 0);
+    }
+    step = stepOptions[stepIndex];
+  }
   const formatValue = typeof options.formatValue === "function" ? options.formatValue : (v => `${v}個`);
   const formatLabel = typeof options.formatLabel === "function"
     ? options.formatLabel
@@ -735,12 +750,31 @@ function pickQuantity(maxQty, itemLabel, options = {}) {
     const incBtn = document.getElementById("quantity-picker-inc");
     const confirmBtn = document.getElementById("quantity-picker-confirm");
     const cancelBtn = document.getElementById("quantity-picker-cancel");
+    const stepRow = document.getElementById("quantity-picker-step-row");
+    const stepValueEl = document.getElementById("quantity-picker-step-value");
+    const stepDecBtn = document.getElementById("quantity-picker-step-dec");
+    const stepIncBtn = document.getElementById("quantity-picker-step-inc");
     
     function render() {
       if (labelEl) labelEl.textContent = formatLabel(maxQty);
       if (valueEl) valueEl.textContent = formatValue(qty);
       if (decBtn) decBtn.disabled = qty <= minQty;
       if (incBtn) incBtn.disabled = qty >= maxQty;
+      if (stepRow) {
+        stepRow.classList.toggle("hidden", !stepOptions);
+        if (stepOptions) {
+          if (stepValueEl) stepValueEl.textContent = `刻み幅：${formatValue(step)}`;
+          if (stepDecBtn) stepDecBtn.disabled = stepIndex <= 0;
+          if (stepIncBtn) stepIncBtn.disabled = stepIndex >= stepOptions.length - 1;
+        }
+      }
+    }
+    
+    function changeStep(delta) {
+      if (!stepOptions) return;
+      stepIndex = Math.max(0, Math.min(stepOptions.length - 1, stepIndex + delta));
+      step = stepOptions[stepIndex];
+      render();
     }
     
     function finish(result) {
@@ -759,6 +793,12 @@ function pickQuantity(maxQty, itemLabel, options = {}) {
       } else if (event.key === "ArrowLeft") {
         event.preventDefault(); event.stopImmediatePropagation();
         qty = Math.max(minQty, qty - step); render();
+      } else if (stepOptions && typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.tabLeftKey.includes(event.key)) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        changeStep(-1);
+      } else if (stepOptions && typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.tabRightKey.includes(event.key)) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        changeStep(1);
       } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
         event.preventDefault(); event.stopImmediatePropagation();
         finish(qty);
@@ -770,6 +810,8 @@ function pickQuantity(maxQty, itemLabel, options = {}) {
     
     if (decBtn) decBtn.onclick = (event) => { event.stopPropagation(); qty = Math.max(minQty, qty - step); render(); };
     if (incBtn) incBtn.onclick = (event) => { event.stopPropagation(); qty = Math.min(maxQty, qty + step); render(); };
+    if (stepDecBtn) stepDecBtn.onclick = (event) => { event.stopPropagation(); changeStep(-1); };
+    if (stepIncBtn) stepIncBtn.onclick = (event) => { event.stopPropagation(); changeStep(1); };
     if (confirmBtn) confirmBtn.onclick = (event) => { event.stopPropagation(); finish(qty); };
     if (cancelBtn) cancelBtn.onclick = (event) => { event.stopPropagation(); finish(cancelValue); };
     
