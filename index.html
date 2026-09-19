@@ -69,6 +69,12 @@
     <div id="quantity-picker" class="quantity-picker hidden">
       <div class="quantity-picker-box">
         <p id="quantity-picker-label" class="quantity-picker-label"></p>
+        <!-- ★要望対応：カジノの賭け金など、1回の±で増減する幅そのものを変えたい場面でだけ表示する（Q/Eキーでも切替可） -->
+        <div id="quantity-picker-step-row" class="quantity-picker-step-row hidden">
+          <button id="quantity-picker-step-dec" class="quantity-picker-step-btn">－<span class="key-badge">Q</span></button>
+          <span id="quantity-picker-step-value" class="quantity-picker-step-value"></span>
+          <button id="quantity-picker-step-inc" class="quantity-picker-step-btn">＋<span class="key-badge">E</span></button>
+        </div>
         <div class="quantity-picker-controls">
           <button id="quantity-picker-dec" class="quantity-picker-btn">－<span class="key-badge">←</span></button>
           <span id="quantity-picker-value" class="quantity-picker-value"></span>
@@ -112,12 +118,17 @@
             </div>
           </div>
         </div>
+        <div id="casino-slot-bet-step-panel" class="casino-slot-bet-step-panel">
+          <button id="casino-slot-bet-step-dec" class="casino-slot-bet-step-btn" type="button" aria-label="刻み幅を小さくする">－<span class="key-badge">Q</span></button>
+          <div id="casino-slot-bet-step-value" class="casino-slot-bet-step-value">刻み幅：10陳</div>
+          <button id="casino-slot-bet-step-inc" class="casino-slot-bet-step-btn" type="button" aria-label="刻み幅を大きくする">＋<span class="key-badge">E</span></button>
+        </div>
         <div id="casino-slot-bet-panel" class="casino-slot-bet-panel">
           <button id="casino-slot-bet-dec" class="casino-slot-bet-btn" type="button" aria-label="掛金を減らす">◀</button>
           <div id="casino-slot-bet-value" class="casino-slot-bet-value">10陳</div>
           <button id="casino-slot-bet-inc" class="casino-slot-bet-btn" type="button" aria-label="掛金を増やす">▶</button>
         </div>
-        <div class="casino-slot-bet-hint">左右キーまたはボタンで掛金を調整してZで開始</div>
+        <div class="casino-slot-bet-hint">左右キーまたはボタンで掛金を調整、Q/Eキーまたは刻み幅ボタンで1回の増減幅を変更してZで開始</div>
         <div id="casino-slot-result" class="casino-slot-result hidden"></div>
         <div class="casino-slot-controls">
           <button id="casino-slot-stop-btn" class="casino-slot-stop-btn" type="button">開始<span class="key-badge">Z</span></button>

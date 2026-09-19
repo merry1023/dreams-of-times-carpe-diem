@@ -2831,6 +2831,47 @@ html, body {
   margin: 0 0 12px 0;
 }
 
+/* ★要望対応：カジノの掛け金などで「1回の±で増減する幅」自体を切り替えるミニ行。既定では非表示 */
+.quantity-picker-step-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.quantity-picker-step-row.hidden {
+  display: none !important;
+}
+
+.quantity-picker-step-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background-color: #444;
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.quantity-picker-step-btn:disabled {
+  background-color: #333;
+  color: #777;
+  cursor: not-allowed;
+}
+
+.quantity-picker-step-value {
+  color: #ccc;
+  font-size: 12px;
+  min-width: 96px;
+}
+
 .quantity-picker-controls {
   display: flex;
   align-items: center;
@@ -3341,6 +3382,47 @@ html, body {
   text-align: center;
   font-size: 12px;
   color: #d9d0be;
+}
+
+/* ★要望対応：1回の±で増減する掛け金の幅（刻み幅）自体を切り替えるミニパネル。主役の掛け金パネルより控えめに */
+.casino-slot-bet-step-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.casino-slot-bet-step-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff3c7;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.casino-slot-bet-step-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.casino-slot-bet-step-value {
+  min-width: 100px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d9d0be;
+  font-size: 12px;
 }
 
 .casino-slot-controls {
@@ -4548,7 +4630,7 @@ html, body {
   position: absolute;
   inset: 0;
   z-index: 45;
-  background-color: rgba(0, 0, 0, 0.82);
+  background-color: rgba(0, 0, 0, 0.75); /* ★要望対応：0.82→0.75。他の全画面オーバーレイと揃え、画面全体が暗すぎないようにする */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4682,8 +4764,8 @@ html, body {
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  background-color: #14181a;
-  border: 1px solid #333;
+  background-color: #222; /* ★要望対応：以前は#14181aとほぼ真っ黒だったため、他の一覧行(#262626)・パネルと揃えて見やすくした */
+  border: 1px solid #444;
   border-radius: 6px;
   padding: 12px;
   display: flex;
@@ -4822,6 +4904,50 @@ html, body {
   min-height: 0;
   overflow-y: auto;
   padding: 12px 14px;
+}
+
+/* ★要望対応：話管理の章タブ */
+.scenariobuild-arc-tabs-wrap {
+  margin-bottom: 14px;
+}
+
+.scenariobuild-arc-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.scenariobuild-arc-tab {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #555;
+  background-color: #262626;
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.scenariobuild-arc-tab:hover {
+  border-color: #888;
+}
+
+.scenariobuild-arc-tab.active {
+  border-color: #ffc107;
+  background-color: #3a2f0d;
+  color: #ffc107;
+  font-weight: bold;
+}
+
+.scenariobuild-arc-tab-add {
+  border-style: dashed;
+}
+
+.scenariobuild-arc-manage-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .scenariobuild-add-row {

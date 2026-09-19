@@ -171,6 +171,7 @@ function applyImportedScenarioFileIfUpdated(force) {
   }
   
   scenarioProject.chapters = data.chapters || [];
+  scenarioProject.chapterArcs = Array.isArray(data.chapterArcs) ? data.chapterArcs : []; // ★要望対応：話管理の章タブ分け用の章一覧
   scenarioProject.characters = data.characters || [];
   if (Array.isArray(data.flagDefs)) scenarioProject.flagDefs = data.flagDefs; // ★フラグは話の中でしか使わないため、シナリオ側のファイルに含める
   if (Array.isArray(data.variableDefs)) scenarioProject.variableDefs = data.variableDefs; // ★ゲーム変数の定義も同様にシナリオ側のファイルに含める
@@ -389,6 +390,7 @@ function normalizeScenarioProject() {
   const isDeletedBuiltin = (category, id) => scenarioProject.deletedBuiltinIds[category].includes(id);
   
   if (!Array.isArray(scenarioProject.chapters)) scenarioProject.chapters = [];
+  if (!Array.isArray(scenarioProject.chapterArcs)) scenarioProject.chapterArcs = []; // ★要望対応：話管理を章ごとにタブ分けするための章一覧（{id, name}）
   if (!Array.isArray(scenarioProject.characters)) scenarioProject.characters = [];
   if (!Array.isArray(scenarioProject.enemies)) scenarioProject.enemies = [];
   if (!Array.isArray(scenarioProject.bosses)) scenarioProject.bosses = [];
@@ -1687,9 +1689,105 @@ function renderSkillVariableReference(container) {
 // ===================================================================
 // ===== 話の一覧 =====
 // ===================================================================
+function chapterMatchesSelectedArc(chapter) {
+  if (scenarioBuildSelectedArcId === "__all__") return true;
+  if (scenarioBuildSelectedArcId === "__none__") return !chapter.arcId;
+  return chapter.arcId === scenarioBuildSelectedArcId;
+}
+
+// ★要望対応：話リストの一番上に章ごとのタブを出す。追加・削除・切り替えができる
+function buildScenarioArcTabsBar() {
+  const wrap = document.createElement("div");
+  wrap.className = "scenariobuild-arc-tabs-wrap";
+  
+  const tabsRow = document.createElement("div");
+  tabsRow.className = "scenariobuild-arc-tabs";
+  
+  const makeTab = (id, label, count) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "scenariobuild-arc-tab" + (scenarioBuildSelectedArcId === id ? " active" : "");
+    btn.textContent = `${label}（${count}）`;
+    btn.onclick = (event) => {
+      event.stopPropagation();
+      scenarioBuildSelectedArcId = id;
+      renderScenarioBuildPanel();
+    };
+    return btn;
+  };
+  
+  tabsRow.appendChild(makeTab("__all__", "全て", scenarioProject.chapters.length));
+  const noneCount = scenarioProject.chapters.filter(c => !c.arcId).length;
+  tabsRow.appendChild(makeTab("__none__", "未分類", noneCount));
+  (scenarioProject.chapterArcs || []).forEach(arc => {
+    const count = scenarioProject.chapters.filter(c => c.arcId === arc.id).length;
+    tabsRow.appendChild(makeTab(arc.id, arc.name || "（名称未設定）", count));
+  });
+  
+  const addArcBtn = document.createElement("button");
+  addArcBtn.type = "button";
+  addArcBtn.className = "scenariobuild-arc-tab scenariobuild-arc-tab-add";
+  addArcBtn.textContent = "＋章を追加";
+  addArcBtn.onclick = (event) => {
+    event.stopPropagation();
+    const name = window.prompt("新しい章の名前を入力してください", "");
+    if (name === null) return; // ★キャンセル
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    pushUndoSnapshot();
+    if (!Array.isArray(scenarioProject.chapterArcs)) scenarioProject.chapterArcs = [];
+    const newArc = { id: generateId("arc"), name: trimmed };
+    scenarioProject.chapterArcs.push(newArc);
+    scenarioBuildSelectedArcId = newArc.id;
+    markScenarioBuildDirty();
+    renderScenarioBuildPanel();
+  };
+  tabsRow.appendChild(addArcBtn);
+  wrap.appendChild(tabsRow);
+  
+  // ★実際の章タブを選んでいる時だけ、その章の名前変更・削除を出す
+  const selectedArc = (scenarioProject.chapterArcs || []).find(a => a.id === scenarioBuildSelectedArcId);
+  if (selectedArc) {
+    const manageRow = document.createElement("div");
+    manageRow.className = "scenariobuild-arc-manage-row";
+    
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "scenariobuild-title-input";
+    nameInput.value = selectedArc.name;
+    nameInput.onchange = () => {
+      selectedArc.name = nameInput.value.trim() || selectedArc.name;
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    manageRow.appendChild(nameInput);
+    
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "devmode-btn devmode-btn-danger";
+    deleteBtn.textContent = "この章を削除";
+    deleteBtn.onclick = (event) => {
+      event.stopPropagation();
+      if (!window.confirm(`「${selectedArc.name}」を削除しますか？\n（中の話は削除されず、「未分類」に戻ります）`)) return;
+      pushUndoSnapshot();
+      scenarioProject.chapters.forEach(c => { if (c.arcId === selectedArc.id) c.arcId = null; });
+      scenarioProject.chapterArcs = scenarioProject.chapterArcs.filter(a => a.id !== selectedArc.id);
+      scenarioBuildSelectedArcId = "__all__";
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    manageRow.appendChild(deleteBtn);
+    wrap.appendChild(manageRow);
+  }
+  
+  return wrap;
+}
+
 function renderScenarioBuildList(container) {
   const introEl = document.createElement("p");
   container.appendChild(introEl);
+  
+  container.appendChild(buildScenarioArcTabsBar());
   
   const addRow = document.createElement("div");
   addRow.className = "scenariobuild-add-row";
@@ -1705,9 +1803,11 @@ function renderScenarioBuildList(container) {
     if (!title) return;
     pushUndoSnapshot();
     const defaultRequired = scenarioProject.chapters.length > 0 ? scenarioProject.chapters.length : null;
+    // ★要望対応：章タブを選んでいる状態で追加すると、その章に自動で入る
+    const newArcId = (scenarioBuildSelectedArcId !== "__all__" && scenarioBuildSelectedArcId !== "__none__") ? scenarioBuildSelectedArcId : null;
     scenarioProject.chapters.push({
       id: generateId("custom"), title, cleared: false,
-      builtin: false, requiredChapterNumber: defaultRequired, blocks: []
+      builtin: false, requiredChapterNumber: defaultRequired, blocks: [], arcId: newArcId
     });
     markScenarioBuildDirty();
     renderScenarioBuildPanel();
@@ -1720,9 +1820,18 @@ function renderScenarioBuildList(container) {
   
   const listEl = document.createElement("div");
   listEl.className = "scenariobuild-list";
+  let visibleCount = 0;
   scenarioProject.chapters.forEach((chapter, index) => {
+    if (!chapterMatchesSelectedArc(chapter)) return;
+    visibleCount++;
     listEl.appendChild(buildScenarioChapterRow(chapter, index));
   });
+  if (visibleCount === 0) {
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "devmode-note";
+    emptyEl.textContent = "この章にはまだ話がありません。上の「章：」欄で話を割り当てるか、新しく追加してください。";
+    listEl.appendChild(emptyEl);
+  }
   container.appendChild(listEl);
 }
 
@@ -2032,6 +2141,32 @@ function buildScenarioChapterRow(chapter, index) {
   }
   
   infoEl.appendChild(titleInput);
+  
+  // ★要望対応：この話がどの章に属するかを、ここで直接切り替えられるようにする
+  const arcRow = document.createElement("div");
+  arcRow.className = "scenariobuild-condition-row";
+  arcRow.appendChild(labelSpan("章："));
+  const arcSelect = document.createElement("select");
+  arcSelect.className = "scenariobuild-jump-select";
+  const arcNoneOption = document.createElement("option");
+  arcNoneOption.value = "";
+  arcNoneOption.textContent = "（未分類）";
+  arcSelect.appendChild(arcNoneOption);
+  (scenarioProject.chapterArcs || []).forEach(arc => {
+    const option = document.createElement("option");
+    option.value = arc.id;
+    option.textContent = arc.name || "（名称未設定）";
+    arcSelect.appendChild(option);
+  });
+  arcSelect.value = chapter.arcId || "";
+  arcSelect.onchange = () => {
+    chapter.arcId = arcSelect.value || null;
+    markScenarioBuildDirty();
+    renderScenarioBuildPanel(); // ★今見ている章タブから外れたら一覧から消えるので、即座に再描画する
+  };
+  arcRow.appendChild(arcSelect);
+  infoEl.appendChild(arcRow);
+  
   infoEl.appendChild(synopsisArea);
   infoEl.appendChild(enabledRow);
   infoEl.appendChild(conditionRow);
@@ -2142,6 +2277,7 @@ function moveCustomScenarioChapter(index, direction) {
 
 // ★三本線ハンドルのドラッグ&ドロップによる並び替え（組み込みの話をまたぐ移動は無視する）
 let scenarioChapterDragFromIndex = null;
+let scenarioBuildSelectedArcId = "__all__"; // ★話管理の章タブ："__all__"=全て、"__none__"=未分類、それ以外は章のid
 let scenarioEntityDragFromIndex = null; // ★クエスト・アイテム等の一覧（renderEntityManager）の並び替え用
 // ★要望対応：一覧の各項目を折りたためるようにする（config.collapsible === true の一覧のみ対象。実績管理タブなど）。
 //   展開中のIDだけをここに記録する（＝ここに無いIDはデフォルトで折りたたみ状態として表示する）
@@ -2724,7 +2860,7 @@ function createBlock(type) {
   if (type === "setrank") return { ...base, nickname: "" };
   if (type === "gameover") return { ...base, message: "力尽きてしまった……", endingName: "", retryJumpBlockId: null }; // ★ゲームオーバーもバッドエンドの一種として扱う。retryJumpBlockIdを指定すると「リトライ」の戻り先を話の最初以外にできる
   if (type === "ending") return { ...base, endingType: "true", title: "END", endroll: "", endrollEnabled: true, endrollBgm: "" }; // endingType: "bad" | "true" | "happy"
-  if (type === "clearchapter") return { ...base, resetProgress: true }; // ★「エンディング」と違い、タイトル画面には戻らず、そのまま話が続く。冒険が一区切りついたが完結はしない場面（パーティー加入など）向け
+  if (type === "clearchapter") return { ...base, resetProgress: true, endrollEnabled: false, endroll: "", endrollBgm: "", endrollScrollSeconds: 20 }; // ★「エンディング」と違い、タイトル画面には戻らず、そのまま話が続く。冒険が一区切りついたが完結はしない場面（パーティー加入など）向け
   if (type === "if") {
     return {
       ...base,
@@ -4260,6 +4396,54 @@ function buildBlockFormFields(chapter, block) {
     resetRow.appendChild(resetCheckbox);
     resetRow.appendChild(labelSpan("進行度を0にリセットする"));
     wrap.appendChild(resetRow);
+    
+    // ★要望対応：エンディングでなくても、話クリアのタイミングでエンドロールを流せるようにする。
+    //   タイトル画面には戻らないので、流し終わったらそのまま後続のブロックへ進む
+    const endrollToggleRow = document.createElement("div");
+    endrollToggleRow.className = "scenariobuild-condition-row";
+    const endrollToggle = document.createElement("input");
+    endrollToggle.type = "checkbox";
+    endrollToggle.checked = block.endrollEnabled === true;
+    endrollToggle.onchange = () => { block.endrollEnabled = endrollToggle.checked; persist(); renderScenarioBuildPanel(); };
+    endrollToggleRow.appendChild(endrollToggle);
+    endrollToggleRow.appendChild(labelSpan("この話クリアでもエンドロールを流す"));
+    wrap.appendChild(endrollToggleRow);
+    
+    if (block.endrollEnabled === true) {
+      const endrollNote = document.createElement("p");
+      endrollNote.className = "devmode-note scenariobuild-condition";
+      endrollNote.textContent = "この話クリアの時点でエンドロールが流れます（下から上へスクロール、早送り可）。流し終わったらタイトル画面には戻らず、そのまま続きのブロックを実行します。";
+      wrap.appendChild(endrollNote);
+      const endrollArea = document.createElement("textarea");
+      endrollArea.className = "scenariobuild-textarea";
+      endrollArea.style.minHeight = "100px";
+      endrollArea.placeholder = "エンドロールに流す文章（改行OK）";
+      endrollArea.value = block.endroll;
+      endrollArea.onchange = () => { block.endroll = endrollArea.value; persist(); };
+      wrap.appendChild(endrollArea);
+      
+      const endrollBgmInput = document.createElement("input");
+      endrollBgmInput.type = "text";
+      endrollBgmInput.className = "scenariobuild-title-input";
+      endrollBgmInput.placeholder = "エンドロール中のBGM（曲名 or パス。任意）";
+      endrollBgmInput.value = block.endrollBgm || "";
+      endrollBgmInput.setAttribute("list", "scenariobuild-bgm-datalist");
+      endrollBgmInput.onchange = () => { block.endrollBgm = endrollBgmInput.value.trim(); persist(); };
+      wrap.appendChild(labelSpan("エンドロールBGM："));
+      wrap.appendChild(endrollBgmInput);
+      
+      const endrollSpeedRow = document.createElement("div");
+      endrollSpeedRow.className = "scenariobuild-condition-row";
+      endrollSpeedRow.appendChild(labelSpan("スクロール秒数（長いほどゆっくり）："));
+      const endrollSpeedInput = document.createElement("input");
+      endrollSpeedInput.type = "number";
+      endrollSpeedInput.min = "5";
+      endrollSpeedInput.className = "scenariobuild-condition-input";
+      endrollSpeedInput.value = block.endrollScrollSeconds || 20;
+      endrollSpeedInput.onchange = () => { block.endrollScrollSeconds = Math.max(5, Number(endrollSpeedInput.value) || 20); persist(); };
+      endrollSpeedRow.appendChild(endrollSpeedInput);
+      wrap.appendChild(endrollSpeedRow);
+    }
     return wrap;
   }
   
@@ -10453,6 +10637,7 @@ function exportScenarioOnlyAsJsFile() {
   const data = {
     version: Date.now(), // ★書き出すたびに新しいバージョンとして扱われ、次に読み込んだ時に上書き取り込みされる
     chapters: scenarioProject.chapters,
+    chapterArcs: scenarioProject.chapterArcs || [],
     characters: scenarioProject.characters,
     flagDefs: scenarioProject.flagDefs,
     variableDefs: scenarioProject.variableDefs,
@@ -11427,6 +11612,12 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     //   再読み込み）で、まだ保存されていない今のcleared=trueが古いfalseで上書きされてしまう不具合があった
     if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
     if (typeof checkAchievements === "function") await checkAchievements(); // ★実績システム（要望対応）：クリア済み話数などが更新された後にチェック
+    
+    // ★要望対応：エンディングでなくても、話クリアのタイミングでエンドロールを流せるようにする。
+    //   タイトル画面には戻らないので、流し終わったら普通にnextDefaultIdへ進む
+    if (block.endrollEnabled === true && block.endroll && typeof playEndRoll === "function") {
+      await playEndRoll(block.endroll, block.endrollBgm || null, block.endrollScrollSeconds || 20); // mainfunc.js
+    }
     return nextDefaultId;
   }
   
