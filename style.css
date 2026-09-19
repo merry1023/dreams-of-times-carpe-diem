@@ -1066,6 +1066,14 @@ html, body {
     line-height: 1.2;
 }
 
+/* ★要望対応：職業変更で外れてロックされた装備のタグ（アイテムタブ・インベントリグリッド） */
+.inventory-slot .item-locked-tag {
+    top: 2px;
+    left: 2px;
+    background-color: #ff8a80;
+    color: #1a1a1a;
+}
+
 /* ===== スキルタブ・強さタブ共通：縦積みのリスト ===== */
 .skill-list,
 .strength-list,
@@ -1582,6 +1590,16 @@ html, body {
     border: 1px solid #4caf50;
     border-radius: 4px;
     padding: 1px 6px;
+}
+
+/* ★要望対応：職業変更で外れてロックされた装備のタグ・行の見た目（装備タブ） */
+.equipment-locked-tag {
+    color: #ff8a80;
+    border-color: #ff8a80;
+}
+
+.equipment-item.equipment-item-locked {
+    opacity: 0.6;
 }
 
 .equipment-empty {

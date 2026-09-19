@@ -1747,7 +1747,7 @@ function getEquippableInventoryEntries(slotFilter = null) {
     if (!itemData || !itemData.params || !itemData.params.装備部位) return;
     if (slotFilter && itemData.params.装備部位 !== slotFilter) return;
     
-    entries.push({ instanceId: slot.instanceId, itemId: slot.itemId, itemData, statBonus: slot.statBonus });
+    entries.push({ instanceId: slot.instanceId, itemId: slot.itemId, itemData, statBonus: slot.statBonus, lockedToClass: slot.lockedToClass || null });
   });
   return entries;
 }
@@ -1756,7 +1756,7 @@ function getEquippableInventoryEntries(slotFilter = null) {
 // ★装備中なら先頭に「外す」という特別な項目を入れる（この一覧内だけで装備解除もできるように）
 function getEquipmentSelectionEntries() {
   const slot = EQUIPMENT_SLOT_KEYS[equipmentSlotCursorIndex];
-  const entries = getEquippableInventoryEntries(slot).map(e => ({ kind: "equip", instanceId: e.instanceId, itemId: e.itemId, itemData: e.itemData, statBonus: e.statBonus }));
+  const entries = getEquippableInventoryEntries(slot).map(e => ({ kind: "equip", instanceId: e.instanceId, itemId: e.itemId, itemData: e.itemData, statBonus: e.statBonus, lockedToClass: e.lockedToClass }));
   
   if (player.equipment[slot]) {
     entries.unshift({ kind: "unequip", slot });
@@ -1858,6 +1858,15 @@ function renderEquipmentInventoryList() {
       tagEl.className = "equipment-equipped-tag";
       tagEl.textContent = `装備中（${holderName}）`;
       item.appendChild(tagEl);
+    }
+    
+    // ★要望対応：職業変更で外れた装備は、その職業に戻るまでロックされる。一覧でもひと目で分かるようにしておく
+    if (entry.lockedToClass && (!player || entry.lockedToClass !== player.class)) {
+      item.classList.add("equipment-item-locked");
+      const lockEl = document.createElement("span");
+      lockEl.className = "equipment-equipped-tag equipment-locked-tag";
+      lockEl.textContent = `🔒${entry.lockedToClass}専用`;
+      item.appendChild(lockEl);
     }
     
     item.onclick = (event) => {
@@ -2233,6 +2242,15 @@ function buildCompanionEquipmentItemList(companion, slot, startIndex, isCursorCa
       tagEl.className = "equipment-equipped-tag";
       tagEl.textContent = `装備中（${holderName}）`;
       item.appendChild(tagEl);
+    }
+    
+    // ★要望対応：職業変更で外れた装備は、その職業に戻るまでロックされる。一覧でもひと目で分かるようにしておく
+    if (entry.lockedToClass && (!player || entry.lockedToClass !== player.class)) {
+      item.classList.add("equipment-item-locked");
+      const lockEl = document.createElement("span");
+      lockEl.className = "equipment-equipped-tag equipment-locked-tag";
+      lockEl.textContent = `🔒${entry.lockedToClass}専用`;
+      item.appendChild(lockEl);
     }
     
     item.onclick = (event) => {
@@ -3196,6 +3214,14 @@ function renderInventory() {
           equippedTag.textContent = `装備中（${holderName}）`;
           slotDiv.appendChild(equippedTag);
         }
+      }
+      
+      // ★要望対応：職業変更で外れた装備は、その職業に戻るまでロックされる
+      if (slot.lockedToClass && (!player || slot.lockedToClass !== player.class)) {
+        const lockTag = document.createElement("span");
+        lockTag.className = "item-equipped-tag item-locked-tag";
+        lockTag.textContent = `🔒${slot.lockedToClass}専用`;
+        slotDiv.appendChild(lockTag);
       }
       
       // クリックでもカーソルをそのマスに合わせて詳細パネルを開く

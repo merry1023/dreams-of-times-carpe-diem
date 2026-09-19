@@ -666,6 +666,12 @@ function equipItem(instanceId) {
     return { success: false, message: `「${itemData.name}」は、${itemData.restrictedClass}でなければ装備できないようだ。` };
   }
   
+  // ★要望対応：以前、職業を変える前に装備していた物は、その職業専用としてロックされている。
+  //   ロックした職業に戻ってくるまでは（主人公も仲間も）装備できない
+  if (targetSlot.lockedToClass && targetSlot.lockedToClass !== player.class) {
+    return { success: false, message: `「${itemData.name}」は、職業を「${targetSlot.lockedToClass}」に変更するまで使えないようだ。` };
+  }
+  
   // ★職業ごとに「装備できる武器の種類」が決められていることがある（例：狂戦士は斧・剣のみ）。
   //   武器種類が設定されていないアイテムや、制限リストが空（未設定＝無制限）の職業には影響しない
   if (slot === "武器" && itemData.params.武器種類) {
@@ -714,6 +720,7 @@ function unequipItem(slot) {
   }
   
   player.equipment[slot] = null;
+  if (data && data.slot) data.slot.lockedToClass = null; // ★要望対応：外したら、どの職業でもまた使えるようにロックを解除する
   return { success: true, message: `「${data ? data.master.name : "装備"}」を外した。` };
 }
 
@@ -868,6 +875,12 @@ function equipItemForCompanion(companion, instanceId) {
     return { success: false, message: `「${itemData.name}」は、${itemData.restrictedClass}でなければ装備できないようだ。` };
   }
   
+  // ★要望対応：主人公が職業を変える前に装備していた物は、その職業専用としてロックされている。
+  //   仲間に着せることで抜け道になってしまわないよう、こちらでも同じチェックをかける
+  if (targetSlot.lockedToClass && (!player || targetSlot.lockedToClass !== player.class)) {
+    return { success: false, message: `「${itemData.name}」は、職業を「${targetSlot.lockedToClass}」に変更するまで使えないようだ。` };
+  }
+  
   // ★仲間ごとに「装備できる武器の種類」が決められていることがある（仲間編集タブで設定）
   if (slot === "武器" && itemData.params.武器種類 && master && Array.isArray(master.allowedWeaponTypes) && master.allowedWeaponTypes.length > 0) {
     if (!master.allowedWeaponTypes.includes(itemData.params.武器種類)) {
@@ -905,6 +918,7 @@ function unequipItemForCompanion(companion, slot) {
   }
   
   companion.equipment[slot] = null;
+  if (data && data.slot) data.slot.lockedToClass = null; // ★要望対応：外したら、どの職業でもまた使えるようにロックを解除する
   return { success: true, message: `「${data ? data.master.name : "装備"}」を外した。` };
 }
 
@@ -1284,6 +1298,18 @@ function applyLevelUpGrowth(previousLevel, newLevel) {
 function switchPlayerClass(newClassName) {
   if (!player || !CLASS_MASTER[newClassName]) return { success: false, isNewClass: false, newLevel: 0 };
   if (newClassName === player.class) return { success: false, isNewClass: false, newLevel: player.level };
+  
+  // ★要望対応：職業を変える時、今装備している物は「今の職業」専用としてロックしてから外す。
+  //   ロックされた物は、もう一度その職業に戻るまで（主人公も仲間も）装備できなくなる。
+  //   ロックされた状態のまま外せば（unequipItem／unequipItemForCompanion）、ロックは解除され、
+  //   また他のどの職業でも使えるようになる
+  ["武器", "胴", "盾"].forEach(slot => {
+    const instanceId = player.equipment[slot];
+    if (!instanceId) return;
+    const invSlot = (typeof inventorySlots !== "undefined") ? inventorySlots.find(s => s && s.instanceId === instanceId) : null;
+    if (invSlot) invSlot.lockedToClass = player.class; // ★まだ切り替え前なので、ここでのplayer.classは「今の（＝これから離れる）職業」
+    player.equipment[slot] = null;
+  });
   
   if (!player.classLevels) player.classLevels = {};
   player.classLevels[player.class] = player.level; // ★今の職業のレベルを記録してから切り替える
