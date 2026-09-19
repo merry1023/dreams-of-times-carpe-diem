@@ -1061,7 +1061,12 @@ function ensureCustomBgmRegistered() {
   if (typeof BGM_TRACK_PATHS === "undefined") return;
   scenarioProject.bgmTracks.forEach(entry => {
     if (!entry.name || !entry.path) return;
-    BGM_TRACK_PATHS[entry.name] = entry.path.replace(/\.mp3$/i, ""); // ★.mp3を付けて貼られても、付けずに貼られても対応する
+    // ★バグ修正：ここでの正規化がBGM管理タブ経由の登録専用になっていたため、末尾の拡張子しか
+    //   吸収できていなかった。resolveBgmTrackPath側（bgm.js）で直接貼り付けたパスにもかける
+    //   正規化と同じ関数（先頭の"/"・"bgm/"・末尾".mp3"を除去）に統一する
+    BGM_TRACK_PATHS[entry.name] = typeof normalizeBgmRelativePath === "function"
+      ? normalizeBgmRelativePath(entry.path)
+      : entry.path.replace(/\.mp3$/i, ""); // ★.mp3を付けて貼られても、付けずに貼られても対応する
     // ★バグ修正：登録が間に合う前に一度再生に失敗し「読み込めない曲」として覚えられてしまっていた場合、
     //   正しいパスが分かった今、その記録を消しておく（でないと二度と再生されないまま）
     if (typeof bgmFailedTracks !== "undefined") bgmFailedTracks.delete(entry.name);
