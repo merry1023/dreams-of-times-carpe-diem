@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789774455326,
+  "version": 1789786534315,
   "enemies": [
     {
       "id": "goblin",
@@ -1473,7 +1473,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "excalibur",
       "name": "性剣エクスカリバー",
       "category": "weapon",
-      "description": "伝説の聖剣が、なぜか妙な力に目覚めてしまった姿。生半可な使い手では逆に振り回される。洞窟の主を倒した時にしか手に入らない。",
+      "description": "古代の勇者♂ボキンが邪神を屠ったとされる伝説の性剣のひとつ。生半可な使い手では逆に振り回される。実は予備の剣が何本もあったらしい。",
       "rank": "AAA",
       "listedPrice": 50000,
       "trueValue": 50000,
@@ -1488,7 +1488,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "statBonusRange": {
         "min": 0,
         "max": 13
-      }
+      },
+      "blocks": [],
+      "variables": {}
     },
     {
       "id": "mystery_liquid",
@@ -1655,7 +1657,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "item_1788135780001_5",
       "name": "黄金の球",
       "category": "misc",
-      "description": "デッカい金球。得れば高く付く。",
+      "description": "デッカい金球。売れば高く付く。",
       "rank": "C",
       "listedPrice": 500,
       "trueValue": 500,
@@ -2100,6 +2102,34 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "params": {
         "希少度": 4,
         "用途": "鍛冶素材"
+      }
+    },
+    {
+      "id": "item_1789775859004_1",
+      "name": "錆びた剣",
+      "category": "weapon",
+      "description": "長年放置されていたのか、刃はぼろぼろに錆びついている。",
+      "rank": "E",
+      "listedPrice": 500,
+      "trueValue": 500,
+      "unsellable": false,
+      "params": {
+        "武器種類": "剣",
+        "攻撃力": 1,
+        "装備部位": "武器",
+        "グレード": 2
+      },
+      "statBonusRange": {
+        "min": 0,
+        "max": 0
+      },
+      "blocks": [],
+      "variables": {},
+      "isRustySeries": true,
+      "rustyRankOutcomes": {
+        "E": "weapon_004",
+        "B": "item_1788351958488_36",
+        "A": "item_1788351958488_36"
       }
     }
   ],
@@ -8656,7 +8686,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     },
     {
       "id": "achievement_1789462600009_9",
-      "name": "のど自慢デビュー",
+      "name": "計四杯",
       "description": "「のど自慢」に転職する。",
       "hidden": false,
       "conditionType": "classUnlocked",
@@ -8724,7 +8754,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     },
     {
       "id": "achievement_1789462600013_13",
-      "name": "物語の序章",
+      "name": "終わりの始まりってこれのことか。",
       "description": "話を1話クリアする。",
       "hidden": false,
       "conditionType": "chaptersCleared",
@@ -8741,8 +8771,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     },
     {
       "id": "achievement_1789462600014_14",
-      "name": "波乱の予感",
-      "description": "話を3話クリアする。",
+      "name": "ロリ",
+      "description": "3話をクリアする。",
       "hidden": false,
       "conditionType": "chaptersCleared",
       "conditionValue": 3,
@@ -8758,8 +8788,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     },
     {
       "id": "achievement_1789462600015_15",
-      "name": "物語の折り返し",
-      "description": "話を5話クリアする。",
+      "name": "どこにでもいる店主",
+      "description": "閑話第二話をクリアする。",
       "hidden": false,
       "conditionType": "chaptersCleared",
       "conditionValue": 5,
@@ -8775,8 +8805,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     },
     {
       "id": "achievement_1789462600016_16",
-      "name": "今のところ最後まで",
-      "description": "現在配信されている話を全てクリアする。",
+      "name": "ブヒー",
+      "description": "5話をクリアする。",
       "hidden": false,
       "conditionType": "chaptersCleared",
       "conditionValue": 7,
@@ -8826,7 +8856,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     },
     {
       "id": "achievement_1789462600019_19",
-      "name": "打たれ強い",
+      "name": "Mに目覚めたかもしれない...",
       "description": "累計被ダメージ量が20000に達する。",
       "hidden": false,
       "conditionType": "totalDamageTaken",
@@ -8877,7 +8907,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     },
     {
       "id": "achievement_1789462600022_22",
-      "name": "洞窟の主を討伐",
+      "name": "洞窟の王",
       "description": "「洞窟の主」を倒す。",
       "hidden": false,
       "conditionType": "enemyKillsSpecific",
@@ -8894,7 +8924,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     },
     {
       "id": "achievement_1789462600023_23",
-      "name": "森の主を討伐",
+      "name": "森の王",
       "description": "「森の主」を倒す。",
       "hidden": false,
       "conditionType": "enemyKillsSpecific",
@@ -8911,7 +8941,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     },
     {
       "id": "achievement_1789462600024_24",
-      "name": "謎を暴く者",
+      "name": "ゆるさんッ！",
       "description": "「謎の男」を倒す。",
       "hidden": false,
       "conditionType": "enemyKillsSpecific",
@@ -8962,7 +8992,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     },
     {
       "id": "achievement_1789462600027_27",
-      "name": "殺戮の化身",
+      "name": "まあまあやったな...",
       "description": "累計討伐数が500体に達する。",
       "hidden": false,
       "conditionType": "totalKillCount",
@@ -8978,25 +9008,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "rewardItemQty": 1
     },
     {
-      "id": "achievement_1789462600028_28",
-      "name": "幻魔の森へ",
-      "description": "「幻魔の森」を解放する。",
-      "hidden": false,
-      "conditionType": "areaUnlocked",
-      "conditionValue": 1,
-      "classId": "",
-      "monsterKey": "",
-      "areaId": "builtinarea_1786777141727_79",
-      "flagName": "",
-      "varName": "",
-      "rewardExp": 300,
-      "rewardGold": 400,
-      "rewardItemId": "",
-      "rewardItemQty": 1
-    },
-    {
       "id": "achievement_1789462600029_29",
-      "name": "魔導王国の扉",
+      "name": "スペルマ解放ッ！！",
       "description": "「魔導王国 スペル=マ・ギア」を解放する。",
       "hidden": false,
       "conditionType": "areaUnlocked",
@@ -9029,27 +9042,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "rewardItemQty": 1
     },
     {
-      "id": "achievement_1789462600031_31",
-      "name": "はじめての仲間",
-      "description": "はじめての仲間ができる。",
-      "hidden": false,
-      "conditionType": "flag",
-      "conditionValue": 1,
-      "classId": "",
-      "monsterKey": "",
-      "areaId": "",
-      "flagName": "has_partner",
-      "varName": "",
-      "rewardExp": 300,
-      "rewardGold": 500,
-      "rewardItemId": "",
-      "rewardItemQty": 1
-    },
-    {
       "id": "achievement_1789462600032_32",
-      "name": "だが、漢のロマンを選んだ者",
+      "name": "漢のロマン",
       "description": "とある選択で、ある一冊の本を手に取った。",
-      "hidden": false,
+      "hidden": true,
       "conditionType": "flag",
       "conditionValue": 1,
       "classId": "",
@@ -9060,6 +9056,23 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "rewardExp": 200,
       "rewardGold": 300,
       "rewardItemId": "mystery_liquid",
+      "rewardItemQty": 1
+    },
+    {
+      "id": "achievement_1789776513559_2",
+      "name": "ドロボー！",
+      "description": "ミタメ邸で金塊を盗む。",
+      "hidden": true,
+      "conditionType": "flag",
+      "conditionValue": 1,
+      "classId": "",
+      "monsterKey": "",
+      "areaId": "",
+      "flagName": "ドロボー！",
+      "varName": "",
+      "rewardExp": 2000,
+      "rewardGold": 0,
+      "rewardItemId": "item_1788349671945_25",
       "rewardItemQty": 1
     }
   ],
@@ -10165,7 +10178,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "text": "うおお！"
         }
       ],
-      "slotImages": {}
+      "slotImages": {},
+      "maxBet": 10000
     },
     {
       "id": "facility_1789648540174_1",
@@ -10398,7 +10412,13 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     "アホ",
     "バカ",
     "ヘタイン",
-    "ドケスベェ"
+    "ドケスベェ",
+    "ウチン",
+    "キョコン",
+    "コンマ",
+    "ブリル",
+    "チビック",
+    "フルンチ"
   ],
   "bgmTracks": [
     {
@@ -10682,8 +10702,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "unimplemented": true,
       "name": "カデリクの街",
       "type": "city",
-      "x": 72.28513952285292,
-      "y": 35.58850037317931,
+      "x": 69.69657136455542,
+      "y": 34.23954819222623,
       "bgTrack": "",
       "bgImage": "/img/街.jpg",
       "bossId": "",
@@ -10825,7 +10845,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "facility_1788351834651_35",
         "facility_1788351824994_34",
         "facility_1788352473803_41",
-        "facility_1788778333756_1"
+        "facility_1788778333756_1",
+        "facility_1789717294561_1"
       ],
       "examineMessages": [],
       "unlockConditions": [
@@ -10852,8 +10873,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "unimplemented": true,
       "name": "ガヂル平野(推奨Lv60)",
       "type": "enemy",
-      "x": 307.02874692304687,
-      "y": -46.415983309226434,
+      "x": 312.52133338909294,
+      "y": -49.65890864420865,
       "bgTrack": "heigenn_1",
       "bgImage": "/img/平原.jpg",
       "bossId": "boss_1788595810642_7",
@@ -10926,8 +10947,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "unlockConditions": [
         {
-          "type": "chapterCleared",
-          "chapterId": "custom_1788854370721_3"
+          "type": "daysSinceTransfer",
+          "days": 100000
         }
       ],
       "bossTriggerTypes": [
@@ -11155,7 +11176,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "facility_1788134408511_1",
         "facility_1789601498255_1",
         "facility_1789442530326_5",
-        "facility_1789648540174_1"
+        "facility_1789648540174_1",
+        "facility_1788351639721_33"
       ],
       "mapNodeSize": 20,
       "leftTarget": "custom_area_1788853853599_1",
@@ -11303,8 +11325,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "enemyLevel": null,
       "unlockConditions": [
         {
-          "type": "chapterCleared",
-          "chapterId": "custom_1788854370721_3"
+          "type": "daysSinceTransfer",
+          "days": 10000
         }
       ],
       "facilityIds": [],

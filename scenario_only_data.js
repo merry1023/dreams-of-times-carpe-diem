@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1789773823850,
+  "version": 1789786533228,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -6926,9 +6926,244 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "type": "dialogue",
           "speaker": "ケツァナ",
           "text": "ミタメはこの指輪でブヒーモスを召喚したわけね。"
+        },
+        {
+          "id": "block_1789776660519_1",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "…っ...."
+        },
+        {
+          "id": "block_1789776680273_2",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "どうした？ロリル"
+        },
+        {
+          "id": "block_1789776695591_3",
+          "type": "narration",
+          "text": "ロリルは泣いていた。\n俺達にはあまり見せないようにしていたが、ロリルのいままでの人生を察すると、\n胸が締め付けられる。"
+        },
+        {
+          "id": "block_1789776826937_4",
+          "type": "narration",
+          "text": "ロリルの髪に手を乗せ、そのまま優しく抱きしめた。\n何も言わず、ただ抱擁した。いい匂い。ｽｰﾊｰｽｰﾊｰ"
+        },
+        {
+          "id": "block_1789776937661_6",
+          "type": "narration",
+          "text": "突然声が聞こえた。"
+        },
+        {
+          "id": "block_1789776963635_7",
+          "type": "dialogue",
+          "speaker": "???",
+          "text": "あの、、、"
+        },
+        {
+          "id": "block_1789776911860_5",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "...ん？"
+        },
+        {
+          "id": "block_1789777000209_9",
+          "type": "narration",
+          "text": "コリスギウスが振り返る。\nコリスギウスが先ほど助けてきた女性だった。"
+        },
+        {
+          "id": "block_1789776991014_8",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "おお、大丈夫か。\n今は衰弱気味だからあまり動かないほうが良い。"
+        },
+        {
+          "id": "block_1789777086767_10",
+          "type": "dialogue",
+          "speaker": "女性",
+          "text": "えっと、"
+        },
+        {
+          "id": "block_1789777104125_11",
+          "type": "narration",
+          "text": "するとその女性は振り絞るように口を開く。"
+        },
+        {
+          "id": "block_1789777136397_12",
+          "type": "dialogue",
+          "speaker": "女性",
+          "text": "助けていただき....ありがとうございました..."
+        },
+        {
+          "id": "block_1789777154071_13",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "大丈夫だ、問題ない。"
+        },
+        {
+          "id": "block_1789777296417_14",
+          "type": "narration",
+          "text": "女性は俺とロリルの方を見て、安堵したような表情を見せた。\nそしてまたコリスギウスの目を見る。"
+        },
+        {
+          "id": "block_1789777355060_15",
+          "type": "dialogue",
+          "speaker": "女性",
+          "text": "あの！"
+        },
+        {
+          "id": "block_1789777367859_16",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "ど、どうした？"
+        },
+        {
+          "id": "block_1789777472096_17",
+          "type": "dialogue",
+          "speaker": "女性",
+          "text": "私本当に不安で、、、\n絶望の淵にいました..."
+        },
+        {
+          "id": "block_1789777516731_18",
+          "type": "dialogue",
+          "speaker": "女性",
+          "text": "本当に、本当に感謝してもしきれません...！"
+        },
+        {
+          "id": "block_1789777572302_19",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "ああ、本当に辛かったな。\nもう、こんなことにはならないからな..."
+        },
+        {
+          "id": "block_1789777609545_20",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "名前を教えてくれるか...？"
+        },
+        {
+          "id": "block_1789777635504_21",
+          "type": "dialogue",
+          "speaker": "女性",
+          "text": "...はい！"
+        },
+        {
+          "id": "block_1789777866481_22",
+          "type": "telop",
+          "text": "私の名前は..."
+        },
+        {
+          "id": "block_1789777878740_23",
+          "type": "dialogue",
+          "speaker": "女性",
+          "text": "トクシュ=セイ・ヘキカイジ。"
+        },
+        {
+          "id": "block_1789778229719_25",
+          "type": "dialogue",
+          "speaker": "トクシュ",
+          "text": "です！"
+        },
+        {
+          "id": "block_1789778179832_24",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "なっ....！！！"
+        },
+        {
+          "id": "block_1789778272092_27",
+          "type": "narration",
+          "text": "俺以外のみんなの雰囲気が一変する。"
+        },
+        {
+          "id": "block_1789778303594_28",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "ヘキカイジって、、、あのヘキカイジ家！？"
+        },
+        {
+          "id": "block_1789778323751_29",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "うそ、、お姉さんって、、、"
+        },
+        {
+          "id": "block_1789778358040_31",
+          "type": "narration",
+          "text": "いったい何に驚いているんだ、みんなは。\n異世界に来てからまだ間もない俺には見当もつかない。"
+        },
+        {
+          "id": "block_1789778352227_30",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "みんな、どうしたんだ..？\nそんな驚いた顔して。"
+        },
+        {
+          "id": "block_1789778443623_32",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "え？ヘキカイジ家も知らないの？\nいい？ヘキカイジ家ってのはね、世界中探しても知らない人はいないくらい有名な財閥のひとつよ。"
+        },
+        {
+          "id": "block_1789778556329_34",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "え、じゃあなぜここに...？"
+        },
+        {
+          "id": "block_1789778572921_35",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "こっちが知りたいわよ！"
+        },
+        {
+          "id": "block_1789778588102_36",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "ていうか君、それってもしかして真名じゃないか...！？"
+        },
+        {
+          "id": "block_1789778623551_37",
+          "type": "dialogue",
+          "speaker": "トクシュ",
+          "text": "はい！"
+        },
+        {
+          "id": "block_1789778798263_38",
+          "type": "narration",
+          "text": "驚きよりもまず疑問を抱く。\nなぜ彼女はコリスギウスに真名を教えた？\nそして、なぜその有名な財閥の人が奴隷なんかに..."
+        },
+        {
+          "id": "block_1789778903657_39",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "ど、どうして真名なんか...！\n真名を教える意味がわかっているのか！"
+        },
+        {
+          "id": "block_1789782093001_1",
+          "type": "dialogue",
+          "speaker": "トクシュ",
+          "text": "助けてくれたから...\n助けてくれたから！\nあなたの奴隷になりたいんです...！"
+        },
+        {
+          "id": "block_1789778933209_40",
+          "type": "narration",
+          "text": "奴隷ってのは自分から奴隷になりたいやつばっかりなのか...？\nまぁ、ロリルの場合は事情があったが。"
+        },
+        {
+          "id": "block_1789782190750_2",
+          "type": "dialogue",
+          "speaker": "コリスギウス",
+          "text": "そ、そうか。\nそれならしょうがないな、ははっ！"
+        },
+        {
+          "id": "block_1789784582021_1",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "いや受け入れるの早っ！"
         }
       ],
-      "enabled": false,
+      "enabled": true,
       "requiredChapterId": "custom_1788780588914_1",
       "requiredRank": null,
       "requiredProgress": null,
@@ -7045,6 +7280,12 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
       "name": "ミタメ",
       "note": "",
       "kind": "chapter"
+    },
+    {
+      "id": "char_1789778238435_26",
+      "name": "トクシュ",
+      "note": "お姉さん。",
+      "kind": "main"
     }
   ],
   "flagDefs": [
