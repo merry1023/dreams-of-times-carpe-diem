@@ -4824,6 +4824,50 @@ html, body {
   padding: 12px 14px;
 }
 
+/* ★要望対応：話管理の章タブ */
+.scenariobuild-arc-tabs-wrap {
+  margin-bottom: 14px;
+}
+
+.scenariobuild-arc-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.scenariobuild-arc-tab {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #555;
+  background-color: #262626;
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.scenariobuild-arc-tab:hover {
+  border-color: #888;
+}
+
+.scenariobuild-arc-tab.active {
+  border-color: #ffc107;
+  background-color: #3a2f0d;
+  color: #ffc107;
+  font-weight: bold;
+}
+
+.scenariobuild-arc-tab-add {
+  border-style: dashed;
+}
+
+.scenariobuild-arc-manage-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .scenariobuild-add-row {
   display: flex;
   gap: 8px;
