@@ -34,8 +34,10 @@ const AUCTION_DEFAULT_FEE = 1000;             // ★施設で未設定の場合�
 const AUCTION_POST_SALE_VARIANCE = 0.3;       // ★競り落とせなかった品は真価の±30%で誰かに落札される
 const AUCTION_UNSOLD_CHANCE_LOWRANK = 0.5;    // ★F・Eランクは「流札」（誰にも落札されず返却）になりやすい
 const AUCTION_UNSOLD_CHANCE_NORMAL = 0.1;     // ★それ以外のランクでも、一定確率で「流札」になる
-const AUCTION_NPC_BID_INTERVAL_MIN_MS = 1000; // ★要望対応：NPCが次の入札を試みるまでの間隔（最短1秒）
-const AUCTION_NPC_BID_INTERVAL_MAX_MS = 7000; // ★要望対応：NPCが次の入札を試みるまでの間隔（最長7秒）
+const AUCTION_NPC_BID_INTERVAL_LOWRANK_MIN_MS = 4000; // ★要望対応：ランクが低い品ほど入札間隔を長くする（最低ランク帯の下限）
+const AUCTION_NPC_BID_INTERVAL_LOWRANK_MAX_MS = 8000; // ★同上（最低ランク帯の上限）
+const AUCTION_NPC_BID_INTERVAL_HIGHRANK_MIN_MS = 800;  // ★要望対応：ランクが高い品ほど入札間隔を短くする（最高ランク帯の下限）
+const AUCTION_NPC_BID_INTERVAL_HIGHRANK_MAX_MS = 2500; // ★同上（最高ランク帯の上限）
 const AUCTION_NO_NEW_BID_TIMEOUT_MS = 12000;  // ★要望対応：最後の入札からこの時間、新たな入札が無ければそこで落札
 
 // ★シナリオエディタの「ランダム名前管理」タブが空の場合に使う既定の名前プール（NPC入札者用）
@@ -351,6 +353,18 @@ function generateAuctionNpcs(trueValue) {
   return npcs;
 }
 
+// ★要望対応：入札間隔（NPCが次に入札を試みるまでの待ち時間）を、出品のランクに応じて変える。
+//   ランクが高い品ほど（＝真剣勝負なので）短い間隔で次々と競り合い、ランクが低い品ほど間延びした
+//   ゆったりした間隔になる。questboard.jsのRANK_ORDER（F〜X）上での位置を0〜1に正規化して補間する
+function getAuctionNpcBidIntervalRangeForRank(rank) {
+  const idx = (typeof rankIndex === "function") ? rankIndex(rank) : 0;
+  const maxIdx = (typeof RANK_ORDER !== "undefined" && Array.isArray(RANK_ORDER) && RANK_ORDER.length > 1) ? RANK_ORDER.length - 1 : 11;
+  const t = Math.max(0, Math.min(1, idx / maxIdx)); // 0＝最低ランク、1＝最高ランク
+  const min = AUCTION_NPC_BID_INTERVAL_LOWRANK_MIN_MS + (AUCTION_NPC_BID_INTERVAL_HIGHRANK_MIN_MS - AUCTION_NPC_BID_INTERVAL_LOWRANK_MIN_MS) * t;
+  const max = AUCTION_NPC_BID_INTERVAL_LOWRANK_MAX_MS + (AUCTION_NPC_BID_INTERVAL_HIGHRANK_MAX_MS - AUCTION_NPC_BID_INTERVAL_LOWRANK_MAX_MS) * t;
+  return { min, max };
+}
+
 async function startAuctionBidding(item, trueValue) {
   if (gold <= 0) {
     hideLocationMenu(); // ★バグ修正：同上、メッセージが行き先メニューの裏に隠れないように
@@ -360,48 +374,45 @@ async function startAuctionBidding(item, trueValue) {
     return;
   }
   
-  const initialBid = await pickAuctionBidAmount({
-    title: `「${item.name}」への入札額`,
-    min: 1,
-    max: gold,
-  });
-  if (initialBid === null) {
-    showAuctionRoundMenu(item, trueValue, null); // ★入札額入力をキャンセル＝鑑定/見送りの選択画面に戻る
-    return;
-  }
-  
+  // ★バグ修正：以前はここでプレイヤーに最初の入札額をテンキーで入力させてから初めてNPCを生成しており、
+  //   その入力をキャンセルするとNPCが1人も生成されずラウンド自体が始まらなかった
+  //   （＝自分が最初に入札しないと他の参加者が入札してくれない不具合）。
+  //   NPCはプレイヤーの入札を待たず、「まだ誰も入札していない」状態からNPCだけで勝手に競り始め、
+  //   プレイヤーは後から好きなタイミングで「入札する」から割り込めるようにする
   const npcs = generateAuctionNpcs(trueValue);
-  // ★要望対応：入札が始まったら、右上パネルに参加者（NPC名＋入札額）を出す
   if (auctionRoundContext) {
     auctionRoundContext.npcs = npcs;
-    auctionRoundContext.playerBid = initialBid;
-    auctionRoundContext.currentPrice = initialBid;
+    auctionRoundContext.playerBid = null;
+    auctionRoundContext.currentPrice = 0;
     renderAuctionParticipantPanel();
   }
   
-  const result = await runAuctionBiddingWar(item, trueValue, npcs, initialBid);
+  const result = await runAuctionBiddingWar(item, trueValue, npcs);
   if (result.won) {
     await resolveAuctionRoundAsWon(item, result.price);
-  } else {
+  } else if (result.winnerName) {
     await resolveAuctionRoundAsLost(item, trueValue, result.lastPlayerBid, result.winnerName, result.price);
+  } else {
+    // ★誰も一度も入札しないまま12秒が経過した場合（NPCの予算的にまず起こらないが、念のため）
+    await resolveAuctionRoundAsNoBids(item, trueValue);
   }
 }
 
 // ===== 要望対応：リアルタイム競り =====
-// 自分が何もしなくても、まだ生きているNPCそれぞれが1〜7秒おきに自動で値を上乗せしてくる。
+// プレイヤーの入札を待たず、まだ生きているNPCそれぞれが（ランクに応じた間隔で）自動で値を上乗せしてくる。
 // 誰か（自分含む）が入札するたびに「最後の入札から12秒」の締切がリセットされ、
 // 12秒間まったく新しい入札が無ければ、その時点の最高額を出した相手にそのまま落札する。
-// 自分はいつでも「入札する」から割り込んで上乗せできる（NPCの入札を待つ必要は無い）
-function runAuctionBiddingWar(item, trueValue, npcs, playerBid) {
+// 自分はいつでも「入札する」から割り込んで上乗せできる（NPCの番を待つ必要は無い）
+function runAuctionBiddingWar(item, trueValue, npcs) {
   return new Promise(resolve => {
     const round = {
       active: true,
       paused: false,
       pausedAt: null,
       item, trueValue, npcs,
-      currentPrice: playerBid,
-      highestBidderName: "あなた",
-      lastPlayerBidAmount: playerBid,
+      currentPrice: 0,           // ★まだ誰も入札していない状態からスタート
+      highestBidderName: null,   // ★まだ誰も入札していない（"あなた"でもNPC名でもない）
+      lastPlayerBidAmount: 0,
       lastBidAt: Date.now(),
       log: [], // ★パネルに出す直近の出来事（displayMessageは入力待ちで止まってしまうため使わない）
       timeouts: new Set(),
@@ -411,25 +422,25 @@ function runAuctionBiddingWar(item, trueValue, npcs, playerBid) {
     };
     auctionLiveRound = round;
     
-    pushAuctionLiveLog(round, `あなたが${playerBid}陳で入札した。`);
     renderAuctionParticipantPanel();
     resetAuctionCloseTimer(round);
     
     // ★1秒ごとに右上パネルの残り時間表示だけを更新する（落札判定自体はcloseTimeoutId側で行う）
     round.tickIntervalId = setInterval(() => {
-      if (round.active) renderAuctionParticipantPanel();
+      if (round.active && !round.paused) renderAuctionParticipantPanel();
     }, 500);
     
     npcs.forEach(npc => {
-      if (npc.active) scheduleNpcAuctionBid(round, npc, randomAuctionBidDelayMs());
+      if (npc.active) scheduleNpcAuctionBid(round, npc, randomAuctionBidDelayMs(round));
     });
     
     showAuctionLiveBidMenu(item);
   });
 }
 
-function randomAuctionBidDelayMs() {
-  return AUCTION_NPC_BID_INTERVAL_MIN_MS + Math.random() * (AUCTION_NPC_BID_INTERVAL_MAX_MS - AUCTION_NPC_BID_INTERVAL_MIN_MS);
+function randomAuctionBidDelayMs(round) {
+  const range = getAuctionNpcBidIntervalRangeForRank(round && round.item ? round.item.rank : null);
+  return range.min + Math.random() * (range.max - range.min);
 }
 
 // ★パネルに出す直近の出来事ログ。際限なく伸びないよう直近4件だけ残す
@@ -470,7 +481,7 @@ function attemptNpcAuctionBid(round, npc) {
   resetAuctionCloseTimer(round);
   
   // ★このNPCがまだ生きていれば、また1〜7秒後に次の入札を試みる
-  scheduleNpcAuctionBid(round, npc, randomAuctionBidDelayMs());
+  scheduleNpcAuctionBid(round, npc, randomAuctionBidDelayMs(round));
 }
 
 // ★要望対応：入札があるたび、「最後の入札から12秒」の締切をリセットする
@@ -533,7 +544,7 @@ function resumeAuctionLiveRound(round) {
   
   round.npcs.forEach(npc => {
     if (!npc.active) return;
-    const remaining = npc._remainingMs != null ? npc._remainingMs : randomAuctionBidDelayMs();
+    const remaining = npc._remainingMs != null ? npc._remainingMs : randomAuctionBidDelayMs(round);
     npc._remainingMs = null;
     scheduleNpcAuctionBid(round, npc, remaining);
   });
@@ -563,12 +574,14 @@ function finishAuctionLiveRound(round) {
   });
 }
 
-// ★要望対応：「入札する」だけを常時出しておき、NPCの入札を待たずに自分から割り込める
+// ★要望対応：「入札する」に加えて「降りる」も常時出し、NPCの入札を待たずに自分から割り込んだり
+//   これ以上入札しないと決めて締切を待たずに切り上げたりできるようにする
 function showAuctionLiveBidMenu(item) {
   if (!auctionLiveRound || !auctionLiveRound.active) return;
   changeSpeaker(auctionFacility.name || "オークション会場");
   showLocationMenu([
     { label: "入札する", action: () => handleAuctionLiveBidAction(item) },
+    { label: "降りる（これ以上入札しない）", action: () => handleAuctionLiveGiveUpAction(item) },
   ]);
 }
 
@@ -593,7 +606,9 @@ async function handleAuctionLiveBidAction(item) {
   pauseAuctionLiveRound(round);
   
   const nextBid = await pickAuctionBidAmount({
-    title: `「${item.name}」への入札額（現在${round.currentPrice}陳）`,
+    title: round.currentPrice > 0
+      ? `「${item.name}」への入札額（現在${round.currentPrice}陳）`
+      : `「${item.name}」への入札額（まだ誰も入札していません）`,
     min: round.currentPrice + 1,
     max: gold,
   });
@@ -617,6 +632,30 @@ async function handleAuctionLiveBidAction(item) {
   resumeAuctionLiveRound(round);
   
   showAuctionLiveBidMenu(item);
+}
+
+// ★要望対応：「降りる」を選んだ時の処理。
+//   既に自分が最高額を出している場合は降りる意味が無いので、その旨を伝えて競りを続ける。
+//   そうでなければ、12秒の締切を待たずにその場で競りを終わらせ、今の最高額の相手にそのまま落札する
+async function handleAuctionLiveGiveUpAction(item) {
+  const round = auctionLiveRound;
+  if (!round || !round.active) return;
+  
+  if (round.highestBidderName === "あなた") {
+    pauseAuctionLiveRound(round);
+    hideLocationMenu();
+    changeSpeaker(auctionFacility.name || "オークション会場");
+    await displayMessage("「あなたが今のところ最高額です。降りる必要は無さそうですよ。」", { allowSubFocus: true });
+    if (auctionLiveRound === round && round.active) {
+      round.lastBidAt += (Date.now() - round.pausedAt);
+      resumeAuctionLiveRound(round);
+      showAuctionLiveBidMenu(item);
+    }
+    return;
+  }
+  
+  // ★12秒の締切を待たずに、その場で競り終了とする
+  finishAuctionLiveRound(round);
 }
 
 // ★要望対応：参加料を提示して確認を取る
@@ -661,6 +700,21 @@ async function resolveAuctionRoundAsLost(item, trueValue, lastBid, winnerName, w
   //   「後で『入札を逃した品の行方を聞く』で表示される金額」が一致しない不具合になっていた。
   //   競り負けた場合は既に「誰が・いくらで」落札したかがこの時点で確定しているので、それをそのまま使う
   queueAuctionPendingResult(item, trueValue, winnerName ? { outcome: "sold", price: winningPrice } : null);
+  const state = getAuctionState();
+  state.session.roundIndex++;
+  await proceedToNextRoundOrFinishDay();
+}
+
+// ★要望対応：プレイヤーが入札しなくてもNPCだけで競りが進むようにしたことに伴う新しい結末。
+//   NPCの予算的にまず起こらないが、万一12秒間だれも（プレイヤーもNPCも）一度も入札しないまま
+//   終わってしまった場合はここに来る。誰が競り落としたかという情報も無いため、
+//   「見送った」場合と同じくランダムに行方を決めて貯めておく
+async function resolveAuctionRoundAsNoBids(item, trueValue) {
+  hideLocationMenu();
+  changeSpeaker(auctionFacility.name || "オークション会場");
+  await displayMessage(`「${item.name}」には誰も入札しないまま、競りが終わってしまった。`, { allowSubFocus: true });
+  
+  queueAuctionPendingResult(item, trueValue);
   const state = getAuctionState();
   state.session.roundIndex++;
   await proceedToNextRoundOrFinishDay();
@@ -904,6 +958,17 @@ function renderAuctionParticipantPanel() {
   const panel = document.getElementById("auction-participant-panel");
   const ctx = auctionRoundContext;
   if (!panel || !ctx) return;
+  
+  // ★バグ修正：以前はauctionRoundContext.currentPrice/playerBidを競り開始時（旧：最初の入札時）にしか
+  //   セットしておらず、その後のNPCの上乗せや自分の追加入札はauctionLiveRound側だけを更新していたため、
+  //   パネルの「現在価格」と自分の入札額の表示が最初の値のまま固定されてしまっていた。
+  //   描画のたびにここでauctionLiveRoundの最新値に同期する
+  if (auctionLiveRound) {
+    ctx.currentPrice = auctionLiveRound.currentPrice;
+    ctx.playerBid = auctionLiveRound.lastPlayerBidAmount > 0 ? auctionLiveRound.lastPlayerBidAmount : null;
+    ctx.npcs = auctionLiveRound.npcs;
+  }
+  
   panel.innerHTML = "";
   
   const header = document.createElement("p");
@@ -919,7 +984,8 @@ function renderAuctionParticipantPanel() {
   if (ctx.currentPrice != null) {
     const priceLine = document.createElement("p");
     priceLine.className = "auction-participant-panel-price";
-    priceLine.textContent = `現在価格：${ctx.currentPrice}陳`;
+    // ★要望対応：プレイヤーが入札しなくても競りが始まるようになったため、「まだ誰も入札していない」状態がありえる
+    priceLine.textContent = ctx.currentPrice > 0 ? `現在価格：${ctx.currentPrice}陳` : "現在価格：まだ入札はありません";
     panel.appendChild(priceLine);
   }
   
@@ -950,18 +1016,24 @@ function renderAuctionParticipantPanel() {
     });
     rows.sort((a, b) => (b.bid || 0) - (a.bid || 0));
     
+    const topPrice = ctx.currentPrice || 0;
     rows.forEach(r => {
+      // ★バグ修正：NPCが「これ以上は上乗せできない（active=false）」状態になっても、その時点で
+      //   まだ現在の最高額を持っている（＝今のところ競り落とせる立場にある）なら「降りた」とは表示しない。
+      //   本来「降りた」と表示すべきなのは、現在の最高額より低い額のまま入札を止めた相手だけ
+      const isLeading = r.bid > 0 && r.bid === topPrice;
+      const folded = !r.active && !isLeading;
       const row = document.createElement("div");
       row.className = "auction-participant-row"
         + (r.isPlayer ? " auction-participant-row-player" : "")
-        + (!r.active ? " auction-participant-row-inactive" : "");
+        + (folded ? " auction-participant-row-inactive" : "");
       const nameEl = document.createElement("span");
       nameEl.className = "auction-participant-name";
       nameEl.textContent = r.isPlayer ? `${r.name}（自分）` : r.name;
       row.appendChild(nameEl);
       const bidEl = document.createElement("span");
       bidEl.className = "auction-participant-bid";
-      bidEl.textContent = r.active ? (r.bid > 0 ? `${r.bid}陳` : "様子見") : "降りた";
+      bidEl.textContent = folded ? "降りた" : (r.bid > 0 ? `${r.bid}陳` : "様子見");
       row.appendChild(bidEl);
       list.appendChild(row);
     });
