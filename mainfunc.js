@@ -335,7 +335,7 @@ function setBlackoutEffect(active, fadeMs = 600) {
 function playEndRoll(creditsText, endBgmTrack, scrollSeconds) {
   return new Promise(resolve => {
     if (endBgmTrack && typeof startScenarioBGM === "function") {
-      startScenarioBGM(endBgmTrack); // bgm.js
+      startScenarioBGM(endBgmTrack, { loop: false }); // bgm.js（★要望対応：エンドロールのBGMはループさせず、曲が終わったらそのまま無音になる）
     }
     
     const overlay = document.createElement("div");
@@ -353,6 +353,7 @@ function playEndRoll(creditsText, endBgmTrack, scrollSeconds) {
     const skipBtn = document.createElement("button");
     skipBtn.className = "endroll-skip-btn";
     skipBtn.textContent = "早送り";
+    skipBtn.style.display = "none"; // ★要望対応：早送りボタンを非表示にする（下の速度切り替えの仕組み自体は残してある）
     overlay.appendChild(skipBtn);
     
     let finished = false;
