@@ -91,31 +91,37 @@ function deepClone(obj) {
 
 // ===== アイコン一覧画面 =====
 
-// 便利タブを開いた時（switchTabから呼ばれる）：常にアイコン一覧の状態に戻す
-function renderConvenienceIcons() {
-  const grid = document.getElementById("convenience-icon-grid");
+// ★バグ修正：各サブ画面（魔物図鑑・セーブロード・進行度・チュートリアル・実績・クレジット）を
+//   「戻る」ボタン以外の方法で離れた場合、そのままだとwindowのkeydownリスナーが残り続け、
+//   他の画面で矢印キーを押しただけで裏の画面が判定上「開いたまま」になってしまうバグがあった
+//   （例：セーブ/ロード中に魔物図鑑が開いてしまう。便利タブから他のタブへ切り替えた時も同様）。
+//   便利タブのアイコン一覧に戻る時、および便利タブそのものから離れる時（switchTabから）に、
+//   必ずこれをまとめて呼んで、全てのサブ画面のリスナー・表示状態をリセットしておく
+function closeAllConvenienceSubPanels() {
   const panel = document.getElementById("saveload-panel");
   const codexPanel = document.getElementById("monster-codex-panel");
   const creditsPanel = document.getElementById("credits-panel");
   const progressPanel = document.getElementById("progress-panel");
   const tutorialPanel = document.getElementById("tutorial-panel");
   const achievementsPanel = document.getElementById("achievements-panel");
-  // ★バグ修正：各サブ画面（魔物図鑑・セーブロード・進行度・チュートリアル・クレジット）を
-  //   「戻る」ボタン以外の方法（タブ切り替えなど）で離れた場合、そのままだとwindowのkeydown
-  //   リスナーが残り続け、他の画面で矢印キーを押しただけで裏の画面が再描画されて勝手に
-  //   開いたように見えるバグがあった（例：セーブ/ロード中に魔物図鑑が開いてしまう）。
-  //   アイコン一覧に戻るタイミングで、全てのサブ画面のリスナーを必ずまとめて解除しておく。
   window.removeEventListener("keydown", handleSaveLoadKeyDown);
   window.removeEventListener("keydown", handleMonsterCodexKeyDown);
   window.removeEventListener("keydown", handleCreditsKeyDown);
   window.removeEventListener("keydown", handleProgressKeyDown);
   window.removeEventListener("keydown", handleTutorialKeyDown);
+  if (typeof handleAchievementsKeyDown === "function") window.removeEventListener("keydown", handleAchievementsKeyDown); // achievements.js（★これも解除漏れしていた）
   if (panel) panel.classList.add("hidden");
   if (codexPanel) codexPanel.classList.add("hidden"); // ★これが抜けていて、図鑑を閉じても下半分に残り続けるバグの原因だった
   if (creditsPanel) creditsPanel.classList.add("hidden"); // ★クレジットも同様に、閉じ忘れると下半分に残ってしまう
   if (progressPanel) progressPanel.classList.add("hidden");
   if (tutorialPanel) tutorialPanel.classList.add("hidden");
   if (achievementsPanel) achievementsPanel.classList.add("hidden");
+}
+
+// 便利タブを開いた時（switchTabから呼ばれる）：常にアイコン一覧の状態に戻す
+function renderConvenienceIcons() {
+  const grid = document.getElementById("convenience-icon-grid");
+  closeAllConvenienceSubPanels();
   if (!grid) return;
   
   grid.classList.remove("hidden");
