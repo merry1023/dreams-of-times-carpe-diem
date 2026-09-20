@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789842738059,
+  "version": 1789870717622,
   "enemies": [
     {
       "id": "goblin",
@@ -1003,7 +1003,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "description": "ミタメの召喚に応じ現れた魔精霊で、巨大な豚のような外見をしている。",
       "level": 25,
       "fixedStats": "",
-      "maxHp": 230,
+      "maxHp": 180,
       "atk": 18,
       "exp": 800,
       "bgmTrack": "bgm/battleBgm/boss/ブヒーモス/lirva.mp3",
@@ -1065,26 +1065,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "messageText": "ﾌﾞﾋｨｰｰ！！！",
           "blocks": [
             {
-              "id": "block_1789622574356_5",
-              "type": "bossChangeForm",
-              "messageText": "ﾌﾞﾋﾌﾞﾋｨ！(どうやら本気を出したみたいだ)",
-              "formName": "魔精霊「ﾌﾞﾋｨモス」",
-              "formAtkMultiplier": 1.3,
-              "formHealRatio": 1
-            },
-            {
               "id": "block_1789622620907_6",
               "type": "bossUseSkill",
               "skillName": "ブヒーモスの波動",
               "skillMultiplier": 1.5
-            },
-            {
-              "id": "block_1789622650735_7",
-              "type": "bossChangeForm",
-              "messageText": "",
-              "formName": "",
-              "formAtkMultiplier": 1.3,
-              "formHealRatio": 0
             }
           ]
         }
@@ -1095,7 +1079,22 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "affectionGainRange": [
         5,
         10
-      ]
+      ],
+      "forms": [
+        {
+          "id": "bossform_1789865754600_1",
+          "name": "魔精霊「ﾌﾞﾋｨモス」",
+          "imagePath": "img/敵/ボス/ブヒーモス/魔精霊ﾌﾞﾋｨモス.png",
+          "sizeMultiplier": 2,
+          "atkMultiplier": 1.3,
+          "healRatioOnEnter": 1,
+          "bgmTrack": "",
+          "inheritBgm": true,
+          "triggerConditionType": "bossHpBelow",
+          "triggerConditionValue": 50
+        }
+      ],
+      "actionsPerTurn": 2
     }
   ],
   "items": [
@@ -10270,7 +10269,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "classChangeCost": 100,
       "minBet": 10,
       "maxBet": 1000,
-      "slotImages": {}
+      "slotImages": {},
+      "enterBlocks": [],
+      "allowedClassNames": []
     }
   ],
   "portraitCharacters": [],
@@ -10558,6 +10559,18 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "bgmtrack_1789842624563_2",
       "name": "auction",
       "path": "施設/オークション/06. maroyu - Existenz.mp3"
+    },
+    {
+      "id": "casino",
+      "name": "casino",
+      "path": "施設/カジノ/burglar",
+      "builtin": true
+    },
+    {
+      "id": "auction",
+      "name": "auction",
+      "path": "施設/オークション/06. maroyu - Existenz",
+      "builtin": true
     }
   ],
   "mapAreas": [
@@ -11168,7 +11181,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "type": "country",
       "x": 218.2057410206693,
       "y": -47.42746008818605,
-      "bgTrack": "",
+      "bgTrack": "town",
       "bgImage": "/img/城下町.jpg",
       "bossId": "",
       "bossTriggerTypes": [
@@ -11735,7 +11748,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       }
     }
   },
-  "creditsText": "敵などのデザインは僕が描いたものです。まだ下手ですが上手くなれるよう精進します...\nその他「フリー素材/コンポーザー様の楽曲等」を使用させていただいています\n\n背景\n<ゲームまてりあるず>様\n<AIPICT>様\n\n使用させていただいたBGM\n\n<クリエイター【オト】（https://creatoroto-blog.com/）>様\n「Oak-Village」\n\n<かずち>様\n「宵露洞窟」\n\n<ハルト>様\n「月明かりの草原」\n\n<松浦洋介>様\n「The Murmuring Forest」\n\n<Masuo>様\n「森へ」\n\n<dingerbox>様\n「haptime」\n「vacsina」\n「lirva」\n\n<蒲鉾さちこ>様\n「哀愁と憂いの春に」\n「闇夜にたゆたう海」\n\n<しゃぐま>様\n「穢れ無き水面」\n\n<EBIMAYO>様\n「GOODRUSH」\n\n<アキラの音楽空間 https://www.akira-m.net/index.php>様\n「メヌエット」(ルイージ・ボッケリーニ作曲)\n\n<おみー>様\n「Alfredia」\n\n<ああああ>様、<daph>様\n「C'est la Vie」\n\n<CYLTIE>様\n「Life music,Life work」",
+  "creditsText": "敵などのデザインは僕が描いたものです。まだ下手ですが上手くなれるよう精進します...\nその他「フリー素材/コンポーザー様の楽曲等」を使用させていただいています\n\n背景\n<ゲームまてりあるず>様\n<AIPICT>様\n\n使用させていただいたBGM\n\n<クリエイター【オト】（https://creatoroto-blog.com/）>様\n「Oak-Village」\n\n<かずち>様\n「宵露洞窟」\n\n<ハルト>様\n「月明かりの草原」\n\n<松浦洋介>様\n「The Murmuring Forest」\n\n<Masuo>様\n「森へ」\n\n<dingerbox>様\n「haptime」\n「vacsina」\n「lirva」\n「burglar」\n\n<蒲鉾さちこ>様\n「哀愁と憂いの春に」\n「闇夜にたゆたう海」\n\n<しゃぐま>様\n「穢れ無き水面」\n\n<EBIMAYO>様\n「GOODRUSH」\n\n<アキラの音楽空間 https://www.akira-m.net/index.php>様\n「メヌエット」(ルイージ・ボッケリーニ作曲)\n\n<おみー>様\n「Alfredia」\n\n<ああああ>様、<daph>様\n「C'est la Vie」\n\n<CYLTIE>様\n「Life music,Life work」\n\n<maroyu>様\n「Existenz」",
   "introText": "これから始める方へ。\nこのゲームはクソゲーです。\n開発者がノリで作ったしょうもないシナリオで、\n場が凍りつく会話や一部下ネタがふくまれます。立ち絵管理\n\nキャラクターのイラストは開発者が描いたものですが、\nあまり上手とは言えませんので我慢してください。\n苦手な方はこの場でブラウザバックすることを\nおすすめしマスカット。",
   "deletedBuiltinIds": {
     "enemies": [],

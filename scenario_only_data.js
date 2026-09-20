@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1789842737004,
+  "version": 1789870715382,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -6263,6 +6263,36 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
               "text": "このまままっすぐ。",
               "blocks": [
                 {
+                  "id": "block_1789870646860_1",
+                  "type": "if",
+                  "conditions": [
+                    {
+                      "leftKind": "flag",
+                      "leftValue": "ドロボー！",
+                      "operator": "=",
+                      "rightKind": "bool",
+                      "rightValue": "t",
+                      "negate": false
+                    }
+                  ],
+                  "combineMode": "AND",
+                  "trueBlocks": [
+                    {
+                      "id": "block_1789870666271_2",
+                      "type": "narration",
+                      "text": "もうここは見た。"
+                    },
+                    {
+                      "id": "block_1789870683078_3",
+                      "type": "jump",
+                      "targetBlockId": "block_1789599880521_3"
+                    }
+                  ],
+                  "falseBlocks": [],
+                  "trueJumpBlockId": null,
+                  "falseJumpBlockId": null
+                },
+                {
                   "id": "block_1789622068460_2",
                   "type": "dialogue",
                   "speaker": "鱗滝右近次",
@@ -7696,12 +7726,12 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "type": "clearchapter",
           "resetProgress": true,
           "endrollEnabled": true,
-          "endroll": "第一章クリアまでこのクソゲーをプレイしていただき\n\n本当にありがとうございます。\n\nまだまだ序章でございますので\n\nこれからもどうぞよろしくお願いします。\n\n背景\n<ゲームまてりあるず>様\n<AIPICT>様\n\n使用させていただいたBGM\n\n<クリエイター【オト】（https://creatoroto-blog.com/）>様\n「Oak-Village」\n\n<かずち>様\n「宵露洞窟」\n\n<ハルト>様\n「月明かりの草原」\n\n<松浦洋介>様\n「The Murmuring Forest」\n\n<Masuo>様\n「森へ」\n\n<dingerbox>様\n「haptime」\n「vacsina」\n「lirva」\n\n<蒲鉾さちこ>様\n「哀愁と憂いの春に」\n「闇夜にたゆたう海」\n\n<しゃぐま>様\n「穢れ無き水面」\n\n<EBIMAYO>様\n「GOODRUSH」\n\n<アキラの音楽空間 https://www.akira-m.net/index.php>様\n「メヌエット」(ルイージ・ボッケリーニ作曲)\n\n<おみー>様\n「Alfredia」\n\n<ああああ>様、<daph>様\n「C'est la Vie」\n\n<CYLTIE>様\n「Life music,Life work」\n\nすべては、ひとりの男が異世界へ落とされたことから始まった。\n\n\n35歳、何の変哲もない人生を送っていた田中治郎は、\n\n\n訳の分からぬ神に送り出され、右も左も分からない世界へ放り出された。\n\n\nそこで出会ったのが、「竜殺し」ことケツァナ。\n\n\n偶然の出会いはやがて仲間へと変わり、\n\n\n二人は共に魔物と戦い、\n\n\nこの世界の裏に潜む奴隷という現実を知る。\n\n\nそしてロリルと出会い、彼女の過去に触れたことで、\n\n\n治郎はただ生き延びるだけではなく、\n\n\n誰かを守るために戦うことを選んだ。\n\n\n仲間は少しずつ増えていった。\n\n\n笑い、喧嘩し、くだらない日々を過ごしながらも、彼らは一つの事件へと辿り着く。\n\n\n富豪ミタメ。\n\n\n奪われた自由。\n\n\n助けを求める者たち。\n\n\nそして、再び交わる運命。\nと言ってみるけどそこまで深いストーリーじゃないんだけどね。\n\n\n戦いの果てに新たな仲間と別れ、治郎たちはまだ見ぬ地へ歩き始める。\n\n\n異世界へ来てから、ほんの少し。\n\n\nそれでも、ひとりだった頃の治郎はもういない。\n\n\n物語はここから、さらに広い世界へ続いていく。\n\n\n第一章。\nこれまでの旅を振り返る。\n\n\nそして、この先の物語へ。\n\n次章、第二章：-Do \"You\"-",
+          "endroll": "第一章クリアまでこのクソゲーをプレイしていただき\n\n本当にありがとうございます。\n\nまだまだ序章でございますので\n\nこれからもどうぞよろしくお願いします。\n\n背景\n<ゲームまてりあるず>様\n<AIPICT>様\n\n使用させていただいたBGM\n\n<クリエイター【オト】（https://creatoroto-blog.com/）>様\n「Oak-Village」\n\n<かずち>様\n「宵露洞窟」\n\n<ハルト>様\n「月明かりの草原」\n\n<松浦洋介>様\n「The Murmuring Forest」\n\n<Masuo>様\n「森へ」\n\n<dingerbox>様\n「haptime」\n「vacsina」\n「lirva」\n「burglar」\n\n<蒲鉾さちこ>様\n「哀愁と憂いの春に」\n「闇夜にたゆたう海」\n\n<しゃぐま>様\n「穢れ無き水面」\n\n<EBIMAYO>様\n「GOODRUSH」\n\n<アキラの音楽空間 https://www.akira-m.net/index.php>様\n「メヌエット」(ルイージ・ボッケリーニ作曲)\n\n<おみー>様\n「Alfredia」\n\n<ああああ>様、<daph>様\n「C'est la Vie」\n\n<CYLTIE>様\n「Life music,Life work」\n\n<maroyu>様\n「Existenz」\n\nすべては、ひとりの男が異世界へ落とされたことから始まった。\n\n\n35歳、何の変哲もない人生を送っていた田中治郎は、\n\n\n訳の分からぬ神に送り出され、右も左も分からない世界へ放り出された。\n\n\nそこで出会ったのが、「竜殺し」ことケツァナ。\n\n\n偶然の出会いはやがて仲間へと変わり、\n\n\n二人は共に魔物と戦い、\n\n\nこの世界の裏に潜む奴隷という現実を知る。\n\n\nそしてロリルと出会い、彼女の過去に触れたことで、\n\n\n治郎はただ生き延びるだけではなく、\n\n\n誰かを守るために戦うことを選んだ。\n\n\n仲間は少しずつ増えていった。\n\n\n笑い、喧嘩し、くだらない日々を過ごしながらも、彼らは一つの事件へと辿り着く。\n\n\n富豪ミタメ。\n\n\n奪われた自由。\n\n\n助けを求める者たち。\n\n\nそして、再び交わる運命。\nと言ってみるけどそこまで深いストーリーじゃないんだけどね。\n\n\n戦いの果てに新たな仲間と別れ、治郎たちはまだ見ぬ地へ歩き始める。\n\n\n異世界へ来てから、ほんの少し。\n\n\nそれでも、ひとりだった頃の治郎はもういない。\n\n\n物語はここから、さらに広い世界へ続いていく。\n\n\n第一章。\nこれまでの旅を振り返る。\n\n\nそして、この先の物語へ。\n\n次章、第二章：-Do \"You\"-",
           "endrollBgm": "/bgm/シナリオ/04. CYLTIE. - Life music,Life work.mp3",
           "endrollScrollSeconds": 159
         }
       ],
-      "enabled": false,
+      "enabled": true,
       "requiredChapterId": "custom_1788780588914_1",
       "requiredRank": "D",
       "requiredProgress": 25,
