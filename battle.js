@@ -103,6 +103,9 @@ function createEnemyUnit(monsterKey, level) {
     hp: scaled.maxHp,
     maxHp: scaled.maxHp,
     atk: scaled.atk,
+    baseAtk: scaled.atk, // ★要望対応：形態ごとの攻撃力倍率は、直前の形態からの複利ではなく、常にこの素の攻撃力を基準にする
+    currentFormNumber: 1, // ★要望対応：ボスの「形態」。1＝素の姿。reviveBossToNextFormIfAvailableで自動的に増える
+    lastAcknowledgedFormNumber: 1, // ★要望対応：戦闘イベント「形態が◯になった瞬間」の反応・保険メッセージを、まだ出していない形態変化にだけ出すための記録
     exp: scaled.exp,
     dropItemId: master.dropItemId,
     dropRate: master.dropRate,
@@ -342,7 +345,10 @@ async function startTrialBattle(trialRank) {
 
 // ===== ターゲット選択まわり =====
 function getAliveEnemies() {
-  return battleState ? battleState.enemies.filter(e => e.hp > 0) : [];
+  if (!battleState) return [];
+  // ★要望対応：HPが0の敵に次の形態が残っていれば、ここで「まだ生きている」ことにする（形態移行）
+  battleState.enemies.forEach(e => { if (e.hp <= 0) reviveBossToNextFormIfAvailable(e); });
+  return battleState.enemies.filter(e => e.hp > 0);
 }
 
 // ★今カーソルが乗っている敵を返す。既に倒されていたら、生きている先頭の敵に自動で乗せ換える
@@ -1534,7 +1540,18 @@ async function enemyTeamTurn() {
   for (const enemy of alive) {
     if (!battleState) return; // ★途中で戦闘が終わっていたら中断
     if (enemy.hp <= 0) continue; // ★このターン中に既に倒された相手は行動させない
-    await runSingleEnemyTurn(enemy);
+    
+    // ★要望対応：ボスが1ターンに複数回行動できるようにする（MONSTER_MASTER[...].actionsPerTurn。未指定/1以下なら今まで通り1回）
+    const master = MONSTER_MASTER[enemy.monsterKey];
+    const actionsPerTurn = (master && typeof master.actionsPerTurn === "number" && master.actionsPerTurn > 1) ? Math.floor(master.actionsPerTurn) : 1;
+    
+    for (let actionIndex = 0; actionIndex < actionsPerTurn; actionIndex++) {
+      if (!battleState) return;
+      if (enemy.hp <= 0) break; // ★行動の合間に倒された場合、残りの行動はしない
+      if (isPartyDefeated()) return;
+      await runSingleEnemyTurn(enemy);
+    }
+    
     if (!battleState) return;
     if (isPartyDefeated()) return; // ★力尽きたら、残りの敵は行動させず終了（battleLoop側で敗北処理する）
   }
@@ -1571,7 +1588,57 @@ function checkBossBattleEventCondition(event, enemy) {
   if (event.conditionType === "turnCount") {
     return (battleState.turnCount || 1) >= value;
   }
+  if (event.conditionType === "formBecomes") {
+    // ★要望対応：形態タブで設定した各形態への切り替わりに反応するための条件。
+    //   形態1＝素の姿から始まり、形態が進むたびにenemy.currentFormNumberが増える（reviveBossToNextFormIfAvailable参照）
+    const currentFormNumber = typeof enemy.currentFormNumber === "number" ? enemy.currentFormNumber : 1;
+    return currentFormNumber === value;
+  }
   return false;
+}
+
+// ===== 要望対応：ボスの「形態」システム =====
+// 以前は戦闘イベントの中の一アクション（changeForm）として、決め打ちで1回だけ「第2形態」に変身する
+// 仕組みだったが廃止し、代わりに形態を好きな数だけ追加・削除できるようにした。
+// 形態1＝ボス本来の姿（MONSTER_MASTERのname/imagePath/atk/bgmTrackなどそのもの）。
+// 形態2以降はMONSTER_MASTER[...].forms（配列。forms[0]が形態2、forms[1]が形態3……）に持たせてあり、
+// 各形態は名前・画像・大きさ・攻撃力倍率・形態移行後のHP割合・専用BGMを個別に持つ。
+// ★要望対応：形態が変わる条件は「前の形態のHPが0になった瞬間」で固定。HPが0になった敵をそのまま
+//   倒れさせる前に、ここで次の形態が残っていないか必ず確認する（reviveBossToNextFormIfAvailable）。
+//   どこでHPが0になっても取りこぼさないよう、getAliveEnemies()とupdateBattleHud()の入口で毎回確認している。
+// 切り替わった瞬間は、戦闘イベントの条件を「形態が◯になった瞬間」(formBecomes)にすることで演出側が反応できる。
+function applyBossFormChange(enemy, nextForm, nextFormIndex) {
+  enemy.currentFormNumber = nextFormIndex + 2; // ★forms[0]なら形態2、forms[1]なら形態3……
+  if (nextForm.name) enemy.displayName = nextForm.name;
+  if (nextForm.imagePath) enemy.imagePath = nextForm.imagePath;
+  if (typeof nextForm.sizeMultiplier === "number" && nextForm.sizeMultiplier > 0) enemy.sizeMultiplier = nextForm.sizeMultiplier;
+  const atkMultiplier = Number(nextForm.atkMultiplier) || 1;
+  if (atkMultiplier !== 1) enemy.atk = Math.round((enemy.baseAtk || enemy.atk) * atkMultiplier); // ★形態ごとの倍率は、常に素の攻撃力を基準にする（前の形態からの複利にはしない）
+  // ★前の形態のHPが0になった直後の切り替えなので、0のままでは戦えない。未設定（0扱い）なら満タンにする
+  const healRatio = Number(nextForm.healRatioOnEnter) || 1;
+  enemy.hp = Math.max(1, Math.min(enemy.maxHp, Math.round(enemy.maxHp * healRatio)));
+  if (nextForm.bgmTrack && nextForm.inheritBgm === false && typeof switchScenarioBGM === "function") {
+    // ★要望対応：「BGM引き継ぎ」がOFFの時だけ専用BGMに切り替える。ONの場合（既定）や専用BGM未指定の場合は、
+    //   直前まで流れていた曲をそのまま流し続ける（BGMには一切触れない）
+    switchScenarioBGM(nextForm.bgmTrack, { fadeMs: 600, onFailFallbackTrack: (typeof BATTLE_BGM_TRACKS !== "undefined" ? BATTLE_BGM_TRACKS.boss : undefined) });
+  }
+}
+
+// ★HPが0になった敵について、まだ到達していない次の形態が残っていれば、そのまま倒れさせる代わりに
+//   次の形態へ切り替えて戦闘を続けさせる。次の形態が無ければ何もしない（＝今まで通り本当に倒れる）
+function reviveBossToNextFormIfAvailable(enemy) {
+  if (!enemy || enemy.hp > 0) return false;
+  const master = MONSTER_MASTER[enemy.monsterKey];
+  if (!master || !Array.isArray(master.forms) || master.forms.length === 0) return false;
+  if (typeof enemy.currentFormNumber !== "number") enemy.currentFormNumber = 1; // ★形態1＝素の姿から始まる
+  
+  // ★forms配列のインデックス0が「形態2」、インデックス1が「形態3」……という対応
+  const nextFormIndex = enemy.currentFormNumber - 1;
+  const nextForm = master.forms[nextFormIndex];
+  if (!nextForm) return false; // ★もう最後の形態まで到達済み＝本当に倒れる
+  
+  applyBossFormChange(enemy, nextForm, nextFormIndex);
+  return true;
 }
 
 // ★今のenemy（ボス）が、今まさに発火すべき戦闘イベントを持っていれば1つ返す（無ければnull）。
@@ -1602,18 +1669,6 @@ async function executeBossBattleEvent(enemy, event) {
     changeSpeaker("");
     await displayMessage(event.messageText || `${enemy.displayName}の様子が変わった……！`);
     return false;
-    
-  } else if (event.action === "changeForm") {
-    // ★第2形態になる：名前を変え、攻撃力を上げ、HPを少し回復する。行動は消費する（変身で手一杯という演出）
-    changeSpeaker("");
-    await displayMessage(event.messageText || `${enemy.displayName}の様子が変わった……！`);
-    if (event.formName) enemy.displayName = event.formName;
-    const atkMultiplier = Number(event.formAtkMultiplier) || 1;
-    enemy.atk = Math.round(enemy.atk * atkMultiplier);
-    const healRatio = Number(event.formHealRatio) || 0;
-    if (healRatio > 0) enemy.hp = Math.min(enemy.maxHp, enemy.hp + Math.round(enemy.maxHp * healRatio));
-    updateBattleHud();
-    return true;
     
   } else if (event.action === "summonAlly") {
     // ★仲間の魔物を呼ぶ。行動は消費する
@@ -1734,7 +1789,14 @@ async function runSingleEnemyTurn(enemy) {
   
   const master = MONSTER_MASTER[enemy.monsterKey];
   
-  // ★ボス管理タブで組んだ「戦闘イベント」（HP割合・ターン数などの条件で発火する演出・行動）を確認する。
+  // ★要望対応：形態の切り替わり自体は「前の形態のHPが0になった瞬間」に即座に起きる
+  //   （getAliveEnemies/updateBattleHud側で処理済み）。ここでは、まだ反応（演出）を出していない
+  //   形態変化が無いかどうかだけを確認する
+  if (typeof enemy.lastAcknowledgedFormNumber !== "number") enemy.lastAcknowledgedFormNumber = 1;
+  const formChangedThisTurn = enemy.currentFormNumber !== enemy.lastAcknowledgedFormNumber;
+  if (formChangedThisTurn) enemy.lastAcknowledgedFormNumber = enemy.currentFormNumber;
+  
+  // ★ボス管理タブで組んだ「戦闘イベント」（HP割合・ターン数・形態などの条件で発火する演出・行動）を確認する。
   //   通常攻撃・専用スキルより優先する
   const triggerableEvent = findTriggerableBossBattleEvent(enemy);
   if (triggerableEvent) {
@@ -1742,6 +1804,14 @@ async function runSingleEnemyTurn(enemy) {
     if (!battleState || enemy.hp <= 0) return; // ★演出の巻き添えで戦闘が終わっていたら、ここで打ち切る
     if (usedTurn) return; // ★行動を消費するイベントだった場合は、このターンはここで終わり（通常攻撃はしない）
     // ★行動を消費しないイベント（message・removeInvincibility）だった場合は、このままいつも通り下へ続く
+  } else if (formChangedThisTurn) {
+    // ★形態は切り替わったが、それに反応する「形態が◯になった瞬間」の戦闘イベントが1つも
+    //   設定されていなかった場合の保険。最低限「様子が変わった」ことだけは伝え、
+    //   変身で手一杯ということで行動を消費してこのターンを終える（以前のchangeFormと同じ演出）
+    changeSpeaker("");
+    await displayMessage(`${enemy.displayName}の様子が変わった……！`);
+    updateBattleHud();
+    return;
   }
   
   // ★魔物ごとの固有スキル：一定確率で通常攻撃の代わりに繰り出してくる（今のところ常に主人公を狙う）
@@ -3371,7 +3441,9 @@ function renderBattleEnemies() {
       imgEl.style.width = `${initialSize}px`;
       imgEl.style.height = `${initialSize}px`;
       imgEl.onerror = () => { imgEl.classList.add("hidden"); };
-      imgEl.src = enemy.imagePath || `img/敵/${enemy.name}.png`;
+      const initialSrc = enemy.imagePath || `img/敵/${enemy.name}.png`;
+      imgEl.dataset.srcKey = initialSrc; // ★要望対応：形態切り替えで画像が変わったかどうかを、実際に読み込んだパス文字列で判定するための控え
+      imgEl.src = initialSrc;
       imgEl.alt = enemy.displayName;
       
       const nameEl = document.createElement("p");
@@ -3416,7 +3488,18 @@ function renderBattleEnemies() {
       const size = sizeForEnemy(enemy);
       imgEl.style.width = `${size}px`;
       imgEl.style.height = `${size}px`;
+      // ★要望対応：ボスの形態切り替えで画像が変わることがあるので、毎回チェックして必要な時だけsrcを更新する
+      //   （毎回文字列でしか判定しないと、ここが呼ばれるたびに同じ画像でも再読み込みしてチラついてしまう）
+      const desiredSrc = enemy.imagePath || `img/敵/${enemy.name}.png`;
+      if (imgEl.dataset.srcKey !== desiredSrc) {
+        imgEl.dataset.srcKey = desiredSrc;
+        imgEl.classList.remove("hidden"); // ★前の形態の画像が見つからずhiddenになっていた場合に備え、新しい画像を試す前に表示状態へ戻す
+        imgEl.src = desiredSrc;
+      }
     }
+    
+    const nameEl = unitEl.querySelector(".battle-enemy-unit-name");
+    if (nameEl) nameEl.textContent = enemy.displayName; // ★要望対応：形態切り替えで名前が変わることがあるので毎回反映する
     
     const fillEl = unitEl.querySelector(".battle-enemy-unit-hp-fill");
     if (fillEl) {
@@ -3428,6 +3511,13 @@ function renderBattleEnemies() {
 
 function updateBattleHud() {
   if (!battleState) return;
+  
+  // ★要望対応：HPが0になった直後にここが呼ばれるので、次の形態が残っているボスはここで確実に切り替える
+  battleState.enemies.forEach(e => { if (e.hp <= 0) reviveBossToNextFormIfAvailable(e); });
+  
+  // ★要望対応：ボス戦の時だけHPゲージを画面上部中央に、細く長く表示する（CSS側の.battle-hud-boss）
+  const hudEl = document.getElementById("battle-hud");
+  if (hudEl) hudEl.classList.toggle("battle-hud-boss", !!battleState.isBoss);
   
   // ★bgm.js等、「敵は常に1体」前提だった既存コードとの互換用に、先頭の敵（ボス戦なら常にこれが本体）の値をここにも反映する
   const primary = battleState.enemies[0];

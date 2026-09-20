@@ -3514,9 +3514,10 @@ html, body {
 .roulette-wheel-outer {
   position: relative;
   width: 260px;
-  height: 260px;
   max-width: 68vw;
-  max-height: 68vw;
+  aspect-ratio: 1 / 1; /* ★要望対応：高さをwidth/max-widthとは別に指定していたため、縦方向だけ縮んで
+                          楕円になることがあった。高さをwidth側から自動算出させることで常に正円にする */
+  flex-shrink: 0; /* ★念のため：縦方向のflex収縮で高さだけ潰れることが無いようにする */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4135,6 +4136,43 @@ html, body {
 
 .enemy-hp-fill {
   background-color: #e53935;
+}
+
+/* ★要望対応：ボス戦の時だけ、HPゲージを画面上部中央に、細く長く表示する
+   （通常戦は今まで通り右上のボックス型のまま） */
+.battle-hud.battle-hud-boss {
+  top: 14px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: min(640px, 90vw);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 18px;
+  border-radius: 20px;
+}
+
+.battle-hud.battle-hud-boss .battle-enemy-name {
+  margin: 0;
+  flex-shrink: 0;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.battle-hud.battle-hud-boss .gauge-bar {
+  height: 10px;
+  border-radius: 5px;
+  flex: 1;
+}
+
+.battle-hud.battle-hud-boss .gauge-value {
+  flex-shrink: 0;
+  width: auto;
+  margin-left: 0;
+  font-size: 11px;
 }
 
 /* ===== 戦闘中の敵表示（main-screen中央・最大5体・ジグザグ配置） ===== */

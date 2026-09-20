@@ -65,6 +65,7 @@ let scenarioBuildEditingSkillIfBlockId = null; // ★特殊技のifブロック�
 let scenarioBuildEditingSkillIfBranch = null; // ★特殊技ifブロックの中身エディタで、今"true"/"false"のどちらの中身を編集中か
 let scenarioBuildEditingEnemyFlavorRef = null; // ★見逃した/倒した時の演出専用全画面エディタで、今どの敵の何を編集中か（{ entityId, key, label }）
 let scenarioBuildEditingBossEventRef = null; // ★要望対応：ボスの戦闘イベント（演出ブロック）専用全画面エディタで、今どのボスのどのイベントを編集中か（{ bossId, eventId }）
+let scenarioBuildEditingBossFormRef = null; // ★要望対応：ボスの「形態」一覧の専用全画面エディタで、今どのボスを編集中か（{ bossId }）
 let scenarioBuildInsertMenuIndex = null; // ★ブロック挿入用の「＋」を今どの位置で開いているか（nullなら閉じている）
 let scenarioBuildEditingStatusRef = null; // ★状態管理の専用全画面エディタで、今どの状態異常/状態強化を編集中か（{ category: "statusAilments"|"statusBuffs", id }）
 let scenarioBuildEditingSkillId = null; // ★特殊スキル編集（ブロック）の専用全画面エディタで、今どの技を編集中か
@@ -1035,6 +1036,7 @@ function ensureCustomMonstersRegistered() {
       uniqueSkill: (boss.uniqueSkill && boss.uniqueSkill.name) ? boss.uniqueSkill : undefined,
       imagePath: boss.imagePath || undefined,
       sizeMultiplier: (typeof boss.sizeMultiplier === "number" && boss.sizeMultiplier > 0) ? boss.sizeMultiplier : undefined,
+      actionsPerTurn: (typeof boss.actionsPerTurn === "number" && boss.actionsPerTurn > 1) ? Math.floor(boss.actionsPerTurn) : undefined, // ★要望対応：1ターンの行動回数（battle.js参照）
       bgmTrack: boss.bgmTrack || undefined,
       bgmFinalTrack: boss.bgmFinalTrack || undefined,
       bgmCrisisTrack: boss.bgmCrisisTrack || undefined,
@@ -1047,7 +1049,8 @@ function ensureCustomMonstersRegistered() {
       // ★要望対応：この魔物自身の状態異常耐性・無効
       statusImmunities: (Array.isArray(boss.statusImmunities) && boss.statusImmunities.length > 0) ? boss.statusImmunities : undefined,
       statusResistances: (boss.statusResistances && typeof boss.statusResistances === "object" && Object.keys(boss.statusResistances).length > 0) ? boss.statusResistances : undefined,
-      battleEvents: (Array.isArray(boss.battleEvents) && boss.battleEvents.length > 0) ? boss.battleEvents : undefined // ★ボス管理タブの戦闘イベント（battle.js参照）
+      battleEvents: (Array.isArray(boss.battleEvents) && boss.battleEvents.length > 0) ? boss.battleEvents : undefined, // ★ボス管理タブの戦闘イベント（battle.js参照）
+      forms: (Array.isArray(boss.forms) && boss.forms.length > 0) ? boss.forms : undefined // ★要望対応：ボス管理タブの「形態」一覧（battle.js参照）
     };
     if (typeof BOSS_MONSTER_KEYS !== "undefined" && !BOSS_MONSTER_KEYS.includes(boss.id)) {
       BOSS_MONSTER_KEYS.push(boss.id); // ★ボス扱い（BGM切り替え等）にする
@@ -1476,6 +1479,8 @@ function renderScenarioBuildMain() {
     renderBossEventListEditor(container);
   } else if (scenarioBuildMainView === "bossEventBlockEditor") {
     renderBossEventBlockEditor(container);
+  } else if (scenarioBuildMainView === "bossFormListEditor") {
+    renderBossFormListEditor(container);
   } else if (scenarioBuildMainView === "entityEditor") {
     renderEntityDetailEditor(container);
   } else if (scenarioBuildMainView === "statuses") {
@@ -2337,7 +2342,6 @@ const SCENARIO_BLOCK_TYPES = {
   setvar: "変数を設定（数値）",
   changeparam: "パラメータ変更（HP/SP等）",
   bossRemoveInvincibility: "【ボス演出】無敵を解除する",
-  bossChangeForm: "【ボス演出】第2形態になる（名前変更・攻撃力アップ・HP回復）",
   bossSummonAlly: "【ボス演出】仲間を呼ぶ（魔物を1体増援参戦させる）",
   bossHeal: "【ボス演出】自分のHPを回復する（割合指定）",
   bossUseSkill: "【ボス演出】特定の技を撃つ",
@@ -2876,7 +2880,6 @@ function createBlock(type) {
   if (type === "setvar") return { ...base, varName: "", mode: "set", amount: 0 }; // mode: "set" | "add" | "subtract"
   if (type === "changeparam") return { ...base, target: "player", companionId: "", gauge: "hp", mode: "add", amount: 0 }; // target: "player"|"companion"|"allCompanions"／gauge: "hp"|"sp"|"sleepiness"|"fatigue"／mode: "add"|"set"|"full"|"empty"
   if (type === "bossRemoveInvincibility") return { ...base, messageText: "" };
-  if (type === "bossChangeForm") return { ...base, messageText: "", formName: "", formAtkMultiplier: 1.3, formHealRatio: 0 };
   if (type === "bossSummonAlly") return { ...base, messageText: "", allyMonsterKey: "" };
   if (type === "bossHeal") return { ...base, messageText: "", healRatio: 0.3 };
   if (type === "bossUseSkill") return { ...base, skillName: "", skillMultiplier: 1.5 };
@@ -2890,8 +2893,8 @@ function createBlock(type) {
   if (type === "classselect") return { ...base }; // ★第一話の職業選択〜初期化一式をまとめて行う特殊ブロック（フィールドなし）
   if (type === "setrank") return { ...base, nickname: "" };
   if (type === "gameover") return { ...base, message: "力尽きてしまった……", endingName: "", retryJumpBlockId: null }; // ★ゲームオーバーもバッドエンドの一種として扱う。retryJumpBlockIdを指定すると「リトライ」の戻り先を話の最初以外にできる
-  if (type === "ending") return { ...base, endingType: "true", title: "END", endroll: "", endrollEnabled: true, endrollBgm: "" }; // endingType: "bad" | "true" | "happy"
-  if (type === "clearchapter") return { ...base, resetProgress: true, endrollEnabled: false, endroll: "", endrollBgm: "", endrollScrollSeconds: 20 }; // ★「エンディング」と違い、タイトル画面には戻らず、そのまま話が続く。冒険が一区切りついたが完結はしない場面（パーティー加入など）向け
+  if (type === "ending") return { ...base, endingType: "true", title: "END", endroll: "", endrollEnabled: true, endrollBgm: "", endrollBgmFadeSeconds: null }; // endingType: "bad" | "true" | "happy"
+  if (type === "clearchapter") return { ...base, resetProgress: true, endrollEnabled: false, endroll: "", endrollBgm: "", endrollScrollSeconds: 20, endrollBgmFadeSeconds: null }; // ★「エンディング」と違い、タイトル画面には戻らず、そのまま話が続く。冒険が一区切りついたが完結はしない場面（パーティー加入など）向け
   if (type === "if") {
     return {
       ...base,
@@ -2956,7 +2959,6 @@ function blockPreviewText(block) {
     return `${targetLabel}の${GAUGE_LABELS[block.gauge] || "HP"}を${modeLabel}`;
   }
   if (block.type === "bossRemoveInvincibility") return "ボスの無敵を解除する";
-  if (block.type === "bossChangeForm") return `第2形態にする（${block.formName || "名前そのまま"}）`;
   if (block.type === "bossSummonAlly") return `仲間を呼ぶ：${block.allyMonsterKey || "（未指定）"}`;
   if (block.type === "bossHeal") return `ボスのHPを回復（最大HPの${Math.round((block.healRatio || 0) * 100)}%）`;
   if (block.type === "bossUseSkill") return `ボスが技を撃つ：${block.skillName || "（未指定）"}`;
@@ -3532,55 +3534,6 @@ function buildBlockFormFields(chapter, block) {
     msgInput.onchange = () => { block.messageText = msgInput.value; persist(); };
     msgRow.appendChild(msgInput);
     wrap.appendChild(msgRow);
-    return wrap;
-  }
-  
-  if (block.type === "bossChangeForm") {
-    const noteEl = document.createElement("p");
-    noteEl.className = "devmode-note scenariobuild-condition";
-    noteEl.textContent = "ボスの戦闘イベント（演出ブロック）実行中にのみ効果があります。名前を変え、攻撃力を上げ、HPを回復させます。";
-    wrap.appendChild(noteEl);
-    const msgRow = document.createElement("div");
-    msgRow.className = "scenariobuild-condition-row";
-    msgRow.appendChild(labelSpan("セリフ・メッセージ："));
-    const msgInput = document.createElement("input");
-    msgInput.type = "text";
-    msgInput.className = "scenariobuild-title-input";
-    msgInput.placeholder = "空欄でもOK（既定の文言が使われます）";
-    msgInput.value = block.messageText || "";
-    msgInput.onchange = () => { block.messageText = msgInput.value; persist(); };
-    msgRow.appendChild(msgInput);
-    wrap.appendChild(msgRow);
-    const formRow = document.createElement("div");
-    formRow.className = "scenariobuild-condition-row";
-    formRow.appendChild(labelSpan("変身後の名前："));
-    const formNameInput = document.createElement("input");
-    formNameInput.type = "text";
-    formNameInput.className = "scenariobuild-title-input";
-    formNameInput.placeholder = "空欄なら名前はそのまま";
-    formNameInput.value = block.formName || "";
-    formNameInput.onchange = () => { block.formName = formNameInput.value; persist(); };
-    formRow.appendChild(formNameInput);
-    wrap.appendChild(formRow);
-    const formRow2 = document.createElement("div");
-    formRow2.className = "scenariobuild-condition-row";
-    formRow2.appendChild(labelSpan("攻撃力倍率："));
-    const formAtkInput = document.createElement("input");
-    formAtkInput.type = "number";
-    formAtkInput.step = "0.1";
-    formAtkInput.className = "scenariobuild-condition-input";
-    formAtkInput.value = block.formAtkMultiplier != null ? block.formAtkMultiplier : 1.3;
-    formAtkInput.onchange = () => { block.formAtkMultiplier = Number(formAtkInput.value) || 1; persist(); };
-    formRow2.appendChild(formAtkInput);
-    formRow2.appendChild(labelSpan("HP回復割合(0〜1)："));
-    const formHealInput = document.createElement("input");
-    formHealInput.type = "number";
-    formHealInput.min = "0"; formHealInput.max = "1"; formHealInput.step = "0.05";
-    formHealInput.className = "scenariobuild-condition-input";
-    formHealInput.value = block.formHealRatio != null ? block.formHealRatio : 0;
-    formHealInput.onchange = () => { block.formHealRatio = Math.max(0, Math.min(1, Number(formHealInput.value) || 0)); persist(); };
-    formRow2.appendChild(formHealInput);
-    wrap.appendChild(formRow2);
     return wrap;
   }
   
@@ -4405,6 +4358,24 @@ function buildBlockFormFields(chapter, block) {
       endrollSpeedInput.onchange = () => { block.endrollScrollSeconds = Math.max(5, Number(endrollSpeedInput.value) || 20); persist(); };
       endrollSpeedRow.appendChild(endrollSpeedInput);
       wrap.appendChild(endrollSpeedRow);
+      
+      const endrollFadeRow = document.createElement("div");
+      endrollFadeRow.className = "scenariobuild-condition-row";
+      endrollFadeRow.appendChild(labelSpan("終了時のBGMフェードアウト秒数（空欄で4秒）："));
+      const endrollFadeInput = document.createElement("input");
+      endrollFadeInput.type = "number";
+      endrollFadeInput.min = "0";
+      endrollFadeInput.step = "0.5";
+      endrollFadeInput.className = "scenariobuild-condition-input";
+      endrollFadeInput.placeholder = "4";
+      endrollFadeInput.value = block.endrollBgmFadeSeconds != null ? block.endrollBgmFadeSeconds : "";
+      endrollFadeInput.onchange = () => {
+        const raw = endrollFadeInput.value.trim();
+        block.endrollBgmFadeSeconds = raw === "" ? null : Math.max(0, Number(raw) || 0);
+        persist();
+      };
+      endrollFadeRow.appendChild(endrollFadeInput);
+      wrap.appendChild(endrollFadeRow);
     }
     
     const clearNote = document.createElement("p");
@@ -4476,6 +4447,24 @@ function buildBlockFormFields(chapter, block) {
       endrollSpeedInput.onchange = () => { block.endrollScrollSeconds = Math.max(5, Number(endrollSpeedInput.value) || 20); persist(); };
       endrollSpeedRow.appendChild(endrollSpeedInput);
       wrap.appendChild(endrollSpeedRow);
+      
+      const endrollFadeRow = document.createElement("div");
+      endrollFadeRow.className = "scenariobuild-condition-row";
+      endrollFadeRow.appendChild(labelSpan("終了時のBGMフェードアウト秒数（空欄で4秒）："));
+      const endrollFadeInput = document.createElement("input");
+      endrollFadeInput.type = "number";
+      endrollFadeInput.min = "0";
+      endrollFadeInput.step = "0.5";
+      endrollFadeInput.className = "scenariobuild-condition-input";
+      endrollFadeInput.placeholder = "4";
+      endrollFadeInput.value = block.endrollBgmFadeSeconds != null ? block.endrollBgmFadeSeconds : "";
+      endrollFadeInput.onchange = () => {
+        const raw = endrollFadeInput.value.trim();
+        block.endrollBgmFadeSeconds = raw === "" ? null : Math.max(0, Number(raw) || 0);
+        persist();
+      };
+      endrollFadeRow.appendChild(endrollFadeInput);
+      wrap.appendChild(endrollFadeRow);
     }
     return wrap;
   }
@@ -4762,7 +4751,7 @@ function ensureCustomFameThresholdsRegistered() {
 
 function getBossManagerConfig() {
   return {
-    note: "既にいるボス（boss.js）も一覧に出ており、直接編集・削除できます（実際のゲームデータそのものが変わります）。戦闘ブロックの魔物IDにこのIDを入れると、ボス扱い（専用BGM込み）でテストプレイできます。BGM欄はBGM設定タブで登録した曲名、または直接ファイルパスを貼り付けられます。「レベル」を設定すると、エリアの固定レベル設定や主人公のレベルに関わらず、必ずそのレベルで出現します（空欄ならエリア設定または主人公基準）。「ステータスを固定する」をONにすると、レベルによる自動計算はせず、HP・攻撃力・経験値をここで入力した数値そのままで戦えます（レベルは表示だけに使われます）。「無敵解除アイテムID」を指定すると、そのボスは最初ダメージが一切通らない無敵状態になり、戦闘中にプレイヤーがそのアイテムを実際に「使う」まで攻撃が効きません（空欄なら今まで通り最初からダメージが通ります。持っているだけでは解除されず、道具コマンドから使う必要があります）。詳細設定の「戦闘イベント」欄の「編集」ボタンから開く専用画面では、ボスの体力/主人公のHP・SP/経過ターン数を条件に、戦闘中セリフ・無敵解除・第2形態・仲間を呼ぶ・回復・特定の技、または「演出ブロックで自由に組む」（if・変数操作・パラメータ変更なども使える、話のブロックと同じ仕組み）を組み合わせて演出できます（1つのイベントは戦闘中1回だけ発火します）。",
+    note: "既にいるボス（boss.js）も一覧に出ており、直接編集・削除できます（実際のゲームデータそのものが変わります）。戦闘ブロックの魔物IDにこのIDを入れると、ボス扱い（専用BGM込み）でテストプレイできます。BGM欄はBGM設定タブで登録した曲名、または直接ファイルパスを貼り付けられます。「レベル」を設定すると、エリアの固定レベル設定や主人公のレベルに関わらず、必ずそのレベルで出現します（空欄ならエリア設定または主人公基準）。「ステータスを固定する」をONにすると、レベルによる自動計算はせず、HP・攻撃力・経験値をここで入力した数値そのままで戦えます（レベルは表示だけに使われます）。「1ターンの行動回数」を2以上にすると、このボスは1ターンに指定した回数だけ連続で行動します（途中で力尽きたら残りの行動はしません）。「無敵解除アイテムID」を指定すると、そのボスは最初ダメージが一切通らない無敵状態になり、戦闘中にプレイヤーがそのアイテムを実際に「使う」まで攻撃が効きません（空欄なら今まで通り最初からダメージが通ります。持っているだけでは解除されず、道具コマンドから使う必要があります）。詳細設定の「形態」欄の「編集」ボタンから開く専用画面では、好きな数だけ形態（第2形態以降）を追加・削除でき、形態ごとに名前・画像・大きさ・攻撃力倍率・移行直後のHP割合・専用BGM（「BGM引き継ぎ」ONなら曲を変えずそのまま流し続けます）を個別に設定できます。形態は「前の形態のHPが0になった瞬間」に自動的に次へ進み（発動条件の指定はできません）、その瞬間の演出（セリフ等）は「戦闘イベント」側で条件を「形態が◯になった瞬間」にすることで組み立てます。「戦闘イベント」欄の「編集」ボタンから開く専用画面では、ボスの体力/主人公のHP・SP/経過ターン数/形態の切り替わりを条件に、戦闘中セリフ・無敵解除・仲間を呼ぶ・回復・特定の技、または「演出ブロックで自由に組む」（if・変数操作・パラメータ変更なども使える、話のブロックと同じ仕組み）を組み合わせて演出できます（1つのイベントは戦闘中1回だけ発火します）。",
     category: "bosses",
     useDetailEditor: true,
     showLevelPreview: true,
@@ -4780,9 +4769,10 @@ function getBossManagerConfig() {
       { key: "bgmCrisisTrack", label: "緊迫用BGM", type: "text", placeholder: "曲名 or パス（任意）", list: "scenariobuild-bgm-datalist" },
       { key: "imagePath", label: "画像パス", type: "text", placeholder: "例：img/敵/hobgoblin.png（空欄なら img/敵/名前.png を使う）" },
       { key: "sizeMultiplier", label: "大きさ倍率", type: "number", placeholder: "1.0（例：1.5で大きく、ボスらしく強調できます）" },
+      { key: "actionsPerTurn", label: "1ターンの行動回数", type: "number", placeholder: "1（例：2にすると1ターンに2回連続で行動します）" },
       { key: "invincibilityBreakItemId", label: "無敵解除アイテムID", type: "text", placeholder: "空欄＝最初からダメージが通る", list: "scenariobuild-item-datalist" }
     ],
-    newEntity: () => ({ id: generateId("boss"), name: "", description: "", level: null, fixedStats: "", maxHp: 50, atk: 10, exp: 50, bgmTrack: "", bgmFinalTrack: "", bgmCrisisTrack: "", imagePath: "", sizeMultiplier: 1, invincibilityBreakItemId: "", dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], normalAttackStatusInflictions: [], statusImmunities: [], statusResistances: {}, battleEvents: [] }),
+    newEntity: () => ({ id: generateId("boss"), name: "", description: "", level: null, fixedStats: "", maxHp: 50, atk: 10, exp: 50, bgmTrack: "", bgmFinalTrack: "", bgmCrisisTrack: "", imagePath: "", sizeMultiplier: 1, actionsPerTurn: 1, invincibilityBreakItemId: "", dropItemId: null, dropRate: 0, killFlavor: "", spareFlavor: "", giftItemId: null, uniqueSkill: null, statusInflictions: [], normalAttackStatusInflictions: [], statusImmunities: [], statusResistances: {}, battleEvents: [], forms: [] }),
     onChange: ensureCustomMonstersRegistered,
     getDefaultFromMaster: (id) => {
       const master = typeof BOSS_MASTER !== "undefined" ? BOSS_MASTER[id] : null;
@@ -4791,6 +4781,7 @@ function getBossManagerConfig() {
         name: master.name, description: master.description || "", level: master.level || null, fixedStats: master.fixedStats ? "on" : "", maxHp: master.maxHp, atk: master.atk, exp: master.exp,
         bgmTrack: master.bgmTrack || "", bgmFinalTrack: master.bgmFinalTrack || "", bgmCrisisTrack: master.bgmCrisisTrack || "",
         imagePath: master.imagePath || "", sizeMultiplier: (typeof master.sizeMultiplier === "number" && master.sizeMultiplier > 0) ? master.sizeMultiplier : 1,
+        actionsPerTurn: (typeof master.actionsPerTurn === "number" && master.actionsPerTurn > 0) ? master.actionsPerTurn : 1, // ★要望対応：1ターンの行動回数
         invincibilityBreakItemId: master.invincibilityBreakItemId || "",
         dropItemId: master.dropItemId || null, dropRate: master.dropRate || 0,
         killFlavor: master.killFlavor || "", spareFlavor: master.spareFlavor || "", giftItemId: master.giftItemId || null,
@@ -4803,7 +4794,8 @@ function getBossManagerConfig() {
         // ★要望対応：この魔物自身の状態異常耐性・無効
         statusImmunities: Array.isArray(master.statusImmunities) ? [...master.statusImmunities] : [],
         statusResistances: master.statusResistances && typeof master.statusResistances === "object" ? { ...master.statusResistances } : {},
-        battleEvents: Array.isArray(master.battleEvents) ? master.battleEvents.map(e => ({ ...e })) : []
+        battleEvents: Array.isArray(master.battleEvents) ? master.battleEvents.map(e => ({ ...e })) : [],
+        forms: Array.isArray(master.forms) ? master.forms.map(f => ({ ...f })) : [] // ★要望対応：既存ボスの「形態」一覧も引き継ぐ
       };
     }
   };
@@ -9427,6 +9419,28 @@ function buildMonsterDetailEditor(entity, persist, category) {
     };
     eventRow.appendChild(eventEditBtn);
     wrap.appendChild(eventRow);
+    
+    // ★要望対応：ボスの「形態」（以前は演出ブロックの中で1回だけ第2形態に変身する仕組みだったのを廃止し、
+    //   好きな数だけ形態を追加・削除できるようにした。各形態は名前・画像・大きさ・攻撃力倍率・
+    //   出現時の回復割合・専用BGM・発動条件を個別に持つ）
+    const formRow = document.createElement("div");
+    formRow.className = "scenariobuild-condition-row";
+    if (!Array.isArray(entity.forms)) entity.forms = [];
+    const formSummaryEl = document.createElement("span");
+    formSummaryEl.className = "devmode-note";
+    formSummaryEl.textContent = entity.forms.length > 0 ? `形態：形態1(素の姿)＋追加${entity.forms.length}件` : "形態：形態1(素の姿)のみ";
+    formRow.appendChild(formSummaryEl);
+    const formEditBtn = document.createElement("button");
+    formEditBtn.className = "devmode-btn";
+    formEditBtn.textContent = "編集";
+    formEditBtn.onclick = (evt) => {
+      evt.stopPropagation();
+      scenarioBuildEditingBossFormRef = { bossId: entity.id };
+      scenarioBuildMainView = "bossFormListEditor";
+      renderScenarioBuildPanel();
+    };
+    formRow.appendChild(formEditBtn);
+    wrap.appendChild(formRow);
   }
   
   return wrap;
@@ -9598,20 +9612,20 @@ const BOSS_EVENT_CONDITION_OPTIONS = [
   { value: "bossHpBelow", label: "ボスの体力が◯%以下になったら" },
   { value: "playerHpBelow", label: "主人公のHPが◯%以下になったら" },
   { value: "playerSpBelow", label: "主人公のSPが◯%以下になったら" },
-  { value: "turnCount", label: "経過ターン数が◯以上になったら" }
+  { value: "turnCount", label: "経過ターン数が◯以上になったら" },
+  { value: "formBecomes", label: "形態が◯になった瞬間" } // ★要望対応：形態タブで設定した各形態への自動切り替わりに反応する専用の条件
 ];
 const BOSS_EVENT_ACTION_OPTIONS = [
   { value: "message", label: "戦闘中セリフを言う（行動は消費しない）" },
   { value: "removeInvincibility", label: "無敵を解除する（行動は消費しない）" },
-  { value: "changeForm", label: "第2形態になる（名前変更・攻撃力アップ・HP回復）" },
   { value: "summonAlly", label: "仲間を呼ぶ（指定した魔物が1体増援参戦する）" },
   { value: "heal", label: "自分のHPを回復する" },
   { value: "useSkill", label: "特定の技を撃つ" },
   { value: "blocks", label: "演出ブロックで自由に組む（セリフ・演出・if・変数操作・パラメータ変更など）" }
 ];
 
-// ★ボスの「戦闘イベント」：ifブロック的に、ボス/主人公のHP割合やターン数を条件に、
-//   セリフ・無敵解除・第2形態・仲間を呼ぶ・回復・特定の技、のいずれかを発火させる（要望対応）。
+// ★ボスの「戦闘イベント」：ifブロック的に、ボス/主人公のHP割合・ターン数・形態の切り替わりを条件に、
+//   セリフ・無敵解除・仲間を呼ぶ・回復・特定の技、のいずれかを発火させる（要望対応）。
 //   1つのイベントは戦闘中1回だけ発火する（battle.jsのfindTriggerableBossBattleEvent/executeBossBattleEvent参照）
 function buildBossBattleEventEditor(entity, persist) {
   const wrap = document.createElement("div");
@@ -9681,41 +9695,7 @@ function buildBossBattleEventEditor(entity, persist) {
     msgRow.appendChild(msgInput);
     box.appendChild(msgRow);
     
-    if (event.action === "changeForm") {
-      const formRow = document.createElement("div");
-      formRow.className = "scenariobuild-condition-row";
-      formRow.style.flexWrap = "wrap";
-      formRow.appendChild(labelSpan("変身後の名前："));
-      const formNameInput = document.createElement("input");
-      formNameInput.type = "text";
-      formNameInput.className = "scenariobuild-title-input";
-      formNameInput.placeholder = "空欄なら名前はそのまま";
-      formNameInput.value = event.formName || "";
-      formNameInput.onchange = () => { event.formName = formNameInput.value; persist(); };
-      formRow.appendChild(formNameInput);
-      box.appendChild(formRow);
-      
-      const formRow2 = document.createElement("div");
-      formRow2.className = "scenariobuild-condition-row";
-      formRow2.appendChild(labelSpan("攻撃力倍率："));
-      const formAtkInput = document.createElement("input");
-      formAtkInput.type = "number";
-      formAtkInput.step = "0.1";
-      formAtkInput.className = "scenariobuild-condition-input";
-      formAtkInput.value = event.formAtkMultiplier != null ? event.formAtkMultiplier : 1.3;
-      formAtkInput.onchange = () => { event.formAtkMultiplier = Number(formAtkInput.value) || 1; persist(); };
-      formRow2.appendChild(formAtkInput);
-      formRow2.appendChild(labelSpan("HP回復割合(0〜1)："));
-      const formHealInput = document.createElement("input");
-      formHealInput.type = "number";
-      formHealInput.min = "0"; formHealInput.max = "1"; formHealInput.step = "0.05";
-      formHealInput.className = "scenariobuild-condition-input";
-      formHealInput.value = event.formHealRatio != null ? event.formHealRatio : 0;
-      formHealInput.onchange = () => { event.formHealRatio = Math.max(0, Math.min(1, Number(formHealInput.value) || 0)); persist(); };
-      formRow2.appendChild(formHealInput);
-      box.appendChild(formRow2);
-      
-    } else if (event.action === "summonAlly") {
+    if (event.action === "summonAlly") {
       const allyRow = document.createElement("div");
       allyRow.className = "scenariobuild-condition-row";
       allyRow.appendChild(labelSpan("呼び出す魔物ID："));
@@ -9825,6 +9805,186 @@ function buildBossBattleEventEditor(entity, persist) {
   wrap.appendChild(addBtn);
   
   return wrap;
+}
+
+// ===== ボスの「形態」一覧エディタ（要望対応） =====
+// 以前は戦闘イベントの中の一アクション（changeForm）として、決め打ちで1回だけ「第2形態」に
+// 変身する仕組みだったのを廃止し、好きな数だけ形態を追加・削除できるようにした。
+// 形態1＝ボス本来の姿（詳細設定の名前・画像・攻撃力・BGMそのもの）。
+// ここで追加する形態は「形態2」以降にあたり、配列の並び順どおりに切り替わっていく
+// （forms[0]が形態2、forms[1]が形態3……）。各形態は名前・画像・大きさ・攻撃力倍率・
+// 出現時の回復割合・専用BGMを個別に持ち、発動条件（ボスの体力/主人公のHP・SP/経過ターン数）を
+// 満たした瞬間に自動で切り替わる。切り替わった瞬間の演出は、戦闘イベント側で
+// 条件を「形態が◯になった瞬間」にすることで別途組み立てる（このエディタでは組まない）
+function buildBossFormEditor(entity, persist) {
+  const wrap = document.createElement("div");
+  
+  const noteEl = document.createElement("p");
+  noteEl.className = "devmode-note scenariobuild-condition";
+  noteEl.textContent = "形態1（素の姿）はボスの詳細設定（名前・画像・攻撃力・BGM）がそのまま使われます。ここでは形態2以降を、並び順どおりに追加します。形態は「前の形態のHPが0になった瞬間」に自動的に次へ進みます（発動条件は指定できません）。攻撃力倍率は形態1の攻撃力に対する倍率（複利にはなりません）。移行直後のHP割合は、そのまま新しいHPになります（空欄なら満タン）。この形態専用の演出をしたい場合は、戦闘イベント側で条件を「形態が◯になった瞬間」にして組んでください（◯には、この形態の番号を入れます）。";
+  wrap.appendChild(noteEl);
+  
+  if (!Array.isArray(entity.forms)) entity.forms = [];
+  
+  entity.forms.forEach((form, index) => {
+    const formNumber = index + 2; // ★forms[0]が形態2、forms[1]が形態3……
+    const box = document.createElement("div");
+    box.className = "scenariobuild-skill-repeat-body";
+    
+    const headerEl = document.createElement("p");
+    headerEl.className = "devmode-note";
+    headerEl.style.fontWeight = "bold";
+    headerEl.textContent = `形態${formNumber}`;
+    box.appendChild(headerEl);
+    
+    const nameRow = document.createElement("div");
+    nameRow.className = "scenariobuild-condition-row";
+    nameRow.appendChild(labelSpan("名前："));
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "scenariobuild-title-input";
+    nameInput.placeholder = "空欄なら直前の形態の名前のまま";
+    nameInput.value = form.name || "";
+    nameInput.onchange = () => { form.name = nameInput.value; persist(); };
+    nameRow.appendChild(nameInput);
+    box.appendChild(nameRow);
+    
+    const imageRow = document.createElement("div");
+    imageRow.className = "scenariobuild-condition-row";
+    imageRow.appendChild(labelSpan("画像パス："));
+    const imageInput = document.createElement("input");
+    imageInput.type = "text";
+    imageInput.className = "scenariobuild-title-input";
+    imageInput.placeholder = "空欄なら直前の形態の画像のまま";
+    imageInput.value = form.imagePath || "";
+    imageInput.onchange = () => { form.imagePath = imageInput.value; persist(); };
+    imageRow.appendChild(imageInput);
+    box.appendChild(imageRow);
+    
+    const sizeRow = document.createElement("div");
+    sizeRow.className = "scenariobuild-condition-row";
+    sizeRow.appendChild(labelSpan("大きさ倍率："));
+    const sizeInput = document.createElement("input");
+    sizeInput.type = "number";
+    sizeInput.step = "0.1";
+    sizeInput.className = "scenariobuild-condition-input";
+    sizeInput.placeholder = "空欄なら変えない";
+    sizeInput.value = form.sizeMultiplier != null ? form.sizeMultiplier : "";
+    sizeInput.onchange = () => { const v = Number(sizeInput.value); form.sizeMultiplier = (sizeInput.value !== "" && v > 0) ? v : null; persist(); };
+    sizeRow.appendChild(sizeInput);
+    box.appendChild(sizeRow);
+    
+    const statsRow = document.createElement("div");
+    statsRow.className = "scenariobuild-condition-row";
+    statsRow.appendChild(labelSpan("攻撃力倍率："));
+    const atkInput = document.createElement("input");
+    atkInput.type = "number";
+    atkInput.step = "0.1";
+    atkInput.className = "scenariobuild-condition-input";
+    atkInput.value = form.atkMultiplier != null ? form.atkMultiplier : 1;
+    atkInput.onchange = () => { atkInput.value = Number(atkInput.value) || 1; form.atkMultiplier = Number(atkInput.value); persist(); };
+    statsRow.appendChild(atkInput);
+    statsRow.appendChild(labelSpan("移行直後のHP割合(0〜1)："));
+    const healInput = document.createElement("input");
+    healInput.type = "number";
+    healInput.min = "0"; healInput.max = "1"; healInput.step = "0.05";
+    healInput.className = "scenariobuild-condition-input";
+    healInput.placeholder = "空欄なら満タン";
+    healInput.value = form.healRatioOnEnter != null ? form.healRatioOnEnter : "";
+    healInput.onchange = () => { const v = Number(healInput.value); form.healRatioOnEnter = (healInput.value !== "" && v > 0) ? Math.min(1, v) : null; persist(); };
+    statsRow.appendChild(healInput);
+    box.appendChild(statsRow);
+    
+    const bgmRow = document.createElement("div");
+    bgmRow.className = "scenariobuild-condition-row";
+    bgmRow.appendChild(labelSpan("専用BGM："));
+    const bgmInput = document.createElement("input");
+    bgmInput.type = "text";
+    bgmInput.className = "scenariobuild-title-input";
+    bgmInput.placeholder = "空欄なら直前の曲のまま";
+    bgmInput.setAttribute("list", "scenariobuild-bgm-datalist");
+    bgmInput.value = form.bgmTrack || "";
+    bgmInput.onchange = () => { form.bgmTrack = bgmInput.value; persist(); };
+    bgmRow.appendChild(bgmInput);
+    box.appendChild(bgmRow);
+    
+    // ★要望対応：BGM引き継ぎ。ONの場合、専用BGMを入力していてもBGMは一切切り替えず、
+    //   この形態になる直前まで流れていた曲をそのまま流し続ける（既定でON）
+    const inheritLabel = document.createElement("label");
+    inheritLabel.className = "scenariobuild-cleared-label";
+    const inheritCheckbox = document.createElement("input");
+    inheritCheckbox.type = "checkbox";
+    inheritCheckbox.checked = form.inheritBgm !== false; // ★未設定（既存データ含む）なら既定でON
+    bgmInput.disabled = inheritCheckbox.checked;
+    inheritCheckbox.onchange = () => {
+      form.inheritBgm = inheritCheckbox.checked;
+      bgmInput.disabled = inheritCheckbox.checked;
+      persist();
+    };
+    inheritLabel.appendChild(inheritCheckbox);
+    inheritLabel.append(" BGM引き継ぎ（ONだと専用BGMを設定していても切り替えず、直前の曲をそのまま流し続けます）");
+    box.appendChild(inheritLabel);
+    
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "devmode-btn devmode-btn-danger";
+    removeBtn.textContent = "この形態を削除";
+    removeBtn.onclick = (evt) => {
+      evt.stopPropagation();
+      entity.forms.splice(index, 1);
+      persist();
+      renderScenarioBuildPanel();
+    };
+    box.appendChild(removeBtn);
+    
+    wrap.appendChild(box);
+  });
+  
+  const addBtn = document.createElement("button");
+  addBtn.className = "devmode-btn";
+  addBtn.textContent = "＋形態を追加";
+  addBtn.onclick = (evt) => {
+    evt.stopPropagation();
+    entity.forms.push({
+      id: generateId("bossform"), name: "", imagePath: "", sizeMultiplier: null,
+      atkMultiplier: 1.3, healRatioOnEnter: null, bgmTrack: "", inheritBgm: true
+    });
+    persist();
+    renderScenarioBuildPanel();
+  };
+  wrap.appendChild(addBtn);
+  
+  return wrap;
+}
+
+// ===== メイン画面：ボスの形態一覧エディタ（専用全画面。scenarioBuildMainView === "bossFormListEditor"） =====
+function renderBossFormListEditor(container) {
+  const ref = scenarioBuildEditingBossFormRef;
+  const boss = ref && (scenarioProject.bosses || []).find(b => b.id === ref.bossId);
+  
+  const backBtn = document.createElement("button");
+  backBtn.className = "devmode-btn";
+  backBtn.textContent = "← ボス編集に戻る";
+  backBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioBuildMainView = "entityEditor";
+    scenarioBuildEditingBossFormRef = null;
+    renderScenarioBuildPanel();
+  };
+  container.appendChild(backBtn);
+  
+  if (!boss) {
+    scenarioBuildMainView = "editor";
+    scenarioBuildSubView = "bosses";
+    scenarioBuildEditingBossFormRef = null;
+    renderScenarioBuildPanel();
+    return;
+  }
+  
+  const titleEl = document.createElement("h3");
+  titleEl.textContent = `「${boss.name || "（名称未設定）"}」の形態`;
+  container.appendChild(titleEl);
+  
+  container.appendChild(buildBossFormEditor(boss, () => { markScenarioBuildDirty(); ensureCustomMonstersRegistered(); }));
 }
 
 // ===== メイン画面：ボスの戦闘イベント一覧エディタ（専用全画面。scenarioBuildMainView === "bossEventListEditor"） =====
@@ -11282,21 +11442,6 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     return nextDefaultId;
   }
   
-  if (block.type === "bossChangeForm") {
-    const enemy = (typeof currentBossEventEnemy !== "undefined") ? currentBossEventEnemy : null;
-    if (enemy) {
-      changeSpeaker("");
-      await displayMessage(block.messageText || `${enemy.displayName}の様子が変わった……！`);
-      if (block.formName) enemy.displayName = block.formName;
-      const atkMultiplier = Number(block.formAtkMultiplier) || 1;
-      enemy.atk = Math.round(enemy.atk * atkMultiplier);
-      const healRatio = Number(block.formHealRatio) || 0;
-      if (healRatio > 0) enemy.hp = Math.min(enemy.maxHp, enemy.hp + Math.round(enemy.maxHp * healRatio));
-      if (typeof updateBattleHud === "function") updateBattleHud();
-    }
-    return nextDefaultId;
-  }
-  
   if (block.type === "bossSummonAlly") {
     const enemy = (typeof currentBossEventEnemy !== "undefined") ? currentBossEventEnemy : null;
     if (enemy) {
@@ -11644,7 +11789,7 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     
     const endrollEnabled = block.endrollEnabled !== false; // ★未指定（古いデータ）の場合はこれまで通りON扱い
     if (endrollEnabled && block.endroll && typeof playEndRoll === "function") {
-      await playEndRoll(block.endroll, block.endrollBgm || null, block.endrollScrollSeconds || 20); // mainfunc.js
+      await playEndRoll(block.endroll, block.endrollBgm || null, block.endrollScrollSeconds || 20, block.endrollBgmFadeSeconds); // mainfunc.js
     }
     returnToTitleScreen(); // mainfunc.js ★エンドロールが終わったら（無ければそのまま）タイトル画面に戻る
     return "TITLE";
@@ -11671,7 +11816,7 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     // ★要望対応：エンディングでなくても、話クリアのタイミングでエンドロールを流せるようにする。
     //   タイトル画面には戻らないので、流し終わったら普通にnextDefaultIdへ進む
     if (block.endrollEnabled === true && block.endroll && typeof playEndRoll === "function") {
-      await playEndRoll(block.endroll, block.endrollBgm || null, block.endrollScrollSeconds || 20); // mainfunc.js
+      await playEndRoll(block.endroll, block.endrollBgm || null, block.endrollScrollSeconds || 20, block.endrollBgmFadeSeconds); // mainfunc.js
     }
     return nextDefaultId;
   }
