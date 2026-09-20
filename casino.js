@@ -129,12 +129,20 @@ const CASINO_SLOT_SPIN_SPEED = 0.55;        // px/ms（1マス=76pxを約138ms�
 const CASINO_SLOT_BUFFER_CELLS = 8;         // ★見えている範囲より、常にこの数ぶん先まで帯を伸ばしておく
 const CASINO_SLOT_STOP_TRANSITION_MS = 550; // ★止める時の「滑らかに減速して着地する」アニメーションの長さ
 
+// ★要望対応：各絵柄の「揃う確率」（重み）を施設ごとに変えられるようにする。
+//   施設側でfacility.slotWeights[key]に数値が指定されていればそれを使い、無指定ならCASINO_SLOT_SYMBOLSの既定値を使う
+function getSlotSymbolWeight(symbol) {
+  const override = casinoFacility && casinoFacility.slotWeights && casinoFacility.slotWeights[symbol.key];
+  return (typeof override === "number" && override > 0) ? override : symbol.weight;
+}
+
 function pickWeightedSlotSymbol() {
-  const total = CASINO_SLOT_SYMBOLS.reduce((sum, s) => sum + s.weight, 0);
+  const weights = CASINO_SLOT_SYMBOLS.map(s => getSlotSymbolWeight(s));
+  const total = weights.reduce((sum, w) => sum + w, 0);
   let r = Math.random() * total;
-  for (const symbol of CASINO_SLOT_SYMBOLS) {
-    if (r < symbol.weight) return symbol;
-    r -= symbol.weight;
+  for (let i = 0; i < CASINO_SLOT_SYMBOLS.length; i++) {
+    if (r < weights[i]) return CASINO_SLOT_SYMBOLS[i];
+    r -= weights[i];
   }
   return CASINO_SLOT_SYMBOLS[CASINO_SLOT_SYMBOLS.length - 1];
 }
@@ -160,6 +168,8 @@ function getWinningSlotLines(boardSymbols) {
   return winners;
 }
 
+// ★要望対応：以前は「2つだけ揃うと掛け金の半分が戻ってくる」小当たりがあったが、廃止する。
+//   ライン揃い以外は素直にハズレ扱いにする
 function getSlotBoardResult(boardSymbols) {
   const winningLines = getWinningSlotLines(boardSymbols);
   if (winningLines.length > 0) {
@@ -173,23 +183,6 @@ function getSlotBoardResult(boardSymbols) {
       line: winningIndexes,
       payout: totalPayout,
       profit: totalPayout
-    };
-  }
-
-  const counts = {};
-  boardSymbols.forEach(symbol => {
-    if (!symbol) return;
-    counts[symbol.key] = (counts[symbol.key] || 0) + 1;
-  });
-  const pairKey = Object.keys(counts).find(key => counts[key] >= 2);
-  if (pairKey) {
-    const symbol = CASINO_SLOT_SYMBOLS.find(s => s.key === pairKey) || CASINO_SLOT_SYMBOLS[0];
-    return {
-      type: "small",
-      symbol,
-      line: [],
-      payout: 1,
-      profit: 0.5
     };
   }
 
@@ -226,7 +219,7 @@ function renderCasinoSlotPayoutTable() {
   
   const note = document.createElement("div");
   note.className = "casino-slot-payout-note";
-  note.textContent = "同じ絵柄が3つ揃うと掛け金×倍率、2つだけ揃うと掛け金の半分が戻ってくる";
+  note.textContent = "同じ絵柄が3つ揃うと掛け金×倍率が戻ってくる";
   container.appendChild(note);
 }
 
@@ -578,8 +571,6 @@ async function startSlotGame() {
         } else {
           resultEl.textContent = `大当たり！ ${result.symbol.emoji} が揃って${bet * result.payout}陳の儲けだ！`;
         }
-      } else if (result.type === "small") {
-        resultEl.textContent = `惜しい、2つ揃った。${Math.ceil(bet * 0.5)}陳だけ戻ってきた。`;
       } else {
         resultEl.textContent = `残念、揃わなかった。${bet}陳は没収だな……`;
       }
@@ -587,9 +578,6 @@ async function startSlotGame() {
 
     if (result.type === "win") {
       changeGold(bet * result.payout);
-    } else if (result.type === "small") {
-      const refund = Math.ceil(bet * 0.5);
-      changeGold(refund);
     }
     renderStatusHUD();
 

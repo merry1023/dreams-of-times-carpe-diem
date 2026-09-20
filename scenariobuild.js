@@ -7785,7 +7785,7 @@ function renderFacilityManager(container) {
         bgTrack: "", bgImage: "", ownerDialogue: "",
         price: 20, sleepinessRecovery: 40, fatigueRecovery: 40,
         classChangeCost: 100,
-        minBet: 10, maxBet: 1000, slotImages: {} // ★カジノ系で使う項目（他の種類では無視される）
+        minBet: 10, maxBet: 1000, slotImages: {}, slotWeights: {} // ★カジノ系で使う項目（他の種類では無視される）
       };
       scenarioProject.facilities.push(newFacility);
       // ★以前はここで自動的に村へアタッチしていたが、他の拠点（カデリクの街など）にだけアタッチしたつもりでも
@@ -8101,24 +8101,27 @@ function buildFacilityRow(facility) {
     betRow.appendChild(maxBetInput);
     infoEl.appendChild(betRow);
     
-    // ★スロットの絵柄画像。パスを1つも設定していない絵柄は、ゲーム内では絵文字で表示される
+    // ★スロットの絵柄画像・揃う確率（重み）。画像パスを1つも設定していない絵柄は、ゲーム内では絵文字で表示される。
+    //   「揃う確率」は数値が大きいほどその絵柄が出やすくなる（他の絵柄との相対的な重み。既定値と同じ考え方）
     const slotNoteEl = document.createElement("p");
     slotNoteEl.className = "devmode-note";
     slotNoteEl.style.margin = "10px 0 2px";
-    slotNoteEl.textContent = "スロットの絵柄画像（任意）。空欄のままなら絵文字で表示されます。画像を使う場合は、正方形に近い小さめの画像を推奨します：";
+    slotNoteEl.textContent = "スロットの絵柄（任意で施設ごとにカスタマイズ）。画像は空欄のままなら絵文字で表示されます。「揃う確率」は数値が大きいほどその絵柄が出やすくなります（他の絵柄との相対的な重み。空欄なら既定値のまま）：";
     infoEl.appendChild(slotNoteEl);
     
     if (!facility.slotImages || typeof facility.slotImages !== "object") facility.slotImages = {};
+    if (!facility.slotWeights || typeof facility.slotWeights !== "object") facility.slotWeights = {};
     const SLOT_SYMBOL_ROWS = [
-      { key: "grape", label: "ぶどう（絵文字：🍇）" },
-      { key: "bell", label: "鈴（絵文字：🔔）" },
-      { key: "star", label: "星（絵文字：⭐）" },
-      { key: "gem", label: "宝石（絵文字：💎）" },
-      { key: "seven", label: "セブン（絵文字：7）" }
+      { key: "grape", label: "ぶどう（絵文字：🍇）", defaultWeight: 35 },
+      { key: "bell", label: "鈴（絵文字：🔔）", defaultWeight: 25 },
+      { key: "star", label: "星（絵文字：⭐）", defaultWeight: 20 },
+      { key: "gem", label: "宝石（絵文字：💎）", defaultWeight: 12 },
+      { key: "seven", label: "セブン（絵文字：7）", defaultWeight: 8 }
     ];
-    SLOT_SYMBOL_ROWS.forEach(({ key, label }) => {
+    SLOT_SYMBOL_ROWS.forEach(({ key, label, defaultWeight }) => {
       const slotRow = document.createElement("div");
       slotRow.className = "scenariobuild-condition-row";
+      slotRow.style.flexWrap = "wrap";
       slotRow.appendChild(labelSpan(`${label}："`));
       const pathInput = document.createElement("input");
       pathInput.type = "text";
@@ -8131,6 +8134,20 @@ function buildFacilityRow(facility) {
         markScenarioBuildDirty();
       };
       slotRow.appendChild(pathInput);
+      slotRow.appendChild(labelSpan("揃う確率："));
+      const weightInput = document.createElement("input");
+      weightInput.type = "number";
+      weightInput.min = "0";
+      weightInput.step = "1";
+      weightInput.className = "scenariobuild-condition-input";
+      weightInput.placeholder = String(defaultWeight);
+      weightInput.value = facility.slotWeights[key] != null ? facility.slotWeights[key] : "";
+      weightInput.onchange = () => {
+        const value = Number(weightInput.value);
+        if (weightInput.value !== "" && value > 0) facility.slotWeights[key] = value; else delete facility.slotWeights[key];
+        markScenarioBuildDirty();
+      };
+      slotRow.appendChild(weightInput);
       infoEl.appendChild(slotRow);
     });
   } else if (facility.type === "shop") {
