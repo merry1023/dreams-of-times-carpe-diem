@@ -1212,6 +1212,18 @@ function switchTab(tabId) {
     const fallbackTabId = getVisiblePlayTabIds()[0] || "tab-main";
     tabId = fallbackTabId;
   }
+  
+  // ★バグ修正：便利タブ（魔物図鑑・セーブロード等）を開いたまま、Aキーでのメイン画面移行
+  //   （設定「メイン画面に移行する時、メインタブに切り替える」）や便利タブ以外のタブボタンを
+  //   直接押すなどして便利タブ自体から離れると、それまで開いていたサブ画面のwindow keydown
+  //   リスナーが残ったままになり、他のタブに移った後も裏で「開いたまま」の判定になってしまう
+  //   バグがあった。便利タブから他のタブへ離れる時は、必ず先にサブ画面を後片付けしておく
+  //   （便利タブへ切り替える場合はrenderConvenienceIcons側で改めて呼ばれるので、ここでは
+  //   「便利タブ以外へ離れる」場合だけで十分）
+  const currentActiveTab = document.querySelector(".tab-content.active");
+  if (currentActiveTab && currentActiveTab.id === "tab-convenience" && tabId !== "tab-convenience" && typeof closeAllConvenienceSubPanels === "function") {
+    closeAllConvenienceSubPanels(); // convenience.js
+  }
 
   const contents = document.querySelectorAll('.tab-content');
   const buttons = document.querySelectorAll('.tab-btn');
