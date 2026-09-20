@@ -415,6 +415,8 @@ async function startSlotGame() {
   const betDisplay = document.getElementById("casino-slot-bet-value");
   const betDecBtn = document.getElementById("casino-slot-bet-dec");
   const betIncBtn = document.getElementById("casino-slot-bet-inc");
+  const betMinBtn = document.getElementById("casino-slot-bet-min");
+  const betMaxBtn = document.getElementById("casino-slot-bet-max");
   const betStepDisplay = document.getElementById("casino-slot-bet-step-value");
   const betStepDecBtn = document.getElementById("casino-slot-bet-step-dec");
   const betStepIncBtn = document.getElementById("casino-slot-bet-step-inc");
@@ -449,6 +451,8 @@ async function startSlotGame() {
     if (betDisplay) betDisplay.textContent = `${nextBet}陳`;
     if (betDecBtn) betDecBtn.disabled = nextBet <= minBet;
     if (betIncBtn) betIncBtn.disabled = nextBet >= maxBet;
+    if (betMinBtn) betMinBtn.disabled = nextBet <= minBet;
+    if (betMaxBtn) betMaxBtn.disabled = nextBet >= maxBet;
     if (stopButton) {
       stopButton.innerHTML = `開始（${nextBet}陳）<span class="key-badge">Z</span>`;
     }
@@ -469,6 +473,8 @@ async function startSlotGame() {
     const cleanup = () => {
       if (betDecBtn) betDecBtn.removeEventListener("click", decClick);
       if (betIncBtn) betIncBtn.removeEventListener("click", incClick);
+      if (betMinBtn) betMinBtn.removeEventListener("click", minClick);
+      if (betMaxBtn) betMaxBtn.removeEventListener("click", maxClick);
       if (betStepDecBtn) betStepDecBtn.removeEventListener("click", stepDecClick);
       if (betStepIncBtn) betStepIncBtn.removeEventListener("click", stepIncClick);
       if (stopButton) stopButton.removeEventListener("click", confirmClick);
@@ -496,6 +502,14 @@ async function startSlotGame() {
       currentBet = Math.min(maxBet, currentBet + step);
       updateBetDisplay(currentBet);
     };
+    const minClick = () => {
+      currentBet = minBet;
+      updateBetDisplay(currentBet);
+    };
+    const maxClick = () => {
+      currentBet = maxBet;
+      updateBetDisplay(currentBet);
+    };
     const stepDecClick = () => changeStep(-1);
     const stepIncClick = () => changeStep(1);
 
@@ -507,6 +521,12 @@ async function startSlotGame() {
       } else if (event.key === "ArrowRight") {
         event.preventDefault(); event.stopImmediatePropagation();
         incClick();
+      } else if (event.key === "o" || event.key === "O") {
+        event.preventDefault(); event.stopImmediatePropagation();
+        minClick();
+      } else if (event.key === "p" || event.key === "P") {
+        event.preventDefault(); event.stopImmediatePropagation();
+        maxClick();
       } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.tabLeftKey.includes(event.key)) {
         event.preventDefault(); event.stopImmediatePropagation();
         changeStep(-1);
@@ -524,6 +544,8 @@ async function startSlotGame() {
 
     if (betDecBtn) betDecBtn.addEventListener("click", decClick);
     if (betIncBtn) betIncBtn.addEventListener("click", incClick);
+    if (betMinBtn) betMinBtn.addEventListener("click", minClick);
+    if (betMaxBtn) betMaxBtn.addEventListener("click", maxClick);
     if (betStepDecBtn) betStepDecBtn.addEventListener("click", stepDecClick);
     if (betStepIncBtn) betStepIncBtn.addEventListener("click", stepIncClick);
     if (stopButton) stopButton.addEventListener("click", confirmClick);

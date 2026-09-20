@@ -748,6 +748,8 @@ function pickQuantity(maxQty, itemLabel, options = {}) {
     const valueEl = document.getElementById("quantity-picker-value");
     const decBtn = document.getElementById("quantity-picker-dec");
     const incBtn = document.getElementById("quantity-picker-inc");
+    const minBtn = document.getElementById("quantity-picker-min");
+    const maxBtn = document.getElementById("quantity-picker-max");
     const confirmBtn = document.getElementById("quantity-picker-confirm");
     const cancelBtn = document.getElementById("quantity-picker-cancel");
     const stepRow = document.getElementById("quantity-picker-step-row");
@@ -760,6 +762,8 @@ function pickQuantity(maxQty, itemLabel, options = {}) {
       if (valueEl) valueEl.textContent = formatValue(qty);
       if (decBtn) decBtn.disabled = qty <= minQty;
       if (incBtn) incBtn.disabled = qty >= maxQty;
+      if (minBtn) minBtn.disabled = qty <= minQty;
+      if (maxBtn) maxBtn.disabled = qty >= maxQty;
       if (stepRow) {
         stepRow.classList.toggle("hidden", !stepOptions);
         if (stepOptions) {
@@ -793,6 +797,12 @@ function pickQuantity(maxQty, itemLabel, options = {}) {
       } else if (event.key === "ArrowLeft") {
         event.preventDefault(); event.stopImmediatePropagation();
         qty = Math.max(minQty, qty - step); render();
+      } else if (event.key === "o" || event.key === "O") {
+        event.preventDefault(); event.stopImmediatePropagation();
+        qty = minQty; render();
+      } else if (event.key === "p" || event.key === "P") {
+        event.preventDefault(); event.stopImmediatePropagation();
+        qty = maxQty; render();
       } else if (stepOptions && typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.tabLeftKey.includes(event.key)) {
         event.preventDefault(); event.stopImmediatePropagation();
         changeStep(-1);
@@ -810,6 +820,8 @@ function pickQuantity(maxQty, itemLabel, options = {}) {
     
     if (decBtn) decBtn.onclick = (event) => { event.stopPropagation(); qty = Math.max(minQty, qty - step); render(); };
     if (incBtn) incBtn.onclick = (event) => { event.stopPropagation(); qty = Math.min(maxQty, qty + step); render(); };
+    if (minBtn) minBtn.onclick = (event) => { event.stopPropagation(); qty = minQty; render(); };
+    if (maxBtn) maxBtn.onclick = (event) => { event.stopPropagation(); qty = maxQty; render(); };
     if (stepDecBtn) stepDecBtn.onclick = (event) => { event.stopPropagation(); changeStep(-1); };
     if (stepIncBtn) stepIncBtn.onclick = (event) => { event.stopPropagation(); changeStep(1); };
     if (confirmBtn) confirmBtn.onclick = (event) => { event.stopPropagation(); finish(qty); };
@@ -822,13 +834,13 @@ function pickQuantity(maxQty, itemLabel, options = {}) {
 }
 
 // ===== 買取屋：所持アイテムを売ってお金にする =====
-async function openBuyShop(returnTo) {
-  const goBack = typeof returnTo === "function" ? returnTo : openShopMenu;
-  currentLocationKey = "shop_buy"; // ★セーブ/ロードで現在地を復元するための記録
-  hideLocationMenu();
-  
-  // ★同じアイテムIDはまとめて1つの選択肢にする。装備中のものと、売値が付いていないもの（お礼の品など）は除外
-  const sellableEntries = [];
+// ★要望対応：以前はdisplayChoices（文章の選択肢）で売る品を選んでいたが、
+//   鍛冶屋・素材合成屋の専用画面と同じ操作感（一覧＋詳細パネル、矢印キー＋Z/X）に変更した
+let kaitoriOverlayState = null; // { returnTo, entries, selectedIndex }
+
+function getKaitoriSellableEntries() {
+  // ★同じアイテムIDはまとめて1つの行にする。装備中のものと、売値が付いていないもの（お礼の品など）は除外
+  const entries = [];
   const seenItemIds = new Set();
   const equippedInstanceIds = Object.values(player.equipment).filter(Boolean); // ★今は装備欄にinstanceIdが入っている
   
@@ -845,36 +857,137 @@ async function openBuyShop(returnTo) {
     const basePrice = slot.appraised ? master.trueValue : Math.round(master.listedPrice * 0.7); // ★鑑定済みなら真価、未鑑定なら定価の7割で売れる
     const sellBonus = (typeof hasPassiveSkill === "function" && hasPassiveSkill("sellBonus")) ? 1.15 : 1; // ★お宝鑑定団の「算盤高き目利き」（player.js）
     const price = Math.round(basePrice * sellBonus);
-    sellableEntries.push({ itemId: slot.itemId, master, price, totalQty });
+    entries.push({ itemId: slot.itemId, master, price, totalQty });
   });
+  return entries;
+}
+
+async function openBuyShop(returnTo) {
+  const goBack = typeof returnTo === "function" ? returnTo : openShopMenu;
+  currentLocationKey = "shop_buy"; // ★セーブ/ロードで現在地を復元するための記録
+  hideLocationMenu();
   
-  if (sellableEntries.length === 0) {
+  const entries = getKaitoriSellableEntries();
+  if (entries.length === 0) {
     changeSpeaker("買取屋の主人");
     await displayMessage("「悪いが、うちで買い取れそうな物は持っていないようだな。」");
     goBack();
     return;
   }
   
-  const choices = sellableEntries.map(entry => ({
-    text: `${entry.master.name} ×${entry.totalQty}（1個 ${entry.price}陳）`,
-    next: entry.itemId
-  }));
-  choices.push({ text: "戻る", next: "back", isBack: true });
+  openKaitoriShopScreen(goBack);
+}
+
+function openKaitoriShopScreen(goBack) {
+  const entries = getKaitoriSellableEntries();
+  kaitoriOverlayState = { returnTo: goBack, entries, selectedIndex: entries.length > 0 ? 0 : -1 };
   
-  changeSpeaker("買取屋の主人");
-  // ★displayMessageを挟まずdisplayChoicesだけを呼ぶと、テキスト欄が前の場面の
-  //   メッセージを表示したまま残ってしまう（残留バグ）ので、必ず一度ここで更新しておく
-  await displayMessage("「さて、何を売ってくれるんだ？」");
-  const picked = await displayChoices(choices);
-  if (picked.next === "back") {
-    goBack();
+  const overlay = document.getElementById("kaitori-overlay");
+  if (!overlay) return;
+  if (typeof hideLocationMenu === "function") hideLocationMenu();
+  overlay.classList.remove("hidden");
+  
+  const titleEl = document.getElementById("kaitori-title");
+  if (titleEl) titleEl.textContent = "買取屋　何を売る？";
+  
+  renderKaitoriShopScreen();
+  window.addEventListener("keydown", handleKaitoriShopKeyDown);
+}
+
+function closeKaitoriShopScreen() {
+  const overlay = document.getElementById("kaitori-overlay");
+  if (overlay) overlay.classList.add("hidden");
+  window.removeEventListener("keydown", handleKaitoriShopKeyDown);
+  const goBack = kaitoriOverlayState && kaitoriOverlayState.returnTo;
+  kaitoriOverlayState = null;
+  if (typeof goBack === "function") goBack();
+}
+
+function renderKaitoriShopScreen() {
+  const state = kaitoriOverlayState;
+  if (!state) return;
+  const listEl = document.getElementById("kaitori-item-list");
+  const detailEl = document.getElementById("kaitori-detail-panel");
+  if (!listEl || !detailEl) return;
+  
+  listEl.innerHTML = "";
+  state.entries.forEach((entry, index) => {
+    const row = document.createElement("button");
+    row.className = "crafting-recipe-row" + (index === state.selectedIndex ? " crafting-recipe-row-selected" : "");
+    const nameEl = document.createElement("span");
+    nameEl.className = "crafting-recipe-row-name";
+    nameEl.textContent = `${entry.master.name} ×${entry.totalQty}`;
+    row.appendChild(nameEl);
+    const statusEl = document.createElement("span");
+    statusEl.className = "crafting-recipe-row-status";
+    statusEl.textContent = `1個 ${entry.price}陳`;
+    row.appendChild(statusEl);
+    row.onclick = (event) => {
+      event.stopPropagation();
+      state.selectedIndex = index;
+      renderKaitoriShopScreen();
+    };
+    listEl.appendChild(row);
+  });
+  
+  detailEl.innerHTML = "";
+  const entry = state.entries[state.selectedIndex];
+  if (!entry) {
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "crafting-detail-empty";
+    emptyEl.textContent = "左の一覧から売る物を選んでください。";
+    detailEl.appendChild(emptyEl);
     return;
   }
   
-  const entry = sellableEntries.find(e => e.itemId === picked.next);
-  const qty = await pickQuantity(entry.totalQty, entry.master ? entry.master.name : entry.itemId); // ★まとめて売れるように個数を選ばせる
+  const nameEl = document.createElement("h3");
+  nameEl.className = "crafting-detail-name";
+  nameEl.textContent = entry.master.name;
+  detailEl.appendChild(nameEl);
+  
+  if (entry.master.description) {
+    const descEl = document.createElement("p");
+    descEl.className = "crafting-detail-desc";
+    descEl.textContent = entry.master.description;
+    detailEl.appendChild(descEl);
+  }
+  
+  const infoEl = document.createElement("ul");
+  infoEl.className = "crafting-detail-materials";
+  const priceLi = document.createElement("li");
+  priceLi.textContent = `1個 ${entry.price}陳`;
+  infoEl.appendChild(priceLi);
+  const qtyLi = document.createElement("li");
+  qtyLi.textContent = `所持数 ${entry.totalQty}個`;
+  infoEl.appendChild(qtyLi);
+  detailEl.appendChild(infoEl);
+  
+  const sellBtn = document.createElement("button");
+  sellBtn.className = "crafting-craft-btn";
+  sellBtn.textContent = "売る";
+  sellBtn.onclick = (event) => {
+    event.stopPropagation();
+    sellSelectedKaitoriEntry();
+  };
+  detailEl.appendChild(sellBtn);
+}
+
+// ★確認・数量選択は通常の会話ウィンドウ・専用ミニ画面（pickQuantity）を使い回す。
+//   専用画面は主画面全体を覆っているため、表示している間は一旦隠してから会話を進める
+async function sellSelectedKaitoriEntry() {
+  const state = kaitoriOverlayState;
+  if (!state) return;
+  const entry = state.entries[state.selectedIndex];
+  if (!entry) return;
+  
+  const overlay = document.getElementById("kaitori-overlay");
+  if (overlay) overlay.classList.add("hidden");
+  
+  const qty = await pickQuantity(entry.totalQty, entry.master.name); // ★まとめて売れるように個数を選ばせる
   if (qty <= 0) {
-    openBuyShop(goBack);
+    if (!kaitoriOverlayState) return; // ★万一選択中に画面外から閉じられていたら何もしない
+    if (overlay) overlay.classList.remove("hidden");
+    renderKaitoriShopScreen();
     return;
   }
   
@@ -882,10 +995,61 @@ async function openBuyShop(returnTo) {
   const totalPrice = entry.price * qty;
   changeGold(totalPrice); // inventory.js
   renderStatusHUD();
+  changeSpeaker("買取屋の主人");
+  if (overlay) overlay.classList.remove("hidden"); // ★メッセージ表示中も裏の画面が見えるよう、隠したままにしない
   await displayMessage(`「${entry.master.name}」を${qty}個、${totalPrice}陳で買い取った。`);
   
-  openBuyShop(goBack); // ★続けて売れるように、一覧に戻る
+  if (!kaitoriOverlayState) return;
+  // ★売り切ったら一覧から消える。selectedIndexが一覧の範囲外にならないよう調整する
+  state.entries = getKaitoriSellableEntries();
+  if (state.entries.length === 0) {
+    changeSpeaker("買取屋の主人");
+    await displayMessage("「また何か売る物があったら、いつでも来てくれ。」");
+    if (!kaitoriOverlayState) return;
+    closeKaitoriShopScreen();
+    return;
+  }
+  if (state.selectedIndex >= state.entries.length) state.selectedIndex = state.entries.length - 1;
+  renderKaitoriShopScreen();
 }
+
+// ★↑↓で品選択、決定キーで「売る」画面へ、キャンセルキーで戻る（鍛冶屋・素材合成屋と同じキー割り当て）
+function handleKaitoriShopKeyDown(event) {
+  if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★要望対応：シナリオエディタ表示中は本編を操作させない
+  const overlay = document.getElementById("kaitori-overlay");
+  if (!overlay || overlay.classList.contains("hidden")) return;
+  if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return; // ★確認ダイアログ・数量選択ミニ画面表示中はここでは反応しない
+  if (typeof isTextDisplaying !== "undefined" && isTextDisplaying) return; // ★結果メッセージ表示中の二重操作防止
+  const quantityPicker = document.getElementById("quantity-picker");
+  if (quantityPicker && !quantityPicker.classList.contains("hidden")) return;
+  if (event.repeat) return;
+  const state = kaitoriOverlayState;
+  if (!state) return;
+  
+  if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+    if (state.entries.length === 0) return;
+    event.preventDefault();
+    const dir = event.key === "ArrowUp" ? -1 : 1;
+    state.selectedIndex = (state.selectedIndex + dir + state.entries.length) % state.entries.length;
+    renderKaitoriShopScreen();
+    const listEl = document.getElementById("kaitori-item-list");
+    const selectedRow = listEl && listEl.children[state.selectedIndex];
+    if (selectedRow && selectedRow.scrollIntoView) selectedRow.scrollIntoView({ block: "nearest" });
+  } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
+    event.preventDefault();
+    sellSelectedKaitoriEntry();
+  } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
+    event.preventDefault();
+    closeKaitoriShopScreen();
+  }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  const closeBtn = document.getElementById("kaitori-close-btn");
+  if (closeBtn) closeBtn.onclick = (event) => {
+    event.stopPropagation();
+    closeKaitoriShopScreen();
+  };
+});
 
 // ===== 武器屋・防具屋・道具屋：新品のアイテムをお金で買う =====
 // ★どの店もほぼ同じ処理なので共通化してある。categoryFilterで扱う品揃えを絞る
