@@ -104,7 +104,8 @@ function createEnemyUnit(monsterKey, level) {
     maxHp: scaled.maxHp,
     atk: scaled.atk,
     baseAtk: scaled.atk, // ★要望対応：形態ごとの攻撃力倍率は、直前の形態からの複利ではなく、常にこの素の攻撃力を基準にする
-    currentFormNumber: 1, // ★要望対応：ボスの「形態」。1＝素の姿。checkAndApplyBossFormTransitionで自動的に増える
+    currentFormNumber: 1, // ★要望対応：ボスの「形態」。1＝素の姿。reviveBossToNextFormIfAvailableで自動的に増える
+    lastAcknowledgedFormNumber: 1, // ★要望対応：戦闘イベント「形態が◯になった瞬間」の反応・保険メッセージを、まだ出していない形態変化にだけ出すための記録
     exp: scaled.exp,
     dropItemId: master.dropItemId,
     dropRate: master.dropRate,
@@ -344,7 +345,10 @@ async function startTrialBattle(trialRank) {
 
 // ===== ターゲット選択まわり =====
 function getAliveEnemies() {
-  return battleState ? battleState.enemies.filter(e => e.hp > 0) : [];
+  if (!battleState) return [];
+  // ★要望対応：HPが0の敵に次の形態が残っていれば、ここで「まだ生きている」ことにする（形態移行）
+  battleState.enemies.forEach(e => { if (e.hp <= 0) reviveBossToNextFormIfAvailable(e); });
+  return battleState.enemies.filter(e => e.hp > 0);
 }
 
 // ★今カーソルが乗っている敵を返す。既に倒されていたら、生きている先頭の敵に自動で乗せ換える
@@ -1586,7 +1590,7 @@ function checkBossBattleEventCondition(event, enemy) {
   }
   if (event.conditionType === "formBecomes") {
     // ★要望対応：形態タブで設定した各形態への切り替わりに反応するための条件。
-    //   形態1＝素の姿から始まり、形態が進むたびにenemy.currentFormNumberが増える（checkAndApplyBossFormTransition参照）
+    //   形態1＝素の姿から始まり、形態が進むたびにenemy.currentFormNumberが増える（reviveBossToNextFormIfAvailable参照）
     const currentFormNumber = typeof enemy.currentFormNumber === "number" ? enemy.currentFormNumber : 1;
     return currentFormNumber === value;
   }
@@ -1598,10 +1602,32 @@ function checkBossBattleEventCondition(event, enemy) {
 // 仕組みだったが廃止し、代わりに形態を好きな数だけ追加・削除できるようにした。
 // 形態1＝ボス本来の姿（MONSTER_MASTERのname/imagePath/atk/bgmTrackなどそのもの）。
 // 形態2以降はMONSTER_MASTER[...].forms（配列。forms[0]が形態2、forms[1]が形態3……）に持たせてあり、
-// 各形態は名前・画像・大きさ・攻撃力倍率・出現時の回復割合・専用BGM・条件（発動する体力/ターン数）を個別に持つ。
-// 毎ターンここで確認し、条件を満たしている一番手前の未到達形態があれば自動的に切り替える。
+// 各形態は名前・画像・大きさ・攻撃力倍率・形態移行後のHP割合・専用BGMを個別に持つ。
+// ★要望対応：形態が変わる条件は「前の形態のHPが0になった瞬間」で固定。HPが0になった敵をそのまま
+//   倒れさせる前に、ここで次の形態が残っていないか必ず確認する（reviveBossToNextFormIfAvailable）。
+//   どこでHPが0になっても取りこぼさないよう、getAliveEnemies()とupdateBattleHud()の入口で毎回確認している。
 // 切り替わった瞬間は、戦闘イベントの条件を「形態が◯になった瞬間」(formBecomes)にすることで演出側が反応できる。
-function checkAndApplyBossFormTransition(enemy) {
+function applyBossFormChange(enemy, nextForm, nextFormIndex) {
+  enemy.currentFormNumber = nextFormIndex + 2; // ★forms[0]なら形態2、forms[1]なら形態3……
+  if (nextForm.name) enemy.displayName = nextForm.name;
+  if (nextForm.imagePath) enemy.imagePath = nextForm.imagePath;
+  if (typeof nextForm.sizeMultiplier === "number" && nextForm.sizeMultiplier > 0) enemy.sizeMultiplier = nextForm.sizeMultiplier;
+  const atkMultiplier = Number(nextForm.atkMultiplier) || 1;
+  if (atkMultiplier !== 1) enemy.atk = Math.round((enemy.baseAtk || enemy.atk) * atkMultiplier); // ★形態ごとの倍率は、常に素の攻撃力を基準にする（前の形態からの複利にはしない）
+  // ★前の形態のHPが0になった直後の切り替えなので、0のままでは戦えない。未設定（0扱い）なら満タンにする
+  const healRatio = Number(nextForm.healRatioOnEnter) || 1;
+  enemy.hp = Math.max(1, Math.min(enemy.maxHp, Math.round(enemy.maxHp * healRatio)));
+  if (nextForm.bgmTrack && nextForm.inheritBgm === false && typeof switchScenarioBGM === "function") {
+    // ★要望対応：「BGM引き継ぎ」がOFFの時だけ専用BGMに切り替える。ONの場合（既定）や専用BGM未指定の場合は、
+    //   直前まで流れていた曲をそのまま流し続ける（BGMには一切触れない）
+    switchScenarioBGM(nextForm.bgmTrack, { fadeMs: 600, onFailFallbackTrack: (typeof BATTLE_BGM_TRACKS !== "undefined" ? BATTLE_BGM_TRACKS.boss : undefined) });
+  }
+}
+
+// ★HPが0になった敵について、まだ到達していない次の形態が残っていれば、そのまま倒れさせる代わりに
+//   次の形態へ切り替えて戦闘を続けさせる。次の形態が無ければ何もしない（＝今まで通り本当に倒れる）
+function reviveBossToNextFormIfAvailable(enemy) {
+  if (!enemy || enemy.hp > 0) return false;
   const master = MONSTER_MASTER[enemy.monsterKey];
   if (!master || !Array.isArray(master.forms) || master.forms.length === 0) return false;
   if (typeof enemy.currentFormNumber !== "number") enemy.currentFormNumber = 1; // ★形態1＝素の姿から始まる
@@ -1609,27 +1635,9 @@ function checkAndApplyBossFormTransition(enemy) {
   // ★forms配列のインデックス0が「形態2」、インデックス1が「形態3」……という対応
   const nextFormIndex = enemy.currentFormNumber - 1;
   const nextForm = master.forms[nextFormIndex];
-  if (!nextForm) return false; // ★もう最後の形態まで到達済み
+  if (!nextForm) return false; // ★もう最後の形態まで到達済み＝本当に倒れる
   
-  if (!checkBossBattleEventCondition({ conditionType: nextForm.triggerConditionType, conditionValue: nextForm.triggerConditionValue }, enemy)) {
-    return false;
-  }
-  
-  // ★条件成立：この形態へ切り替える（未指定の項目は直前の形態のまま変えない）
-  enemy.currentFormNumber = nextFormIndex + 2; // forms[0]なら形態2、forms[1]なら形態3……
-  if (nextForm.name) enemy.displayName = nextForm.name;
-  if (nextForm.imagePath) enemy.imagePath = nextForm.imagePath;
-  if (typeof nextForm.sizeMultiplier === "number" && nextForm.sizeMultiplier > 0) enemy.sizeMultiplier = nextForm.sizeMultiplier;
-  const atkMultiplier = Number(nextForm.atkMultiplier) || 1;
-  if (atkMultiplier !== 1) enemy.atk = Math.round((enemy.baseAtk || enemy.atk) * atkMultiplier); // ★形態ごとの倍率は、常に素の攻撃力を基準にする（前の形態からの複利にはしない）
-  const healRatio = Number(nextForm.healRatioOnEnter) || 0;
-  if (healRatio > 0) enemy.hp = Math.min(enemy.maxHp, enemy.hp + Math.round(enemy.maxHp * healRatio));
-  if (nextForm.bgmTrack && nextForm.inheritBgm === false && typeof switchScenarioBGM === "function") {
-    // ★要望対応：「BGM引き継ぎ」がOFFの時だけ専用BGMに切り替える。ONの場合（既定）や専用BGM未指定の場合は、
-    //   直前まで流れていた曲をそのまま流し続ける（BGMには一切触れない）
-    switchScenarioBGM(nextForm.bgmTrack, { fadeMs: 600, onFailFallbackTrack: (typeof BATTLE_BGM_TRACKS !== "undefined" ? BATTLE_BGM_TRACKS.boss : undefined) });
-  }
-  if (typeof updateBattleHud === "function") updateBattleHud();
+  applyBossFormChange(enemy, nextForm, nextFormIndex);
   return true;
 }
 
@@ -1781,9 +1789,12 @@ async function runSingleEnemyTurn(enemy) {
   
   const master = MONSTER_MASTER[enemy.monsterKey];
   
-  // ★要望対応：ボスの「形態」切り替え条件を毎ターン確認する。戦闘イベントより先に判定することで、
-  //   同じターン中に「形態が◯になった瞬間」の戦闘イベントが反応できるようにする
-  const formChangedThisTurn = checkAndApplyBossFormTransition(enemy);
+  // ★要望対応：形態の切り替わり自体は「前の形態のHPが0になった瞬間」に即座に起きる
+  //   （getAliveEnemies/updateBattleHud側で処理済み）。ここでは、まだ反応（演出）を出していない
+  //   形態変化が無いかどうかだけを確認する
+  if (typeof enemy.lastAcknowledgedFormNumber !== "number") enemy.lastAcknowledgedFormNumber = 1;
+  const formChangedThisTurn = enemy.currentFormNumber !== enemy.lastAcknowledgedFormNumber;
+  if (formChangedThisTurn) enemy.lastAcknowledgedFormNumber = enemy.currentFormNumber;
   
   // ★ボス管理タブで組んだ「戦闘イベント」（HP割合・ターン数・形態などの条件で発火する演出・行動）を確認する。
   //   通常攻撃・専用スキルより優先する
@@ -3500,6 +3511,9 @@ function renderBattleEnemies() {
 
 function updateBattleHud() {
   if (!battleState) return;
+  
+  // ★要望対応：HPが0になった直後にここが呼ばれるので、次の形態が残っているボスはここで確実に切り替える
+  battleState.enemies.forEach(e => { if (e.hp <= 0) reviveBossToNextFormIfAvailable(e); });
   
   // ★要望対応：ボス戦の時だけHPゲージを画面上部中央に、細く長く表示する（CSS側の.battle-hud-boss）
   const hudEl = document.getElementById("battle-hud");
