@@ -818,16 +818,72 @@ async function pickRouletteBets() {
     const cells = buildRouletteCells();
     let cursorIndex = Math.max(0, cells.findIndex(c => c.key === "red"));
     const selections = [];
+    let multiSelectMode = false; // ★要望対応：複数選択モード（S／複数選択ボタンでON、もう一度で確定）
+    const multiSelectedKeys = new Set();
 
     const overlay = document.getElementById("casino-roulette-board");
     const gridEl = document.getElementById("casino-roulette-grid");
     const confirmBtn = document.getElementById("casino-roulette-confirm");
     const cancelBtn = document.getElementById("casino-roulette-cancel");
+    const multiSelectBtn = document.getElementById("casino-roulette-multiselect");
+    const hintEl = document.getElementById("casino-roulette-hint");
 
     if (!overlay || !gridEl) {
       console.error("ルーレット盤のDOM要素が見つかりません。casino-roulette-board / casino-roulette-grid が index.html に存在するか確認してください。");
       resolve(null);
       return;
+    }
+
+    // ★要望対応：同じマスをもう一度選んだ場合は「掛け直し」（新しい金額に置き換え）にする。
+    //   以前は二重掛け防止のためブロックしていたが、金額を変更したい場合にも使えるようにした
+    function setBetOnCell(cell, amount) {
+      const existingIndex = selections.findIndex(s => s.cell.key === cell.key);
+      if (existingIndex >= 0) selections[existingIndex] = { cell, amount };
+      else selections.push({ cell, amount });
+    }
+
+    function updateMultiSelectUI() {
+      if (multiSelectBtn) {
+        multiSelectBtn.innerHTML = multiSelectMode
+          ? '掛け金指定<span class="key-badge">S</span>'
+          : '複数選択<span class="key-badge">S</span>';
+      }
+      if (hintEl) {
+        hintEl.textContent = multiSelectMode
+          ? "Zで複数のマスを選び、もう一度Sで掛け金をまとめて指定"
+          : "方向キーで場所を選び、Zで追加";
+      }
+    }
+
+    // 複数選択モードを開始／終了する。終了時に1マス以上選ばれていれば、一度だけ金額を聞いて
+    // 選んだ全てのマスへ同じ金額を一括で掛ける（掛け直しにも対応）
+    async function toggleMultiSelectMode() {
+      if (!multiSelectMode) {
+        multiSelectMode = true;
+        multiSelectedKeys.clear();
+        updateMultiSelectUI();
+        render();
+        return;
+      }
+
+      const pickedKeys = Array.from(multiSelectedKeys);
+      multiSelectMode = false;
+      multiSelectedKeys.clear();
+      updateMultiSelectUI();
+      render();
+
+      if (pickedKeys.length === 0) {
+        flashRouletteNotice("マスが選ばれていません", selections);
+        return;
+      }
+
+      const targetCells = cells.filter(c => pickedKeys.includes(c.key));
+      const amount = await pickCasinoBet(`選んだ${targetCells.length}マスへの賭け金`);
+      if (amount > 0) {
+        targetCells.forEach(cell => setBetOnCell(cell, amount));
+        updateRouletteSelectionSummary(selections);
+        render();
+      }
     }
 
     function render() {
@@ -840,7 +896,9 @@ async function pickRouletteBets() {
 
       cells.forEach((cell, i) => {
         const el = document.createElement("div");
-        el.className = "casino-roulette-cell " + cell.className + (i === cursorIndex ? " cursor" : "");
+        el.className = "casino-roulette-cell " + cell.className
+          + (i === cursorIndex ? " cursor" : "")
+          + (multiSelectMode && multiSelectedKeys.has(cell.key) ? " multi-picked" : "");
         el.style.gridColumn = `${cell.colStart} / span ${cell.colSpan}`;
         el.style.gridRow = `${cell.row} / span ${cell.rowSpan}`;
 
@@ -876,15 +934,18 @@ async function pickRouletteBets() {
         el.onclick = async (event) => {
           event.stopPropagation();
           cursorIndex = i;
-          // ★要望対応：同じマスへの二重掛けを防ぐ（既に賭けているマスをもう一度選んでも追加しない）
-          if (selections.some(s => s.cell.key === cell.key)) {
-            flashRouletteNotice(`「${cell.label}」には既に賭けています`, selections);
+
+          if (multiSelectMode) {
+            // ★要望対応：複数選択モード中は、ここではまだ金額を聞かず選ぶだけにする
+            if (multiSelectedKeys.has(cell.key)) multiSelectedKeys.delete(cell.key);
+            else multiSelectedKeys.add(cell.key);
             render();
             return;
           }
+
           const amount = await pickCasinoBet(`「${cell.label}」（配当${cell.payoutMultiple}倍）への賭け金`);
           if (amount > 0) {
-            selections.push({ cell, amount });
+            setBetOnCell(cell, amount); // ★要望対応：既に賭けている場合は「掛け直し」として金額を置き換える
             updateRouletteSelectionSummary(selections);
             render();
           }
@@ -962,14 +1023,18 @@ async function pickRouletteBets() {
     async function addCurrentSelection() {
       const cell = cells[cursorIndex];
       if (!cell) return;
-      // ★要望対応：同じマスへの二重掛けを防ぐ（既に賭けているマスをもう一度選んでも追加しない）
-      if (selections.some(s => s.cell.key === cell.key)) {
-        flashRouletteNotice(`「${cell.label}」には既に賭けています`, selections);
+
+      if (multiSelectMode) {
+        // ★要望対応：複数選択モード中は、Zキーもクリックと同じく「選ぶだけ」にする
+        if (multiSelectedKeys.has(cell.key)) multiSelectedKeys.delete(cell.key);
+        else multiSelectedKeys.add(cell.key);
+        render();
         return;
       }
+
       const amount = await pickCasinoBet(`「${cell.label}」（配当${cell.payoutMultiple}倍）への賭け金`);
       if (amount > 0) {
-        selections.push({ cell, amount });
+        setBetOnCell(cell, amount); // ★要望対応：既に賭けている場合は「掛け直し」として金額を置き換える
         updateRouletteSelectionSummary(selections);
         render();
       }
@@ -989,6 +1054,10 @@ async function pickRouletteBets() {
         event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, 1);
       } else if (event.key === "ArrowUp") {
         event.preventDefault(); event.stopImmediatePropagation(); moveCursor(0, -1);
+      } else if (event.key === "s" || event.key === "S") {
+        // ★要望対応：複数選択モードの開始／確定
+        event.preventDefault(); event.stopImmediatePropagation();
+        await toggleMultiSelectMode();
       } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
         // ★要望対応：チップを置くのはZキー（決定キー）に統一。Cキーは確定専用にする
         event.preventDefault(); event.stopImmediatePropagation();
@@ -1003,6 +1072,10 @@ async function pickRouletteBets() {
       }
     }
 
+    if (multiSelectBtn) multiSelectBtn.onclick = async (event) => {
+      event.stopPropagation();
+      await toggleMultiSelectMode();
+    };
     if (confirmBtn) confirmBtn.onclick = (event) => {
       event.stopPropagation();
       finish(selections.length ? selections : null);
@@ -1012,6 +1085,7 @@ async function pickRouletteBets() {
       finish(null);
     };
 
+    updateMultiSelectUI();
     render();
     overlay.classList.remove("hidden");
     window.addEventListener("keydown", handleKey);

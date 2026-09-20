@@ -3685,6 +3685,13 @@ html, body {
   text-shadow: none;
 }
 
+/* ★要望対応：複数選択モードで選んでいる（まだ賭け金は決めていない）マスの見た目 */
+.casino-roulette-cell.multi-picked {
+  outline: 2px dashed #4fc3f7;
+  outline-offset: -2px;
+  box-shadow: 0 0 6px rgba(79, 195, 247, 0.8);
+}
+
 .roulette-chip-stack {
   position: absolute;
   right: 2px;
