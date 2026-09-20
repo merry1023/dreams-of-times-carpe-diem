@@ -668,10 +668,11 @@ function getChapterTotalCharCount(chapter) {
 }
 
 // ★要望対応：まだクリアしていない話（進行中・未着手のどちらも）は、名前で内容が分かってしまわないよう
-//   タイトル部分だけ「？？？」に伏せる（「閑話：」のような接頭辞はネタバレにならないのでそのまま出す）
+//   「？？？」に伏せる。「閑話：」の接頭辞をつけると本編/閑話の区別自体がヒントになってしまうため、
+//   未クリアの間は接頭辞も付けず、まるごと「？？？」だけにする
 function getProgressChapterDisplayTitle(chapter) {
-  const titleText = chapter.cleared ? chapter.title : "？？？";
-  return chapter.isInterlude ? `閑話：${titleText}` : titleText;
+  if (!chapter.cleared) return "？？？";
+  return chapter.isInterlude ? `閑話：${chapter.title}` : chapter.title;
 }
 
 // ★下部70%：話のリスト。矢印キーでカーソルを動かし、Zキーで選んでいる話のあらすじを全画面表示する
