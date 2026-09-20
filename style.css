@@ -3641,8 +3641,10 @@ html, body {
   min-height: 34px;
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   border-radius: 6px;
   border: 1px solid rgba(255,255,255,0.25);
   font-size: 12px;
@@ -3658,6 +3660,16 @@ html, body {
 .casino-roulette-cell-label {
   position: relative;
   z-index: 1;
+}
+
+/* ★要望対応：ダズン・アウトサイドベットのマスに、配当が何倍かを表示する小さなバッジ */
+.casino-roulette-cell-payout {
+  position: relative;
+  z-index: 1;
+  font-size: 9px;
+  font-weight: normal;
+  opacity: 0.85;
+  line-height: 1;
 }
 
 .roulette-chip-stack {

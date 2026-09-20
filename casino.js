@@ -850,6 +850,15 @@ async function pickRouletteBets() {
         labelEl.className = "casino-roulette-cell-label";
         labelEl.textContent = cell.label;
         el.appendChild(labelEl);
+        
+        // ★要望対応：数字1つのマス（コマが小さすぎて文字が収まらない）以外は、
+        //   配当が何倍かひと目で分かるよう常にバッジで表示しておく
+        if (cell.colSpan >= 2) {
+          const payoutEl = document.createElement("span");
+          payoutEl.className = "casino-roulette-cell-payout";
+          payoutEl.textContent = `${cell.payoutMultiple}倍`;
+          el.appendChild(payoutEl);
+        }
 
         const chipTotal = chipTotals.get(cell.key) || 0;
         if (chipTotal > 0) {
@@ -867,7 +876,7 @@ async function pickRouletteBets() {
         el.onclick = async (event) => {
           event.stopPropagation();
           cursorIndex = i;
-          const amount = await pickCasinoBet(`「${cell.label}」への賭け金`);
+          const amount = await pickCasinoBet(`「${cell.label}」（配当${cell.payoutMultiple}倍）への賭け金`);
           if (amount > 0) {
             selections.push({ cell, amount });
             updateRouletteSelectionSummary(selections);
@@ -947,7 +956,7 @@ async function pickRouletteBets() {
     async function addCurrentSelection() {
       const cell = cells[cursorIndex];
       if (!cell) return;
-      const amount = await pickCasinoBet(`「${cell.label}」への賭け金`);
+      const amount = await pickCasinoBet(`「${cell.label}」（配当${cell.payoutMultiple}倍）への賭け金`);
       if (amount > 0) {
         selections.push({ cell, amount });
         updateRouletteSelectionSummary(selections);
