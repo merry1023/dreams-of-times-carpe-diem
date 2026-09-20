@@ -667,6 +667,13 @@ function getChapterTotalCharCount(chapter) {
   return total;
 }
 
+// ★要望対応：まだクリアしていない話（進行中・未着手のどちらも）は、名前で内容が分かってしまわないよう
+//   タイトル部分だけ「？？？」に伏せる（「閑話：」のような接頭辞はネタバレにならないのでそのまま出す）
+function getProgressChapterDisplayTitle(chapter) {
+  const titleText = chapter.cleared ? chapter.title : "？？？";
+  return chapter.isInterlude ? `閑話：${titleText}` : titleText;
+}
+
 // ★下部70%：話のリスト。矢印キーでカーソルを動かし、Zキーで選んでいる話のあらすじを全画面表示する
 function renderProgressChapterList(container) {
   container.innerHTML = "";
@@ -694,7 +701,7 @@ function renderProgressChapterList(container) {
     
     const titleEl = document.createElement("span");
     titleEl.className = "progress-panel-chapter-title";
-    titleEl.textContent = chapter.isInterlude ? `閑話：${chapter.title}` : chapter.title;
+    titleEl.textContent = getProgressChapterDisplayTitle(chapter);
     row.appendChild(titleEl);
     
     // ★要望対応：話ごとの総文字数を表示する
@@ -724,7 +731,7 @@ function renderProgressChapterDetail(panel) {
   
   const title = document.createElement("h3");
   title.className = "monster-codex-title";
-  title.textContent = chapter.isInterlude ? `閑話：${chapter.title}` : chapter.title;
+  title.textContent = getProgressChapterDisplayTitle(chapter);
   panel.appendChild(title);
   
   const statusEl = document.createElement("p");
