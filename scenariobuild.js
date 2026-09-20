@@ -4751,7 +4751,7 @@ function ensureCustomFameThresholdsRegistered() {
 
 function getBossManagerConfig() {
   return {
-    note: "既にいるボス（boss.js）も一覧に出ており、直接編集・削除できます（実際のゲームデータそのものが変わります）。戦闘ブロックの魔物IDにこのIDを入れると、ボス扱い（専用BGM込み）でテストプレイできます。BGM欄はBGM設定タブで登録した曲名、または直接ファイルパスを貼り付けられます。「レベル」を設定すると、エリアの固定レベル設定や主人公のレベルに関わらず、必ずそのレベルで出現します（空欄ならエリア設定または主人公基準）。「ステータスを固定する」をONにすると、レベルによる自動計算はせず、HP・攻撃力・経験値をここで入力した数値そのままで戦えます（レベルは表示だけに使われます）。「1ターンの行動回数」を2以上にすると、このボスは1ターンに指定した回数だけ連続で行動します（途中で力尽きたら残りの行動はしません）。「無敵解除アイテムID」を指定すると、そのボスは最初ダメージが一切通らない無敵状態になり、戦闘中にプレイヤーがそのアイテムを実際に「使う」まで攻撃が効きません（空欄なら今まで通り最初からダメージが通ります。持っているだけでは解除されず、道具コマンドから使う必要があります）。詳細設定の「形態」欄の「編集」ボタンから開く専用画面では、好きな数だけ形態（第2形態以降）を追加・削除でき、形態ごとに名前・画像・大きさ・攻撃力倍率・出現時の回復割合・専用BGM（「BGM引き継ぎ」ONなら曲を変えずそのまま流し続けます）・発動条件（ボスの体力/主人公のHP・SP/経過ターン数）を個別に設定できます。条件を満たすと自動で切り替わり、その瞬間の演出（セリフ等）は「戦闘イベント」側で条件を「形態が◯になった瞬間」にすることで組み立てます。「戦闘イベント」欄の「編集」ボタンから開く専用画面では、ボスの体力/主人公のHP・SP/経過ターン数/形態の切り替わりを条件に、戦闘中セリフ・無敵解除・仲間を呼ぶ・回復・特定の技、または「演出ブロックで自由に組む」（if・変数操作・パラメータ変更なども使える、話のブロックと同じ仕組み）を組み合わせて演出できます（1つのイベントは戦闘中1回だけ発火します）。",
+    note: "既にいるボス（boss.js）も一覧に出ており、直接編集・削除できます（実際のゲームデータそのものが変わります）。戦闘ブロックの魔物IDにこのIDを入れると、ボス扱い（専用BGM込み）でテストプレイできます。BGM欄はBGM設定タブで登録した曲名、または直接ファイルパスを貼り付けられます。「レベル」を設定すると、エリアの固定レベル設定や主人公のレベルに関わらず、必ずそのレベルで出現します（空欄ならエリア設定または主人公基準）。「ステータスを固定する」をONにすると、レベルによる自動計算はせず、HP・攻撃力・経験値をここで入力した数値そのままで戦えます（レベルは表示だけに使われます）。「1ターンの行動回数」を2以上にすると、このボスは1ターンに指定した回数だけ連続で行動します（途中で力尽きたら残りの行動はしません）。「無敵解除アイテムID」を指定すると、そのボスは最初ダメージが一切通らない無敵状態になり、戦闘中にプレイヤーがそのアイテムを実際に「使う」まで攻撃が効きません（空欄なら今まで通り最初からダメージが通ります。持っているだけでは解除されず、道具コマンドから使う必要があります）。詳細設定の「形態」欄の「編集」ボタンから開く専用画面では、好きな数だけ形態（第2形態以降）を追加・削除でき、形態ごとに名前・画像・大きさ・攻撃力倍率・移行直後のHP割合・専用BGM（「BGM引き継ぎ」ONなら曲を変えずそのまま流し続けます）を個別に設定できます。形態は「前の形態のHPが0になった瞬間」に自動的に次へ進み（発動条件の指定はできません）、その瞬間の演出（セリフ等）は「戦闘イベント」側で条件を「形態が◯になった瞬間」にすることで組み立てます。「戦闘イベント」欄の「編集」ボタンから開く専用画面では、ボスの体力/主人公のHP・SP/経過ターン数/形態の切り替わりを条件に、戦闘中セリフ・無敵解除・仲間を呼ぶ・回復・特定の技、または「演出ブロックで自由に組む」（if・変数操作・パラメータ変更なども使える、話のブロックと同じ仕組み）を組み合わせて演出できます（1つのイベントは戦闘中1回だけ発火します）。",
     category: "bosses",
     useDetailEditor: true,
     showLevelPreview: true,
@@ -9821,7 +9821,7 @@ function buildBossFormEditor(entity, persist) {
   
   const noteEl = document.createElement("p");
   noteEl.className = "devmode-note scenariobuild-condition";
-  noteEl.textContent = "形態1（素の姿）はボスの詳細設定（名前・画像・攻撃力・BGM）がそのまま使われます。ここでは形態2以降を、並び順どおりに追加します。攻撃力倍率は形態1の攻撃力に対する倍率（複利にはなりません）。この形態専用の演出をしたい場合は、戦闘イベント側で条件を「形態が◯になった瞬間」にして組んでください（◯には、この形態の番号を入れます）。";
+  noteEl.textContent = "形態1（素の姿）はボスの詳細設定（名前・画像・攻撃力・BGM）がそのまま使われます。ここでは形態2以降を、並び順どおりに追加します。形態は「前の形態のHPが0になった瞬間」に自動的に次へ進みます（発動条件は指定できません）。攻撃力倍率は形態1の攻撃力に対する倍率（複利にはなりません）。移行直後のHP割合は、そのまま新しいHPになります（空欄なら満タン）。この形態専用の演出をしたい場合は、戦闘イベント側で条件を「形態が◯になった瞬間」にして組んでください（◯には、この形態の番号を入れます）。";
   wrap.appendChild(noteEl);
   
   if (!Array.isArray(entity.forms)) entity.forms = [];
@@ -9884,13 +9884,14 @@ function buildBossFormEditor(entity, persist) {
     atkInput.value = form.atkMultiplier != null ? form.atkMultiplier : 1;
     atkInput.onchange = () => { atkInput.value = Number(atkInput.value) || 1; form.atkMultiplier = Number(atkInput.value); persist(); };
     statsRow.appendChild(atkInput);
-    statsRow.appendChild(labelSpan("出現時のHP回復割合(0〜1)："));
+    statsRow.appendChild(labelSpan("移行直後のHP割合(0〜1)："));
     const healInput = document.createElement("input");
     healInput.type = "number";
     healInput.min = "0"; healInput.max = "1"; healInput.step = "0.05";
     healInput.className = "scenariobuild-condition-input";
-    healInput.value = form.healRatioOnEnter != null ? form.healRatioOnEnter : 0;
-    healInput.onchange = () => { form.healRatioOnEnter = Math.max(0, Math.min(1, Number(healInput.value) || 0)); persist(); };
+    healInput.placeholder = "空欄なら満タン";
+    healInput.value = form.healRatioOnEnter != null ? form.healRatioOnEnter : "";
+    healInput.onchange = () => { const v = Number(healInput.value); form.healRatioOnEnter = (healInput.value !== "" && v > 0) ? Math.min(1, v) : null; persist(); };
     statsRow.appendChild(healInput);
     box.appendChild(statsRow);
     
@@ -9924,31 +9925,6 @@ function buildBossFormEditor(entity, persist) {
     inheritLabel.append(" BGM引き継ぎ（ONだと専用BGMを設定していても切り替えず、直前の曲をそのまま流し続けます）");
     box.appendChild(inheritLabel);
     
-    const condRow = document.createElement("div");
-    condRow.className = "scenariobuild-condition-row";
-    condRow.style.flexWrap = "wrap";
-    condRow.appendChild(labelSpan("発動条件："));
-    const condSelect = document.createElement("select");
-    condSelect.className = "scenariobuild-jump-select";
-    // ★形態自身の発動条件には「形態が◯になった瞬間」は使えない（自分自身を参照して循環してしまうため）
-    BOSS_EVENT_CONDITION_OPTIONS.filter(opt => opt.value !== "formBecomes").forEach(opt => {
-      const optionEl = document.createElement("option");
-      optionEl.value = opt.value;
-      optionEl.textContent = opt.label;
-      condSelect.appendChild(optionEl);
-    });
-    condSelect.value = form.triggerConditionType || "bossHpBelow";
-    condSelect.onchange = () => { form.triggerConditionType = condSelect.value; persist(); };
-    condRow.appendChild(condSelect);
-    const condValueInput = document.createElement("input");
-    condValueInput.type = "number";
-    condValueInput.min = "0";
-    condValueInput.className = "scenariobuild-condition-input";
-    condValueInput.value = form.triggerConditionValue != null ? form.triggerConditionValue : 50;
-    condValueInput.onchange = () => { form.triggerConditionValue = Number(condValueInput.value) || 0; persist(); };
-    condRow.appendChild(condValueInput);
-    box.appendChild(condRow);
-    
     const removeBtn = document.createElement("button");
     removeBtn.className = "devmode-btn devmode-btn-danger";
     removeBtn.textContent = "この形態を削除";
@@ -9970,8 +9946,7 @@ function buildBossFormEditor(entity, persist) {
     evt.stopPropagation();
     entity.forms.push({
       id: generateId("bossform"), name: "", imagePath: "", sizeMultiplier: null,
-      atkMultiplier: 1.3, healRatioOnEnter: 0, bgmTrack: "", inheritBgm: true,
-      triggerConditionType: "bossHpBelow", triggerConditionValue: 50
+      atkMultiplier: 1.3, healRatioOnEnter: null, bgmTrack: "", inheritBgm: true
     });
     persist();
     renderScenarioBuildPanel();
