@@ -3514,9 +3514,10 @@ html, body {
 .roulette-wheel-outer {
   position: relative;
   width: 260px;
-  height: 260px;
   max-width: 68vw;
-  max-height: 68vw;
+  aspect-ratio: 1 / 1; /* ★要望対応：高さをwidth/max-widthとは別に指定していたため、縦方向だけ縮んで
+                          楕円になることがあった。高さをwidth側から自動算出させることで常に正円にする */
+  flex-shrink: 0; /* ★念のため：縦方向のflex収縮で高さだけ潰れることが無いようにする */
   display: flex;
   align-items: center;
   justify-content: center;

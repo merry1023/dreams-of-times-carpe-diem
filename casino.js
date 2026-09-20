@@ -885,14 +885,30 @@ async function pickRouletteBets() {
       resolve(result);
     }
 
+    // ★バグ修正：直角方向の距離が小さいマスを最優先にしていたため、押した向きにあるマスのうち
+    //   実際には「今のマスと同じ行／列で隣り合っている」マスより、斜め方向にあるだけの遠いマスの方が
+    //   中心同士の距離が近いという理由で選ばれてしまうことがあった
+    //   （例：「赤」から上へ→本来は「13〜24」のはずが、さらに奥の数字マス「13」へ飛ぶ／
+    //   数字の並びの端から下へ→本来は「1〜12」等のはずが、さらに奥の「1〜18」等へ直接飛ぶ）。
+    //   まず「押した向きと垂直な方向の範囲が今のマスと実際に重なっている（＝同じ行/列を移動している）」
+    //   マスだけに絞り込み、その中で押した向きの距離が一番近いものを選ぶようにする。
+    //   該当が無い場合（0のマスなど、他のどのマスとも列が重ならない場合）だけ、これまで通りの
+    //   「一番近そうなマス」を保険として選ぶ
     function moveCursor(dx, dy) {
       const cur = cells[cursorIndex];
       if (!cur) return;
 
       const curX = cur.colStart + cur.colSpan / 2;
       const curY = cur.row + cur.rowSpan / 2;
-      let bestIndex = -1;
-      let bestScore = Infinity;
+      const curColStart = cur.colStart, curColEnd = cur.colStart + cur.colSpan;
+      const curRowStart = cur.row, curRowEnd = cur.row + cur.rowSpan;
+      const dirX = dx !== 0 ? Math.sign(dx) : 0;
+      const dirY = dy !== 0 ? Math.sign(dy) : 0;
+
+      let bestOverlapIndex = -1;
+      let bestOverlapScore = Infinity;
+      let bestFallbackIndex = -1;
+      let bestFallbackScore = Infinity;
 
       cells.forEach((cell, i) => {
         if (i === cursorIndex) return;
@@ -901,29 +917,29 @@ async function pickRouletteBets() {
         const relX = x - curX;
         const relY = y - curY;
 
-        const dirX = dx !== 0 ? Math.sign(dx) : 0;
-        const dirY = dy !== 0 ? Math.sign(dy) : 0;
         if (dirX !== 0 && relX * dirX <= 0) return;
         if (dirY !== 0 && relY * dirY <= 0) return;
 
-        // ★バグ修正：以前は進みたい向きに合っているマスの中から「縦距離＋横距離の合計」が
-        //   一番小さいものを選んでいたため、例えば右へ動きたいだけなのに、真右のマスより
-        //   合計距離が小さい斜め上のマスへカーソルが飛んでしまうことがあった
-        //   （1〜12などの枠から右に動こうとすると数字マスへ上に飛ぶ、など）。
-        //   進みたい向き（主軸）と直角方向（垂直方向）のズレを最優先で小さくし、
-        //   同じ行・同じ列にあるマスをできるだけ優先して選ぶようにする
         const primaryDist = dx !== 0 ? Math.abs(relX) : Math.abs(relY);
         const perpDist = dx !== 0 ? Math.abs(relY) : Math.abs(relX);
-        const score = perpDist * 1000 + primaryDist;
 
-        if (score < bestScore) {
-          bestScore = score;
-          bestIndex = i;
+        // 横移動なら「行の範囲」が、縦移動なら「列の範囲」が、今のマスと実際に重なっているか
+        const overlaps = dx !== 0
+          ? cell.row < curRowEnd && curRowStart < cell.row + cell.rowSpan
+          : cell.colStart < curColEnd && curColStart < cell.colStart + cell.colSpan;
+
+        if (overlaps) {
+          const score = primaryDist * 1000 + perpDist; // 重なりがある中では、押した向きへの近さを最優先にする
+          if (score < bestOverlapScore) { bestOverlapScore = score; bestOverlapIndex = i; }
+        } else {
+          const score = perpDist * 1000 + primaryDist; // 保険：重なりが無い時だけ、これまで通りの近さ優先
+          if (score < bestFallbackScore) { bestFallbackScore = score; bestFallbackIndex = i; }
         }
       });
 
-      if (bestIndex >= 0) {
-        cursorIndex = bestIndex;
+      const targetIndex = bestOverlapIndex >= 0 ? bestOverlapIndex : bestFallbackIndex;
+      if (targetIndex >= 0) {
+        cursorIndex = targetIndex;
         render();
       }
     }
