@@ -332,11 +332,19 @@ function setBlackoutEffect(active, fadeMs = 600) {
 //   スキップボタンでも、いつでもすぐに終了できる
 // ★endBgmTrackを指定すると、エンドロール開始と同時にそのBGMを鳴らし、終了時にフェードアウトする
 // ★scrollSeconds：最後の行が上に到達するまでのスクロール秒数（長いほどゆっくり流れる。デフォルト20秒）
-function playEndRoll(creditsText, endBgmTrack, scrollSeconds) {
+// ★bgmFadeSeconds：終了時のBGMフェードアウト秒数（未指定・空欄なら4秒）
+function playEndRoll(creditsText, endBgmTrack, scrollSeconds, bgmFadeSeconds) {
   return new Promise(resolve => {
     if (endBgmTrack && typeof startScenarioBGM === "function") {
       startScenarioBGM(endBgmTrack); // bgm.js
     }
+    // ★要望対応：エンドロール終了時のBGMフェードアウト時間を設定できるようにする（空欄なら4秒）
+    let bgmFadeSecondsValue = 4;
+    if (bgmFadeSeconds !== null && bgmFadeSeconds !== undefined && bgmFadeSeconds !== "") {
+      const parsed = Number(bgmFadeSeconds);
+      if (!Number.isNaN(parsed) && parsed >= 0) bgmFadeSecondsValue = parsed;
+    }
+    const bgmFadeMs = bgmFadeSecondsValue * 1000;
     
     const overlay = document.createElement("div");
     overlay.className = "endroll-overlay";
@@ -364,7 +372,7 @@ function playEndRoll(creditsText, endBgmTrack, scrollSeconds) {
       finished = true;
       timers.forEach(t => clearTimeout(t));
       overlay.remove();
-      if (endBgmTrack && typeof fadeOutCurrentBgm === "function") fadeOutCurrentBgm(800); // bgm.js
+      if (endBgmTrack && typeof fadeOutCurrentBgm === "function") fadeOutCurrentBgm(bgmFadeMs); // bgm.js
       resolve();
     };
     

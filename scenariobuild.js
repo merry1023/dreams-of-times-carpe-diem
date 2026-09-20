@@ -2859,8 +2859,8 @@ function createBlock(type) {
   if (type === "classselect") return { ...base }; // ★第一話の職業選択〜初期化一式をまとめて行う特殊ブロック（フィールドなし）
   if (type === "setrank") return { ...base, nickname: "" };
   if (type === "gameover") return { ...base, message: "力尽きてしまった……", endingName: "", retryJumpBlockId: null }; // ★ゲームオーバーもバッドエンドの一種として扱う。retryJumpBlockIdを指定すると「リトライ」の戻り先を話の最初以外にできる
-  if (type === "ending") return { ...base, endingType: "true", title: "END", endroll: "", endrollEnabled: true, endrollBgm: "" }; // endingType: "bad" | "true" | "happy"
-  if (type === "clearchapter") return { ...base, resetProgress: true, endrollEnabled: false, endroll: "", endrollBgm: "", endrollScrollSeconds: 20 }; // ★「エンディング」と違い、タイトル画面には戻らず、そのまま話が続く。冒険が一区切りついたが完結はしない場面（パーティー加入など）向け
+  if (type === "ending") return { ...base, endingType: "true", title: "END", endroll: "", endrollEnabled: true, endrollBgm: "", endrollBgmFadeSeconds: null }; // endingType: "bad" | "true" | "happy"
+  if (type === "clearchapter") return { ...base, resetProgress: true, endrollEnabled: false, endroll: "", endrollBgm: "", endrollScrollSeconds: 20, endrollBgmFadeSeconds: null }; // ★「エンディング」と違い、タイトル画面には戻らず、そのまま話が続く。冒険が一区切りついたが完結はしない場面（パーティー加入など）向け
   if (type === "if") {
     return {
       ...base,
@@ -4372,6 +4372,24 @@ function buildBlockFormFields(chapter, block) {
       endrollSpeedInput.onchange = () => { block.endrollScrollSeconds = Math.max(5, Number(endrollSpeedInput.value) || 20); persist(); };
       endrollSpeedRow.appendChild(endrollSpeedInput);
       wrap.appendChild(endrollSpeedRow);
+      
+      const endrollFadeRow = document.createElement("div");
+      endrollFadeRow.className = "scenariobuild-condition-row";
+      endrollFadeRow.appendChild(labelSpan("終了時のBGMフェードアウト秒数（空欄で4秒）："));
+      const endrollFadeInput = document.createElement("input");
+      endrollFadeInput.type = "number";
+      endrollFadeInput.min = "0";
+      endrollFadeInput.step = "0.5";
+      endrollFadeInput.className = "scenariobuild-condition-input";
+      endrollFadeInput.placeholder = "4";
+      endrollFadeInput.value = block.endrollBgmFadeSeconds != null ? block.endrollBgmFadeSeconds : "";
+      endrollFadeInput.onchange = () => {
+        const raw = endrollFadeInput.value.trim();
+        block.endrollBgmFadeSeconds = raw === "" ? null : Math.max(0, Number(raw) || 0);
+        persist();
+      };
+      endrollFadeRow.appendChild(endrollFadeInput);
+      wrap.appendChild(endrollFadeRow);
     }
     
     const clearNote = document.createElement("p");
@@ -4443,6 +4461,24 @@ function buildBlockFormFields(chapter, block) {
       endrollSpeedInput.onchange = () => { block.endrollScrollSeconds = Math.max(5, Number(endrollSpeedInput.value) || 20); persist(); };
       endrollSpeedRow.appendChild(endrollSpeedInput);
       wrap.appendChild(endrollSpeedRow);
+      
+      const endrollFadeRow = document.createElement("div");
+      endrollFadeRow.className = "scenariobuild-condition-row";
+      endrollFadeRow.appendChild(labelSpan("終了時のBGMフェードアウト秒数（空欄で4秒）："));
+      const endrollFadeInput = document.createElement("input");
+      endrollFadeInput.type = "number";
+      endrollFadeInput.min = "0";
+      endrollFadeInput.step = "0.5";
+      endrollFadeInput.className = "scenariobuild-condition-input";
+      endrollFadeInput.placeholder = "4";
+      endrollFadeInput.value = block.endrollBgmFadeSeconds != null ? block.endrollBgmFadeSeconds : "";
+      endrollFadeInput.onchange = () => {
+        const raw = endrollFadeInput.value.trim();
+        block.endrollBgmFadeSeconds = raw === "" ? null : Math.max(0, Number(raw) || 0);
+        persist();
+      };
+      endrollFadeRow.appendChild(endrollFadeInput);
+      wrap.appendChild(endrollFadeRow);
     }
     return wrap;
   }
@@ -11597,7 +11633,7 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     
     const endrollEnabled = block.endrollEnabled !== false; // ★未指定（古いデータ）の場合はこれまで通りON扱い
     if (endrollEnabled && block.endroll && typeof playEndRoll === "function") {
-      await playEndRoll(block.endroll, block.endrollBgm || null, block.endrollScrollSeconds || 20); // mainfunc.js
+      await playEndRoll(block.endroll, block.endrollBgm || null, block.endrollScrollSeconds || 20, block.endrollBgmFadeSeconds); // mainfunc.js
     }
     returnToTitleScreen(); // mainfunc.js ★エンドロールが終わったら（無ければそのまま）タイトル画面に戻る
     return "TITLE";
@@ -11616,7 +11652,7 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     // ★要望対応：エンディングでなくても、話クリアのタイミングでエンドロールを流せるようにする。
     //   タイトル画面には戻らないので、流し終わったら普通にnextDefaultIdへ進む
     if (block.endrollEnabled === true && block.endroll && typeof playEndRoll === "function") {
-      await playEndRoll(block.endroll, block.endrollBgm || null, block.endrollScrollSeconds || 20); // mainfunc.js
+      await playEndRoll(block.endroll, block.endrollBgm || null, block.endrollScrollSeconds || 20, block.endrollBgmFadeSeconds); // mainfunc.js
     }
     return nextDefaultId;
   }
