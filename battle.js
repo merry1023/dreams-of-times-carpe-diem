@@ -3501,6 +3501,10 @@ function renderBattleEnemies() {
 function updateBattleHud() {
   if (!battleState) return;
   
+  // ★要望対応：ボス戦の時だけHPゲージを画面上部中央に、細く長く表示する（CSS側の.battle-hud-boss）
+  const hudEl = document.getElementById("battle-hud");
+  if (hudEl) hudEl.classList.toggle("battle-hud-boss", !!battleState.isBoss);
+  
   // ★bgm.js等、「敵は常に1体」前提だった既存コードとの互換用に、先頭の敵（ボス戦なら常にこれが本体）の値をここにも反映する
   const primary = battleState.enemies[0];
   battleState.monsterKey = primary.monsterKey;
