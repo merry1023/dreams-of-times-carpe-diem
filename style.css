@@ -3662,14 +3662,27 @@ html, body {
   z-index: 1;
 }
 
-/* ★要望対応：ダズン・アウトサイドベットのマスに、配当が何倍かを表示する小さなバッジ */
+/* ★要望対応：配当が何倍かをひと目で分かるようにするバッジ（ダズン・アウトサイドベット用） */
 .casino-roulette-cell-payout {
   position: relative;
   z-index: 1;
-  font-size: 9px;
-  font-weight: normal;
-  opacity: 0.85;
+  font-size: 11px;
+  font-weight: bold;
+  opacity: 1;
   line-height: 1;
+  color: #ffe082;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+}
+
+/* ★要望対応：数字マス単体は面積が無いので、右上に小さく添えるだけにする */
+.casino-roulette-cell-payout.casino-roulette-cell-payout-corner {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  font-size: 7px;
+  font-weight: normal;
+  opacity: 0.8;
+  text-shadow: none;
 }
 
 .roulette-chip-stack {

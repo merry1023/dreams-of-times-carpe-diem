@@ -639,6 +639,16 @@ function updateRouletteSelectionSummary(bets) {
   statusEl.textContent = `掛け済み: ${total}陳 / ${bets.length}箇所`;
 }
 
+// ★要望対応：同じマスへの二重掛け（1回のルーレットで同じマスに何度も賭けてしまうこと）を防ぐ際、
+//   却下した理由を一瞬だけステータス欄に表示してから、通常の集計表示に戻す
+function flashRouletteNotice(text, bets) {
+  const statusEl = document.getElementById("casino-roulette-status");
+  if (!statusEl) return;
+  statusEl.textContent = text;
+  clearTimeout(flashRouletteNotice._timer);
+  flashRouletteNotice._timer = setTimeout(() => updateRouletteSelectionSummary(bets), 1400);
+}
+
 function setRouletteSpinSceneVisible(visible) {
   const scene = document.getElementById("casino-roulette-wheel-scene");
   if (!scene) return;
@@ -839,14 +849,16 @@ async function pickRouletteBets() {
         labelEl.textContent = cell.label;
         el.appendChild(labelEl);
         
-        // ★要望対応：数字1つのマス（コマが小さすぎて文字が収まらない）以外は、
-        //   配当が何倍かひと目で分かるよう常にバッジで表示しておく
+        // ★要望対応：配当が何倍かひと目で分かるよう、全てのマスに倍率バッジを表示する
+        //   （数字マス単体は面積が小さいので、右上に小さく添える形にする）
+        const payoutEl = document.createElement("span");
+        payoutEl.textContent = `${cell.payoutMultiple}倍`;
         if (cell.colSpan >= 2) {
-          const payoutEl = document.createElement("span");
           payoutEl.className = "casino-roulette-cell-payout";
-          payoutEl.textContent = `${cell.payoutMultiple}倍`;
-          el.appendChild(payoutEl);
+        } else {
+          payoutEl.className = "casino-roulette-cell-payout casino-roulette-cell-payout-corner";
         }
+        el.appendChild(payoutEl);
 
         const chipTotal = chipTotals.get(cell.key) || 0;
         if (chipTotal > 0) {
@@ -864,6 +876,12 @@ async function pickRouletteBets() {
         el.onclick = async (event) => {
           event.stopPropagation();
           cursorIndex = i;
+          // ★要望対応：同じマスへの二重掛けを防ぐ（既に賭けているマスをもう一度選んでも追加しない）
+          if (selections.some(s => s.cell.key === cell.key)) {
+            flashRouletteNotice(`「${cell.label}」には既に賭けています`, selections);
+            render();
+            return;
+          }
           const amount = await pickCasinoBet(`「${cell.label}」（配当${cell.payoutMultiple}倍）への賭け金`);
           if (amount > 0) {
             selections.push({ cell, amount });
@@ -944,10 +962,16 @@ async function pickRouletteBets() {
     async function addCurrentSelection() {
       const cell = cells[cursorIndex];
       if (!cell) return;
+      // ★要望対応：同じマスへの二重掛けを防ぐ（既に賭けているマスをもう一度選んでも追加しない）
+      if (selections.some(s => s.cell.key === cell.key)) {
+        flashRouletteNotice(`「${cell.label}」には既に賭けています`, selections);
+        return;
+      }
       const amount = await pickCasinoBet(`「${cell.label}」（配当${cell.payoutMultiple}倍）への賭け金`);
       if (amount > 0) {
         selections.push({ cell, amount });
         updateRouletteSelectionSummary(selections);
+        render();
       }
     }
 
