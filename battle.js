@@ -241,6 +241,7 @@ async function startBattle(monsterKeys, options = {}) {
     playerAttackCount: 0, // ★血闘の刻印：戦闘中に自身が繰り出した攻撃（通常攻撃・攻撃技、命中回数ぶんそれぞれ）の回数
     playerChainAttackTurns: 0, // ★賊害の連鎖：発動中は単体攻撃がもう一体の敵にも連鎖する
     turnCount: 1, // ★特殊スキル（ブロック実行）のcheckTurnCountブロック用：この戦闘が何ターン目か（プレイヤーの手番が来るたびに増える）
+    weaponSkillCooldowns: {}, // ★要望対応：武器スキルのクールダウン管理用。{ itemId: 再び使えるようになるturnCount }
     skillTurnMeasurements: {}, // ★特殊スキルの「ターン経過計測：開始/終了」ブロック用：{ 計測名: { startTurn, lastElapsed } }
     // ★bgm.js等、以前の「敵は常に1体」前提だったコードとの互換用。updateBattleHud側で先頭の敵の値を反映し続ける
     monsterKey: enemies[0].monsterKey,
@@ -734,6 +735,38 @@ async function handleFightMenu() {
   return false;
 }
 
+// ★要望対応：武器スキルは1度使ったら5ターンに1回だけ使えるようにする（クールダウン）。
+//   主人公はbattleState.weaponSkillCooldownsに、仲間はその仲間の_battleBuffs.weaponSkillCooldownsに、
+//   { itemId: 再び使えるようになるturnCount } という形でそれぞれ記録する（itemIdはITEM_MASTERのキー）
+const WEAPON_SKILL_COOLDOWN_TURNS = 5;
+
+function getWeaponSkillCooldownMap(caster, isPlayer) {
+  if (isPlayer) {
+    if (!battleState) return {};
+    if (!battleState.weaponSkillCooldowns) battleState.weaponSkillCooldowns = {};
+    return battleState.weaponSkillCooldowns;
+  }
+  const buffs = getCompanionBuffState(caster); // ★companion._battleBuffs（戦闘開始のたびにリセットされる）
+  if (!buffs.weaponSkillCooldowns) buffs.weaponSkillCooldowns = {};
+  return buffs.weaponSkillCooldowns;
+}
+
+// このターン時点で、あと何ターン使えないか（0なら今すぐ使える）
+function getWeaponSkillCooldownRemaining(caster, isPlayer, itemId) {
+  const map = getWeaponSkillCooldownMap(caster, isPlayer);
+  const readyAtTurn = map[itemId];
+  if (!readyAtTurn) return 0;
+  const currentTurn = (battleState && battleState.turnCount) || 1;
+  return Math.max(0, readyAtTurn - currentTurn);
+}
+
+// 実際に発動できた時に呼ぶ：次にこのターン数+5になるまで使えなくする
+function startWeaponSkillCooldown(caster, isPlayer, itemId) {
+  const map = getWeaponSkillCooldownMap(caster, isPlayer);
+  const currentTurn = (battleState && battleState.turnCount) || 1;
+  map[itemId] = currentTurn + WEAPON_SKILL_COOLDOWN_TURNS;
+}
+
 // ★要望対応：装備している武器・防具の「任意発動」スキルを選んで発動する（プレイヤー側）
 async function handleWeaponSkillMenu(activeWeaponSkills) {
   const list = activeWeaponSkills || getEquipmentSkillsFor(player.equipment, "active");
@@ -743,7 +776,11 @@ async function handleWeaponSkillMenu(activeWeaponSkills) {
     return false;
   }
   
-  const choices = list.map(entry => ({ text: entry.master.skillName || entry.master.name, next: entry.slotKey, description: entry.master.description }));
+  const choices = list.map(entry => {
+    const label = entry.master.skillName || entry.master.name;
+    const remaining = getWeaponSkillCooldownRemaining(player, true, entry.itemId);
+    return { text: remaining > 0 ? `${label}（あと${remaining}ターン）` : label, next: entry.slotKey, description: entry.master.description };
+  });
   choices.push({ text: "戻る", next: "back", isBack: true });
   const picked = await displayChoices(choices);
   if (picked.next === "back") return false;
@@ -751,8 +788,17 @@ async function handleWeaponSkillMenu(activeWeaponSkills) {
   const entry = list.find(e => e.slotKey === picked.next);
   if (!entry) return false;
   
+  const remaining = getWeaponSkillCooldownRemaining(player, true, entry.itemId);
+  if (remaining > 0) {
+    changeSpeaker("");
+    await displayMessage(`「${entry.master.skillName || entry.master.name}」はあと${remaining}ターンは使えないようだ……`);
+    return false;
+  }
+  
   changeSpeaker("");
-  return await runEquipmentSkillBlocks(player, entry.master, true);
+  const used = await runEquipmentSkillBlocks(player, entry.master, true);
+  if (used) startWeaponSkillCooldown(player, true, entry.itemId); // ★対象選択をキャンセルした場合（used===false）はクールダウンに入れない
+  return used;
 }
 
 // ★狂戦士「賊害の連鎖」：発動中、単体攻撃が命中した時にもう一体の敵にも連鎖してダメージを与える。
@@ -1289,7 +1335,11 @@ async function performCompanionWeaponSkillMenu(companion, activeWeaponSkills) {
   const list = activeWeaponSkills || getEquipmentSkillsFor(companion.equipment, "active");
   if (list.length === 0) return false;
   
-  const choices = list.map(entry => ({ text: entry.master.skillName || entry.master.name, next: entry.slotKey, description: entry.master.description }));
+  const choices = list.map(entry => {
+    const label = entry.master.skillName || entry.master.name;
+    const remaining = getWeaponSkillCooldownRemaining(companion, false, entry.itemId);
+    return { text: remaining > 0 ? `${label}（あと${remaining}ターン）` : label, next: entry.slotKey, description: entry.master.description };
+  });
   choices.push({ text: "戻る", next: "back", isBack: true });
   const picked = await displayChoices(choices);
   if (picked.next === "back") return false;
@@ -1297,8 +1347,17 @@ async function performCompanionWeaponSkillMenu(companion, activeWeaponSkills) {
   const entry = list.find(e => e.slotKey === picked.next);
   if (!entry) return false;
   
+  const remaining = getWeaponSkillCooldownRemaining(companion, false, entry.itemId);
+  if (remaining > 0) {
+    changeSpeaker("");
+    await displayMessage(`「${entry.master.skillName || entry.master.name}」はあと${remaining}ターンは使えないようだ……`);
+    return false;
+  }
+  
   changeSpeaker("");
-  return await runEquipmentSkillBlocks(companion, entry.master, false);
+  const used = await runEquipmentSkillBlocks(companion, entry.master, false);
+  if (used) startWeaponSkillCooldown(companion, false, entry.itemId);
+  return used;
 }
 
 async function performCompanionNormalAttack(companion) {
