@@ -55,6 +55,19 @@ function resumeLocationDynamic(locationKey) {
       ? scenarioProject.mapAreas.find(a => a.id === areaId) : null;
     if (area && typeof openCustomSettlementArea === "function") { openCustomSettlementArea(area); return true; } // town.js
   }
+  // ★バグ修正：森・洞窟など探索先のエリア（マップ編集で作った独自の敵エリアも含む）は
+  //   "adventure_<locationKey>" という形の現在地キーになる。以前はここが無く、
+  //   「エリアに来た時」を開始トリガーにしている話がこのタイミングで始まって終わった時や、
+  //   探索中にセーブしてロードした時に、必ずカリの村へ戻されてしまっていた。
+  //   来訪回数の加算や話の開始判定はもう済んでいる前提の入室処理だけを呼び直す
+  //   （adventure.js。ここで全部やり直すと来訪回数が二重に増えてしまうため、専用の軽い関数を使う）
+  if (locationKey && locationKey.startsWith("adventure_")) {
+    const adventureLocationKey = locationKey.slice("adventure_".length);
+    if (typeof ADVENTURE_LOCATIONS !== "undefined" && ADVENTURE_LOCATIONS[adventureLocationKey] && typeof renderAdventureLocationScreen === "function") {
+      renderAdventureLocationScreen(adventureLocationKey); // adventure.js
+      return true;
+    }
+  }
   return false;
 }
 

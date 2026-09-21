@@ -244,8 +244,31 @@ async function enterAdventureLocation(locationKey) {
     return;
   }
   
+  // ★バグ修正：以前はここでcurrentLocationKeyを記録していなかったため、この直後の
+  //   「エリアに来た時」を開始トリガーにしている話がここで始まると、話が終わった時に
+  //   （runScenarioChapterBlocksForReal側でcurrentLocationKeyを見て戻り先を決めるにもかかわらず）
+  //   このエリアの記録が無く、必ずカリの村へ戻されてしまっていた。話が始まるより前に、
+  //   まずこのエリアを今いる場所として記録しておく
+  currentLocationKey = "adventure_" + locationKey; // convenience.js
+  
   maybeAutoIncrementAreaVisit(locationKey);
   if (typeof checkAndAutoRunNextCustomChapter === "function" && await checkAndAutoRunNextCustomChapter("areaVisit", locationKey)) return; // ★「エリアに来た時」を始まるきっかけにしている話があれば、探索を始める前にここで始める
+  
+  await renderAdventureLocationScreen(locationKey);
+}
+
+// ★エリアへの「本当の入室」演出・画面表示部分。来訪回数の加算や、話が始まるかどうかの判定は
+//   済んでいる前提で呼ぶ（enterAdventureLocationの後半と、話が終わった後にこのエリアへ戻ってくる時
+//   〈convenience.js resumeLocationDynamic〉の両方から使うため、切り出してある。ここを再度呼んでも
+//   来訪回数を二重に増やしたり、話をもう一度始めたりしないようにするのが目的）
+async function renderAdventureLocationScreen(locationKey) {
+  currentAdventureLocationKey = locationKey;
+  const loc = ADVENTURE_LOCATIONS[locationKey];
+  if (!loc) {
+    if (typeof openTownMenu === "function") openTownMenu();
+    return;
+  }
+  
   currentAdventureMinMonsterLevel = loc.minMonsterLevel || 1; // ★この場所で出る魔物の最低レベル
   
   if (DEPTH_EVENT_CONFIG[locationKey]) {
@@ -313,6 +336,13 @@ async function enterCustomMapArea(area, explicitKey) {
   // ★街・国・村タイプは、森・草原・洞窟のようなダンジョン探索ではなく、カリの村と同じ
   //   「施設一覧から選ぶ」平和な拠点として開く（以前はtypeを見ずに全部ダンジョン探索扱いになっていた）
   if (["city", "country", "village"].includes(area.type) && typeof openCustomSettlementArea === "function") {
+    // ★バグ修正：以前はここでcurrentLocationKeyの記録がopenCustomSettlementArea側任せだったため、
+    //   初めてこのエリアに来て「エリアに来た時」を開始トリガーにする話がここで始まると、
+    //   話が終わった時にこのエリアの記録がまだ無く、必ずカリの村へ戻されてしまっていた。
+    //   話が始まるより前に、まずこのエリアを今いる場所として記録しておく
+    //   （openCustomSettlementArea側でも同じ記録をするので、二重になっても問題ない）
+    currentLocationKey = "settlement_" + area.id; // convenience.js
+    if (player) player.lastVisitedBaseKey = currentLocationKey; // town.js openCustomSettlementAreaと同じ記録
     maybeAutoIncrementAreaVisit(locationKey);
     if (typeof checkAndAutoRunNextCustomChapter === "function" && await checkAndAutoRunNextCustomChapter("areaVisit", locationKey)) return;
     await openCustomSettlementArea(area); // town.js
