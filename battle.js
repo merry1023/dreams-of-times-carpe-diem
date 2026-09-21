@@ -1922,6 +1922,43 @@ async function executeMonsterUniqueSkill(enemy, skill) {
     return;
   }
   
+  // ★要望対応：職業技を使う敵。既存の職業技（威力・命中回数・状態異常）をそのまま使い、
+  //   威力の基準だけこの敵自身の攻撃力に置き換える。常に主人公を狙う（他の専用スキルと同じ挙動）
+  if (skill.kind === "classSkill") {
+    const skillList = (typeof CLASS_SKILLS !== "undefined" && CLASS_SKILLS[skill.classSkillClass]) || [];
+    const classSkill = skillList.find(s => s.name === skill.classSkillName);
+    if (!classSkill) {
+      changeSpeaker("");
+      await displayMessage("しかし、技が不発に終わってしまった……");
+      return;
+    }
+    
+    const atkUpBonusForClassSkill = (enemy.status && enemy.status.atkUp && enemy.status.atkUp.turns > 0) ? enemy.status.atkUp.power : 0;
+    const classSkillEnemyAtk = enemy.atk + enemy.enemyAtkBonus + atkUpBonusForClassSkill;
+    const level = (typeof player !== "undefined" && player) ? player.level : 1;
+    const levelMultiplier = 1 + level * 0.05; // ★プレイヤー側の技ダメージ計算式と同じ補正
+    const hitCount = classSkill.hitCount || 1;
+    
+    let totalDamage = 0;
+    for (let hit = 0; hit < hitCount; hit++) {
+      const variance = Math.floor(Math.random() * 3) - 1;
+      const atkPerHit = Math.round(classSkillEnemyAtk * 0.7) / Math.max(1, hitCount);
+      const raw = Math.max(1, Math.round(levelMultiplier * (classSkill.power || 0)) + Math.round(atkPerHit) + variance);
+      const hitDamage = applyPlayerDamageReduction(raw);
+      changeGauge("hp", -hitDamage);
+      totalDamage += hitDamage;
+    }
+    player.totalDamageTaken = (player.totalDamageTaken || 0) + totalDamage; // ★実績システム用
+    if (typeof triggerCameraShake === "function") triggerCameraShake();
+    renderStatusHUD();
+    changeSpeaker("");
+    await displayMessage(`合計${totalDamage}のダメージを受けた……！`);
+    updateBattleHud();
+    
+    if (classSkill.statusEffect) await applyMonsterAttackStatusInflictions([classSkill.statusEffect]);
+    return;
+  }
+  
   const atkUpBonus = (enemy.status && enemy.status.atkUp && enemy.status.atkUp.turns > 0) ? enemy.status.atkUp.power : 0;
   const enemyAtk = enemy.atk + enemy.enemyAtkBonus + atkUpBonus;
   const damage = applyPlayerDamageReduction(Math.max(1, Math.round(enemyAtk * (skill.multiplier || 1))));

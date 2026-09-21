@@ -9323,7 +9323,7 @@ function buildMonsterDetailEditor(entity, persist, category) {
   skillNote.textContent = "専用スキル（低確率で通常より強い一撃を繰り出す）：";
   wrap.appendChild(skillNote);
   
-  if (!entity.uniqueSkill || typeof entity.uniqueSkill !== "object") entity.uniqueSkill = { name: "", chance: 0, multiplier: 1, flavor: "", kind: "normal", hpDrainRatio: 0, spDrain: 0, buffPower: 5, buffTurns: 3 };
+  if (!entity.uniqueSkill || typeof entity.uniqueSkill !== "object") entity.uniqueSkill = { name: "", chance: 0, multiplier: 1, flavor: "", kind: "normal", hpDrainRatio: 0, spDrain: 0, buffPower: 5, buffTurns: 3, classSkillClass: "", classSkillName: "" };
   
   const skillRow1 = document.createElement("div");
   skillRow1.className = "scenariobuild-condition-row";
@@ -9373,15 +9373,67 @@ function buildMonsterDetailEditor(entity, persist, category) {
   skillRow4.appendChild(labelSpan("種類："));
   const kindSelect = document.createElement("select");
   kindSelect.className = "scenariobuild-jump-select";
-  [["normal", "通常（ダメージのみ）"], ["drain", "パラメータ吸収"], ["buff", "状態強化（自分の攻撃力を上げる）"]].forEach(([v, label]) => {
+  [["normal", "通常（ダメージのみ）"], ["drain", "パラメータ吸収"], ["buff", "状態強化（自分の攻撃力を上げる）"], ["classSkill", "職業技を使う"]].forEach(([v, label]) => {
     const opt = document.createElement("option");
     opt.value = v; opt.textContent = label;
     kindSelect.appendChild(opt);
   });
-  kindSelect.value = ["drain", "buff"].includes(entity.uniqueSkill.kind) ? entity.uniqueSkill.kind : "normal";
+  kindSelect.value = ["drain", "buff", "classSkill"].includes(entity.uniqueSkill.kind) ? entity.uniqueSkill.kind : "normal";
   kindSelect.onchange = () => { entity.uniqueSkill.kind = kindSelect.value; persist(); renderScenarioBuildPanel(); };
   skillRow4.appendChild(kindSelect);
   wrap.appendChild(skillRow4);
+  
+  // ★要望対応：職業技を使う敵。既存の職業技（scenarioProject.skills、攻撃技のみ）の中から
+  //   撃たせたい技を選ぶ。発動時のセリフ・名前は上の欄ではなく選んだ技のものを自動で使う
+  if (entity.uniqueSkill.kind === "classSkill") {
+    const classRow = document.createElement("div");
+    classRow.className = "scenariobuild-condition-row";
+    classRow.appendChild(labelSpan("職業："));
+    const classSelect = document.createElement("select");
+    classSelect.className = "scenariobuild-jump-select";
+    Object.keys(CLASS_MASTER).forEach(className => {
+      const opt = document.createElement("option");
+      opt.value = className; opt.textContent = className;
+      classSelect.appendChild(opt);
+    });
+    classSelect.value = entity.uniqueSkill.classSkillClass || Object.keys(CLASS_MASTER)[0] || "";
+    classRow.appendChild(classSelect);
+    wrap.appendChild(classRow);
+    
+    const skillNameRow = document.createElement("div");
+    skillNameRow.className = "scenariobuild-condition-row";
+    skillNameRow.appendChild(labelSpan("技："));
+    const skillNameSelect = document.createElement("select");
+    skillNameSelect.className = "scenariobuild-jump-select";
+    const attackSkillsOfClass = scenarioProject.skills.filter(s => s.className === classSelect.value && s.type === "attack");
+    if (attackSkillsOfClass.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = ""; opt.textContent = "（この職業に攻撃技がありません）";
+      skillNameSelect.appendChild(opt);
+    } else {
+      attackSkillsOfClass.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.name; opt.textContent = s.name;
+        skillNameSelect.appendChild(opt);
+      });
+    }
+    skillNameSelect.value = entity.uniqueSkill.classSkillName || (attackSkillsOfClass[0] && attackSkillsOfClass[0].name) || "";
+    skillNameSelect.onchange = () => { entity.uniqueSkill.classSkillName = skillNameSelect.value; persist(); };
+    skillNameRow.appendChild(skillNameSelect);
+    wrap.appendChild(skillNameRow);
+    
+    classSelect.onchange = () => {
+      entity.uniqueSkill.classSkillClass = classSelect.value;
+      entity.uniqueSkill.classSkillName = ""; // ★職業を変えたら技の選び直しにする
+      persist();
+      renderScenarioBuildPanel();
+    };
+    
+    const classSkillNote = document.createElement("p");
+    classSkillNote.className = "devmode-note";
+    classSkillNote.textContent = "選んだ技の威力・命中回数・付与する状態異常がそのまま使われます（威力の基準はこの敵の攻撃力）。発動時のセリフは上の「発動時のセリフ」欄がそのまま使われます。";
+    wrap.appendChild(classSkillNote);
+  }
   
   // ★要望対応：状態強化スキル（自分の攻撃力を一定ターン上げる。ダメージは与えず行動を終える）
   if (entity.uniqueSkill.kind === "buff") {
