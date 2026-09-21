@@ -129,12 +129,20 @@ const CASINO_SLOT_SPIN_SPEED = 0.55;        // px/ms（1マス=76pxを約138ms�
 const CASINO_SLOT_BUFFER_CELLS = 8;         // ★見えている範囲より、常にこの数ぶん先まで帯を伸ばしておく
 const CASINO_SLOT_STOP_TRANSITION_MS = 550; // ★止める時の「滑らかに減速して着地する」アニメーションの長さ
 
+// ★要望対応：各絵柄の「揃う確率」（重み）を施設ごとに変えられるようにする。
+//   施設側でfacility.slotWeights[key]に数値が指定されていればそれを使い、無指定ならCASINO_SLOT_SYMBOLSの既定値を使う
+function getSlotSymbolWeight(symbol) {
+  const override = casinoFacility && casinoFacility.slotWeights && casinoFacility.slotWeights[symbol.key];
+  return (typeof override === "number" && override > 0) ? override : symbol.weight;
+}
+
 function pickWeightedSlotSymbol() {
-  const total = CASINO_SLOT_SYMBOLS.reduce((sum, s) => sum + s.weight, 0);
+  const weights = CASINO_SLOT_SYMBOLS.map(s => getSlotSymbolWeight(s));
+  const total = weights.reduce((sum, w) => sum + w, 0);
   let r = Math.random() * total;
-  for (const symbol of CASINO_SLOT_SYMBOLS) {
-    if (r < symbol.weight) return symbol;
-    r -= symbol.weight;
+  for (let i = 0; i < CASINO_SLOT_SYMBOLS.length; i++) {
+    if (r < weights[i]) return CASINO_SLOT_SYMBOLS[i];
+    r -= weights[i];
   }
   return CASINO_SLOT_SYMBOLS[CASINO_SLOT_SYMBOLS.length - 1];
 }
@@ -160,6 +168,8 @@ function getWinningSlotLines(boardSymbols) {
   return winners;
 }
 
+// ★要望対応：以前は「2つだけ揃うと掛け金の半分が戻ってくる」小当たりがあったが、廃止する。
+//   ライン揃い以外は素直にハズレ扱いにする
 function getSlotBoardResult(boardSymbols) {
   const winningLines = getWinningSlotLines(boardSymbols);
   if (winningLines.length > 0) {
@@ -173,23 +183,6 @@ function getSlotBoardResult(boardSymbols) {
       line: winningIndexes,
       payout: totalPayout,
       profit: totalPayout
-    };
-  }
-
-  const counts = {};
-  boardSymbols.forEach(symbol => {
-    if (!symbol) return;
-    counts[symbol.key] = (counts[symbol.key] || 0) + 1;
-  });
-  const pairKey = Object.keys(counts).find(key => counts[key] >= 2);
-  if (pairKey) {
-    const symbol = CASINO_SLOT_SYMBOLS.find(s => s.key === pairKey) || CASINO_SLOT_SYMBOLS[0];
-    return {
-      type: "small",
-      symbol,
-      line: [],
-      payout: 1,
-      profit: 0.5
     };
   }
 
@@ -226,7 +219,7 @@ function renderCasinoSlotPayoutTable() {
   
   const note = document.createElement("div");
   note.className = "casino-slot-payout-note";
-  note.textContent = "同じ絵柄が3つ揃うと掛け金×倍率、2つだけ揃うと掛け金の半分が戻ってくる";
+  note.textContent = "同じ絵柄が3つ揃うと掛け金×倍率が戻ってくる";
   container.appendChild(note);
 }
 
@@ -422,6 +415,8 @@ async function startSlotGame() {
   const betDisplay = document.getElementById("casino-slot-bet-value");
   const betDecBtn = document.getElementById("casino-slot-bet-dec");
   const betIncBtn = document.getElementById("casino-slot-bet-inc");
+  const betMinBtn = document.getElementById("casino-slot-bet-min");
+  const betMaxBtn = document.getElementById("casino-slot-bet-max");
   const betStepDisplay = document.getElementById("casino-slot-bet-step-value");
   const betStepDecBtn = document.getElementById("casino-slot-bet-step-dec");
   const betStepIncBtn = document.getElementById("casino-slot-bet-step-inc");
@@ -456,6 +451,8 @@ async function startSlotGame() {
     if (betDisplay) betDisplay.textContent = `${nextBet}陳`;
     if (betDecBtn) betDecBtn.disabled = nextBet <= minBet;
     if (betIncBtn) betIncBtn.disabled = nextBet >= maxBet;
+    if (betMinBtn) betMinBtn.disabled = nextBet <= minBet;
+    if (betMaxBtn) betMaxBtn.disabled = nextBet >= maxBet;
     if (stopButton) {
       stopButton.innerHTML = `開始（${nextBet}陳）<span class="key-badge">Z</span>`;
     }
@@ -476,6 +473,8 @@ async function startSlotGame() {
     const cleanup = () => {
       if (betDecBtn) betDecBtn.removeEventListener("click", decClick);
       if (betIncBtn) betIncBtn.removeEventListener("click", incClick);
+      if (betMinBtn) betMinBtn.removeEventListener("click", minClick);
+      if (betMaxBtn) betMaxBtn.removeEventListener("click", maxClick);
       if (betStepDecBtn) betStepDecBtn.removeEventListener("click", stepDecClick);
       if (betStepIncBtn) betStepIncBtn.removeEventListener("click", stepIncClick);
       if (stopButton) stopButton.removeEventListener("click", confirmClick);
@@ -503,6 +502,14 @@ async function startSlotGame() {
       currentBet = Math.min(maxBet, currentBet + step);
       updateBetDisplay(currentBet);
     };
+    const minClick = () => {
+      currentBet = minBet;
+      updateBetDisplay(currentBet);
+    };
+    const maxClick = () => {
+      currentBet = maxBet;
+      updateBetDisplay(currentBet);
+    };
     const stepDecClick = () => changeStep(-1);
     const stepIncClick = () => changeStep(1);
 
@@ -514,6 +521,12 @@ async function startSlotGame() {
       } else if (event.key === "ArrowRight") {
         event.preventDefault(); event.stopImmediatePropagation();
         incClick();
+      } else if (event.key === "o" || event.key === "O") {
+        event.preventDefault(); event.stopImmediatePropagation();
+        minClick();
+      } else if (event.key === "p" || event.key === "P") {
+        event.preventDefault(); event.stopImmediatePropagation();
+        maxClick();
       } else if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.tabLeftKey.includes(event.key)) {
         event.preventDefault(); event.stopImmediatePropagation();
         changeStep(-1);
@@ -531,6 +544,8 @@ async function startSlotGame() {
 
     if (betDecBtn) betDecBtn.addEventListener("click", decClick);
     if (betIncBtn) betIncBtn.addEventListener("click", incClick);
+    if (betMinBtn) betMinBtn.addEventListener("click", minClick);
+    if (betMaxBtn) betMaxBtn.addEventListener("click", maxClick);
     if (betStepDecBtn) betStepDecBtn.addEventListener("click", stepDecClick);
     if (betStepIncBtn) betStepIncBtn.addEventListener("click", stepIncClick);
     if (stopButton) stopButton.addEventListener("click", confirmClick);
@@ -578,8 +593,6 @@ async function startSlotGame() {
         } else {
           resultEl.textContent = `大当たり！ ${result.symbol.emoji} が揃って${bet * result.payout}陳の儲けだ！`;
         }
-      } else if (result.type === "small") {
-        resultEl.textContent = `惜しい、2つ揃った。${Math.ceil(bet * 0.5)}陳だけ戻ってきた。`;
       } else {
         resultEl.textContent = `残念、揃わなかった。${bet}陳は没収だな……`;
       }
@@ -587,9 +600,6 @@ async function startSlotGame() {
 
     if (result.type === "win") {
       changeGold(bet * result.payout);
-    } else if (result.type === "small") {
-      const refund = Math.ceil(bet * 0.5);
-      changeGold(refund);
     }
     renderStatusHUD();
 
@@ -649,6 +659,16 @@ function updateRouletteSelectionSummary(bets) {
   if (!statusEl) return;
   const total = bets.reduce((sum, bet) => sum + bet.amount, 0);
   statusEl.textContent = `掛け済み: ${total}陳 / ${bets.length}箇所`;
+}
+
+// ★要望対応：同じマスへの二重掛け（1回のルーレットで同じマスに何度も賭けてしまうこと）を防ぐ際、
+//   却下した理由を一瞬だけステータス欄に表示してから、通常の集計表示に戻す
+function flashRouletteNotice(text, bets) {
+  const statusEl = document.getElementById("casino-roulette-status");
+  if (!statusEl) return;
+  statusEl.textContent = text;
+  clearTimeout(flashRouletteNotice._timer);
+  flashRouletteNotice._timer = setTimeout(() => updateRouletteSelectionSummary(bets), 1400);
 }
 
 function setRouletteSpinSceneVisible(visible) {
@@ -775,7 +795,7 @@ function buildRouletteCells() {
   
   cells.push({
     key: "num-0", label: "0", row: 1, colStart: 1, colSpan: 1, rowSpan: 3,
-    className: "casino-cell-zero", matches: n => n === 0, payoutMultiple: 35
+    className: "casino-cell-zero", matches: n => n === 0, payoutMultiple: 35 // ★0の倍率は検討中のため今回は変更しない
   });
   
   // 実物のルーレット卓と同じ並び（一番奥の列が3,6,9…36、真ん中が2,5,8…35、手前が1,4,7…34）
@@ -789,23 +809,23 @@ function buildRouletteCells() {
       cells.push({
         key: "num-" + n, label: String(n), row: rowIndex + 1, colStart: colIndex + 2, colSpan: 1, rowSpan: 1,
         className: CASINO_ROULETTE_RED.has(n) ? "casino-cell-red" : "casino-cell-black",
-        matches: n2 => n2 === n, payoutMultiple: 35
+        matches: n2 => n2 === n, payoutMultiple: 20 // ★要望対応：単マス（0以外）は20倍
       });
     });
   });
   
-  // ダズンベット（12個区切り、配当2倍）
-  cells.push({ key: "dozen-1", label: "1〜12", row: 4, colStart: 2, colSpan: 4, rowSpan: 1, className: "casino-cell-outside", matches: n => n >= 1 && n <= 12, payoutMultiple: 2 });
-  cells.push({ key: "dozen-2", label: "13〜24", row: 4, colStart: 6, colSpan: 4, rowSpan: 1, className: "casino-cell-outside", matches: n => n >= 13 && n <= 24, payoutMultiple: 2 });
-  cells.push({ key: "dozen-3", label: "25〜36", row: 4, colStart: 10, colSpan: 4, rowSpan: 1, className: "casino-cell-outside", matches: n => n >= 25 && n <= 36, payoutMultiple: 2 });
+  // ダズンベット（12個区切り、配当3倍） // ★要望対応：2倍→3倍
+  cells.push({ key: "dozen-1", label: "1〜12", row: 4, colStart: 2, colSpan: 4, rowSpan: 1, className: "casino-cell-outside", matches: n => n >= 1 && n <= 12, payoutMultiple: 3 });
+  cells.push({ key: "dozen-2", label: "13〜24", row: 4, colStart: 6, colSpan: 4, rowSpan: 1, className: "casino-cell-outside", matches: n => n >= 13 && n <= 24, payoutMultiple: 3 });
+  cells.push({ key: "dozen-3", label: "25〜36", row: 4, colStart: 10, colSpan: 4, rowSpan: 1, className: "casino-cell-outside", matches: n => n >= 25 && n <= 36, payoutMultiple: 3 });
   
-  // 等倍ベット（配当1倍＝賭け金と同額の儲け）
-  cells.push({ key: "low",   label: "1〜18", row: 5, colStart: 2,  colSpan: 2, rowSpan: 1, className: "casino-cell-outside",               matches: n => n >= 1 && n <= 18,              payoutMultiple: 1 });
-  cells.push({ key: "even",  label: "偶数",   row: 5, colStart: 4,  colSpan: 2, rowSpan: 1, className: "casino-cell-outside",               matches: n => n !== 0 && n % 2 === 0,          payoutMultiple: 1 });
-  cells.push({ key: "red",   label: "赤",     row: 5, colStart: 6,  colSpan: 2, rowSpan: 1, className: "casino-cell-outside casino-cell-red",   matches: n => CASINO_ROULETTE_RED.has(n),      payoutMultiple: 1 });
-  cells.push({ key: "black", label: "黒",     row: 5, colStart: 8,  colSpan: 2, rowSpan: 1, className: "casino-cell-outside casino-cell-black", matches: n => n !== 0 && !CASINO_ROULETTE_RED.has(n), payoutMultiple: 1 });
-  cells.push({ key: "odd",   label: "奇数",   row: 5, colStart: 10, colSpan: 2, rowSpan: 1, className: "casino-cell-outside",               matches: n => n % 2 === 1,                     payoutMultiple: 1 });
-  cells.push({ key: "high",  label: "19〜36", row: 5, colStart: 12, colSpan: 2, rowSpan: 1, className: "casino-cell-outside",               matches: n => n >= 19 && n <= 36,              payoutMultiple: 1 });
+  // 一番下の等倍ベット（配当2倍） // ★要望対応：1倍→2倍
+  cells.push({ key: "low",   label: "1〜18", row: 5, colStart: 2,  colSpan: 2, rowSpan: 1, className: "casino-cell-outside",               matches: n => n >= 1 && n <= 18,              payoutMultiple: 2 });
+  cells.push({ key: "even",  label: "偶数",   row: 5, colStart: 4,  colSpan: 2, rowSpan: 1, className: "casino-cell-outside",               matches: n => n !== 0 && n % 2 === 0,          payoutMultiple: 2 });
+  cells.push({ key: "red",   label: "赤",     row: 5, colStart: 6,  colSpan: 2, rowSpan: 1, className: "casino-cell-outside casino-cell-red",   matches: n => CASINO_ROULETTE_RED.has(n),      payoutMultiple: 2 });
+  cells.push({ key: "black", label: "黒",     row: 5, colStart: 8,  colSpan: 2, rowSpan: 1, className: "casino-cell-outside casino-cell-black", matches: n => n !== 0 && !CASINO_ROULETTE_RED.has(n), payoutMultiple: 2 });
+  cells.push({ key: "odd",   label: "奇数",   row: 5, colStart: 10, colSpan: 2, rowSpan: 1, className: "casino-cell-outside",               matches: n => n % 2 === 1,                     payoutMultiple: 2 });
+  cells.push({ key: "high",  label: "19〜36", row: 5, colStart: 12, colSpan: 2, rowSpan: 1, className: "casino-cell-outside",               matches: n => n >= 19 && n <= 36,              payoutMultiple: 2 });
   
   return cells;
 }
@@ -850,6 +870,17 @@ async function pickRouletteBets() {
         labelEl.className = "casino-roulette-cell-label";
         labelEl.textContent = cell.label;
         el.appendChild(labelEl);
+        
+        // ★要望対応：配当が何倍かひと目で分かるよう、全てのマスに倍率バッジを表示する
+        //   （数字マス単体は面積が小さいので、右上に小さく添える形にする）
+        const payoutEl = document.createElement("span");
+        payoutEl.textContent = `${cell.payoutMultiple}倍`;
+        if (cell.colSpan >= 2) {
+          payoutEl.className = "casino-roulette-cell-payout";
+        } else {
+          payoutEl.className = "casino-roulette-cell-payout casino-roulette-cell-payout-corner";
+        }
+        el.appendChild(payoutEl);
 
         const chipTotal = chipTotals.get(cell.key) || 0;
         if (chipTotal > 0) {
@@ -867,7 +898,13 @@ async function pickRouletteBets() {
         el.onclick = async (event) => {
           event.stopPropagation();
           cursorIndex = i;
-          const amount = await pickCasinoBet(`「${cell.label}」への賭け金`);
+          // ★要望対応：同じマスへの二重掛けを防ぐ（既に賭けているマスをもう一度選んでも追加しない）
+          if (selections.some(s => s.cell.key === cell.key)) {
+            flashRouletteNotice(`「${cell.label}」には既に賭けています`, selections);
+            render();
+            return;
+          }
+          const amount = await pickCasinoBet(`「${cell.label}」（配当${cell.payoutMultiple}倍）への賭け金`);
           if (amount > 0) {
             selections.push({ cell, amount });
             updateRouletteSelectionSummary(selections);
@@ -947,10 +984,16 @@ async function pickRouletteBets() {
     async function addCurrentSelection() {
       const cell = cells[cursorIndex];
       if (!cell) return;
-      const amount = await pickCasinoBet(`「${cell.label}」への賭け金`);
+      // ★要望対応：同じマスへの二重掛けを防ぐ（既に賭けているマスをもう一度選んでも追加しない）
+      if (selections.some(s => s.cell.key === cell.key)) {
+        flashRouletteNotice(`「${cell.label}」には既に賭けています`, selections);
+        return;
+      }
+      const amount = await pickCasinoBet(`「${cell.label}」（配当${cell.payoutMultiple}倍）への賭け金`);
       if (amount > 0) {
         selections.push({ cell, amount });
         updateRouletteSelectionSummary(selections);
+        render();
       }
     }
 

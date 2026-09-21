@@ -228,6 +228,8 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.portraitCharacters = data.portraitCharacters || [];
   scenarioProject.recipes = data.recipes || [];
   if (Array.isArray(data.randomNamePool)) scenarioProject.randomNamePool = data.randomNamePool; // ★要望対応：ランダム名前管理タブ
+  if (Array.isArray(data.elementDefs)) scenarioProject.elementDefs = data.elementDefs; // ★要望対応：属性管理タブ
+  if (data.elementMatchups && typeof data.elementMatchups === "object") scenarioProject.elementMatchups = data.elementMatchups;
   scenarioProject.bgmTracks = data.bgmTracks || [];
   scenarioProject.mapAreas = data.mapAreas || [];
   scenarioProject.mapEdges = data.mapEdges || [];
@@ -422,6 +424,11 @@ function normalizeScenarioProject() {
       "レオ", "アオイ", "シュン", "マナミ",
     ];
   }
+  // ★要望対応：属性管理タブ。属性一覧（火・氷等）と、属性同士の相性表
+  //   （scenarioProject.elementMatchups[攻撃側属性id + ">" + 受ける側属性id] = "advantage"|"resist"、
+  //   未設定は通常扱い）
+  if (!Array.isArray(scenarioProject.elementDefs)) scenarioProject.elementDefs = []; // [{ id, name }, ...]
+  if (!scenarioProject.elementMatchups || typeof scenarioProject.elementMatchups !== "object") scenarioProject.elementMatchups = {};
   // ★要望対応：ログインボーナス。常に必ず7日分（1〜7日目）が揃った状態にしておく
   if (!Array.isArray(scenarioProject.loginBonusDays)) scenarioProject.loginBonusDays = [];
   for (let day = 0; day < 7; day++) {
@@ -1009,7 +1016,10 @@ function ensureCustomMonstersRegistered() {
       restSkillBlocks: (Array.isArray(enemy.restSkillBlocks) && enemy.restSkillBlocks.length > 0) ? enemy.restSkillBlocks : undefined,
       // ★要望対応：見逃した/倒した時の演出をブロックで組み立てられるようにする
       killBlocks: (Array.isArray(enemy.killBlocks) && enemy.killBlocks.length > 0) ? enemy.killBlocks : undefined,
-      spareBlocks: (Array.isArray(enemy.spareBlocks) && enemy.spareBlocks.length > 0) ? enemy.spareBlocks : undefined
+      spareBlocks: (Array.isArray(enemy.spareBlocks) && enemy.spareBlocks.length > 0) ? enemy.spareBlocks : undefined,
+      // ★要望対応：属性（複数選択可）と、属性相性を無視するかどうか
+      elements: (Array.isArray(enemy.elements) && enemy.elements.length > 0) ? enemy.elements : undefined,
+      ignoreElementalAffinity: enemy.ignoreElementalAffinity || undefined
     };
     // ★バグ修正：新しく追加した敵（ボスではない通常の魔物）が、SPAREABLE_KEYS（見逃す/倒すの対象、
     //   魔物図鑑に載る対象）に組み込みの魔物しか入っていなかったせいで、魔物図鑑に載らず、
@@ -1050,7 +1060,10 @@ function ensureCustomMonstersRegistered() {
       statusImmunities: (Array.isArray(boss.statusImmunities) && boss.statusImmunities.length > 0) ? boss.statusImmunities : undefined,
       statusResistances: (boss.statusResistances && typeof boss.statusResistances === "object" && Object.keys(boss.statusResistances).length > 0) ? boss.statusResistances : undefined,
       battleEvents: (Array.isArray(boss.battleEvents) && boss.battleEvents.length > 0) ? boss.battleEvents : undefined, // ★ボス管理タブの戦闘イベント（battle.js参照）
-      forms: (Array.isArray(boss.forms) && boss.forms.length > 0) ? boss.forms : undefined // ★要望対応：ボス管理タブの「形態」一覧（battle.js参照）
+      forms: (Array.isArray(boss.forms) && boss.forms.length > 0) ? boss.forms : undefined, // ★要望対応：ボス管理タブの「形態」一覧（battle.js参照）
+      // ★要望対応：属性（複数選択可）と、属性相性を無視するかどうか
+      elements: (Array.isArray(boss.elements) && boss.elements.length > 0) ? boss.elements : undefined,
+      ignoreElementalAffinity: boss.ignoreElementalAffinity || undefined
     };
     if (typeof BOSS_MONSTER_KEYS !== "undefined" && !BOSS_MONSTER_KEYS.includes(boss.id)) {
       BOSS_MONSTER_KEYS.push(boss.id); // ★ボス扱い（BGM切り替え等）にする
@@ -1391,6 +1404,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "gamevars", label: "ゲーム変数管理" }, // ★要望対応：話ブロックのifで参照できる数値変数の管理タブ（システム変数一覧の「変数一覧」とは別物）
   { view: "recipes", label: "レシピ管理" },
   { view: "randomnames", label: "ランダム名前管理" }, // ★要望対応：オークションNPC等のランダム名前バリエーション管理
+  { view: "elements", label: "属性管理" }, // ★要望対応：属性一覧と属性相性表
   { view: "loginbonus", label: "ログボ報酬" }, // ★要望対応：ログインボーナス（7日分の報酬編集）
   { view: "companionchat", label: "会話AI設定", enabledByDefault: false }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集。安定するまで非表示
   { view: "companions", label: "仲間編集" },
@@ -1539,6 +1553,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "gamevars") renderVariableManager(bodyEl);
   else if (scenarioBuildSubView === "recipes") renderRecipeManager(bodyEl);
   else if (scenarioBuildSubView === "randomnames") renderRandomNameManager(bodyEl);
+  else if (scenarioBuildSubView === "elements") renderElementManager(bodyEl);
   else if (scenarioBuildSubView === "companions") renderCompanionManager(bodyEl);
   else if (scenarioBuildSubView === "classes") renderClassStatsManager(bodyEl);
   else if (scenarioBuildSubView === "bgm") renderEntityManager(bodyEl, getBgmManagerConfig());
@@ -5786,6 +5801,132 @@ function renderRandomNameManager(container) {
   container.appendChild(bulkAddBtn);
 }
 
+// ===================================================================
+// ===== 要望対応：属性管理（属性一覧と属性相性表） =====
+// ===================================================================
+function renderElementManager(container) {
+  const introEl = document.createElement("p");
+  introEl.className = "devmode-note";
+  introEl.textContent = "スキルや敵に設定する「属性」（火・氷など）を登録し、属性同士の相性（特攻・耐性・通常）を決められます。特攻＝ダメージ増、耐性＝ダメージ減、通常＝変化なし。敵が複数の属性を持つ場合、各属性との相性が掛け合わさって最終的なダメージ倍率になります。";
+  container.appendChild(introEl);
+  
+  const listHeading = document.createElement("h4");
+  listHeading.className = "scenariobuild-subheading";
+  listHeading.textContent = "属性一覧";
+  container.appendChild(listHeading);
+  
+  const list = document.createElement("div");
+  list.className = "scenariobuild-list";
+  container.appendChild(list);
+  
+  scenarioProject.elementDefs.forEach((el, i) => {
+    const row = document.createElement("div");
+    row.className = "scenariobuild-condition-row";
+    row.style.justifyContent = "space-between";
+    row.style.gap = "8px";
+    
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "scenariobuild-title-input";
+    nameInput.value = el.name || "";
+    nameInput.placeholder = "例：火";
+    nameInput.onchange = () => {
+      el.name = nameInput.value.trim();
+      markScenarioBuildDirty();
+      if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
+      renderScenarioBuildPanel(); // ★相性表・見出しの表示名にも反映する
+    };
+    row.appendChild(nameInput);
+    
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "devmode-btn devmode-btn-danger";
+    deleteBtn.textContent = "削除";
+    deleteBtn.onclick = (event) => {
+      event.stopPropagation();
+      if (!confirm(`「${el.name || "（名前未設定）"}」を削除しますか？（この属性を使っているスキル・敵の設定は残りますが、削除後は「無」属性として扱われます）`)) return;
+      scenarioProject.elementDefs.splice(i, 1);
+      // ★この属性が絡む相性データも一緒に削除しておく
+      Object.keys(scenarioProject.elementMatchups).forEach(key => {
+        if (key.startsWith(el.id + ">") || key.endsWith(">" + el.id)) delete scenarioProject.elementMatchups[key];
+      });
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    row.appendChild(deleteBtn);
+    
+    list.appendChild(row);
+  });
+  
+  const addBtn = document.createElement("button");
+  addBtn.className = "devmode-btn";
+  addBtn.textContent = "＋ 属性を追加";
+  addBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioProject.elementDefs.push({ id: generateId("element"), name: "" });
+    markScenarioBuildDirty();
+    renderScenarioBuildPanel();
+  };
+  container.appendChild(addBtn);
+  
+  const matrixHeading = document.createElement("h4");
+  matrixHeading.className = "scenariobuild-subheading";
+  matrixHeading.textContent = "属性相性表（縦：攻撃する側の属性／横：受ける側の属性）";
+  container.appendChild(matrixHeading);
+  
+  if (scenarioProject.elementDefs.length < 1) {
+    const note = document.createElement("p");
+    note.className = "devmode-note";
+    note.textContent = "属性を1つ以上登録すると、ここに相性表が表示されます。";
+    container.appendChild(note);
+    return;
+  }
+  
+  const tableWrap = document.createElement("div");
+  tableWrap.className = "scenariobuild-element-matrix-wrap";
+  const table = document.createElement("table");
+  table.className = "scenariobuild-element-matrix";
+  
+  const headRow = document.createElement("tr");
+  headRow.appendChild(document.createElement("th"));
+  scenarioProject.elementDefs.forEach(defEl => {
+    const th = document.createElement("th");
+    th.textContent = defEl.name || "（無名）";
+    headRow.appendChild(th);
+  });
+  table.appendChild(headRow);
+  
+  scenarioProject.elementDefs.forEach(atkEl => {
+    const row = document.createElement("tr");
+    const th = document.createElement("th");
+    th.textContent = atkEl.name || "（無名）";
+    row.appendChild(th);
+    scenarioProject.elementDefs.forEach(defEl => {
+      const td = document.createElement("td");
+      const select = document.createElement("select");
+      select.className = "scenariobuild-element-matrix-select";
+      [["normal", "通常"], ["advantage", "特攻"], ["resist", "耐性"]].forEach(([v, label]) => {
+        const opt = document.createElement("option");
+        opt.value = v; opt.textContent = label;
+        select.appendChild(opt);
+      });
+      const key = atkEl.id + ">" + defEl.id;
+      select.value = scenarioProject.elementMatchups[key] || "normal";
+      select.onchange = () => {
+        if (select.value === "normal") delete scenarioProject.elementMatchups[key];
+        else scenarioProject.elementMatchups[key] = select.value;
+        markScenarioBuildDirty();
+        if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
+      };
+      td.appendChild(select);
+      row.appendChild(td);
+    });
+    table.appendChild(row);
+  });
+  
+  tableWrap.appendChild(table);
+  container.appendChild(tableWrap);
+}
+
 // ★状態管理タブは他のシナリオビルド画面と逆に、左のメイン画面に状態異常/状態強化の一覧を出し、
 //   右のサブ画面で選んだ項目を編集する構成にしてある（メイン画面：renderStatusMainList／サブ画面：renderStatusManager）
 function renderStatusMainList(container) {
@@ -7106,7 +7247,11 @@ function buildSkillSlotRow(className, level, levels) {
     { value: "attack", label: "攻撃" }, { value: "heal", label: "回復" }, { value: "buff", label: "自己強化" },
     { value: "passive", label: "常時発動" }, { value: "special", label: "特殊" }
   ]));
-  paramsRow.appendChild(buildSkillNumberInline(entry, "element", "属性", null, true));
+  // ★要望対応：属性を、属性管理タブで登録した一覧から選べるようにする（以前は数値入力欄だった）
+  paramsRow.appendChild(buildSkillSelectInline(entry, "element", "属性", [
+    { value: "無", label: "無" },
+    ...scenarioProject.elementDefs.map(el => ({ value: el.id, label: el.name || "（無名）" })),
+  ]));
   paramsRow.appendChild(buildSkillNumberInline(entry, "power", "威力", 0));
   paramsRow.appendChild(buildSkillSelectInline(entry, "target", "対象", [
     { value: "single", label: "単体" }, { value: "all", label: "全体" }
@@ -7785,7 +7930,7 @@ function renderFacilityManager(container) {
         bgTrack: "", bgImage: "", ownerDialogue: "",
         price: 20, sleepinessRecovery: 40, fatigueRecovery: 40,
         classChangeCost: 100,
-        minBet: 10, maxBet: 1000, slotImages: {} // ★カジノ系で使う項目（他の種類では無視される）
+        minBet: 10, maxBet: 1000, slotImages: {}, slotWeights: {} // ★カジノ系で使う項目（他の種類では無視される）
       };
       scenarioProject.facilities.push(newFacility);
       // ★以前はここで自動的に村へアタッチしていたが、他の拠点（カデリクの街など）にだけアタッチしたつもりでも
@@ -8101,24 +8246,27 @@ function buildFacilityRow(facility) {
     betRow.appendChild(maxBetInput);
     infoEl.appendChild(betRow);
     
-    // ★スロットの絵柄画像。パスを1つも設定していない絵柄は、ゲーム内では絵文字で表示される
+    // ★スロットの絵柄画像・揃う確率（重み）。画像パスを1つも設定していない絵柄は、ゲーム内では絵文字で表示される。
+    //   「揃う確率」は数値が大きいほどその絵柄が出やすくなる（他の絵柄との相対的な重み。既定値と同じ考え方）
     const slotNoteEl = document.createElement("p");
     slotNoteEl.className = "devmode-note";
     slotNoteEl.style.margin = "10px 0 2px";
-    slotNoteEl.textContent = "スロットの絵柄画像（任意）。空欄のままなら絵文字で表示されます。画像を使う場合は、正方形に近い小さめの画像を推奨します：";
+    slotNoteEl.textContent = "スロットの絵柄（任意で施設ごとにカスタマイズ）。画像は空欄のままなら絵文字で表示されます。「揃う確率」は数値が大きいほどその絵柄が出やすくなります（他の絵柄との相対的な重み。空欄なら既定値のまま）：";
     infoEl.appendChild(slotNoteEl);
     
     if (!facility.slotImages || typeof facility.slotImages !== "object") facility.slotImages = {};
+    if (!facility.slotWeights || typeof facility.slotWeights !== "object") facility.slotWeights = {};
     const SLOT_SYMBOL_ROWS = [
-      { key: "grape", label: "ぶどう（絵文字：🍇）" },
-      { key: "bell", label: "鈴（絵文字：🔔）" },
-      { key: "star", label: "星（絵文字：⭐）" },
-      { key: "gem", label: "宝石（絵文字：💎）" },
-      { key: "seven", label: "セブン（絵文字：7）" }
+      { key: "grape", label: "ぶどう（絵文字：🍇）", defaultWeight: 35 },
+      { key: "bell", label: "鈴（絵文字：🔔）", defaultWeight: 25 },
+      { key: "star", label: "星（絵文字：⭐）", defaultWeight: 20 },
+      { key: "gem", label: "宝石（絵文字：💎）", defaultWeight: 12 },
+      { key: "seven", label: "セブン（絵文字：7）", defaultWeight: 8 }
     ];
-    SLOT_SYMBOL_ROWS.forEach(({ key, label }) => {
+    SLOT_SYMBOL_ROWS.forEach(({ key, label, defaultWeight }) => {
       const slotRow = document.createElement("div");
       slotRow.className = "scenariobuild-condition-row";
+      slotRow.style.flexWrap = "wrap";
       slotRow.appendChild(labelSpan(`${label}："`));
       const pathInput = document.createElement("input");
       pathInput.type = "text";
@@ -8131,6 +8279,20 @@ function buildFacilityRow(facility) {
         markScenarioBuildDirty();
       };
       slotRow.appendChild(pathInput);
+      slotRow.appendChild(labelSpan("揃う確率："));
+      const weightInput = document.createElement("input");
+      weightInput.type = "number";
+      weightInput.min = "0";
+      weightInput.step = "1";
+      weightInput.className = "scenariobuild-condition-input";
+      weightInput.placeholder = String(defaultWeight);
+      weightInput.value = facility.slotWeights[key] != null ? facility.slotWeights[key] : "";
+      weightInput.onchange = () => {
+        const value = Number(weightInput.value);
+        if (weightInput.value !== "" && value > 0) facility.slotWeights[key] = value; else delete facility.slotWeights[key];
+        markScenarioBuildDirty();
+      };
+      slotRow.appendChild(weightInput);
       infoEl.appendChild(slotRow);
     });
   } else if (facility.type === "shop") {
@@ -9225,6 +9387,53 @@ function buildMonsterDetailEditor(entity, persist, category) {
   noteEl.textContent = "見逃し関連・ドロップ・専用スキルなど、より詳しい設定です。空欄のままでも問題ありません。";
   wrap.appendChild(noteEl);
   
+  // ★要望対応：敵の属性（複数選択可）と、属性相性を無視するかどうか
+  if (!Array.isArray(entity.elements)) entity.elements = [];
+  const elementsRow = document.createElement("div");
+  elementsRow.className = "scenariobuild-condition-row";
+  elementsRow.style.flexWrap = "wrap";
+  elementsRow.appendChild(labelSpan("属性（複数選択可）："));
+  if (scenarioProject.elementDefs.length === 0) {
+    const noneNote = document.createElement("span");
+    noneNote.className = "devmode-note";
+    noneNote.textContent = "（「属性管理」タブでまだ属性が登録されていません）";
+    elementsRow.appendChild(noneNote);
+  } else {
+    scenarioProject.elementDefs.forEach(el => {
+      const chipLabel = document.createElement("label");
+      chipLabel.className = "scenariobuild-cleared-label";
+      chipLabel.style.marginRight = "10px";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = entity.elements.includes(el.id);
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          if (!entity.elements.includes(el.id)) entity.elements.push(el.id);
+        } else {
+          entity.elements = entity.elements.filter(id => id !== el.id);
+        }
+        persist();
+      };
+      chipLabel.appendChild(checkbox);
+      chipLabel.appendChild(document.createTextNode(el.name || "（無名）"));
+      elementsRow.appendChild(chipLabel);
+    });
+  }
+  wrap.appendChild(elementsRow);
+  
+  const ignoreAffinityRow = document.createElement("div");
+  ignoreAffinityRow.className = "scenariobuild-condition-row";
+  const ignoreLabel = document.createElement("label");
+  ignoreLabel.className = "scenariobuild-cleared-label";
+  const ignoreCheckbox = document.createElement("input");
+  ignoreCheckbox.type = "checkbox";
+  ignoreCheckbox.checked = !!entity.ignoreElementalAffinity;
+  ignoreCheckbox.onchange = () => { entity.ignoreElementalAffinity = ignoreCheckbox.checked; persist(); };
+  ignoreLabel.appendChild(ignoreCheckbox);
+  ignoreLabel.appendChild(document.createTextNode(" 属性相性を無視する（特攻・耐性を計算せず、常に通常ダメージにする）"));
+  ignoreAffinityRow.appendChild(ignoreLabel);
+  wrap.appendChild(ignoreAffinityRow);
+  
   const textField = (label, key, placeholder) => {
     const row = document.createElement("div");
     row.className = "scenariobuild-condition-row";
@@ -9306,7 +9515,7 @@ function buildMonsterDetailEditor(entity, persist, category) {
   skillNote.textContent = "専用スキル（低確率で通常より強い一撃を繰り出す）：";
   wrap.appendChild(skillNote);
   
-  if (!entity.uniqueSkill || typeof entity.uniqueSkill !== "object") entity.uniqueSkill = { name: "", chance: 0, multiplier: 1, flavor: "", kind: "normal", hpDrainRatio: 0, spDrain: 0 };
+  if (!entity.uniqueSkill || typeof entity.uniqueSkill !== "object") entity.uniqueSkill = { name: "", chance: 0, multiplier: 1, flavor: "", kind: "normal", hpDrainRatio: 0, spDrain: 0, buffPower: 5, buffTurns: 3, classSkillClass: "", classSkillName: "" };
   
   const skillRow1 = document.createElement("div");
   skillRow1.className = "scenariobuild-condition-row";
@@ -9356,15 +9565,90 @@ function buildMonsterDetailEditor(entity, persist, category) {
   skillRow4.appendChild(labelSpan("種類："));
   const kindSelect = document.createElement("select");
   kindSelect.className = "scenariobuild-jump-select";
-  [["normal", "通常（ダメージのみ）"], ["drain", "パラメータ吸収"]].forEach(([v, label]) => {
+  [["normal", "通常（ダメージのみ）"], ["drain", "パラメータ吸収"], ["buff", "状態強化（自分の攻撃力を上げる）"], ["classSkill", "職業技を使う"]].forEach(([v, label]) => {
     const opt = document.createElement("option");
     opt.value = v; opt.textContent = label;
     kindSelect.appendChild(opt);
   });
-  kindSelect.value = entity.uniqueSkill.kind === "drain" ? "drain" : "normal";
+  kindSelect.value = ["drain", "buff", "classSkill"].includes(entity.uniqueSkill.kind) ? entity.uniqueSkill.kind : "normal";
   kindSelect.onchange = () => { entity.uniqueSkill.kind = kindSelect.value; persist(); renderScenarioBuildPanel(); };
   skillRow4.appendChild(kindSelect);
   wrap.appendChild(skillRow4);
+  
+  // ★要望対応：職業技を使う敵。既存の職業技（scenarioProject.skills、攻撃技のみ）の中から
+  //   撃たせたい技を選ぶ。発動時のセリフ・名前は上の欄ではなく選んだ技のものを自動で使う
+  if (entity.uniqueSkill.kind === "classSkill") {
+    const classRow = document.createElement("div");
+    classRow.className = "scenariobuild-condition-row";
+    classRow.appendChild(labelSpan("職業："));
+    const classSelect = document.createElement("select");
+    classSelect.className = "scenariobuild-jump-select";
+    Object.keys(CLASS_MASTER).forEach(className => {
+      const opt = document.createElement("option");
+      opt.value = className; opt.textContent = className;
+      classSelect.appendChild(opt);
+    });
+    classSelect.value = entity.uniqueSkill.classSkillClass || Object.keys(CLASS_MASTER)[0] || "";
+    classRow.appendChild(classSelect);
+    wrap.appendChild(classRow);
+    
+    const skillNameRow = document.createElement("div");
+    skillNameRow.className = "scenariobuild-condition-row";
+    skillNameRow.appendChild(labelSpan("技："));
+    const skillNameSelect = document.createElement("select");
+    skillNameSelect.className = "scenariobuild-jump-select";
+    const attackSkillsOfClass = scenarioProject.skills.filter(s => s.className === classSelect.value && s.type === "attack");
+    if (attackSkillsOfClass.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = ""; opt.textContent = "（この職業に攻撃技がありません）";
+      skillNameSelect.appendChild(opt);
+    } else {
+      attackSkillsOfClass.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.name; opt.textContent = s.name;
+        skillNameSelect.appendChild(opt);
+      });
+    }
+    skillNameSelect.value = entity.uniqueSkill.classSkillName || (attackSkillsOfClass[0] && attackSkillsOfClass[0].name) || "";
+    skillNameSelect.onchange = () => { entity.uniqueSkill.classSkillName = skillNameSelect.value; persist(); };
+    skillNameRow.appendChild(skillNameSelect);
+    wrap.appendChild(skillNameRow);
+    
+    classSelect.onchange = () => {
+      entity.uniqueSkill.classSkillClass = classSelect.value;
+      entity.uniqueSkill.classSkillName = ""; // ★職業を変えたら技の選び直しにする
+      persist();
+      renderScenarioBuildPanel();
+    };
+    
+    const classSkillNote = document.createElement("p");
+    classSkillNote.className = "devmode-note";
+    classSkillNote.textContent = "選んだ技の威力・命中回数・付与する状態異常がそのまま使われます（威力の基準はこの敵の攻撃力）。発動時のセリフは上の「発動時のセリフ」欄がそのまま使われます。";
+    wrap.appendChild(classSkillNote);
+  }
+  
+  // ★要望対応：状態強化スキル（自分の攻撃力を一定ターン上げる。ダメージは与えず行動を終える）
+  if (entity.uniqueSkill.kind === "buff") {
+    const skillRow7 = document.createElement("div");
+    skillRow7.className = "scenariobuild-condition-row";
+    skillRow7.appendChild(labelSpan("攻撃力上昇量："));
+    const buffPowerInput = document.createElement("input");
+    buffPowerInput.type = "number";
+    buffPowerInput.min = "0";
+    buffPowerInput.className = "scenariobuild-condition-input";
+    buffPowerInput.value = entity.uniqueSkill.buffPower != null ? entity.uniqueSkill.buffPower : 5;
+    buffPowerInput.onchange = () => { entity.uniqueSkill.buffPower = Math.max(0, Number(buffPowerInput.value) || 0); persist(); };
+    skillRow7.appendChild(buffPowerInput);
+    skillRow7.appendChild(labelSpan("持続ターン："));
+    const buffTurnsInput = document.createElement("input");
+    buffTurnsInput.type = "number";
+    buffTurnsInput.min = "1";
+    buffTurnsInput.className = "scenariobuild-condition-input";
+    buffTurnsInput.value = entity.uniqueSkill.buffTurns != null ? entity.uniqueSkill.buffTurns : 3;
+    buffTurnsInput.onchange = () => { entity.uniqueSkill.buffTurns = Math.max(1, Number(buffTurnsInput.value) || 1); persist(); };
+    skillRow7.appendChild(buffTurnsInput);
+    wrap.appendChild(skillRow7);
+  }
   
   if (entity.uniqueSkill.kind === "drain") {
     const skillRow5 = document.createElement("div");
@@ -10868,6 +11152,8 @@ function exportGameSettingsAsJsFile() {
     portraitCharacters: scenarioProject.portraitCharacters,
     recipes: scenarioProject.recipes,
     randomNamePool: scenarioProject.randomNamePool, // ★要望対応：ランダム名前管理タブ
+    elementDefs: scenarioProject.elementDefs, // ★要望対応：属性管理タブ
+    elementMatchups: scenarioProject.elementMatchups,
     bgmTracks: scenarioProject.bgmTracks,
     mapAreas: scenarioProject.mapAreas,
     mapEdges: scenarioProject.mapEdges,

@@ -241,6 +241,7 @@ async function startBattle(monsterKeys, options = {}) {
     playerAttackCount: 0, // ★血闘の刻印：戦闘中に自身が繰り出した攻撃（通常攻撃・攻撃技、命中回数ぶんそれぞれ）の回数
     playerChainAttackTurns: 0, // ★賊害の連鎖：発動中は単体攻撃がもう一体の敵にも連鎖する
     turnCount: 1, // ★特殊スキル（ブロック実行）のcheckTurnCountブロック用：この戦闘が何ターン目か（プレイヤーの手番が来るたびに増える）
+    weaponSkillCooldowns: {}, // ★要望対応：武器スキルのクールダウン管理用。{ itemId: 再び使えるようになるturnCount }
     skillTurnMeasurements: {}, // ★特殊スキルの「ターン経過計測：開始/終了」ブロック用：{ 計測名: { startTurn, lastElapsed } }
     // ★bgm.js等、以前の「敵は常に1体」前提だったコードとの互換用。updateBattleHud側で先頭の敵の値を反映し続ける
     monsterKey: enemies[0].monsterKey,
@@ -610,6 +611,11 @@ async function battleLoop() {
     
     updateBattleHud();
     
+    // ★要望対応：プレイヤーの行動（このターンのダメージ・状態異常等）で前の形態のHPが0になっていたら、
+    //   仲間や敵のターンを待たず、ここですぐ形態移行の演出・メッセージを出す
+    await announcePendingBossFormChanges();
+    if (!battleState) return;
+    
     // ★敵を全滅させた？
     if (getAliveEnemies().length === 0) {
       await resolveBattleVictory(); // 勝利処理（敵の種類ごとの殺す/逃がすの選択も含む）
@@ -619,6 +625,9 @@ async function battleLoop() {
     // ★仲間のターン：主人公の直後、仲間1→仲間2……の順で、生きている仲間全員が行動する
     await companionTeamTurn();
     if (!battleState) return;
+    // ★要望対応：仲間の攻撃で前の形態のHPが0になっていたら、ボスの番を待たずすぐに演出を出す
+    await announcePendingBossFormChanges();
+    if (!battleState) return;
     if (getAliveEnemies().length === 0) {
       await resolveBattleVictory();
       return;
@@ -626,6 +635,9 @@ async function battleLoop() {
     
     // ★友好的になった魔物が、稀に助っ人として乱入してくる（要望対応）
     await tryFriendlyMonsterAssist();
+    if (!battleState) return;
+    // ★要望対応：友好モンスターの乱入攻撃で前の形態のHPが0になっていたら、同様にすぐ演出を出す
+    await announcePendingBossFormChanges();
     if (!battleState) return;
     if (getAliveEnemies().length === 0) {
       await resolveBattleVictory();
@@ -734,6 +746,38 @@ async function handleFightMenu() {
   return false;
 }
 
+// ★要望対応：武器スキルは1度使ったら5ターンに1回だけ使えるようにする（クールダウン）。
+//   主人公はbattleState.weaponSkillCooldownsに、仲間はその仲間の_battleBuffs.weaponSkillCooldownsに、
+//   { itemId: 再び使えるようになるturnCount } という形でそれぞれ記録する（itemIdはITEM_MASTERのキー）
+const WEAPON_SKILL_COOLDOWN_TURNS = 5;
+
+function getWeaponSkillCooldownMap(caster, isPlayer) {
+  if (isPlayer) {
+    if (!battleState) return {};
+    if (!battleState.weaponSkillCooldowns) battleState.weaponSkillCooldowns = {};
+    return battleState.weaponSkillCooldowns;
+  }
+  const buffs = getCompanionBuffState(caster); // ★companion._battleBuffs（戦闘開始のたびにリセットされる）
+  if (!buffs.weaponSkillCooldowns) buffs.weaponSkillCooldowns = {};
+  return buffs.weaponSkillCooldowns;
+}
+
+// このターン時点で、あと何ターン使えないか（0なら今すぐ使える）
+function getWeaponSkillCooldownRemaining(caster, isPlayer, itemId) {
+  const map = getWeaponSkillCooldownMap(caster, isPlayer);
+  const readyAtTurn = map[itemId];
+  if (!readyAtTurn) return 0;
+  const currentTurn = (battleState && battleState.turnCount) || 1;
+  return Math.max(0, readyAtTurn - currentTurn);
+}
+
+// 実際に発動できた時に呼ぶ：次にこのターン数+5になるまで使えなくする
+function startWeaponSkillCooldown(caster, isPlayer, itemId) {
+  const map = getWeaponSkillCooldownMap(caster, isPlayer);
+  const currentTurn = (battleState && battleState.turnCount) || 1;
+  map[itemId] = currentTurn + WEAPON_SKILL_COOLDOWN_TURNS;
+}
+
 // ★要望対応：装備している武器・防具の「任意発動」スキルを選んで発動する（プレイヤー側）
 async function handleWeaponSkillMenu(activeWeaponSkills) {
   const list = activeWeaponSkills || getEquipmentSkillsFor(player.equipment, "active");
@@ -743,7 +787,11 @@ async function handleWeaponSkillMenu(activeWeaponSkills) {
     return false;
   }
   
-  const choices = list.map(entry => ({ text: entry.master.skillName || entry.master.name, next: entry.slotKey, description: entry.master.description }));
+  const choices = list.map(entry => {
+    const label = entry.master.skillName || entry.master.name;
+    const remaining = getWeaponSkillCooldownRemaining(player, true, entry.itemId);
+    return { text: remaining > 0 ? `${label}（あと${remaining}ターン）` : label, next: entry.slotKey, description: entry.master.description };
+  });
   choices.push({ text: "戻る", next: "back", isBack: true });
   const picked = await displayChoices(choices);
   if (picked.next === "back") return false;
@@ -751,19 +799,28 @@ async function handleWeaponSkillMenu(activeWeaponSkills) {
   const entry = list.find(e => e.slotKey === picked.next);
   if (!entry) return false;
   
+  const remaining = getWeaponSkillCooldownRemaining(player, true, entry.itemId);
+  if (remaining > 0) {
+    changeSpeaker("");
+    await displayMessage(`「${entry.master.skillName || entry.master.name}」はあと${remaining}ターンは使えないようだ……`);
+    return false;
+  }
+  
   changeSpeaker("");
-  return await runEquipmentSkillBlocks(player, entry.master, true);
+  const used = await runEquipmentSkillBlocks(player, entry.master, true);
+  if (used) startWeaponSkillCooldown(player, true, entry.itemId); // ★対象選択をキャンセルした場合（used===false）はクールダウンに入れない
+  return used;
 }
 
 // ★狂戦士「賊害の連鎖」：発動中、単体攻撃が命中した時にもう一体の敵にも連鎖してダメージを与える。
 //   同じ計算式(damageFn)で改めてダメージを計算し、生きている敵の中から元の対象以外をランダムに選ぶ
-async function maybeApplyChainAttack(primaryTarget, damageFn) {
+async function maybeApplyChainAttack(primaryTarget, damageFn, elementId) {
   if (!battleState || !(battleState.playerChainAttackTurns > 0)) return;
   const candidates = getAliveEnemies().filter(e => e !== primaryTarget);
   if (candidates.length === 0) return;
   const chainTarget = candidates[Math.floor(Math.random() * candidates.length)];
   const raw = damageFn();
-  const result = resolveDamageForTarget(chainTarget, raw);
+  const result = resolveDamageForTarget(chainTarget, raw, elementId);
   chainTarget.hp = Math.max(0, chainTarget.hp - result.damage);
   changeSpeaker("");
   if (result.blocked) {
@@ -860,7 +917,27 @@ function applyCriticalHit(damage) {
 
 // ★「無敵解除アイテム」が設定された相手（主にボス）は、実際にそのアイテムを使うまでダメージが一切通らない。
 //   指定が無い相手には何もせず、渡されたダメージをそのまま返す（今まで通りの挙動）
-function resolveDamageForTarget(target, rawDamage) {
+// ★要望対応：属性相性（シナリオビルドの「属性管理」タブで設定）による倍率を計算する。
+//   敵が複数の属性を持つ場合は、各属性との相性を掛け合わせる（例：特攻×特攻＝ダブル弱点）。
+//   敵が「属性相性を無視する」を有効にしている場合は常に1倍（通常）にする
+function getElementalDamageMultiplier(attackElementId, target) {
+  if (!attackElementId || attackElementId === "無") return 1;
+  if (!target) return 1;
+  const master = (typeof MONSTER_MASTER !== "undefined" && target.monsterKey) ? MONSTER_MASTER[target.monsterKey] : null;
+  const defenderElements = (master && Array.isArray(master.elements)) ? master.elements : (Array.isArray(target.elements) ? target.elements : []);
+  if (master && master.ignoreElementalAffinity) return 1;
+  if (defenderElements.length === 0) return 1;
+  const matchups = (typeof scenarioProject !== "undefined" && scenarioProject.elementMatchups) || {};
+  let multiplier = 1;
+  defenderElements.forEach(defElementId => {
+    const relation = matchups[attackElementId + ">" + defElementId];
+    if (relation === "advantage") multiplier *= 1.5;
+    else if (relation === "resist") multiplier *= 0.5;
+  });
+  return multiplier;
+}
+
+function resolveDamageForTarget(target, rawDamage, attackElementId) {
   if (target && target.invincibilityBreakItemId && !target.invincibilityBroken) {
     return { damage: 0, blocked: true };
   }
@@ -869,11 +946,14 @@ function resolveDamageForTarget(target, rawDamage) {
   if (target && target.status && target.status.defDown && target.status.defDown.turns > 0) {
     damage = Math.round(damage * 1.3);
   }
+  // ★要望対応：属性相性による倍率を反映する
+  const elementalMultiplier = getElementalDamageMultiplier(attackElementId, target);
+  if (elementalMultiplier !== 1) damage = Math.max(1, Math.round(damage * elementalMultiplier));
   // ★実績システム用：ここを通る対象は常に敵（主人公・仲間が与えるダメージ）なので、そのまま累計する（要望対応）
   if (typeof player !== "undefined" && player && damage > 0) {
     player.totalDamageDealt = (player.totalDamageDealt || 0) + damage;
   }
-  return { damage, blocked: false };
+  return { damage, blocked: false, elementalMultiplier };
 }
 
 // ★道具：インベントリの中から「回復量」または「疲労回復量」を持つアイテム（薬草・ポーションなど）に加えて、
@@ -1112,6 +1192,9 @@ async function companionTeamTurn() {
     if (!companion.alive) continue;
     if (getAliveEnemies().length === 0) break; // ★既に全滅していたら、残りの仲間は行動させない
     await performCompanionAction(companion);
+    // ★要望対応：この仲間の攻撃で前の形態のHPが0になっていたら、他の仲間やボスの番を待たず、
+    //   すぐに形態移行の演出を出す（最後の仲間の行動ターンになるまで待たせない）
+    if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
   }
 }
 
@@ -1228,14 +1311,14 @@ async function tickAllCompanionTurnBasedBuffs() {
 }
 
 // ★仲間版の連鎖攻撃（賊害の連鎖）。狙った相手以外の生きている敵をランダムに1体選び、同じ計算式で追撃する
-async function maybeApplyCompanionChainAttack(companion, primaryTarget, damageFn) {
+async function maybeApplyCompanionChainAttack(companion, primaryTarget, damageFn, elementId) {
   const buffs = getCompanionBuffState(companion);
   if (!(buffs.chainAttackTurns > 0)) return;
   const candidates = getAliveEnemies().filter(e => e !== primaryTarget);
   if (candidates.length === 0) return;
   const chainTarget = candidates[Math.floor(Math.random() * candidates.length)];
   const raw = damageFn();
-  const result = resolveDamageForTarget(chainTarget, raw);
+  const result = resolveDamageForTarget(chainTarget, raw, elementId);
   chainTarget.hp = Math.max(0, chainTarget.hp - result.damage);
   changeSpeaker("");
   const name = getCompanionDisplayName(companion);
@@ -1289,7 +1372,11 @@ async function performCompanionWeaponSkillMenu(companion, activeWeaponSkills) {
   const list = activeWeaponSkills || getEquipmentSkillsFor(companion.equipment, "active");
   if (list.length === 0) return false;
   
-  const choices = list.map(entry => ({ text: entry.master.skillName || entry.master.name, next: entry.slotKey, description: entry.master.description }));
+  const choices = list.map(entry => {
+    const label = entry.master.skillName || entry.master.name;
+    const remaining = getWeaponSkillCooldownRemaining(companion, false, entry.itemId);
+    return { text: remaining > 0 ? `${label}（あと${remaining}ターン）` : label, next: entry.slotKey, description: entry.master.description };
+  });
   choices.push({ text: "戻る", next: "back", isBack: true });
   const picked = await displayChoices(choices);
   if (picked.next === "back") return false;
@@ -1297,8 +1384,17 @@ async function performCompanionWeaponSkillMenu(companion, activeWeaponSkills) {
   const entry = list.find(e => e.slotKey === picked.next);
   if (!entry) return false;
   
+  const remaining = getWeaponSkillCooldownRemaining(companion, false, entry.itemId);
+  if (remaining > 0) {
+    changeSpeaker("");
+    await displayMessage(`「${entry.master.skillName || entry.master.name}」はあと${remaining}ターンは使えないようだ……`);
+    return false;
+  }
+  
   changeSpeaker("");
-  return await runEquipmentSkillBlocks(companion, entry.master, false);
+  const used = await runEquipmentSkillBlocks(companion, entry.master, false);
+  if (used) startWeaponSkillCooldown(companion, false, entry.itemId);
+  return used;
 }
 
 async function performCompanionNormalAttack(companion) {
@@ -1485,7 +1581,7 @@ async function performCompanionSkillMenu(companion) {
         const bonusRatio = Math.min(0.6, Math.max(0, companionBuffs.attackCount - 1) * 0.03);
         raw = Math.round(raw * (1 + bonusRatio));
       }
-      const result = resolveDamageForTarget(target, raw);
+      const result = resolveDamageForTarget(target, raw, skill.element);
       target.hp = Math.max(0, target.hp - result.damage);
       totalDamage += result.damage;
       if (skill.lifestealRatio) lifestealTotal += result.damage; // ★血臭の宴：与えたダメージの一部を後でHPに変換する
@@ -1529,7 +1625,7 @@ async function performCompanionSkillMenu(companion) {
     await maybeApplyCompanionChainAttack(companion, targets[0], () => {
       const variance = Math.floor(Math.random() * 7) - 3;
       return Math.max(1, Math.round(companionLevelMultiplier * (skill.power || 0)) + Math.round(companionBaseAtk * 0.7) + variance);
-    });
+    }, skill.element);
   }
   
   updateBattleHud();
@@ -1621,6 +1717,36 @@ function applyBossFormChange(enemy, nextForm, nextFormIndex) {
     // ★要望対応：「BGM引き継ぎ」がOFFの時だけ専用BGMに切り替える。ONの場合（既定）や専用BGM未指定の場合は、
     //   直前まで流れていた曲をそのまま流し続ける（BGMには一切触れない）
     switchScenarioBGM(nextForm.bgmTrack, { fadeMs: 600, onFailFallbackTrack: (typeof BATTLE_BGM_TRACKS !== "undefined" ? BATTLE_BGM_TRACKS.boss : undefined) });
+  }
+}
+
+// ★要望対応：ボスの形態が切り替わった直後、まだ反応（演出・メッセージ）を出していないボスが
+//   いないか確認し、その場ですぐに出す。以前はこの確認をボス自身の行動ターンの中でしか
+//   行っていなかったため、プレイヤーや仲間の攻撃で前の形態のHPを0にした場合、演出が出ないまま
+//   仲間が次の形態に攻撃してしまい、ボスの番が来て初めて演出が出る……という不自然な遅れがあった。
+//   プレイヤーの行動・仲間全員の行動・友好モンスターの乱入のたびに、これを呼んで確認する。
+//   （ボス自身の行動ターン側にも同じ確認処理が残っているが、二重に反応することはない。
+//   　lastAcknowledgedFormNumberを更新済みの形態は「もう反応済み」として扱われるため）
+async function announcePendingBossFormChanges() {
+  if (!battleState) return;
+  for (const enemy of battleState.enemies.slice()) { // ★演出中に敵配列が変わる可能性があるので、コピーを回す
+    if (!battleState) return;
+    if (typeof enemy.lastAcknowledgedFormNumber !== "number") enemy.lastAcknowledgedFormNumber = 1;
+    if (typeof enemy.currentFormNumber !== "number") enemy.currentFormNumber = 1;
+    if (enemy.currentFormNumber === enemy.lastAcknowledgedFormNumber) continue; // ★この形態には、もう反応済み
+    enemy.lastAcknowledgedFormNumber = enemy.currentFormNumber;
+    
+    const triggerableEvent = findTriggerableBossBattleEvent(enemy);
+    if (triggerableEvent) {
+      await executeBossBattleEvent(enemy, triggerableEvent);
+      if (!battleState) return; // ★演出の巻き添えで戦闘が終わっていたら、ここで打ち切る
+    } else {
+      // ★反応する「形態が◯になった瞬間」の戦闘イベントが1つも設定されていなかった場合の保険。
+      //   最低限「様子が変わった」ことだけは伝える
+      changeSpeaker("");
+      await displayMessage(`${enemy.displayName}の様子が変わった……！`);
+      updateBattleHud();
+    }
   }
 }
 
@@ -1751,6 +1877,7 @@ async function runSingleEnemyTurn(enemy) {
     if (enemy.status.atkDown && enemy.status.atkDown.turns > 0) enemy.status.atkDown.turns--;
     if (enemy.status.defDown && enemy.status.defDown.turns > 0) enemy.status.defDown.turns--;
     if (enemy.status.accDown && enemy.status.accDown.turns > 0) enemy.status.accDown.turns--;
+    if (enemy.status.atkUp && enemy.status.atkUp.turns > 0) enemy.status.atkUp.turns--; // ★要望対応：状態強化スキルによる攻撃力上昇の残りターン
     
     if (enemy.status.stun > 0) {
       enemy.status.stun--;
@@ -1834,7 +1961,8 @@ async function runSingleEnemyTurn(enemy) {
   }
   
   const atkDownPenalty = (enemy.status && enemy.status.atkDown && enemy.status.atkDown.turns > 0) ? enemy.status.atkDown.power : 0;
-  const enemyAtk = Math.max(0, enemy.atk + enemy.enemyAtkBonus - atkDownPenalty);
+  const atkUpBonus = (enemy.status && enemy.status.atkUp && enemy.status.atkUp.turns > 0) ? enemy.status.atkUp.power : 0; // ★要望対応：状態強化スキル
+  const enemyAtk = Math.max(0, enemy.atk + enemy.enemyAtkBonus + atkUpBonus - atkDownPenalty);
   const variance = Math.floor(Math.random() * 3) - 1; // -1〜+1の揺らぎ
   
   if (!attackTarget.isPlayer) {
@@ -1910,7 +2038,55 @@ async function executeMonsterUniqueSkill(enemy, skill) {
   changeSpeaker(enemy.displayName);
   await displayMessage(`「${skill.name}」！ ${skill.flavor || ""}`);
   
-  const enemyAtk = enemy.atk + enemy.enemyAtkBonus;
+  // ★要望対応：状態強化スキル。自分の攻撃力を一定ターン上げるだけで、ダメージは与えず行動を終える
+  if (skill.kind === "buff") {
+    if (!enemy.status) enemy.status = {};
+    enemy.status.atkUp = { turns: skill.buffTurns || 3, power: skill.buffPower || 5 };
+    changeSpeaker("");
+    await displayMessage(`${enemy.displayName}の攻撃力が上がった！`);
+    updateBattleHud();
+    return;
+  }
+  
+  // ★要望対応：職業技を使う敵。既存の職業技（威力・命中回数・状態異常）をそのまま使い、
+  //   威力の基準だけこの敵自身の攻撃力に置き換える。常に主人公を狙う（他の専用スキルと同じ挙動）
+  if (skill.kind === "classSkill") {
+    const skillList = (typeof CLASS_SKILLS !== "undefined" && CLASS_SKILLS[skill.classSkillClass]) || [];
+    const classSkill = skillList.find(s => s.name === skill.classSkillName);
+    if (!classSkill) {
+      changeSpeaker("");
+      await displayMessage("しかし、技が不発に終わってしまった……");
+      return;
+    }
+    
+    const atkUpBonusForClassSkill = (enemy.status && enemy.status.atkUp && enemy.status.atkUp.turns > 0) ? enemy.status.atkUp.power : 0;
+    const classSkillEnemyAtk = enemy.atk + enemy.enemyAtkBonus + atkUpBonusForClassSkill;
+    const level = (typeof player !== "undefined" && player) ? player.level : 1;
+    const levelMultiplier = 1 + level * 0.05; // ★プレイヤー側の技ダメージ計算式と同じ補正
+    const hitCount = classSkill.hitCount || 1;
+    
+    let totalDamage = 0;
+    for (let hit = 0; hit < hitCount; hit++) {
+      const variance = Math.floor(Math.random() * 3) - 1;
+      const atkPerHit = Math.round(classSkillEnemyAtk * 0.7) / Math.max(1, hitCount);
+      const raw = Math.max(1, Math.round(levelMultiplier * (classSkill.power || 0)) + Math.round(atkPerHit) + variance);
+      const hitDamage = applyPlayerDamageReduction(raw);
+      changeGauge("hp", -hitDamage);
+      totalDamage += hitDamage;
+    }
+    player.totalDamageTaken = (player.totalDamageTaken || 0) + totalDamage; // ★実績システム用
+    if (typeof triggerCameraShake === "function") triggerCameraShake();
+    renderStatusHUD();
+    changeSpeaker("");
+    await displayMessage(`合計${totalDamage}のダメージを受けた……！`);
+    updateBattleHud();
+    
+    if (classSkill.statusEffect) await applyMonsterAttackStatusInflictions([classSkill.statusEffect]);
+    return;
+  }
+  
+  const atkUpBonus = (enemy.status && enemy.status.atkUp && enemy.status.atkUp.turns > 0) ? enemy.status.atkUp.power : 0;
+  const enemyAtk = enemy.atk + enemy.enemyAtkBonus + atkUpBonus;
   const damage = applyPlayerDamageReduction(Math.max(1, Math.round(enemyAtk * (skill.multiplier || 1))));
   changeGauge("hp", -damage);
   player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
@@ -2451,7 +2627,7 @@ async function runSingleSkillBlock(block, skill, context, hitCountForBalance = 1
     for (const enemyTarget of resolveSkillBlockEnemyTargets(block.target, context)) {
       if (enemyTarget.hp <= 0) continue;
       const damage = calculateSkillBlockDamage(skill, block, multiplier, context.caster, hitCountForBalance);
-      const result = resolveDamageForTarget(enemyTarget, damage);
+      const result = resolveDamageForTarget(enemyTarget, damage, skill.element);
       enemyTarget.hp = Math.max(0, enemyTarget.hp - result.damage);
       if (result.blocked) await displayMessage(`${enemyTarget.displayName}には効いていないようだッ！`, { allowSubFocus: true });
       else if (lastHitWasCritical) await displayMessage(`会心の一撃！ ${enemyTarget.displayName}に${result.damage}のダメージ！`, { allowSubFocus: true });
@@ -2794,7 +2970,7 @@ async function handleSkillMenu() {
       const target = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
       if (target) {
         const damage = calculateSkillDamage(skill);
-        const result = resolveDamageForTarget(target, damage);
+        const result = resolveDamageForTarget(target, damage, skill.element);
         target.hp = Math.max(0, target.hp - result.damage);
         await displayMessage(`「${skill.name}」……攻撃の力が出た！ ${target.displayName}に${result.damage}のダメージ！`);
       } else {
@@ -2838,7 +3014,7 @@ async function handleSkillMenu() {
         for (let hit = 0; hit < hitCount; hit++) {
           if (enemy.hp <= 0) break;
           const damage = calculateSkillDamage(skill, hitCount); // ★命中回数分だけ攻撃力の効果を均等に割る（バランス調整）
-          const result = resolveDamageForTarget(enemy, damage);
+          const result = resolveDamageForTarget(enemy, damage, skill.element);
           enemy.hp = Math.max(0, enemy.hp - result.damage);
           if (result.blocked) {
             await displayMessage(`${enemy.displayName}には効いていないようだッ！`);
@@ -2874,7 +3050,7 @@ async function handleSkillMenu() {
             target = candidates[Math.floor(Math.random() * candidates.length)];
           } else if (target.hp <= 0) break;
           const damage = calculateSkillDamage(skill, hitCount); // ★命中回数分だけ攻撃力の効果を均等に割る（バランス調整）
-          const result = resolveDamageForTarget(target, damage);
+          const result = resolveDamageForTarget(target, damage, skill.element);
           target.hp = Math.max(0, target.hp - result.damage);
           // ★命中回数が2以上の技は、技名を言うのは最初の1回のみにして、以降はダメージ量だけ表示する
           const prefix = hit === 0 ? `「${skill.name}」を放った！ ` : "";
@@ -2895,7 +3071,7 @@ async function handleSkillMenu() {
           }
         }
         // ★狂戦士「賊害の連鎖」発動中は、単体攻撃技がもう一体の敵にも連鎖する
-        if (target) await maybeApplyChainAttack(target, () => calculateSkillDamage(skill));
+        if (target) await maybeApplyChainAttack(target, () => calculateSkillDamage(skill), skill.element);
     }
     // ★攻撃技でも「代償として自分の防御力が下がる」等、自己バフ/デバフを同時に持つものがある
     if (skill.selfBuff) {

@@ -55,6 +55,19 @@ function resumeLocationDynamic(locationKey) {
       ? scenarioProject.mapAreas.find(a => a.id === areaId) : null;
     if (area && typeof openCustomSettlementArea === "function") { openCustomSettlementArea(area); return true; } // town.js
   }
+  // ★バグ修正：森・洞窟など探索先のエリア（マップ編集で作った独自の敵エリアも含む）は
+  //   "adventure_<locationKey>" という形の現在地キーになる。以前はここが無く、
+  //   「エリアに来た時」を開始トリガーにしている話がこのタイミングで始まって終わった時や、
+  //   探索中にセーブしてロードした時に、必ずカリの村へ戻されてしまっていた。
+  //   来訪回数の加算や話の開始判定はもう済んでいる前提の入室処理だけを呼び直す
+  //   （adventure.js。ここで全部やり直すと来訪回数が二重に増えてしまうため、専用の軽い関数を使う）
+  if (locationKey && locationKey.startsWith("adventure_")) {
+    const adventureLocationKey = locationKey.slice("adventure_".length);
+    if (typeof ADVENTURE_LOCATIONS !== "undefined" && ADVENTURE_LOCATIONS[adventureLocationKey] && typeof renderAdventureLocationScreen === "function") {
+      renderAdventureLocationScreen(adventureLocationKey); // adventure.js
+      return true;
+    }
+  }
   return false;
 }
 
@@ -91,31 +104,37 @@ function deepClone(obj) {
 
 // ===== アイコン一覧画面 =====
 
-// 便利タブを開いた時（switchTabから呼ばれる）：常にアイコン一覧の状態に戻す
-function renderConvenienceIcons() {
-  const grid = document.getElementById("convenience-icon-grid");
+// ★バグ修正：各サブ画面（魔物図鑑・セーブロード・進行度・チュートリアル・実績・クレジット）を
+//   「戻る」ボタン以外の方法で離れた場合、そのままだとwindowのkeydownリスナーが残り続け、
+//   他の画面で矢印キーを押しただけで裏の画面が判定上「開いたまま」になってしまうバグがあった
+//   （例：セーブ/ロード中に魔物図鑑が開いてしまう。便利タブから他のタブへ切り替えた時も同様）。
+//   便利タブのアイコン一覧に戻る時、および便利タブそのものから離れる時（switchTabから）に、
+//   必ずこれをまとめて呼んで、全てのサブ画面のリスナー・表示状態をリセットしておく
+function closeAllConvenienceSubPanels() {
   const panel = document.getElementById("saveload-panel");
   const codexPanel = document.getElementById("monster-codex-panel");
   const creditsPanel = document.getElementById("credits-panel");
   const progressPanel = document.getElementById("progress-panel");
   const tutorialPanel = document.getElementById("tutorial-panel");
   const achievementsPanel = document.getElementById("achievements-panel");
-  // ★バグ修正：各サブ画面（魔物図鑑・セーブロード・進行度・チュートリアル・クレジット）を
-  //   「戻る」ボタン以外の方法（タブ切り替えなど）で離れた場合、そのままだとwindowのkeydown
-  //   リスナーが残り続け、他の画面で矢印キーを押しただけで裏の画面が再描画されて勝手に
-  //   開いたように見えるバグがあった（例：セーブ/ロード中に魔物図鑑が開いてしまう）。
-  //   アイコン一覧に戻るタイミングで、全てのサブ画面のリスナーを必ずまとめて解除しておく。
   window.removeEventListener("keydown", handleSaveLoadKeyDown);
   window.removeEventListener("keydown", handleMonsterCodexKeyDown);
   window.removeEventListener("keydown", handleCreditsKeyDown);
   window.removeEventListener("keydown", handleProgressKeyDown);
   window.removeEventListener("keydown", handleTutorialKeyDown);
+  if (typeof handleAchievementsKeyDown === "function") window.removeEventListener("keydown", handleAchievementsKeyDown); // achievements.js（★これも解除漏れしていた）
   if (panel) panel.classList.add("hidden");
   if (codexPanel) codexPanel.classList.add("hidden"); // ★これが抜けていて、図鑑を閉じても下半分に残り続けるバグの原因だった
   if (creditsPanel) creditsPanel.classList.add("hidden"); // ★クレジットも同様に、閉じ忘れると下半分に残ってしまう
   if (progressPanel) progressPanel.classList.add("hidden");
   if (tutorialPanel) tutorialPanel.classList.add("hidden");
   if (achievementsPanel) achievementsPanel.classList.add("hidden");
+}
+
+// 便利タブを開いた時（switchTabから呼ばれる）：常にアイコン一覧の状態に戻す
+function renderConvenienceIcons() {
+  const grid = document.getElementById("convenience-icon-grid");
+  closeAllConvenienceSubPanels();
   if (!grid) return;
   
   grid.classList.remove("hidden");
@@ -667,6 +686,14 @@ function getChapterTotalCharCount(chapter) {
   return total;
 }
 
+// ★要望対応：まだクリアしていない話（進行中・未着手のどちらも）は、名前で内容が分かってしまわないよう
+//   「？？？」に伏せる。「閑話：」の接頭辞をつけると本編/閑話の区別自体がヒントになってしまうため、
+//   未クリアの間は接頭辞も付けず、まるごと「？？？」だけにする
+function getProgressChapterDisplayTitle(chapter) {
+  if (!chapter.cleared) return "？？？";
+  return chapter.isInterlude ? `閑話：${chapter.title}` : chapter.title;
+}
+
 // ★下部70%：話のリスト。矢印キーでカーソルを動かし、Zキーで選んでいる話のあらすじを全画面表示する
 function renderProgressChapterList(container) {
   container.innerHTML = "";
@@ -694,7 +721,7 @@ function renderProgressChapterList(container) {
     
     const titleEl = document.createElement("span");
     titleEl.className = "progress-panel-chapter-title";
-    titleEl.textContent = chapter.isInterlude ? `閑話：${chapter.title}` : chapter.title;
+    titleEl.textContent = getProgressChapterDisplayTitle(chapter);
     row.appendChild(titleEl);
     
     // ★要望対応：話ごとの総文字数を表示する
@@ -724,7 +751,7 @@ function renderProgressChapterDetail(panel) {
   
   const title = document.createElement("h3");
   title.className = "monster-codex-title";
-  title.textContent = chapter.isInterlude ? `閑話：${chapter.title}` : chapter.title;
+  title.textContent = getProgressChapterDisplayTitle(chapter);
   panel.appendChild(title);
   
   const statusEl = document.createElement("p");

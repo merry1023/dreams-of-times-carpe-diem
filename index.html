@@ -76,9 +76,11 @@
           <button id="quantity-picker-step-inc" class="quantity-picker-step-btn">＋<span class="key-badge">E</span></button>
         </div>
         <div class="quantity-picker-controls">
+          <button id="quantity-picker-min" class="quantity-picker-btn quantity-picker-minmax-btn">最小<span class="key-badge">O</span></button>
           <button id="quantity-picker-dec" class="quantity-picker-btn">－<span class="key-badge">←</span></button>
           <span id="quantity-picker-value" class="quantity-picker-value"></span>
           <button id="quantity-picker-inc" class="quantity-picker-btn">＋<span class="key-badge">→</span></button>
+          <button id="quantity-picker-max" class="quantity-picker-btn quantity-picker-minmax-btn">最大<span class="key-badge">P</span></button>
         </div>
         <div class="quantity-picker-footer">
           <button id="quantity-picker-confirm" class="devmode-btn">決定<span class="key-badge">Z</span></button>
@@ -124,11 +126,13 @@
           <button id="casino-slot-bet-step-inc" class="casino-slot-bet-step-btn" type="button" aria-label="刻み幅を大きくする">＋<span class="key-badge">E</span></button>
         </div>
         <div id="casino-slot-bet-panel" class="casino-slot-bet-panel">
+          <button id="casino-slot-bet-min" class="casino-slot-bet-minmax-btn" type="button" aria-label="最小額にする">最小<span class="key-badge">O</span></button>
           <button id="casino-slot-bet-dec" class="casino-slot-bet-btn" type="button" aria-label="掛金を減らす">◀</button>
           <div id="casino-slot-bet-value" class="casino-slot-bet-value">10陳</div>
           <button id="casino-slot-bet-inc" class="casino-slot-bet-btn" type="button" aria-label="掛金を増やす">▶</button>
+          <button id="casino-slot-bet-max" class="casino-slot-bet-minmax-btn" type="button" aria-label="最大額にする">最大<span class="key-badge">P</span></button>
         </div>
-        <div class="casino-slot-bet-hint">左右キーまたはボタンで掛金を調整、Q/Eキーまたは刻み幅ボタンで1回の増減幅を変更してZで開始</div>
+        <div class="casino-slot-bet-hint">左右キーまたはボタンで掛金を調整、O/Pキーまたはボタンで最小・最大、Q/Eキーまたは刻み幅ボタンで1回の増減幅を変更してZで開始</div>
         <div id="casino-slot-result" class="casino-slot-result hidden"></div>
         <div class="casino-slot-controls">
           <button id="casino-slot-stop-btn" class="casino-slot-stop-btn" type="button">開始<span class="key-badge">Z</span></button>
@@ -207,6 +211,19 @@
           </div>
         </div>
       </div>
+      <!-- ★買取屋の専用画面（town.js）。鍛冶屋・素材合成屋と同じ見た目のcrafting-*クラスを流用している -->
+      <div id="kaitori-overlay" class="crafting-overlay hidden">
+        <div class="crafting-panel">
+          <div class="crafting-header">
+            <h2 id="kaitori-title" class="crafting-title"></h2>
+            <button id="kaitori-close-btn" class="devmode-btn">戻る<span class="key-badge">X</span></button>
+          </div>
+          <div class="crafting-body">
+            <div id="kaitori-item-list" class="crafting-recipe-list"></div>
+            <div id="kaitori-detail-panel" class="crafting-detail-panel"></div>
+          </div>
+        </div>
+      </div>
       <!-- ★立ち絵表示エリア（scenariobuild.jsの「立ち絵表示/非表示」「表情変更」「移動」「動き」ブロックから操作する）。
            背景より手前、メッセージウィンドウより奥の高さに収まるよう、bottomをメッセージウィンドウの高さぶん空けてある -->
       <div id="portrait-layer" class="portrait-layer"></div>
@@ -273,6 +290,11 @@
           <div id="objective-banner" class="objective-banner hidden">
             <span class="objective-banner-label">目標</span>
             <span id="objective-banner-text" class="objective-banner-text"></span>
+          </div>
+          <!-- ★要望対応：現在受けているクエストがあれば、名前と達成状況をここに表示する（話の目標が無ければ一番上に来る） -->
+          <div id="active-quest-banner" class="objective-banner hidden">
+            <span class="objective-banner-label">依頼</span>
+            <span id="active-quest-banner-text" class="objective-banner-text"></span>
           </div>
           
           <!-- ★転移後日数と所持金は、メインタブの一番上に表示する（要望対応） -->
