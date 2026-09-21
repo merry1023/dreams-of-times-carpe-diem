@@ -9323,7 +9323,7 @@ function buildMonsterDetailEditor(entity, persist, category) {
   skillNote.textContent = "専用スキル（低確率で通常より強い一撃を繰り出す）：";
   wrap.appendChild(skillNote);
   
-  if (!entity.uniqueSkill || typeof entity.uniqueSkill !== "object") entity.uniqueSkill = { name: "", chance: 0, multiplier: 1, flavor: "", kind: "normal", hpDrainRatio: 0, spDrain: 0 };
+  if (!entity.uniqueSkill || typeof entity.uniqueSkill !== "object") entity.uniqueSkill = { name: "", chance: 0, multiplier: 1, flavor: "", kind: "normal", hpDrainRatio: 0, spDrain: 0, buffPower: 5, buffTurns: 3 };
   
   const skillRow1 = document.createElement("div");
   skillRow1.className = "scenariobuild-condition-row";
@@ -9373,15 +9373,38 @@ function buildMonsterDetailEditor(entity, persist, category) {
   skillRow4.appendChild(labelSpan("種類："));
   const kindSelect = document.createElement("select");
   kindSelect.className = "scenariobuild-jump-select";
-  [["normal", "通常（ダメージのみ）"], ["drain", "パラメータ吸収"]].forEach(([v, label]) => {
+  [["normal", "通常（ダメージのみ）"], ["drain", "パラメータ吸収"], ["buff", "状態強化（自分の攻撃力を上げる）"]].forEach(([v, label]) => {
     const opt = document.createElement("option");
     opt.value = v; opt.textContent = label;
     kindSelect.appendChild(opt);
   });
-  kindSelect.value = entity.uniqueSkill.kind === "drain" ? "drain" : "normal";
+  kindSelect.value = ["drain", "buff"].includes(entity.uniqueSkill.kind) ? entity.uniqueSkill.kind : "normal";
   kindSelect.onchange = () => { entity.uniqueSkill.kind = kindSelect.value; persist(); renderScenarioBuildPanel(); };
   skillRow4.appendChild(kindSelect);
   wrap.appendChild(skillRow4);
+  
+  // ★要望対応：状態強化スキル（自分の攻撃力を一定ターン上げる。ダメージは与えず行動を終える）
+  if (entity.uniqueSkill.kind === "buff") {
+    const skillRow7 = document.createElement("div");
+    skillRow7.className = "scenariobuild-condition-row";
+    skillRow7.appendChild(labelSpan("攻撃力上昇量："));
+    const buffPowerInput = document.createElement("input");
+    buffPowerInput.type = "number";
+    buffPowerInput.min = "0";
+    buffPowerInput.className = "scenariobuild-condition-input";
+    buffPowerInput.value = entity.uniqueSkill.buffPower != null ? entity.uniqueSkill.buffPower : 5;
+    buffPowerInput.onchange = () => { entity.uniqueSkill.buffPower = Math.max(0, Number(buffPowerInput.value) || 0); persist(); };
+    skillRow7.appendChild(buffPowerInput);
+    skillRow7.appendChild(labelSpan("持続ターン："));
+    const buffTurnsInput = document.createElement("input");
+    buffTurnsInput.type = "number";
+    buffTurnsInput.min = "1";
+    buffTurnsInput.className = "scenariobuild-condition-input";
+    buffTurnsInput.value = entity.uniqueSkill.buffTurns != null ? entity.uniqueSkill.buffTurns : 3;
+    buffTurnsInput.onchange = () => { entity.uniqueSkill.buffTurns = Math.max(1, Number(buffTurnsInput.value) || 1); persist(); };
+    skillRow7.appendChild(buffTurnsInput);
+    wrap.appendChild(skillRow7);
+  }
   
   if (entity.uniqueSkill.kind === "drain") {
     const skillRow5 = document.createElement("div");

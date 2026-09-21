@@ -1751,6 +1751,7 @@ async function runSingleEnemyTurn(enemy) {
     if (enemy.status.atkDown && enemy.status.atkDown.turns > 0) enemy.status.atkDown.turns--;
     if (enemy.status.defDown && enemy.status.defDown.turns > 0) enemy.status.defDown.turns--;
     if (enemy.status.accDown && enemy.status.accDown.turns > 0) enemy.status.accDown.turns--;
+    if (enemy.status.atkUp && enemy.status.atkUp.turns > 0) enemy.status.atkUp.turns--; // ★要望対応：状態強化スキルによる攻撃力上昇の残りターン
     
     if (enemy.status.stun > 0) {
       enemy.status.stun--;
@@ -1834,7 +1835,8 @@ async function runSingleEnemyTurn(enemy) {
   }
   
   const atkDownPenalty = (enemy.status && enemy.status.atkDown && enemy.status.atkDown.turns > 0) ? enemy.status.atkDown.power : 0;
-  const enemyAtk = Math.max(0, enemy.atk + enemy.enemyAtkBonus - atkDownPenalty);
+  const atkUpBonus = (enemy.status && enemy.status.atkUp && enemy.status.atkUp.turns > 0) ? enemy.status.atkUp.power : 0; // ★要望対応：状態強化スキル
+  const enemyAtk = Math.max(0, enemy.atk + enemy.enemyAtkBonus + atkUpBonus - atkDownPenalty);
   const variance = Math.floor(Math.random() * 3) - 1; // -1〜+1の揺らぎ
   
   if (!attackTarget.isPlayer) {
@@ -1910,7 +1912,18 @@ async function executeMonsterUniqueSkill(enemy, skill) {
   changeSpeaker(enemy.displayName);
   await displayMessage(`「${skill.name}」！ ${skill.flavor || ""}`);
   
-  const enemyAtk = enemy.atk + enemy.enemyAtkBonus;
+  // ★要望対応：状態強化スキル。自分の攻撃力を一定ターン上げるだけで、ダメージは与えず行動を終える
+  if (skill.kind === "buff") {
+    if (!enemy.status) enemy.status = {};
+    enemy.status.atkUp = { turns: skill.buffTurns || 3, power: skill.buffPower || 5 };
+    changeSpeaker("");
+    await displayMessage(`${enemy.displayName}の攻撃力が上がった！`);
+    updateBattleHud();
+    return;
+  }
+  
+  const atkUpBonus = (enemy.status && enemy.status.atkUp && enemy.status.atkUp.turns > 0) ? enemy.status.atkUp.power : 0;
+  const enemyAtk = enemy.atk + enemy.enemyAtkBonus + atkUpBonus;
   const damage = applyPlayerDamageReduction(Math.max(1, Math.round(enemyAtk * (skill.multiplier || 1))));
   changeGauge("hp", -damage);
   player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
