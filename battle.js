@@ -611,6 +611,11 @@ async function battleLoop() {
     
     updateBattleHud();
     
+    // ★要望対応：プレイヤーの行動（このターンのダメージ・状態異常等）で前の形態のHPが0になっていたら、
+    //   仲間や敵のターンを待たず、ここですぐ形態移行の演出・メッセージを出す
+    await announcePendingBossFormChanges();
+    if (!battleState) return;
+    
     // ★敵を全滅させた？
     if (getAliveEnemies().length === 0) {
       await resolveBattleVictory(); // 勝利処理（敵の種類ごとの殺す/逃がすの選択も含む）
@@ -620,6 +625,9 @@ async function battleLoop() {
     // ★仲間のターン：主人公の直後、仲間1→仲間2……の順で、生きている仲間全員が行動する
     await companionTeamTurn();
     if (!battleState) return;
+    // ★要望対応：仲間の攻撃で前の形態のHPが0になっていたら、ボスの番を待たずすぐに演出を出す
+    await announcePendingBossFormChanges();
+    if (!battleState) return;
     if (getAliveEnemies().length === 0) {
       await resolveBattleVictory();
       return;
@@ -627,6 +635,9 @@ async function battleLoop() {
     
     // ★友好的になった魔物が、稀に助っ人として乱入してくる（要望対応）
     await tryFriendlyMonsterAssist();
+    if (!battleState) return;
+    // ★要望対応：友好モンスターの乱入攻撃で前の形態のHPが0になっていたら、同様にすぐ演出を出す
+    await announcePendingBossFormChanges();
     if (!battleState) return;
     if (getAliveEnemies().length === 0) {
       await resolveBattleVictory();
@@ -1181,6 +1192,9 @@ async function companionTeamTurn() {
     if (!companion.alive) continue;
     if (getAliveEnemies().length === 0) break; // ★既に全滅していたら、残りの仲間は行動させない
     await performCompanionAction(companion);
+    // ★要望対応：この仲間の攻撃で前の形態のHPが0になっていたら、他の仲間やボスの番を待たず、
+    //   すぐに形態移行の演出を出す（最後の仲間の行動ターンになるまで待たせない）
+    if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
   }
 }
 
@@ -1703,6 +1717,36 @@ function applyBossFormChange(enemy, nextForm, nextFormIndex) {
     // ★要望対応：「BGM引き継ぎ」がOFFの時だけ専用BGMに切り替える。ONの場合（既定）や専用BGM未指定の場合は、
     //   直前まで流れていた曲をそのまま流し続ける（BGMには一切触れない）
     switchScenarioBGM(nextForm.bgmTrack, { fadeMs: 600, onFailFallbackTrack: (typeof BATTLE_BGM_TRACKS !== "undefined" ? BATTLE_BGM_TRACKS.boss : undefined) });
+  }
+}
+
+// ★要望対応：ボスの形態が切り替わった直後、まだ反応（演出・メッセージ）を出していないボスが
+//   いないか確認し、その場ですぐに出す。以前はこの確認をボス自身の行動ターンの中でしか
+//   行っていなかったため、プレイヤーや仲間の攻撃で前の形態のHPを0にした場合、演出が出ないまま
+//   仲間が次の形態に攻撃してしまい、ボスの番が来て初めて演出が出る……という不自然な遅れがあった。
+//   プレイヤーの行動・仲間全員の行動・友好モンスターの乱入のたびに、これを呼んで確認する。
+//   （ボス自身の行動ターン側にも同じ確認処理が残っているが、二重に反応することはない。
+//   　lastAcknowledgedFormNumberを更新済みの形態は「もう反応済み」として扱われるため）
+async function announcePendingBossFormChanges() {
+  if (!battleState) return;
+  for (const enemy of battleState.enemies.slice()) { // ★演出中に敵配列が変わる可能性があるので、コピーを回す
+    if (!battleState) return;
+    if (typeof enemy.lastAcknowledgedFormNumber !== "number") enemy.lastAcknowledgedFormNumber = 1;
+    if (typeof enemy.currentFormNumber !== "number") enemy.currentFormNumber = 1;
+    if (enemy.currentFormNumber === enemy.lastAcknowledgedFormNumber) continue; // ★この形態には、もう反応済み
+    enemy.lastAcknowledgedFormNumber = enemy.currentFormNumber;
+    
+    const triggerableEvent = findTriggerableBossBattleEvent(enemy);
+    if (triggerableEvent) {
+      await executeBossBattleEvent(enemy, triggerableEvent);
+      if (!battleState) return; // ★演出の巻き添えで戦闘が終わっていたら、ここで打ち切る
+    } else {
+      // ★反応する「形態が◯になった瞬間」の戦闘イベントが1つも設定されていなかった場合の保険。
+      //   最低限「様子が変わった」ことだけは伝える
+      changeSpeaker("");
+      await displayMessage(`${enemy.displayName}の様子が変わった……！`);
+      updateBattleHud();
+    }
   }
 }
 
