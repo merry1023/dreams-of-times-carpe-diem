@@ -1059,7 +1059,7 @@ function getHealTargetChoices(caster, includeAllOption = true) {
     const isCaster = u === caster;
     let label;
     if (u === player) {
-      label = isCaster ? "自分" : "主人公"; // ★仲間が回復技を使う時、主人公自身は「主人公」と表示する（casterではないので「自分」ではない）
+      label = isCaster ? "自分" : "田中治郎"; // ★要望対応：仲間が回復技を使う時、主人公自身は「主人公」ではなく名前で表示する（casterではないので「自分」ではない）
     } else {
       const m = getCompanionMaster(u);
       const name = m ? m.name : u.companionId;
@@ -1123,7 +1123,7 @@ function applyGaugeDeltaToUnit(unit, gaugeKey, delta) {
 // ★ユニットから表示名を引く（player.jsからも呼べるよう、battle.js/mainfunc.jsの同名関数と別に持っておく）
 //   caster: これがunitと同じなら「自分」を付ける（仲間が自分を回復した時などに使う）
 function getHealTargetDisplayName(unit, caster) {
-  if (unit === player) return (caster && caster !== player) ? "主人公" : "自分";
+  if (unit === player) return (caster && caster !== player) ? "田中治郎" : "自分"; // ★要望対応：主人公は名前で表示する
   const master = getCompanionMaster(unit);
   const name = master ? master.name : "仲間";
   return (caster && unit === caster) ? `${name}（自分）` : name;
