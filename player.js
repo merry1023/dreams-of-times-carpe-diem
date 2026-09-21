@@ -1340,6 +1340,15 @@ function switchPlayerClass(newClassName) {
   player.gauges.fatigue = { current: 0, max: newMaxFatigue };
   player.classLevels[newClassName] = targetLevel;
   
+  // ★要望対応：以前この職業だった時に装備していた物（lockedToClassで職業専用ロックされている物）は、
+  //   その職業に戻ってきたタイミングで自動的に着け直す。装備できない理由（別の職業制限や、
+  //   誰か他の人が既に使っている等）があれば無理に着けず、そのまま持ち物に残しておく
+  if (typeof inventorySlots !== "undefined") {
+    inventorySlots
+      .filter(s => s && s.lockedToClass === newClassName)
+      .forEach(s => equipItem(s.instanceId)); // ★装備部位はequipItem内でアイテムのデータから自動判定される
+  }
+  
   return { success: true, isNewClass, newLevel: targetLevel };
 }
 
