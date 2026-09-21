@@ -228,6 +228,8 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.portraitCharacters = data.portraitCharacters || [];
   scenarioProject.recipes = data.recipes || [];
   if (Array.isArray(data.randomNamePool)) scenarioProject.randomNamePool = data.randomNamePool; // ★要望対応：ランダム名前管理タブ
+  if (Array.isArray(data.elementDefs)) scenarioProject.elementDefs = data.elementDefs; // ★要望対応：属性管理タブ
+  if (data.elementMatchups && typeof data.elementMatchups === "object") scenarioProject.elementMatchups = data.elementMatchups;
   scenarioProject.bgmTracks = data.bgmTracks || [];
   scenarioProject.mapAreas = data.mapAreas || [];
   scenarioProject.mapEdges = data.mapEdges || [];
@@ -422,6 +424,11 @@ function normalizeScenarioProject() {
       "レオ", "アオイ", "シュン", "マナミ",
     ];
   }
+  // ★要望対応：属性管理タブ。属性一覧（火・氷等）と、属性同士の相性表
+  //   （scenarioProject.elementMatchups[攻撃側属性id + ">" + 受ける側属性id] = "advantage"|"resist"、
+  //   未設定は通常扱い）
+  if (!Array.isArray(scenarioProject.elementDefs)) scenarioProject.elementDefs = []; // [{ id, name }, ...]
+  if (!scenarioProject.elementMatchups || typeof scenarioProject.elementMatchups !== "object") scenarioProject.elementMatchups = {};
   // ★要望対応：ログインボーナス。常に必ず7日分（1〜7日目）が揃った状態にしておく
   if (!Array.isArray(scenarioProject.loginBonusDays)) scenarioProject.loginBonusDays = [];
   for (let day = 0; day < 7; day++) {
@@ -1009,7 +1016,10 @@ function ensureCustomMonstersRegistered() {
       restSkillBlocks: (Array.isArray(enemy.restSkillBlocks) && enemy.restSkillBlocks.length > 0) ? enemy.restSkillBlocks : undefined,
       // ★要望対応：見逃した/倒した時の演出をブロックで組み立てられるようにする
       killBlocks: (Array.isArray(enemy.killBlocks) && enemy.killBlocks.length > 0) ? enemy.killBlocks : undefined,
-      spareBlocks: (Array.isArray(enemy.spareBlocks) && enemy.spareBlocks.length > 0) ? enemy.spareBlocks : undefined
+      spareBlocks: (Array.isArray(enemy.spareBlocks) && enemy.spareBlocks.length > 0) ? enemy.spareBlocks : undefined,
+      // ★要望対応：属性（複数選択可）と、属性相性を無視するかどうか
+      elements: (Array.isArray(enemy.elements) && enemy.elements.length > 0) ? enemy.elements : undefined,
+      ignoreElementalAffinity: enemy.ignoreElementalAffinity || undefined
     };
     // ★バグ修正：新しく追加した敵（ボスではない通常の魔物）が、SPAREABLE_KEYS（見逃す/倒すの対象、
     //   魔物図鑑に載る対象）に組み込みの魔物しか入っていなかったせいで、魔物図鑑に載らず、
@@ -1050,7 +1060,10 @@ function ensureCustomMonstersRegistered() {
       statusImmunities: (Array.isArray(boss.statusImmunities) && boss.statusImmunities.length > 0) ? boss.statusImmunities : undefined,
       statusResistances: (boss.statusResistances && typeof boss.statusResistances === "object" && Object.keys(boss.statusResistances).length > 0) ? boss.statusResistances : undefined,
       battleEvents: (Array.isArray(boss.battleEvents) && boss.battleEvents.length > 0) ? boss.battleEvents : undefined, // ★ボス管理タブの戦闘イベント（battle.js参照）
-      forms: (Array.isArray(boss.forms) && boss.forms.length > 0) ? boss.forms : undefined // ★要望対応：ボス管理タブの「形態」一覧（battle.js参照）
+      forms: (Array.isArray(boss.forms) && boss.forms.length > 0) ? boss.forms : undefined, // ★要望対応：ボス管理タブの「形態」一覧（battle.js参照）
+      // ★要望対応：属性（複数選択可）と、属性相性を無視するかどうか
+      elements: (Array.isArray(boss.elements) && boss.elements.length > 0) ? boss.elements : undefined,
+      ignoreElementalAffinity: boss.ignoreElementalAffinity || undefined
     };
     if (typeof BOSS_MONSTER_KEYS !== "undefined" && !BOSS_MONSTER_KEYS.includes(boss.id)) {
       BOSS_MONSTER_KEYS.push(boss.id); // ★ボス扱い（BGM切り替え等）にする
@@ -1391,6 +1404,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "gamevars", label: "ゲーム変数管理" }, // ★要望対応：話ブロックのifで参照できる数値変数の管理タブ（システム変数一覧の「変数一覧」とは別物）
   { view: "recipes", label: "レシピ管理" },
   { view: "randomnames", label: "ランダム名前管理" }, // ★要望対応：オークションNPC等のランダム名前バリエーション管理
+  { view: "elements", label: "属性管理" }, // ★要望対応：属性一覧と属性相性表
   { view: "loginbonus", label: "ログボ報酬" }, // ★要望対応：ログインボーナス（7日分の報酬編集）
   { view: "companionchat", label: "会話AI設定", enabledByDefault: false }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集。安定するまで非表示
   { view: "companions", label: "仲間編集" },
@@ -1539,6 +1553,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "gamevars") renderVariableManager(bodyEl);
   else if (scenarioBuildSubView === "recipes") renderRecipeManager(bodyEl);
   else if (scenarioBuildSubView === "randomnames") renderRandomNameManager(bodyEl);
+  else if (scenarioBuildSubView === "elements") renderElementManager(bodyEl);
   else if (scenarioBuildSubView === "companions") renderCompanionManager(bodyEl);
   else if (scenarioBuildSubView === "classes") renderClassStatsManager(bodyEl);
   else if (scenarioBuildSubView === "bgm") renderEntityManager(bodyEl, getBgmManagerConfig());
@@ -5786,6 +5801,132 @@ function renderRandomNameManager(container) {
   container.appendChild(bulkAddBtn);
 }
 
+// ===================================================================
+// ===== 要望対応：属性管理（属性一覧と属性相性表） =====
+// ===================================================================
+function renderElementManager(container) {
+  const introEl = document.createElement("p");
+  introEl.className = "devmode-note";
+  introEl.textContent = "スキルや敵に設定する「属性」（火・氷など）を登録し、属性同士の相性（特攻・耐性・通常）を決められます。特攻＝ダメージ増、耐性＝ダメージ減、通常＝変化なし。敵が複数の属性を持つ場合、各属性との相性が掛け合わさって最終的なダメージ倍率になります。";
+  container.appendChild(introEl);
+  
+  const listHeading = document.createElement("h4");
+  listHeading.className = "scenariobuild-subheading";
+  listHeading.textContent = "属性一覧";
+  container.appendChild(listHeading);
+  
+  const list = document.createElement("div");
+  list.className = "scenariobuild-list";
+  container.appendChild(list);
+  
+  scenarioProject.elementDefs.forEach((el, i) => {
+    const row = document.createElement("div");
+    row.className = "scenariobuild-condition-row";
+    row.style.justifyContent = "space-between";
+    row.style.gap = "8px";
+    
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "scenariobuild-title-input";
+    nameInput.value = el.name || "";
+    nameInput.placeholder = "例：火";
+    nameInput.onchange = () => {
+      el.name = nameInput.value.trim();
+      markScenarioBuildDirty();
+      if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
+      renderScenarioBuildPanel(); // ★相性表・見出しの表示名にも反映する
+    };
+    row.appendChild(nameInput);
+    
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "devmode-btn devmode-btn-danger";
+    deleteBtn.textContent = "削除";
+    deleteBtn.onclick = (event) => {
+      event.stopPropagation();
+      if (!confirm(`「${el.name || "（名前未設定）"}」を削除しますか？（この属性を使っているスキル・敵の設定は残りますが、削除後は「無」属性として扱われます）`)) return;
+      scenarioProject.elementDefs.splice(i, 1);
+      // ★この属性が絡む相性データも一緒に削除しておく
+      Object.keys(scenarioProject.elementMatchups).forEach(key => {
+        if (key.startsWith(el.id + ">") || key.endsWith(">" + el.id)) delete scenarioProject.elementMatchups[key];
+      });
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    row.appendChild(deleteBtn);
+    
+    list.appendChild(row);
+  });
+  
+  const addBtn = document.createElement("button");
+  addBtn.className = "devmode-btn";
+  addBtn.textContent = "＋ 属性を追加";
+  addBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioProject.elementDefs.push({ id: generateId("element"), name: "" });
+    markScenarioBuildDirty();
+    renderScenarioBuildPanel();
+  };
+  container.appendChild(addBtn);
+  
+  const matrixHeading = document.createElement("h4");
+  matrixHeading.className = "scenariobuild-subheading";
+  matrixHeading.textContent = "属性相性表（縦：攻撃する側の属性／横：受ける側の属性）";
+  container.appendChild(matrixHeading);
+  
+  if (scenarioProject.elementDefs.length < 1) {
+    const note = document.createElement("p");
+    note.className = "devmode-note";
+    note.textContent = "属性を1つ以上登録すると、ここに相性表が表示されます。";
+    container.appendChild(note);
+    return;
+  }
+  
+  const tableWrap = document.createElement("div");
+  tableWrap.className = "scenariobuild-element-matrix-wrap";
+  const table = document.createElement("table");
+  table.className = "scenariobuild-element-matrix";
+  
+  const headRow = document.createElement("tr");
+  headRow.appendChild(document.createElement("th"));
+  scenarioProject.elementDefs.forEach(defEl => {
+    const th = document.createElement("th");
+    th.textContent = defEl.name || "（無名）";
+    headRow.appendChild(th);
+  });
+  table.appendChild(headRow);
+  
+  scenarioProject.elementDefs.forEach(atkEl => {
+    const row = document.createElement("tr");
+    const th = document.createElement("th");
+    th.textContent = atkEl.name || "（無名）";
+    row.appendChild(th);
+    scenarioProject.elementDefs.forEach(defEl => {
+      const td = document.createElement("td");
+      const select = document.createElement("select");
+      select.className = "scenariobuild-element-matrix-select";
+      [["normal", "通常"], ["advantage", "特攻"], ["resist", "耐性"]].forEach(([v, label]) => {
+        const opt = document.createElement("option");
+        opt.value = v; opt.textContent = label;
+        select.appendChild(opt);
+      });
+      const key = atkEl.id + ">" + defEl.id;
+      select.value = scenarioProject.elementMatchups[key] || "normal";
+      select.onchange = () => {
+        if (select.value === "normal") delete scenarioProject.elementMatchups[key];
+        else scenarioProject.elementMatchups[key] = select.value;
+        markScenarioBuildDirty();
+        if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
+      };
+      td.appendChild(select);
+      row.appendChild(td);
+    });
+    table.appendChild(row);
+  });
+  
+  tableWrap.appendChild(table);
+  container.appendChild(tableWrap);
+}
+
 // ★状態管理タブは他のシナリオビルド画面と逆に、左のメイン画面に状態異常/状態強化の一覧を出し、
 //   右のサブ画面で選んだ項目を編集する構成にしてある（メイン画面：renderStatusMainList／サブ画面：renderStatusManager）
 function renderStatusMainList(container) {
@@ -7106,7 +7247,11 @@ function buildSkillSlotRow(className, level, levels) {
     { value: "attack", label: "攻撃" }, { value: "heal", label: "回復" }, { value: "buff", label: "自己強化" },
     { value: "passive", label: "常時発動" }, { value: "special", label: "特殊" }
   ]));
-  paramsRow.appendChild(buildSkillNumberInline(entry, "element", "属性", null, true));
+  // ★要望対応：属性を、属性管理タブで登録した一覧から選べるようにする（以前は数値入力欄だった）
+  paramsRow.appendChild(buildSkillSelectInline(entry, "element", "属性", [
+    { value: "無", label: "無" },
+    ...scenarioProject.elementDefs.map(el => ({ value: el.id, label: el.name || "（無名）" })),
+  ]));
   paramsRow.appendChild(buildSkillNumberInline(entry, "power", "威力", 0));
   paramsRow.appendChild(buildSkillSelectInline(entry, "target", "対象", [
     { value: "single", label: "単体" }, { value: "all", label: "全体" }
@@ -9242,6 +9387,53 @@ function buildMonsterDetailEditor(entity, persist, category) {
   noteEl.textContent = "見逃し関連・ドロップ・専用スキルなど、より詳しい設定です。空欄のままでも問題ありません。";
   wrap.appendChild(noteEl);
   
+  // ★要望対応：敵の属性（複数選択可）と、属性相性を無視するかどうか
+  if (!Array.isArray(entity.elements)) entity.elements = [];
+  const elementsRow = document.createElement("div");
+  elementsRow.className = "scenariobuild-condition-row";
+  elementsRow.style.flexWrap = "wrap";
+  elementsRow.appendChild(labelSpan("属性（複数選択可）："));
+  if (scenarioProject.elementDefs.length === 0) {
+    const noneNote = document.createElement("span");
+    noneNote.className = "devmode-note";
+    noneNote.textContent = "（「属性管理」タブでまだ属性が登録されていません）";
+    elementsRow.appendChild(noneNote);
+  } else {
+    scenarioProject.elementDefs.forEach(el => {
+      const chipLabel = document.createElement("label");
+      chipLabel.className = "scenariobuild-cleared-label";
+      chipLabel.style.marginRight = "10px";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = entity.elements.includes(el.id);
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          if (!entity.elements.includes(el.id)) entity.elements.push(el.id);
+        } else {
+          entity.elements = entity.elements.filter(id => id !== el.id);
+        }
+        persist();
+      };
+      chipLabel.appendChild(checkbox);
+      chipLabel.appendChild(document.createTextNode(el.name || "（無名）"));
+      elementsRow.appendChild(chipLabel);
+    });
+  }
+  wrap.appendChild(elementsRow);
+  
+  const ignoreAffinityRow = document.createElement("div");
+  ignoreAffinityRow.className = "scenariobuild-condition-row";
+  const ignoreLabel = document.createElement("label");
+  ignoreLabel.className = "scenariobuild-cleared-label";
+  const ignoreCheckbox = document.createElement("input");
+  ignoreCheckbox.type = "checkbox";
+  ignoreCheckbox.checked = !!entity.ignoreElementalAffinity;
+  ignoreCheckbox.onchange = () => { entity.ignoreElementalAffinity = ignoreCheckbox.checked; persist(); };
+  ignoreLabel.appendChild(ignoreCheckbox);
+  ignoreLabel.appendChild(document.createTextNode(" 属性相性を無視する（特攻・耐性を計算せず、常に通常ダメージにする）"));
+  ignoreAffinityRow.appendChild(ignoreLabel);
+  wrap.appendChild(ignoreAffinityRow);
+  
   const textField = (label, key, placeholder) => {
     const row = document.createElement("div");
     row.className = "scenariobuild-condition-row";
@@ -10885,6 +11077,8 @@ function exportGameSettingsAsJsFile() {
     portraitCharacters: scenarioProject.portraitCharacters,
     recipes: scenarioProject.recipes,
     randomNamePool: scenarioProject.randomNamePool, // ★要望対応：ランダム名前管理タブ
+    elementDefs: scenarioProject.elementDefs, // ★要望対応：属性管理タブ
+    elementMatchups: scenarioProject.elementMatchups,
     bgmTracks: scenarioProject.bgmTracks,
     mapAreas: scenarioProject.mapAreas,
     mapEdges: scenarioProject.mapEdges,

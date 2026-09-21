@@ -757,13 +757,13 @@ async function handleWeaponSkillMenu(activeWeaponSkills) {
 
 // ★狂戦士「賊害の連鎖」：発動中、単体攻撃が命中した時にもう一体の敵にも連鎖してダメージを与える。
 //   同じ計算式(damageFn)で改めてダメージを計算し、生きている敵の中から元の対象以外をランダムに選ぶ
-async function maybeApplyChainAttack(primaryTarget, damageFn) {
+async function maybeApplyChainAttack(primaryTarget, damageFn, elementId) {
   if (!battleState || !(battleState.playerChainAttackTurns > 0)) return;
   const candidates = getAliveEnemies().filter(e => e !== primaryTarget);
   if (candidates.length === 0) return;
   const chainTarget = candidates[Math.floor(Math.random() * candidates.length)];
   const raw = damageFn();
-  const result = resolveDamageForTarget(chainTarget, raw);
+  const result = resolveDamageForTarget(chainTarget, raw, elementId);
   chainTarget.hp = Math.max(0, chainTarget.hp - result.damage);
   changeSpeaker("");
   if (result.blocked) {
@@ -860,7 +860,27 @@ function applyCriticalHit(damage) {
 
 // ★「無敵解除アイテム」が設定された相手（主にボス）は、実際にそのアイテムを使うまでダメージが一切通らない。
 //   指定が無い相手には何もせず、渡されたダメージをそのまま返す（今まで通りの挙動）
-function resolveDamageForTarget(target, rawDamage) {
+// ★要望対応：属性相性（シナリオビルドの「属性管理」タブで設定）による倍率を計算する。
+//   敵が複数の属性を持つ場合は、各属性との相性を掛け合わせる（例：特攻×特攻＝ダブル弱点）。
+//   敵が「属性相性を無視する」を有効にしている場合は常に1倍（通常）にする
+function getElementalDamageMultiplier(attackElementId, target) {
+  if (!attackElementId || attackElementId === "無") return 1;
+  if (!target) return 1;
+  const master = (typeof MONSTER_MASTER !== "undefined" && target.monsterKey) ? MONSTER_MASTER[target.monsterKey] : null;
+  const defenderElements = (master && Array.isArray(master.elements)) ? master.elements : (Array.isArray(target.elements) ? target.elements : []);
+  if (master && master.ignoreElementalAffinity) return 1;
+  if (defenderElements.length === 0) return 1;
+  const matchups = (typeof scenarioProject !== "undefined" && scenarioProject.elementMatchups) || {};
+  let multiplier = 1;
+  defenderElements.forEach(defElementId => {
+    const relation = matchups[attackElementId + ">" + defElementId];
+    if (relation === "advantage") multiplier *= 1.5;
+    else if (relation === "resist") multiplier *= 0.5;
+  });
+  return multiplier;
+}
+
+function resolveDamageForTarget(target, rawDamage, attackElementId) {
   if (target && target.invincibilityBreakItemId && !target.invincibilityBroken) {
     return { damage: 0, blocked: true };
   }
@@ -869,11 +889,14 @@ function resolveDamageForTarget(target, rawDamage) {
   if (target && target.status && target.status.defDown && target.status.defDown.turns > 0) {
     damage = Math.round(damage * 1.3);
   }
+  // ★要望対応：属性相性による倍率を反映する
+  const elementalMultiplier = getElementalDamageMultiplier(attackElementId, target);
+  if (elementalMultiplier !== 1) damage = Math.max(1, Math.round(damage * elementalMultiplier));
   // ★実績システム用：ここを通る対象は常に敵（主人公・仲間が与えるダメージ）なので、そのまま累計する（要望対応）
   if (typeof player !== "undefined" && player && damage > 0) {
     player.totalDamageDealt = (player.totalDamageDealt || 0) + damage;
   }
-  return { damage, blocked: false };
+  return { damage, blocked: false, elementalMultiplier };
 }
 
 // ★道具：インベントリの中から「回復量」または「疲労回復量」を持つアイテム（薬草・ポーションなど）に加えて、
@@ -1228,14 +1251,14 @@ async function tickAllCompanionTurnBasedBuffs() {
 }
 
 // ★仲間版の連鎖攻撃（賊害の連鎖）。狙った相手以外の生きている敵をランダムに1体選び、同じ計算式で追撃する
-async function maybeApplyCompanionChainAttack(companion, primaryTarget, damageFn) {
+async function maybeApplyCompanionChainAttack(companion, primaryTarget, damageFn, elementId) {
   const buffs = getCompanionBuffState(companion);
   if (!(buffs.chainAttackTurns > 0)) return;
   const candidates = getAliveEnemies().filter(e => e !== primaryTarget);
   if (candidates.length === 0) return;
   const chainTarget = candidates[Math.floor(Math.random() * candidates.length)];
   const raw = damageFn();
-  const result = resolveDamageForTarget(chainTarget, raw);
+  const result = resolveDamageForTarget(chainTarget, raw, elementId);
   chainTarget.hp = Math.max(0, chainTarget.hp - result.damage);
   changeSpeaker("");
   const name = getCompanionDisplayName(companion);
@@ -1485,7 +1508,7 @@ async function performCompanionSkillMenu(companion) {
         const bonusRatio = Math.min(0.6, Math.max(0, companionBuffs.attackCount - 1) * 0.03);
         raw = Math.round(raw * (1 + bonusRatio));
       }
-      const result = resolveDamageForTarget(target, raw);
+      const result = resolveDamageForTarget(target, raw, skill.element);
       target.hp = Math.max(0, target.hp - result.damage);
       totalDamage += result.damage;
       if (skill.lifestealRatio) lifestealTotal += result.damage; // ★血臭の宴：与えたダメージの一部を後でHPに変換する
@@ -1529,7 +1552,7 @@ async function performCompanionSkillMenu(companion) {
     await maybeApplyCompanionChainAttack(companion, targets[0], () => {
       const variance = Math.floor(Math.random() * 7) - 3;
       return Math.max(1, Math.round(companionLevelMultiplier * (skill.power || 0)) + Math.round(companionBaseAtk * 0.7) + variance);
-    });
+    }, skill.element);
   }
   
   updateBattleHud();
@@ -2451,7 +2474,7 @@ async function runSingleSkillBlock(block, skill, context, hitCountForBalance = 1
     for (const enemyTarget of resolveSkillBlockEnemyTargets(block.target, context)) {
       if (enemyTarget.hp <= 0) continue;
       const damage = calculateSkillBlockDamage(skill, block, multiplier, context.caster, hitCountForBalance);
-      const result = resolveDamageForTarget(enemyTarget, damage);
+      const result = resolveDamageForTarget(enemyTarget, damage, skill.element);
       enemyTarget.hp = Math.max(0, enemyTarget.hp - result.damage);
       if (result.blocked) await displayMessage(`${enemyTarget.displayName}には効いていないようだッ！`, { allowSubFocus: true });
       else if (lastHitWasCritical) await displayMessage(`会心の一撃！ ${enemyTarget.displayName}に${result.damage}のダメージ！`, { allowSubFocus: true });
@@ -2794,7 +2817,7 @@ async function handleSkillMenu() {
       const target = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
       if (target) {
         const damage = calculateSkillDamage(skill);
-        const result = resolveDamageForTarget(target, damage);
+        const result = resolveDamageForTarget(target, damage, skill.element);
         target.hp = Math.max(0, target.hp - result.damage);
         await displayMessage(`「${skill.name}」……攻撃の力が出た！ ${target.displayName}に${result.damage}のダメージ！`);
       } else {
@@ -2838,7 +2861,7 @@ async function handleSkillMenu() {
         for (let hit = 0; hit < hitCount; hit++) {
           if (enemy.hp <= 0) break;
           const damage = calculateSkillDamage(skill, hitCount); // ★命中回数分だけ攻撃力の効果を均等に割る（バランス調整）
-          const result = resolveDamageForTarget(enemy, damage);
+          const result = resolveDamageForTarget(enemy, damage, skill.element);
           enemy.hp = Math.max(0, enemy.hp - result.damage);
           if (result.blocked) {
             await displayMessage(`${enemy.displayName}には効いていないようだッ！`);
@@ -2874,7 +2897,7 @@ async function handleSkillMenu() {
             target = candidates[Math.floor(Math.random() * candidates.length)];
           } else if (target.hp <= 0) break;
           const damage = calculateSkillDamage(skill, hitCount); // ★命中回数分だけ攻撃力の効果を均等に割る（バランス調整）
-          const result = resolveDamageForTarget(target, damage);
+          const result = resolveDamageForTarget(target, damage, skill.element);
           target.hp = Math.max(0, target.hp - result.damage);
           // ★命中回数が2以上の技は、技名を言うのは最初の1回のみにして、以降はダメージ量だけ表示する
           const prefix = hit === 0 ? `「${skill.name}」を放った！ ` : "";
@@ -2895,7 +2918,7 @@ async function handleSkillMenu() {
           }
         }
         // ★狂戦士「賊害の連鎖」発動中は、単体攻撃技がもう一体の敵にも連鎖する
-        if (target) await maybeApplyChainAttack(target, () => calculateSkillDamage(skill));
+        if (target) await maybeApplyChainAttack(target, () => calculateSkillDamage(skill), skill.element);
     }
     // ★攻撃技でも「代償として自分の防御力が下がる」等、自己バフ/デバフを同時に持つものがある
     if (skill.selfBuff) {

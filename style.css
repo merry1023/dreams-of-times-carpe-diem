@@ -201,6 +201,40 @@ html, body {
     padding-bottom: 4px;
 }
 
+/* ★要望対応：属性管理タブの相性表 */
+.scenariobuild-element-matrix-wrap {
+    overflow-x: auto;
+    margin-top: 6px;
+}
+
+.scenariobuild-element-matrix {
+    border-collapse: collapse;
+    font-size: 12px;
+    color: #eee;
+}
+
+.scenariobuild-element-matrix th,
+.scenariobuild-element-matrix td {
+    border: 1px solid #555;
+    padding: 4px 6px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.scenariobuild-element-matrix th {
+    background-color: rgba(255, 193, 7, 0.12);
+    color: #ffc107;
+}
+
+.scenariobuild-element-matrix-select {
+    background-color: #222;
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 12px;
+    padding: 2px 4px;
+}
+
 .devmode-password-overlay {
     position: absolute;
     inset: 0;
