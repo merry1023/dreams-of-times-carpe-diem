@@ -605,6 +605,20 @@ function renderQuestDetail() {
 // ※以前はここでenableListKeyboardNav（DOMフォーカス方式）を使っていたが、
 //   一覧のカーソル(questListCursorIndex)と下の矢印キーリスナーによる方式に統一したため不要になった。
 
+// ★要望対応：受注中のクエストがあれば、その名前と達成状況を返す（メインタブ上部のバナー表示用。mainfunc.js参照）
+function getActiveQuestBannerText() {
+  if (!activeQuest) return null;
+  if (activeQuest.readyToTurnIn) return `「${activeQuest.title}」：達成済み（報告しよう）`;
+  if (activeQuest.type === "hunt") {
+    return `「${activeQuest.title}」：${activeQuest.progress} / ${activeQuest.targetCount}`;
+  }
+  if (activeQuest.type === "gather") {
+    const current = typeof getTotalItemCount === "function" ? getTotalItemCount(activeQuest.targetItemId) : 0;
+    return `「${activeQuest.title}」：${current} / ${activeQuest.targetCount}`;
+  }
+  return `「${activeQuest.title}」`;
+}
+
 // 依頼を受注する（この関数が呼ばれる時点でランクは足りていることが確定している）
 // ★実際に冒険へ出て、指定の魔物を倒す・アイテムを集めることで達成する。
 //   受注してすぐ完了するわけではなく、activeQuest として進行状況を追跡する。
@@ -617,6 +631,7 @@ async function acceptQuest(quest) {
   await displayMessage(`「よし、「${quest.title}」の依頼、受注だ。気をつけて行ってきな。」`);
   
   activeQuest = { ...quest, progress: 0, readyToTurnIn: false };
+  if (typeof renderActiveQuestBanner === "function") renderActiveQuestBanner(); // mainfunc.js（要望対応）
   
   changeSpeaker("");
   if (quest.type === "hunt") {
@@ -651,6 +666,7 @@ async function progressHuntQuestIfMatching(monsterKey, spared = false) {
   } else {
     await displayMessage(`（「${activeQuest.title}」の進捗：${activeQuest.progress} / ${activeQuest.targetCount}）`);
   }
+  if (typeof renderActiveQuestBanner === "function") renderActiveQuestBanner(); // mainfunc.js（要望対応）
 }
 
 // 酒場で依頼を報告する（達成報酬を受け取り、依頼を掲示板から完全に取り除く）
@@ -716,6 +732,7 @@ async function turnInActiveQuest() {
   }
   
   activeQuest = null;
+  if (typeof renderActiveQuestBanner === "function") renderActiveQuestBanner(); // mainfunc.js（要望対応）
   openTavern();
 }
 
@@ -728,6 +745,7 @@ async function abandonActiveQuest() {
   if (!ok) return;
   
   activeQuest = null;
+  if (typeof renderActiveQuestBanner === "function") renderActiveQuestBanner(); // mainfunc.js（要望対応）
   selectedQuestId = null;
   questListCursorIndex = 0;
   renderQuestList(); // ★一覧・詳細パネルの両方を、破棄後の状態で描画し直す

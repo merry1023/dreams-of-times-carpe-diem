@@ -1545,6 +1545,7 @@ function renderStatusHUD() {
   
   renderMainTabCompanionParams();
   renderObjectiveBanner();
+  renderActiveQuestBanner(); // ★要望対応：話の目標のすぐ下に、受注中のクエストがあれば表示する
   renderRankUpBanner();
 }
 
@@ -1597,6 +1598,21 @@ function renderObjectiveBanner() {
   const objective = typeof getCurrentChapterObjectiveText === "function" ? getCurrentChapterObjectiveText() : null; // scenariobuild.js
   if (objective) {
     textEl.textContent = objective;
+    banner.classList.remove("hidden");
+  } else {
+    banner.classList.add("hidden");
+  }
+}
+
+// ★要望対応：現在受けているクエスト（酒場の依頼掲示板）があれば、その名前と達成状況を
+//   メインタブの一番上（話の目標が表示されている場合はその下）に表示する
+function renderActiveQuestBanner() {
+  const banner = document.getElementById("active-quest-banner");
+  const textEl = document.getElementById("active-quest-banner-text");
+  if (!banner || !textEl) return;
+  const text = typeof getActiveQuestBannerText === "function" ? getActiveQuestBannerText() : null; // questboard.js
+  if (text) {
+    textEl.textContent = text;
     banner.classList.remove("hidden");
   } else {
     banner.classList.add("hidden");
