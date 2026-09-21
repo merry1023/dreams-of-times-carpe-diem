@@ -460,16 +460,30 @@ function scheduleNpcAuctionBid(round, npc, delayMs) {
 //   （予算の半分までは降りず、それ以降は2乗カーブで徐々に降りやすくなる）。
 //   違いは「全NPCをその場で一斉判定する」のではなく、NPCごとに独立したタイマーで
 //   1〜7秒おきに1回だけ判定する点
+// ★要望対応：一度でも自分が最高額を出したことがあるNPCは、そのすぐ後に僅差で誰かに
+//   上乗せされただけで即座に諦めてしまわないよう、「自分の直近の最高入札額＋出品の真価の10%」
+//   までは、通常の予算（npc.budget）を超えていても無理して食い下がるようにする
 function attemptNpcAuctionBid(round, npc) {
   if (!round.active || round.paused || !npc.active) return; // ★要望対応：一時停止中は判定しない（本来ここに来る前にタイマー自体を止めているが念のため）
   const currentPrice = round.currentPrice;
-  if (npc.budget <= currentPrice) { npc.active = false; renderAuctionParticipantPanel(); return; } // ★既に予算オーバーなら黙って撤退
-  const priceRatio = currentPrice / npc.budget;
-  const giveUpChance = priceRatio <= 0.5 ? 0 : Math.min(1, Math.pow((priceRatio - 0.5) / 0.5, 2));
-  if (Math.random() < giveUpChance) { npc.active = false; renderAuctionParticipantPanel(); return; }
+  
+  const stretchLimit = npc.currentBid > 0 ? npc.currentBid + Math.round(round.trueValue * 0.10) : 0;
+  const effectiveBudget = Math.max(npc.budget, stretchLimit); // ★食い下がり分を含めた、実質的な今回の上限
+  
+  if (effectiveBudget <= currentPrice) { npc.active = false; renderAuctionParticipantPanel(); return; } // ★食い下がり分も含めて予算オーバーなら撤退
+  
+  // ★食い下がり中（本来の予算は超えているが、粘る上限にはまだ届いていない）は、諦め判定そのものを
+  //   スキップして必ず上乗せを試みる。本来の予算内であれば、これまで通りの確率で自然に諦めることもある
+  const isStretching = currentPrice >= npc.budget;
+  if (!isStretching) {
+    const priceRatio = currentPrice / npc.budget;
+    const giveUpChance = priceRatio <= 0.5 ? 0 : Math.min(1, Math.pow((priceRatio - 0.5) / 0.5, 2));
+    if (Math.random() < giveUpChance) { npc.active = false; renderAuctionParticipantPanel(); return; }
+  }
+  
   const raiseRatio = AUCTION_NPC_RAISE_MIN_RATIO + Math.random() * (AUCTION_NPC_RAISE_MAX_RATIO - AUCTION_NPC_RAISE_MIN_RATIO);
   const raiseAmount = Math.max(1, Math.round(currentPrice * raiseRatio));
-  const proposedAmount = Math.min(npc.budget, currentPrice + raiseAmount);
+  const proposedAmount = Math.min(effectiveBudget, currentPrice + raiseAmount);
   if (proposedAmount <= currentPrice) { npc.active = false; renderAuctionParticipantPanel(); return; }
   
   round.currentPrice = proposedAmount;
