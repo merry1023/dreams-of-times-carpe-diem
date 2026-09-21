@@ -60,14 +60,33 @@ function getPlayTabVisibilityMap() {
   }
   PLAY_SCREEN_TAB_DEFS.forEach(tab => {
     if (typeof gameSettings.playTabVisibility[tab.id] !== "boolean") {
-      gameSettings.playTabVisibility[tab.id] = tab.enabledByDefault !== false;
+      // ★要望対応：「会話」タブは、シナリオエディタの「タブ管理」で会話AI設定が有効になっている
+      //   シナリオでは、プレイヤー側も最初から表示された状態にする（無効なシナリオでは今まで通り非表示スタート）
+      if (tab.id === "tab-companionchat" && isScenarioCompanionChatEnabled()) {
+        gameSettings.playTabVisibility[tab.id] = true;
+      } else {
+        gameSettings.playTabVisibility[tab.id] = tab.enabledByDefault !== false;
+      }
     }
   });
   return gameSettings.playTabVisibility;
 }
 
+// ★要望対応：シナリオエディタの「タブ管理」で会話AI設定（companionchat）を有効にしているかどうか。
+//   scenariobuild.jsのscenarioProjectを参照する（未読み込み等で参照できない場合はfalse扱い）
+function isScenarioCompanionChatEnabled() {
+  return typeof scenarioProject !== "undefined" && !!scenarioProject
+    && !!scenarioProject.scenarioBuildTabVisibility
+    && scenarioProject.scenarioBuildTabVisibility.companionchat === true;
+}
+
 function isPlayTabEnabled(tabId) {
   if (!tabId) return false;
+  // ★バグ修正：シナリオエディタのタブ管理で会話AI設定をONにしても、以前はプレイヤー側の「会話」タブが
+  //   出てこなかった（プレイヤー自身の設定は、シナリオ側の有効/無効と一切連動していなかったため）。
+  //   シナリオ側で無効なままの時は、プレイヤーが自分の設定でONにしていても表示しない
+  //   （機能自体がこのシナリオに用意されていないため）
+  if (tabId === "tab-companionchat" && !isScenarioCompanionChatEnabled()) return false;
   const map = getPlayTabVisibilityMap();
   return map[tabId] !== false;
 }
@@ -99,13 +118,19 @@ function renderPlayTabVisibilityManagerPanel() {
     row.style.alignItems = "center";
     row.style.padding = "6px 0";
     row.style.color = "#fff";
+    
+    // ★要望対応：「会話」タブは、シナリオ側で会話AI設定が有効になっていないと表示できない機能なので、
+    //   その場合はチェックを入れても意味が無いことが分かるよう、行自体を無効化して案内を添える
+    const isCompanionChatLocked = tab.id === "tab-companionchat" && typeof isScenarioCompanionChatEnabled === "function" && !isScenarioCompanionChatEnabled();
+    if (isCompanionChatLocked) row.style.opacity = "0.5";
 
     const label = document.createElement("span");
-    label.textContent = tab.label;
+    label.textContent = isCompanionChatLocked ? `${tab.label}（このシナリオでは未対応）` : tab.label;
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = isPlayTabEnabled(tab.id);
+    checkbox.disabled = isCompanionChatLocked;
     checkbox.onchange = () => {
       const map = getPlayTabVisibilityMap();
       map[tab.id] = checkbox.checked;
