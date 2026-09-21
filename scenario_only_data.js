@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1789870950013,
+  "version": 1790007407917,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -7746,10 +7746,15 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
     {
       "id": "custom_1789833394406_10",
       "title": "第二章：閑話第三話：新たな地",
-      "cleared": false,
+      "cleared": true,
       "builtin": false,
       "requiredChapterNumber": 7,
       "blocks": [
+        {
+          "id": "block_1789878897314_1",
+          "type": "background",
+          "path": "/img/城下町.jpg"
+        },
         {
           "id": "block_1789833477899_11",
           "type": "telop",
@@ -7841,7 +7846,294 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
       "requiredProgress": null,
       "requiredDays": null,
       "requiredFlag": null,
-      "enabled": true
+      "enabled": true,
+      "started": true
+    },
+    {
+      "id": "custom_1790003356790_1",
+      "title": "第六話：王国**所",
+      "cleared": false,
+      "builtin": false,
+      "requiredChapterNumber": 8,
+      "blocks": [
+        {
+          "id": "block_1790003608030_3",
+          "type": "background",
+          "path": "img/神々の在る所.jpg"
+        },
+        {
+          "id": "block_1790003508683_2",
+          "type": "effect",
+          "effectType": "monochromeOn"
+        },
+        {
+          "id": "block_1790003749567_6",
+          "type": "telop",
+          "text": " "
+        },
+        {
+          "id": "block_1790003623871_4",
+          "type": "dialogue",
+          "speaker": "？？？？？？？？？？",
+          "text": "....魂の循環...."
+        },
+        {
+          "id": "block_1790003686121_5",
+          "type": "dialogue",
+          "speaker": "？？？？？？？？？？",
+          "text": "言わば魂のリサイクル。"
+        },
+        {
+          "id": "block_1790003812712_7",
+          "type": "narration",
+          "text": "玉座に堂々と鎮座する男の呟きに対して問いを投げかける。"
+        },
+        {
+          "id": "block_1790003935669_8",
+          "type": "dialogue",
+          "speaker": "？？？？？？？",
+          "text": "いきなり、どうしたのですか？"
+        },
+        {
+          "id": "block_1790003993923_9",
+          "type": "dialogue",
+          "speaker": "？？？？？？？？？？",
+          "text": "いや、なんとなく、この循環の摂理は実に効率が良いと、ふと思っただけだ。"
+        },
+        {
+          "id": "block_1790004043828_10",
+          "type": "dialogue",
+          "speaker": "？？？？？？？？？？",
+          "text": "\"絶対なる理\"全体をこれを用いて廻す機構は、お前の役にも立てているはずだ。"
+        },
+        {
+          "id": "block_1790004618350_12",
+          "type": "dialogue",
+          "speaker": "？？？？？？？",
+          "text": "仰る通りでございます。\n誠に感謝しております。"
+        },
+        {
+          "id": "block_1790004606643_11",
+          "type": "dialogue",
+          "speaker": "？？？？？？？？？？",
+          "text": "お前に任せた\"管理\"は、お前の裁量において永遠に全うするように。これからも頼むぞ。"
+        },
+        {
+          "id": "block_1790004802790_15",
+          "type": "dialogue",
+          "speaker": "？？？？？？？",
+          "text": "承知、遵奉いたします。"
+        },
+        {
+          "id": "block_1790004675592_13",
+          "type": "narration",
+          "text": "その男は眼前に跪く者たちを順に見る。"
+        },
+        {
+          "id": "block_1790004793372_14",
+          "type": "dialogue",
+          "speaker": "？？？？？？？？？？",
+          "text": "******よ、お前にはいつも感謝している。**間の干渉において、お前ほどの適任はいないだろう。\n*******同じく、これからも頼むぞ。"
+        },
+        {
+          "id": "block_1790005430347_17",
+          "type": "narration",
+          "text": "跪く者は少しだけ顔を上げる。"
+        },
+        {
+          "id": "block_1790005425473_16",
+          "type": "dialogue",
+          "speaker": "？？？？？？",
+          "text": "分かりました。\n貴方様の仰せのままに。これからも続けてまいりましょう。"
+        },
+        {
+          "id": "block_1790005579955_18",
+          "type": "narration",
+          "text": "それぞれが玉座に鎮座する者に対して深く黙礼した後、闇に消えていった。"
+        },
+        {
+          "id": "block_1790005697489_19",
+          "type": "effect",
+          "effectType": "blackoutOn"
+        },
+        {
+          "id": "block_1790005707800_20",
+          "type": "background",
+          "path": "/img/城下町.jpg"
+        },
+        {
+          "id": "block_1790005712667_21",
+          "type": "effect",
+          "effectType": "monochromeOff"
+        },
+        {
+          "id": "block_1790005720429_22",
+          "type": "effect",
+          "effectType": "blackoutOff"
+        },
+        {
+          "id": "block_1790005791154_23",
+          "type": "narration",
+          "text": "鼻腔を通る甘く食欲をそそる香りが城下町の大通りに漂う。"
+        },
+        {
+          "id": "block_1790005947095_24",
+          "type": "narration",
+          "text": "周りを見渡してみると、匂いの正体は落ち着く雰囲気のベーカリーだった。"
+        },
+        {
+          "id": "block_1790006026944_25",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "おお。美味そうだな。\nロリル、一つ買っていかないか。"
+        },
+        {
+          "id": "block_1790006054437_26",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "うん。私も今この匂いを嗅いだ瞬間からとてつもなくおなかがすいてきた。"
+        },
+        {
+          "id": "block_1790006094196_27",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "いいわね！ショーロンオイルを使ったバ汁ソースを塗りたくったふわふわの食パンが一番舌を幸せにするのよ！"
+        },
+        {
+          "id": "block_1790006274323_28",
+          "type": "narration",
+          "text": "なんだかんだ一番元気そうだなツァナは..."
+        },
+        {
+          "id": "block_1790006300797_29",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "とりあえず店に入ってどんなものがあるのか見てみるか。"
+        },
+        {
+          "id": "block_1790006323229_31",
+          "type": "narration",
+          "text": "すたすたと若干の早歩きで入店し種類ごとに個別で置かれたパンを眺める。"
+        },
+        {
+          "id": "block_1790006406484_32",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "おぉ。俺の一番好きなウィンナーパンがあるじゃないか！\nこれは確実に\"買い\"だな。"
+        },
+        {
+          "id": "block_1790006513907_34",
+          "type": "narration",
+          "text": "かなりの種類があるベーカリーだ。\n店の中にパンの優しい香りが漂う。"
+        },
+        {
+          "id": "block_1790006511754_33",
+          "type": "dialogue",
+          "speaker": "ベーカリーの店員",
+          "text": "どうですか？一番人気はペロンパンです！\n程よい甘さと大きさに似合わない満腹感が一度食べるとヤミツキになりますよ！"
+        },
+        {
+          "id": "block_1790006706982_35",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "ぉおー...."
+        },
+        {
+          "id": "block_1790006724135_36",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "じゃあ、私、それがいい。"
+        },
+        {
+          "id": "block_1790006735994_37",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "私はバ汁ソースブレッドをお願い！"
+        },
+        {
+          "id": "block_1790006789968_38",
+          "type": "dialogue",
+          "speaker": "ベーカリーの店員",
+          "text": "かしこまりました！ペロンパンとバ汁ソースブレッドの二点でよろしいですか？"
+        },
+        {
+          "id": "block_1790006847748_39",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "ウィンナーパンもひとつお願いします。"
+        },
+        {
+          "id": "block_1790006867879_40",
+          "type": "dialogue",
+          "speaker": "ベーカリーの店員",
+          "text": "かしこまりました！三点、お買い上げありがとうございます！\n温かいうちにお召し上がりください！"
+        },
+        {
+          "id": "block_1790006910778_41",
+          "type": "telop",
+          "text": "三人がそれぞれパンを両手に店を後にした。"
+        },
+        {
+          "id": "block_1790006933307_42",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "美味ぇ！やっぱりたまらない！(前世界ぶりの味...)"
+        },
+        {
+          "id": "block_1790006987326_43",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "あなた良くそんなに躊躇わずに食べれるわね。"
+        },
+        {
+          "id": "block_1790007027393_44",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "ん？変なことを言うなぁ。\n美味けりゃだれでも食うだろ。"
+        },
+        {
+          "id": "block_1790007060758_45",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "一般的な店の肉ってのは安価で高タンパクなオーク肉を使ってる店が多いから、食べたくない私はあまりこういう大通りの店とかで肉系の食べ物食べないのよねぇ。"
+        },
+        {
+          "id": "block_1790007168634_46",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "え。"
+        },
+        {
+          "id": "block_1790007182622_48",
+          "type": "narration",
+          "text": "オーク....肉.....？\n......うっ....(思わず口を抑える。先に言って欲しかった...)"
+        },
+        {
+          "id": "block_1790007178908_47",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "このパン、美味しい。"
+        },
+        {
+          "id": "block_1790007258350_49",
+          "type": "narration",
+          "text": "ニコニコ笑顔でペロンパンという見た目はほぼメロンパンの食べ物を頬張るロリル。\nそんなロリルを見ていると心が浄化される気分になる。"
+        },
+        {
+          "id": "block_1790007368921_50",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "そうか、よかった。"
+        }
+      ],
+      "arcId": "arc_1789833337363_9",
+      "enabled": false,
+      "requiredChapterId": "custom_1789833394406_10",
+      "requiredRank": "C",
+      "requiredProgress": 120,
+      "requiredDays": 20,
+      "startTriggerTavernKey": "facility_facility_1789441959626_2",
+      "objectiveText": "ランクをCにし、進行度を120にして20日生き延びたら城下町の酒場の店主に話しかけよう・"
     }
   ],
   "chapterArcs": [

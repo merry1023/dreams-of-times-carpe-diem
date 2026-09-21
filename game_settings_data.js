@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1789870953335,
+  "version": 1790007408968,
   "enemies": [
     {
       "id": "goblin",
@@ -10179,7 +10179,14 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         }
       ],
       "slotImages": {},
-      "maxBet": 10000
+      "maxBet": 10000,
+      "slotWeights": {
+        "seven": 1,
+        "gem": 3,
+        "star": 10,
+        "bell": 13,
+        "grape": 25
+      }
     },
     {
       "id": "facility_1789648540174_1",
@@ -10437,6 +10444,49 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     "チビック",
     "フルンチ"
   ],
+  "elementDefs": [
+    {
+      "id": "element_1789993499387_1",
+      "name": "自然"
+    },
+    {
+      "id": "element_1789993514120_2",
+      "name": "混沌"
+    },
+    {
+      "id": "element_1789993533981_3",
+      "name": "闇"
+    },
+    {
+      "id": "element_1789993536302_4",
+      "name": "光"
+    },
+    {
+      "id": "element_1789993538636_5",
+      "name": "裂"
+    },
+    {
+      "id": "element_1789993543337_6",
+      "name": "性"
+    },
+    {
+      "id": "element_1789993572395_7",
+      "name": "無"
+    }
+  ],
+  "elementMatchups": {
+    "element_1789993514120_2>element_1789993499387_1": "advantage",
+    "element_1789993543337_6>element_1789993499387_1": "resist",
+    "element_1789993538636_5>element_1789993514120_2": "advantage",
+    "element_1789993543337_6>element_1789993514120_2": "advantage",
+    "element_1789993536302_4>element_1789993533981_3": "advantage",
+    "element_1789993536302_4>element_1789993536302_4": "advantage",
+    "element_1789993499387_1>element_1789993538636_5": "advantage",
+    "element_1789993543337_6>element_1789993538636_5": "advantage",
+    "element_1789993533981_3>element_1789993543337_6": "advantage",
+    "element_1789993543337_6>element_1789993536302_4": "advantage",
+    "element_1789993499387_1>element_1789993533981_3": "resist"
+  },
   "bgmTracks": [
     {
       "id": "town",
@@ -10570,6 +10620,12 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "auction",
       "name": "auction",
       "path": "施設/オークション/06. maroyu - Existenz",
+      "builtin": true
+    },
+    {
+      "id": "field_custom_area_1788854113373_2",
+      "name": "field_custom_area_1788854113373_2",
+      "path": "拠点/カリの村/Oak-Village",
       "builtin": true
     }
   ],
@@ -11215,8 +11271,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "facility_1788134408511_1",
         "facility_1789601498255_1",
         "facility_1789442530326_5",
-        "facility_1789648540174_1",
-        "facility_1788351639721_33"
+        "facility_1789648540174_1"
       ],
       "mapNodeSize": 20,
       "leftTarget": "custom_area_1788853853599_1",
