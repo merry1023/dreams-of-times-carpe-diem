@@ -1298,6 +1298,22 @@ function buildEstateAreaEditor(area, persist) {
     wrap.appendChild(rentNote);
   }
   
+  if (area.type === "estateHouse") {
+    // ★間取り編集（部屋の追加・削除・サイズ・ドア設置）は開発者専用。実際の部屋間移動・家具配置はプレイヤー側（floorplan.js）
+    const floorPlanBtn = document.createElement("button");
+    floorPlanBtn.className = "devmode-btn";
+    floorPlanBtn.textContent = "間取り編集";
+    floorPlanBtn.onclick = (event) => {
+      event.stopPropagation();
+      if (typeof ensureFloorPlan === "function") ensureFloorPlan(area);
+      scenarioBuildEditingMapAreaId = area.id;
+      scenarioBuildSelectedRoomId = area.floorPlan.rooms[0].id;
+      scenarioBuildMainView = "floorPlanEditor";
+      renderScenarioBuildPanel();
+    };
+    wrap.appendChild(floorPlanBtn);
+  }
+  
   return wrap;
 }
 

@@ -59,6 +59,7 @@ let scenarioBuildMainView = "list"; // "list" | "editor" | "maps" | "mapEditor" 
 let scenarioBuildSubView = "characters"; // ★右（サブ）側。常時表示なので独立して切り替わる
 let scenarioBuildEditingChapterId = null;
 let scenarioBuildEditingMapAreaId = null; // ★マップ設定の専用全画面エディタで、今どのエリアを編集中か
+let scenarioBuildSelectedRoomId = null; // ★間取りエディタで、今どの部屋を選択中か（realestate floorplan）
 let scenarioBuildEditingOptionRef = null; // ★選択肢の専用全画面エディタで、今どの選択肢を編集中か（{ chapterId, blockId, optionId }）
 let scenarioBuildEditingIfRef = null; // ★ifブロックの専用全画面エディタで、今どのブロックを編集中か（{ chapterId, blockId }）
 let scenarioBuildEditingSkillIfBlockId = null; // ★特殊技のifブロック専用全画面エディタで、今編集中のブロックid（対象の技はscenarioBuildEditingSkillIdから分かる）
@@ -1479,6 +1480,8 @@ function renderScenarioBuildMain() {
     renderMapAreaFullList(container);
   } else if (scenarioBuildMainView === "mapEditor") {
     renderMapAreaEditor(container);
+  } else if (scenarioBuildMainView === "floorPlanEditor") {
+    renderFloorPlanEditor(container);
   } else if (scenarioBuildMainView === "optionEditor") {
     renderChoiceOptionEditor(container);
   } else if (scenarioBuildMainView === "ifEditor") {

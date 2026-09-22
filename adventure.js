@@ -333,14 +333,23 @@ async function enterCustomMapArea(area, explicitKey) {
     return;
   }
   
-  // ★不動産（家・店）エリア：購入・契約済みでないと入れない（propertyOwned解放条件でここまで来ない）。
-  //   内装（間取り・店の中身）は別途実装予定のため、今はメッセージのみで村に戻す
-  if (area.type === "estateHouse" || area.type === "estateShop") {
+  // ★不動産（家）エリア：購入済みでないと入れない（propertyOwned解放条件でここまで来ない）。
+  //   間取り（部屋間移動）はfloorplan.jsで実装済み。家具配置はフェーズ2で追加予定
+  if (area.type === "estateHouse") {
+    applyBackground(area.bgImage ? { type: "image", value: area.bgImage } : { type: "color", value: "#000000" });
+    if (area.bgTrack && typeof switchScenarioBGM === "function") switchScenarioBGM("field_" + locationKey, { fadeMs: 600 });
+    maybeAutoIncrementAreaVisit(locationKey);
+    await openHouseInterior(area, () => openTownMenu()); // floorplan.js
+    return;
+  }
+  
+  // ★不動産（店）エリア：店の中身（商品棚・バイト雇用・開店モード）はフェーズ4で実装予定のため、今はメッセージのみ
+  if (area.type === "estateShop") {
     applyBackground(area.bgImage ? { type: "image", value: area.bgImage } : { type: "color", value: "#000000" });
     if (area.bgTrack && typeof switchScenarioBGM === "function") switchScenarioBGM("field_" + locationKey, { fadeMs: 600 });
     maybeAutoIncrementAreaVisit(locationKey);
     changeSpeaker("");
-    await displayMessage(area.type === "estateHouse" ? "自分の家に入った。（内装は近日実装予定）" : "自分の店に入った。（店内の実装は近日予定）");
+    await displayMessage("自分の店に入った。（店内の実装は近日予定）");
     if (typeof openTownMenu === "function") await openTownMenu();
     return;
   }
