@@ -273,6 +273,8 @@ async function startBattle(monsterKeys, options = {}) {
 
 // ★ボス格の魔物のmonsterKey一覧。BGMの切り替えなど、ボス戦かどうかの判定に使う（boss.js参照。試練の守護者は除く）
 const BOSS_MONSTER_KEYS = Object.keys(BOSS_MASTER).filter(key => key !== "trial_guardian");
+// ★要望対応：魔物図鑑にボスも載せるため、discoveredMonstersにボスの初期値（未発見）も入れておく
+BOSS_MONSTER_KEYS.forEach(key => { if (!(key in discoveredMonsters)) discoveredMonsters[key] = false; });
 
 // ★試練の祭殿専用の戦闘（adventure.jsのopenTrialShrineから呼ぶ）。守護者は常に1体。
 //   通常のエンカウントとは違い、試練の対象ランクに応じて守護者を強化し、
@@ -3365,6 +3367,7 @@ async function resolveBattleVictory() {
     
     if (!SPAREABLE_KEYS.includes(monsterKey)) {
       decisions[monsterKey] = "kill"; // ★ボス級など、見逃せない相手は今まで通り自動的に倒す
+      discoveredMonsters[monsterKey] = true; // ★要望対応：ボスも倒したら魔物図鑑に載るようにする
       continue;
     }
     

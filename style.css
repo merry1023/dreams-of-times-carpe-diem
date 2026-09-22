@@ -1067,6 +1067,7 @@ html, body {
 .inventory-slot .item-name.item-name-armor { color: #b5834a; }
 .inventory-slot .item-name.item-name-tool { color: #7ed957; }
 .inventory-slot .item-name.item-name-misc { color: #fff; }
+.inventory-slot .item-name.item-name-fish { color: #5fd0ff; } /* ★要望対応：釣った魚は水色で表示 */
 
 /* ★要望対応：今の並び替えモードを表示する小さなラベル */
 .inventory-sort-label {
@@ -2115,6 +2116,45 @@ html, body {
     border-radius: 8px;
     background: radial-gradient(ellipse, rgba(255, 215, 107, 0.12), transparent 70%);
     padding: 6px;
+}
+
+/* ★要望対応：魔物図鑑のボス詳細に出す「形態」一覧 */
+.monster-codex-forms-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.monster-codex-form-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 6px 8px;
+}
+
+.monster-codex-form-image {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    border-radius: 6px;
+    flex-shrink: 0;
+    background: radial-gradient(ellipse, rgba(255, 215, 107, 0.12), transparent 70%);
+}
+
+.monster-codex-form-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.monster-codex-form-name {
+    color: #ffc107;
+    font-weight: bold;
+    font-size: 13px;
+    margin: 0 0 2px 0;
 }
 
 .monster-codex-detail-image.hidden {
@@ -5598,10 +5638,24 @@ html, body {
   transition: opacity 0.03s ease;
 }
 
-/* ★要望対応：回想演出などに使う「モノクロ」。effectブロック(monochromeOn/Off)で切り替える */
-body.screen-monochrome {
-  filter: grayscale(1);
+/* ★要望対応：白い閃光フラッシュ（衝撃・雷など、被弾用の赤フラッシュとは別演出） */
+#white-flash-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: #fff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9998;
+  transition: opacity 0.2s ease;
 }
+
+#white-flash-overlay.white-flash-active {
+  opacity: 0.9;
+  transition: opacity 0.02s ease;
+}
+
+/* ★要望対応：モノクロ・セピア・色反転・ぼかしは、mainfunc.jsのupdateScreenFilterEffectStyle()が
+   document.body.style.filter を直接組み立てて反映する（複数同時にONでも重ねてかかるようにするため） */
 
 /* ★要望対応：「暗転」演出。画面全体を黒くフェードアウトさせる（effectブロックのblackoutOn/Offで切り替える） */
 #screen-blackout-overlay {
@@ -5614,6 +5668,81 @@ body.screen-monochrome {
 }
 #screen-blackout-overlay.active {
   opacity: 1;
+}
+
+/* ★要望対応：「ヴィネット」演出。画面端をじわっと暗くする（effectブロックのvignetteOn/Offで切り替える） */
+#screen-vignette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9990; /* ★立ち絵・背景より手前、メッセージウィンドウより奥 */
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.75) 100%);
+}
+#screen-vignette-overlay.active {
+  opacity: 1;
+}
+
+/* ★要望対応：「ズーム」演出。画面を少し拡大して見せる（effectブロックのzoomIn/Outで切り替える） */
+.main-screen.screen-zoomed {
+  transform: scale(1.12);
+  transition: transform 1.2s ease;
+}
+.main-screen {
+  transition: transform 1.2s ease;
+}
+
+/* ★要望対応：「天候」演出。雨・雪・桜吹雪を降らせる（effectブロックのweatherRainOn等で切り替える） */
+#screen-weather-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9991;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.screen-weather-rain .screen-weather-particle {
+  position: absolute;
+  top: -10%;
+  width: 1px;
+  height: 60px;
+  background: linear-gradient(to bottom, transparent, rgba(200, 220, 255, 0.7));
+  animation: screen-weather-fall-rain linear infinite;
+}
+
+.screen-weather-snow .screen-weather-particle {
+  position: absolute;
+  top: -5%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  animation: screen-weather-fall-snow linear infinite;
+}
+
+.screen-weather-sakura .screen-weather-particle {
+  position: absolute;
+  top: -5%;
+  font-size: 16px;
+  animation: screen-weather-fall-sakura linear infinite;
+}
+
+@keyframes screen-weather-fall-rain {
+  from { transform: translateY(-10vh); }
+  to { transform: translateY(110vh); }
+}
+
+@keyframes screen-weather-fall-snow {
+  0% { transform: translate(0, -10vh); }
+  50% { transform: translate(20px, 55vh); }
+  100% { transform: translate(0, 110vh); }
+}
+
+@keyframes screen-weather-fall-sakura {
+  0% { transform: translate(0, -10vh) rotate(0deg); }
+  50% { transform: translate(40px, 55vh) rotate(180deg); }
+  100% { transform: translate(-20px, 110vh) rotate(360deg); }
 }
 
 /* ===== エンディングブロック：簡易エンドロール ===== */
@@ -6258,4 +6387,116 @@ body.screen-monochrome {
   color: #b6ffb6;
   font-size: 12px;
   margin-top: 4px;
+}
+
+/* ===================================================================
+   ===== 釣りミニゲーム（要望対応：釣り場・fishing.js） =====
+   =================================================================== */
+.fishing-minigame-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 16px;
+  box-sizing: border-box;
+}
+.fishing-minigame-panel {
+  background: #1c2430;
+  border: 2px solid #4a90d9;
+  border-radius: 10px;
+  padding: 20px;
+  width: 100%;
+  max-width: 480px;
+  box-sizing: border-box;
+  color: #fff;
+  text-align: center;
+}
+.fishing-minigame-title {
+  margin: 0 0 14px 0;
+  font-size: 18px;
+}
+.fishing-direction-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.fishing-direction-arrow {
+  font-size: 26px;
+  color: #666;
+  transition: color 0.15s, text-shadow 0.15s;
+}
+.fishing-direction-arrow.fishing-direction-active {
+  color: #7ed957;
+  text-shadow: 0 0 8px rgba(126, 217, 87, 0.8);
+}
+.fishing-direction-label {
+  font-size: 12px;
+  color: #ddd;
+  flex: 1;
+}
+.fishing-gauge {
+  background: #0d1420;
+  border: 1px solid #3a4a5c;
+  border-radius: 6px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.fishing-gauge-fish-indicator {
+  font-size: 22px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  transition: color 0.15s;
+}
+.fishing-gauge-fish-indicator.fishing-gauge-pull-left { color: #ff6b6b; }
+.fishing-gauge-fish-indicator.fishing-gauge-pull-right { color: #5fd0ff; }
+.fishing-status-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.fishing-status-block {
+  flex: 1;
+  text-align: left;
+}
+.fishing-status-label {
+  font-size: 11px;
+  color: #bbb;
+  display: block;
+  margin-bottom: 4px;
+}
+.fishing-status-bar {
+  background: #0d1420;
+  border: 1px solid #3a4a5c;
+  border-radius: 4px;
+  height: 14px;
+  overflow: hidden;
+}
+.fishing-status-bar-fill {
+  height: 100%;
+  width: 100%;
+  transition: width 0.25s linear;
+}
+.fishing-fish-hp-fill { background: #ff6b6b; }
+.fishing-rod-durability-fill { background: #5fd0ff; }
+.fishing-control-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.fishing-control-btn {
+  flex: 1;
+  max-width: 200px;
+  padding: 10px 6px;
+  font-size: 14px;
+  user-select: none;
+  touch-action: none;
 }
