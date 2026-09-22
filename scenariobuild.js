@@ -8410,12 +8410,16 @@ function buildFacilityRow(facility) {
     betRow.appendChild(maxBetInput);
     infoEl.appendChild(betRow);
     
-    // ★スロットの絵柄画像・揃う確率（重み）。画像パスを1つも設定していない絵柄は、ゲーム内では絵文字で表示される。
-    //   「揃う確率」は数値が大きいほどその絵柄が出やすくなる（他の絵柄との相対的な重み。既定値と同じ考え方）
+    // ★修正（バグ報告対応）：以前は「揃う確率」という表示のまま、実際には1マスあたりの
+    //   出現しやすさ（重み、他の絵柄との相対比）を入力させていたため、表示と実態が食い違っていた。
+    //   入力自体はこれまで通り「重み」（ゲームロジック側の抽選に使う値）のままとし、
+    //   実際に3マス揃う確率（＝重み÷全絵柄の重み合計、の3乗）を別途その場で計算して表示するようにする。
+    //   複数ライン同時揃いは各マスが独立抽選される仕組みから自然に生じるため、
+    //   その確率は単純に「確率×確率」の掛け算で近似される（設計方針として確定済み）
     const slotNoteEl = document.createElement("p");
     slotNoteEl.className = "devmode-note";
     slotNoteEl.style.margin = "10px 0 2px";
-    slotNoteEl.textContent = "スロットの絵柄（任意で施設ごとにカスタマイズ）。画像は空欄のままなら絵文字で表示されます。「揃う確率」は数値が大きいほどその絵柄が出やすくなります（他の絵柄との相対的な重み。空欄なら既定値のまま）：";
+    slotNoteEl.textContent = "スロットの絵柄（任意で施設ごとにカスタマイズ）。画像は空欄のままなら絵文字で表示されます。「出現しやすさ（重み）」は数値が大きいほどその絵柄が出やすくなります（他の絵柄との相対的な重み。空欄なら既定値のまま）。実際に1ラインが揃う確率は、その場で自動計算して表示します：";
     infoEl.appendChild(slotNoteEl);
     
     if (!facility.slotImages || typeof facility.slotImages !== "object") facility.slotImages = {};
@@ -8427,6 +8431,29 @@ function buildFacilityRow(facility) {
       { key: "gem", label: "宝石（絵文字：💎）", defaultWeight: 12 },
       { key: "seven", label: "セブン（絵文字：7）", defaultWeight: 8 }
     ];
+    const slotProbabilitySpans = {};
+    let slotTotalProbabilityEl = null;
+    // ★実際の「揃う確率」を再計算して表示を更新する。重みを1つ変えると全絵柄の割合が変わるため、毎回全行分を計算し直す
+    function refreshSlotProbabilityDisplay() {
+      const totalWeight = SLOT_SYMBOL_ROWS.reduce((sum, row) => {
+        const override = facility.slotWeights[row.key];
+        const w = (typeof override === "number" && override > 0) ? override : row.defaultWeight;
+        return sum + w;
+      }, 0);
+      let anyLineTotal = 0;
+      SLOT_SYMBOL_ROWS.forEach(row => {
+        const override = facility.slotWeights[row.key];
+        const w = (typeof override === "number" && override > 0) ? override : row.defaultWeight;
+        const perCell = totalWeight > 0 ? w / totalWeight : 0;
+        const lineProb = Math.pow(perCell, 3); // ★3マス（1ライン）とも同じ絵柄になる確率
+        anyLineTotal += lineProb;
+        const span = slotProbabilitySpans[row.key];
+        if (span) span.textContent = `（1ラインが揃う確率：約${(lineProb * 100).toFixed(2)}%）`;
+      });
+      if (slotTotalProbabilityEl) {
+        slotTotalProbabilityEl.textContent = `いずれかの絵柄で1ラインが揃う確率の合計：約${(anyLineTotal * 100).toFixed(2)}%（複数ラインの同時揃いは、これらの確率同士がさらに掛け算される形で自然に発生します）`;
+      }
+    }
     SLOT_SYMBOL_ROWS.forEach(({ key, label, defaultWeight }) => {
       const slotRow = document.createElement("div");
       slotRow.className = "scenariobuild-condition-row";
@@ -8443,7 +8470,7 @@ function buildFacilityRow(facility) {
         markScenarioBuildDirty();
       };
       slotRow.appendChild(pathInput);
-      slotRow.appendChild(labelSpan("揃う確率："));
+      slotRow.appendChild(labelSpan("出現しやすさ（重み）："));
       const weightInput = document.createElement("input");
       weightInput.type = "number";
       weightInput.min = "0";
@@ -8455,10 +8482,21 @@ function buildFacilityRow(facility) {
         const value = Number(weightInput.value);
         if (weightInput.value !== "" && value > 0) facility.slotWeights[key] = value; else delete facility.slotWeights[key];
         markScenarioBuildDirty();
+        refreshSlotProbabilityDisplay();
       };
       slotRow.appendChild(weightInput);
+      const probSpan = document.createElement("span");
+      probSpan.className = "devmode-note";
+      probSpan.style.marginLeft = "4px";
+      slotProbabilitySpans[key] = probSpan;
+      slotRow.appendChild(probSpan);
       infoEl.appendChild(slotRow);
     });
+    slotTotalProbabilityEl = document.createElement("p");
+    slotTotalProbabilityEl.className = "devmode-note";
+    slotTotalProbabilityEl.style.margin = "4px 0 10px";
+    infoEl.appendChild(slotTotalProbabilityEl);
+    refreshSlotProbabilityDisplay();
   } else if (facility.type === "fishing") {
     // ★要望対応：釣り場施設。出現する魚を「時間帯」「天候」ごとに重み付きで登録する。
     //   時間帯はplayer.gameHour（player.js）、天候はcurrentWeatherType（mainfunc.js）を実際の釣りで参照する
