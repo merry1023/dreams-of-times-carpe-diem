@@ -441,6 +441,7 @@ function initPlayer(className) {
     lastVisitedBaseKey: "town", // ★要望対応：敗北時に「直前に立ち寄った拠点」へ戻すための記録
     daysSinceTransfer: 0, // 転移してからの経過日数
     gameHour: 8, // ★現在時刻（0〜23時）。転移した日の朝8時からスタート
+    fishing: { rodItemId: null, baitItemId: null }, // ★要望対応：釣り場で選んでいる釣竿・釣り餌（fishing.js）
     fame: 0, // ★隠しステータス「名声度」。クエストをクリアすると増え、一定量たまるとランクが上がる
     rank: "F", // 冒険者ランク（クエスト受注の条件に使う想定）
     clearedTrialRanks: [], // ★ランクC以上への昇格試練のクリア記録（questboard.js参照）
