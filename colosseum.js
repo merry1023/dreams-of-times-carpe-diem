@@ -54,6 +54,24 @@ function getColosseumFloorEnemyKeys(facility, floorNumber) {
   return (floor && Array.isArray(floor.enemyMonsterKeys)) ? floor.enemyMonsterKeys.filter(id => id && MONSTER_MASTER[id]) : [];
 }
 
+// ★要望対応：n回戦目に指定してある敵レベルを返す（未設定ならnull＝今まで通り自動決定）
+function getColosseumFloorLevel(facility, floorNumber) {
+  const floors = Array.isArray(facility.floors) ? facility.floors : [];
+  if (floors.length === 0) return null;
+  const idx = Math.min(Math.max(0, floorNumber - 1), floors.length - 1);
+  const floor = floors[idx];
+  return (floor && typeof floor.enemyLevel === "number" && floor.enemyLevel > 0) ? floor.enemyLevel : null;
+}
+
+// ★要望対応：10の倍数回戦（10・20・30…）は、指定レベルのうちボスID以外（雑魚敵）だけ
+//   レベル×0.6の強さに弱める。startBattleのoptions.perEnemyLevelsに渡す配列を組み立てる
+function buildColosseumPerEnemyLevels(enemyKeys, specifiedLevel, floorNumber) {
+  if (specifiedLevel == null) return null;
+  if (floorNumber % 10 !== 0) return null;
+  const weakLevel = Math.max(1, Math.round(specifiedLevel * 0.6));
+  return enemyKeys.map(key => (typeof BOSS_MONSTER_KEYS !== "undefined" && BOSS_MONSTER_KEYS.includes(key)) ? specifiedLevel : weakLevel);
+}
+
 function showColosseumLobbyMenu() {
   changeSpeaker(colosseumFacility.name || "コロシアム");
   const best = getColosseumBestFloor();
@@ -119,9 +137,19 @@ async function runColosseumFloor() {
     showColosseumLobbyMenu();
     return;
   }
+  // ★要望対応：この回戦に指定してある敵レベル（未設定ならnullのままで今まで通り自動決定）。
+  //   10の倍数回戦だけは、雑魚敵（ボスID以外）を指定レベル×0.6に弱めたperEnemyLevelsを組み立てる
+  const specifiedLevel = getColosseumFloorLevel(colosseumFacility, colosseumCurrentFloor);
+  const battleOptions = { isColosseum: true };
+  if (specifiedLevel != null) {
+    battleOptions.fixedLevel = specifiedLevel;
+    const perEnemyLevels = buildColosseumPerEnemyLevels(enemyKeys, specifiedLevel, colosseumCurrentFloor);
+    if (perEnemyLevels) battleOptions.perEnemyLevels = perEnemyLevels;
+  }
+  
   changeSpeaker("");
   await displayMessage(`${colosseumCurrentFloor}回戦目！`);
-  await startBattle(enemyKeys, { isColosseum: true }); // battle.js
+  await startBattle(enemyKeys, battleOptions); // battle.js
 }
 
 // ★battle.jsのresolveBattleVictoryから、コロシアム戦に勝った時だけ呼ばれる
@@ -177,8 +205,29 @@ async function handleColosseumVictory() {
     return;
   }
   
-  colosseumCurrentFloor = floor + 1;
-  await runColosseumFloor();
+  // ★要望対応：1回戦ごとに、次の回戦へ進むか、ここでやめる（リタイア）か選べるようにする。
+  //   ここまでの自己ベスト・獲得済みのコインは、リタイアしてもそのまま持ち帰れる
+  changeSpeaker(colosseumFacility.name || "コロシアム");
+  showLocationMenu([
+    { label: `次（${floor + 1}回戦目）に挑む`, action: () => advanceColosseumRun(floor) },
+    { label: "ここでやめておく（リタイア）", action: () => retireColosseumRun(floor) }
+  ], colosseumFacility.name || "コロシアム");
+}
+
+function advanceColosseumRun(clearedFloor) {
+  hideLocationMenu();
+  colosseumCurrentFloor = clearedFloor + 1;
+  runColosseumFloor();
+}
+
+// ★battle.jsのhandleBattleDefeatとは違い、負けたわけではないので1回戦目に戻すだけで
+//   ペナルティは無い（自己ベスト・コインなどの報酬はhandleColosseumVictory側で既に確定済み）
+async function retireColosseumRun(clearedFloor) {
+  hideLocationMenu();
+  changeSpeaker(colosseumFacility.name || "コロシアム");
+  await displayMessage(`${clearedFloor}回戦でリタイアした。ここまでの記録と報酬はそのまま持ち帰れる。`);
+  colosseumCurrentFloor = 1;
+  showColosseumLobbyMenu();
 }
 
 // ★要望対応：99回戦をクリアした時の特別報酬（コロシアムコイン各色・陳・経験値をそれぞれ指定数ずつ）
