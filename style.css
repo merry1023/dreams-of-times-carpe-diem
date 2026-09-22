@@ -2117,6 +2117,45 @@ html, body {
     padding: 6px;
 }
 
+/* ★要望対応：魔物図鑑のボス詳細に出す「形態」一覧 */
+.monster-codex-forms-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.monster-codex-form-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 6px 8px;
+}
+
+.monster-codex-form-image {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    border-radius: 6px;
+    flex-shrink: 0;
+    background: radial-gradient(ellipse, rgba(255, 215, 107, 0.12), transparent 70%);
+}
+
+.monster-codex-form-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.monster-codex-form-name {
+    color: #ffc107;
+    font-weight: bold;
+    font-size: 13px;
+    margin: 0 0 2px 0;
+}
+
 .monster-codex-detail-image.hidden {
     display: none !important;
 }
