@@ -333,6 +333,18 @@ async function enterCustomMapArea(area, explicitKey) {
     return;
   }
   
+  // ★不動産（家・店）エリア：購入・契約済みでないと入れない（propertyOwned解放条件でここまで来ない）。
+  //   内装（間取り・店の中身）は別途実装予定のため、今はメッセージのみで村に戻す
+  if (area.type === "estateHouse" || area.type === "estateShop") {
+    applyBackground(area.bgImage ? { type: "image", value: area.bgImage } : { type: "color", value: "#000000" });
+    if (area.bgTrack && typeof switchScenarioBGM === "function") switchScenarioBGM("field_" + locationKey, { fadeMs: 600 });
+    maybeAutoIncrementAreaVisit(locationKey);
+    changeSpeaker("");
+    await displayMessage(area.type === "estateHouse" ? "自分の家に入った。（内装は近日実装予定）" : "自分の店に入った。（店内の実装は近日予定）");
+    if (typeof openTownMenu === "function") await openTownMenu();
+    return;
+  }
+  
   // ★街・国・村タイプは、森・草原・洞窟のようなダンジョン探索ではなく、カリの村と同じ
   //   「施設一覧から選ぶ」平和な拠点として開く（以前はtypeを見ずに全部ダンジョン探索扱いになっていた）
   if (["city", "country", "village"].includes(area.type) && typeof openCustomSettlementArea === "function") {

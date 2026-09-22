@@ -335,6 +335,10 @@ function sanitizeLoadedPlayer(loadedPlayer) {
     }
   });
   
+  // ★不動産システム：古いセーブデータには無い欄なので、無ければ補っておく（realestate.js参照）
+  if (!loadedPlayer.ownedProperties || typeof loadedPlayer.ownedProperties !== "object") loadedPlayer.ownedProperties = {};
+  if (!Array.isArray(loadedPlayer.pendingRealEstateNotices)) loadedPlayer.pendingRealEstateNotices = [];
+  
   if (typeof loadedPlayer.fame !== "number") loadedPlayer.fame = 0;
   if (typeof loadedPlayer.rank !== "string") loadedPlayer.rank = "F";
   if (!Array.isArray(loadedPlayer.clearedTrialRanks)) loadedPlayer.clearedTrialRanks = []; // ★ランクC以上への昇格試練のクリア記録
@@ -441,6 +445,7 @@ function initPlayer(className) {
     lastVisitedBaseKey: "town", // ★要望対応：敗北時に「直前に立ち寄った拠点」へ戻すための記録
     daysSinceTransfer: 0, // 転移してからの経過日数
     gameHour: 8, // ★現在時刻（0〜23時）。転移した日の朝8時からスタート
+    ownedProperties: {}, // ★不動産システム：購入した家・店の記録（キー＝エリアのlocationKey）。realestate.js参照
     fame: 0, // ★隠しステータス「名声度」。クエストをクリアすると増え、一定量たまるとランクが上がる
     rank: "F", // 冒険者ランク（クエスト受注の条件に使う想定）
     clearedTrialRanks: [], // ★ランクC以上への昇格試練のクリア記録（questboard.js参照）
@@ -1153,6 +1158,8 @@ function advanceGameTime(hours) {
     advanceDay(1);
     // ★日付が変わった瞬間に、クエスト掲示板を毎日0時でリセットする（questboard.js）
     if (typeof resetDailyQuestBoard === "function") resetDailyQuestBoard();
+    // ★日付が変わった瞬間に、不動産のローン・家賃の請求（7日ごと）を判定する（realestate.js）
+    if (typeof processRealEstateDailyTick === "function") processRealEstateDailyTick();
   }
 }
 

@@ -7941,7 +7941,7 @@ function buildClassStatsRow(className) {
 // ===================================================================
 // ===== サブ画面：施設編集（村に追加できる「酒場/宿屋/店/冒険する」以外の施設） =====
 // ===================================================================
-const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", flavor: "その他（セリフのみ）" };
+const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", realEstate: "不動産屋系（家・店の売買・賃貸）", flavor: "その他（セリフのみ）" };
 
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
@@ -8637,6 +8637,50 @@ function buildFacilityRow(facility) {
       renderScenarioBuildPanel();
     };
     infoEl.appendChild(addPoolBtn);
+  } else if (facility.type === "realEstate") {
+    // ★新規：不動産屋系施設。取り扱う物件（マップ設定タブで「不動産：家／店」にしたエリア）を選ぶだけで、
+    //   価格・賃貸か購入かはエリア編集側の設定を使う。実際の購入・ローン・請求処理はrealestate.jsにまとめてある
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note";
+    noteEl.textContent = "この施設で取り扱う物件を選んでください（価格・賃貸／購入の別は、マップ設定タブのエリア編集側で設定します）。";
+    infoEl.appendChild(noteEl);
+    
+    if (!Array.isArray(facility.propertyAreaIds)) facility.propertyAreaIds = [];
+    const estateAreas = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.mapAreas))
+      ? scenarioProject.mapAreas.filter(a => a.type === "estateHouse" || a.type === "estateShop")
+      : [];
+    
+    if (estateAreas.length === 0) {
+      const emptyEl = document.createElement("p");
+      emptyEl.className = "devmode-note scenariobuild-condition";
+      emptyEl.textContent = "まだ「不動産：家」「不動産：店」タイプのエリアがありません（マップ設定タブで作成してください）。";
+      infoEl.appendChild(emptyEl);
+    }
+    
+    estateAreas.forEach(estateArea => {
+      const estateKey = estateArea.builtin ? estateArea.locationKey : ("custom_" + estateArea.id);
+      const optionRow = document.createElement("label");
+      optionRow.className = "scenariobuild-condition-row";
+      optionRow.style.cursor = "pointer";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = facility.propertyAreaIds.includes(estateKey);
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          if (!facility.propertyAreaIds.includes(estateKey)) facility.propertyAreaIds.push(estateKey);
+        } else {
+          facility.propertyAreaIds = facility.propertyAreaIds.filter(id => id !== estateKey);
+        }
+        markScenarioBuildDirty();
+      };
+      optionRow.appendChild(checkbox);
+      const typeLabel = estateArea.type === "estateShop" ? "店" : "家";
+      const priceLabel = estateArea.type === "estateShop" && estateArea.estateMode === "rent"
+        ? `賃貸・家賃${estateArea.estateRentAmount || 0}陳/7日`
+        : `${estateArea.estatePrice || 0}陳`;
+      optionRow.appendChild(document.createTextNode(` ${estateArea.name || "（名前未設定）"}（${typeLabel}・${priceLabel}）`));
+      infoEl.appendChild(optionRow);
+    });
   }
   
   const bgRow = document.createElement("div");
