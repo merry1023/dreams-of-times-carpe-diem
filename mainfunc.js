@@ -3302,9 +3302,10 @@ function renderInventory() {
       const master = getEffectiveItemMaster(slot); // player.js（サビ取り等の個体ごとの上書きも反映）
       
       const nameSpan = document.createElement("span");
-      // ★要望対応：種類ごとに名前の文字色を変える（武器=赤、防具=茶、道具系=緑、その他=白）
+      // ★要望対応：種類ごとに名前の文字色を変える（武器=赤、防具=茶、道具系=緑、魚=水色、その他=白）
       const categoryColorClass = master && master.category === "weapon" ? "item-name-weapon"
         : master && master.category === "armor" ? "item-name-armor"
+        : master && master.category === "fish" ? "item-name-fish"
         : master && ["herb", "potion", "material", "tool"].includes(master.category) ? "item-name-tool"
         : "item-name-misc";
       nameSpan.className = "item-name " + categoryColorClass;

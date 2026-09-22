@@ -1067,6 +1067,7 @@ html, body {
 .inventory-slot .item-name.item-name-armor { color: #b5834a; }
 .inventory-slot .item-name.item-name-tool { color: #7ed957; }
 .inventory-slot .item-name.item-name-misc { color: #fff; }
+.inventory-slot .item-name.item-name-fish { color: #5fd0ff; } /* ★要望対応：釣った魚は水色で表示 */
 
 /* ★要望対応：今の並び替えモードを表示する小さなラベル */
 .inventory-sort-label {
@@ -6386,4 +6387,116 @@ html, body {
   color: #b6ffb6;
   font-size: 12px;
   margin-top: 4px;
+}
+
+/* ===================================================================
+   ===== 釣りミニゲーム（要望対応：釣り場・fishing.js） =====
+   =================================================================== */
+.fishing-minigame-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 16px;
+  box-sizing: border-box;
+}
+.fishing-minigame-panel {
+  background: #1c2430;
+  border: 2px solid #4a90d9;
+  border-radius: 10px;
+  padding: 20px;
+  width: 100%;
+  max-width: 480px;
+  box-sizing: border-box;
+  color: #fff;
+  text-align: center;
+}
+.fishing-minigame-title {
+  margin: 0 0 14px 0;
+  font-size: 18px;
+}
+.fishing-direction-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.fishing-direction-arrow {
+  font-size: 26px;
+  color: #666;
+  transition: color 0.15s, text-shadow 0.15s;
+}
+.fishing-direction-arrow.fishing-direction-active {
+  color: #7ed957;
+  text-shadow: 0 0 8px rgba(126, 217, 87, 0.8);
+}
+.fishing-direction-label {
+  font-size: 12px;
+  color: #ddd;
+  flex: 1;
+}
+.fishing-gauge {
+  background: #0d1420;
+  border: 1px solid #3a4a5c;
+  border-radius: 6px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.fishing-gauge-fish-indicator {
+  font-size: 22px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  transition: color 0.15s;
+}
+.fishing-gauge-fish-indicator.fishing-gauge-pull-left { color: #ff6b6b; }
+.fishing-gauge-fish-indicator.fishing-gauge-pull-right { color: #5fd0ff; }
+.fishing-status-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.fishing-status-block {
+  flex: 1;
+  text-align: left;
+}
+.fishing-status-label {
+  font-size: 11px;
+  color: #bbb;
+  display: block;
+  margin-bottom: 4px;
+}
+.fishing-status-bar {
+  background: #0d1420;
+  border: 1px solid #3a4a5c;
+  border-radius: 4px;
+  height: 14px;
+  overflow: hidden;
+}
+.fishing-status-bar-fill {
+  height: 100%;
+  width: 100%;
+  transition: width 0.25s linear;
+}
+.fishing-fish-hp-fill { background: #ff6b6b; }
+.fishing-rod-durability-fill { background: #5fd0ff; }
+.fishing-control-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.fishing-control-btn {
+  flex: 1;
+  max-width: 200px;
+  padding: 10px 6px;
+  font-size: 14px;
+  user-select: none;
+  touch-action: none;
 }
