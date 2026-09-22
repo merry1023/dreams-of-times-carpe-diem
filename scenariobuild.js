@@ -2983,7 +2983,29 @@ function blockPreviewText(block) {
   if (block.type === "bossbattle") return block.bossKey + ((block.escorts || []).length > 0 ? `＋雑魚${block.escorts.length}体` : "");
   if (block.type === "choice") return block.prompt.slice(0, 12);
   if (block.type === "effect") {
-    const labels = { shake: "カメラシェイク", flash: "ヒットエフェクト", monochromeOn: "モノクロ開始", monochromeOff: "モノクロ終了（回想終了）", blackoutOn: "暗転する", blackoutOff: "暗転を解除する" };
+    const labels = {
+      shake: "カメラシェイク",
+      flash: "ヒットエフェクト",
+      flashWhite: "白フラッシュ",
+      monochromeOn: "モノクロ開始",
+      monochromeOff: "モノクロ終了（回想終了）",
+      sepiaOn: "セピア調開始",
+      sepiaOff: "セピア調終了",
+      invertOn: "色反転開始",
+      invertOff: "色反転終了",
+      blackoutOn: "暗転する",
+      blackoutOff: "暗転を解除する",
+      vignetteOn: "ヴィネット開始",
+      vignetteOff: "ヴィネット終了",
+      blurOn: "ぼかし開始",
+      blurOff: "ぼかし終了",
+      zoomIn: "ズームする",
+      zoomOut: "ズームを戻す",
+      weatherRainOn: "雨を降らせる",
+      weatherSnowOn: "雪を降らせる",
+      weatherSakuraOn: "桜吹雪を降らせる",
+      weatherOff: "天候演出終了"
+    };
     return labels[block.effectType] || "カメラシェイク";
   }
   if (block.type === "background") return block.path;
@@ -4235,11 +4257,47 @@ function buildBlockFormFields(chapter, block) {
     row.appendChild(labelSpan("種類："));
     const select = document.createElement("select");
     select.className = "scenariobuild-jump-select";
-    [["shake", "カメラシェイク"], ["flash", "ヒットエフェクト（赤点滅）"], ["monochromeOn", "モノクロにする（回想などの開始に）"], ["monochromeOff", "モノクロを解除する（回想終了）"], ["blackoutOn", "暗転する（画面を黒くフェードアウト）"], ["blackoutOff", "暗転を解除する（画面を元に戻す）"]].forEach(([value, label]) => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = label;
-      select.appendChild(option);
+    const groups = [
+      ["揺れ・フラッシュ", [
+        ["shake", "カメラシェイク"],
+        ["flash", "ヒットエフェクト（赤フラッシュ）"],
+        ["flashWhite", "白フラッシュ（閃光・衝撃）"]
+      ]],
+      ["色調フィルター（回想・異常事態など）", [
+        ["monochromeOn", "モノクロにする"],
+        ["monochromeOff", "モノクロを解除する"],
+        ["sepiaOn", "セピア調にする"],
+        ["sepiaOff", "セピア調を解除する"],
+        ["invertOn", "色反転にする"],
+        ["invertOff", "色反転を解除する"],
+        ["blurOn", "画面をぼかす（意識朦朧・夢の中）"],
+        ["blurOff", "ぼかしを解除する"]
+      ]],
+      ["暗転・強調", [
+        ["blackoutOn", "暗転する（画面を黒くフェードアウト）"],
+        ["blackoutOff", "暗転を解除する（画面を元に戻す）"],
+        ["vignetteOn", "画面端を暗くする（緊張感・集中演出）"],
+        ["vignetteOff", "画面端の暗さを解除する"],
+        ["zoomIn", "画面をズームする（強調）"],
+        ["zoomOut", "ズームを戻す"]
+      ]],
+      ["天候演出", [
+        ["weatherRainOn", "雨を降らせる"],
+        ["weatherSnowOn", "雪を降らせる"],
+        ["weatherSakuraOn", "桜吹雪を降らせる"],
+        ["weatherOff", "天候演出をやめる"]
+      ]]
+    ];
+    groups.forEach(([groupLabel, options]) => {
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = groupLabel;
+      options.forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        optgroup.appendChild(option);
+      });
+      select.appendChild(optgroup);
     });
     select.value = block.effectType;
     select.onchange = () => { block.effectType = select.value; persist(); };
@@ -11914,16 +11972,47 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     } else if (block.effectType === "flash" && typeof triggerHitFlash === "function") {
       triggerHitFlash(); // mainfunc.js
       await wait(200);
+    } else if (block.effectType === "flashWhite" && typeof triggerWhiteFlash === "function") {
+      triggerWhiteFlash(); // mainfunc.js（要望対応：白い閃光フラッシュ）
+      await wait(300);
     } else if (block.effectType === "monochromeOn" && typeof setMonochromeEffect === "function") {
       setMonochromeEffect(true); // mainfunc.js（要望対応：回想演出などに使うモノクロ表示）
     } else if (block.effectType === "monochromeOff" && typeof setMonochromeEffect === "function") {
       setMonochromeEffect(false); // mainfunc.js
+    } else if (block.effectType === "sepiaOn" && typeof setSepiaEffect === "function") {
+      setSepiaEffect(true); // mainfunc.js（要望対応：セピア調の回想演出）
+    } else if (block.effectType === "sepiaOff" && typeof setSepiaEffect === "function") {
+      setSepiaEffect(false); // mainfunc.js
+    } else if (block.effectType === "invertOn" && typeof setInvertEffect === "function") {
+      setInvertEffect(true); // mainfunc.js（要望対応：色反転演出）
+    } else if (block.effectType === "invertOff" && typeof setInvertEffect === "function") {
+      setInvertEffect(false); // mainfunc.js
+    } else if (block.effectType === "blurOn" && typeof setBlurEffect === "function") {
+      setBlurEffect(true); // mainfunc.js（要望対応：ぼかし演出。意識朦朧・夢の中など）
+    } else if (block.effectType === "blurOff" && typeof setBlurEffect === "function") {
+      setBlurEffect(false); // mainfunc.js
     } else if (block.effectType === "blackoutOn" && typeof setBlackoutEffect === "function") {
       setBlackoutEffect(true); // mainfunc.js（要望対応：暗転演出。画面が黒くなるまで少し待つ）
       await wait(650);
     } else if (block.effectType === "blackoutOff" && typeof setBlackoutEffect === "function") {
       setBlackoutEffect(false); // mainfunc.js
       await wait(650);
+    } else if (block.effectType === "vignetteOn" && typeof setVignetteEffect === "function") {
+      setVignetteEffect(true); // mainfunc.js（要望対応：ヴィネット演出。緊張感・集中演出）
+    } else if (block.effectType === "vignetteOff" && typeof setVignetteEffect === "function") {
+      setVignetteEffect(false); // mainfunc.js
+    } else if (block.effectType === "zoomIn" && typeof setZoomEffect === "function") {
+      setZoomEffect(true); // mainfunc.js（要望対応：ズーム演出。盛り上がる場面の強調）
+    } else if (block.effectType === "zoomOut" && typeof setZoomEffect === "function") {
+      setZoomEffect(false); // mainfunc.js
+    } else if (block.effectType === "weatherRainOn" && typeof setWeatherEffect === "function") {
+      setWeatherEffect("rain"); // mainfunc.js（要望対応：天候演出）
+    } else if (block.effectType === "weatherSnowOn" && typeof setWeatherEffect === "function") {
+      setWeatherEffect("snow"); // mainfunc.js
+    } else if (block.effectType === "weatherSakuraOn" && typeof setWeatherEffect === "function") {
+      setWeatherEffect("sakura"); // mainfunc.js
+    } else if (block.effectType === "weatherOff" && typeof setWeatherEffect === "function") {
+      setWeatherEffect(null); // mainfunc.js
     }
     return nextDefaultId;
   }
