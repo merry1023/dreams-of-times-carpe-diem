@@ -1067,6 +1067,8 @@ function ensureCustomMonstersRegistered() {
     };
     if (typeof BOSS_MONSTER_KEYS !== "undefined" && !BOSS_MONSTER_KEYS.includes(boss.id)) {
       BOSS_MONSTER_KEYS.push(boss.id); // ★ボス扱い（BGM切り替え等）にする
+      // ★要望対応：魔物図鑑にボスも載るように、まだ無ければ未発見状態を登録しておく
+      if (typeof discoveredMonsters !== "undefined" && !(boss.id in discoveredMonsters)) discoveredMonsters[boss.id] = false;
     }
   });
 }

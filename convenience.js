@@ -882,9 +882,13 @@ function renderMonsterCodex() {
   const list = document.createElement("div");
   list.className = "monster-codex-list";
   
-  SPAREABLE_KEYS.forEach((key, i) => {
+  // ★要望対応：通常の魔物（好感度あり）に続けて、ボスも図鑑に載せる（好感度は無いので表示しない）
+  const codexKeys = [...SPAREABLE_KEYS, ...BOSS_MONSTER_KEYS];
+  
+  codexKeys.forEach((key, i) => {
     const discovered = discoveredMonsters[key];
     const master = MONSTER_MASTER[key];
+    const isBossEntry = BOSS_MONSTER_KEYS.includes(key);
     
     const row = document.createElement("div");
     row.className = "monster-codex-row" + (i === codexCursorIndex ? " cursor" : "") + (discovered ? "" : " monster-codex-row-unknown");
@@ -903,6 +907,7 @@ function renderMonsterCodex() {
       thumbEl.className = "monster-codex-thumb";
       thumbEl.alt = master.name;
       thumbEl.onerror = () => { thumbEl.classList.add("hidden"); };
+      // ★一覧のサムネイルは常に基本の姿（最初の形態）の画像を使う。他の形態の画像は詳細画面で見られる
       thumbEl.src = master.imagePath || `img/敵/${master.name}.png`; // ★敵設定タブで指定した画像パスを、以前は無視して名前ベースのパスしか見ていなかった
       row.appendChild(thumbEl);
     }
@@ -913,7 +918,7 @@ function renderMonsterCodex() {
     nameEl.textContent = discovered ? master.name : "？？？";
     row.appendChild(nameEl);
     
-    if (discovered) {
+    if (discovered && !isBossEntry) {
       const value = getMonsterAffection(key);
       const tier = getAffectionTier(key);
       const barOuter = document.createElement("div");
@@ -927,6 +932,12 @@ function renderMonsterCodex() {
       const labelEl = document.createElement("span");
       labelEl.className = "monster-codex-label";
       labelEl.textContent = getAffectionLabel(tier);
+      row.appendChild(labelEl);
+    } else if (discovered && isBossEntry) {
+      // ★要望対応：ボスには好感度が無いので、代わりに「討伐済み」だけ示す
+      const labelEl = document.createElement("span");
+      labelEl.className = "monster-codex-label";
+      labelEl.textContent = "討伐済み";
       row.appendChild(labelEl);
     } else {
       const unknownEl = document.createElement("span");
@@ -963,10 +974,11 @@ function renderMonsterCodex() {
 
 // 図鑑で選んだ1体の詳細（画像・好感度・専用スキルボタンなど）
 function renderMonsterCodexDetail(panel) {
-  const key = SPAREABLE_KEYS[codexCursorIndex];
+  // ★要望対応：一覧が「通常の魔物＋ボス」の結合リストになったので、同じ結合順で引く
+  const codexKeys = [...SPAREABLE_KEYS, ...BOSS_MONSTER_KEYS];
+  const key = codexKeys[codexCursorIndex];
   const master = MONSTER_MASTER[key];
-  const value = getMonsterAffection(key);
-  const tier = getAffectionTier(key);
+  const isBossEntry = BOSS_MONSTER_KEYS.includes(key);
   
   const title = document.createElement("h3");
   title.className = "monster-codex-title";
@@ -987,6 +999,73 @@ function renderMonsterCodexDetail(panel) {
     descEl.textContent = master.description;
     panel.appendChild(descEl);
   }
+  
+  if (isBossEntry) {
+    // ★要望対応：ボスには好感度が無いのでバー・ラベルは出さない。代わりに基本ステータスを表示
+    const statsEl = document.createElement("p");
+    statsEl.className = "monster-codex-description";
+    statsEl.textContent = `HP：${master.maxHp}　攻撃力：${master.atk}`;
+    panel.appendChild(statsEl);
+    
+    // ★要望対応：形態がある場合は、形態ごとの名前・画像・攻撃力（基礎攻撃力×倍率）を並べて見せる
+    if (Array.isArray(master.forms) && master.forms.length > 0) {
+      const formsHeading = document.createElement("h4");
+      formsHeading.className = "scenariobuild-subheading";
+      formsHeading.textContent = "形態";
+      panel.appendChild(formsHeading);
+      
+      const formsList = document.createElement("div");
+      formsList.className = "monster-codex-forms-list";
+      let lastName = master.name;
+      let lastImage = master.imagePath || `img/敵/${master.name}.png`;
+      master.forms.forEach((form, i) => {
+        const formName = form.name || lastName;
+        const formImage = form.imagePath || lastImage;
+        lastName = formName;
+        lastImage = formImage;
+        const formAtk = Math.round(master.atk * (form.atkMultiplier != null ? form.atkMultiplier : 1));
+        
+        const formCard = document.createElement("div");
+        formCard.className = "monster-codex-form-card";
+        
+        const formImg = document.createElement("img");
+        formImg.className = "monster-codex-form-image";
+        formImg.alt = formName;
+        formImg.onerror = () => { formImg.classList.add("hidden"); };
+        formImg.src = formImage;
+        formCard.appendChild(formImg);
+        
+        const formInfo = document.createElement("div");
+        formInfo.className = "monster-codex-form-info";
+        const formNameEl = document.createElement("p");
+        formNameEl.className = "monster-codex-form-name";
+        formNameEl.textContent = `第${i + 2}形態：${formName}`; // ★最初の姿（第1形態）は上の基本ステータス欄なので、ここは2から
+        formInfo.appendChild(formNameEl);
+        const formStatsEl = document.createElement("p");
+        formStatsEl.className = "monster-codex-description";
+        formStatsEl.textContent = `攻撃力：${formAtk}`;
+        formInfo.appendChild(formStatsEl);
+        formCard.appendChild(formInfo);
+        
+        formsList.appendChild(formCard);
+      });
+      panel.appendChild(formsList);
+    }
+    
+    const backBtn = document.createElement("button");
+    backBtn.className = "monster-codex-back-btn";
+    backBtn.textContent = "一覧に戻る（Xキー）";
+    backBtn.onclick = (event) => {
+      event.stopPropagation();
+      codexViewMode = "list";
+      renderMonsterCodex();
+    };
+    panel.appendChild(backBtn);
+    return;
+  }
+  
+  const value = getMonsterAffection(key);
+  const tier = getAffectionTier(key);
   
   const barOuter = document.createElement("div");
   barOuter.className = "monster-codex-bar-outer monster-codex-detail-bar";
@@ -1049,10 +1128,13 @@ function handleMonsterCodexKeyDown(event) {
     return;
   }
   
+  // ★要望対応：一覧が「通常の魔物＋ボス」の結合リストになったので、キー操作も同じ結合順で引く
+  const codexKeys = [...SPAREABLE_KEYS, ...BOSS_MONSTER_KEYS];
+  
   if (codexViewMode === "detail") {
     // ★要望対応：詳細画面でZキー（決定キー）を押した時も、好感度スキルのボタンと同じ動作にする
     if (KEY_CONFIG.decideKeys.includes(event.key)) {
-      const key = SPAREABLE_KEYS[codexCursorIndex];
+      const key = codexKeys[codexCursorIndex];
       const master = MONSTER_MASTER[key];
       if (key === "succubus" && getAffectionTier(key) >= 3 && master && master.restSkillName) {
         event.preventDefault();
@@ -1064,7 +1146,7 @@ function handleMonsterCodexKeyDown(event) {
   
   if (event.key === "ArrowDown") {
     event.preventDefault();
-    codexCursorIndex = Math.min(SPAREABLE_KEYS.length - 1, codexCursorIndex + 1);
+    codexCursorIndex = Math.min(codexKeys.length - 1, codexCursorIndex + 1);
     renderMonsterCodex();
   } else if (event.key === "ArrowUp") {
     event.preventDefault();
@@ -1072,7 +1154,7 @@ function handleMonsterCodexKeyDown(event) {
     renderMonsterCodex();
   } else if (KEY_CONFIG.decideKeys.includes(event.key)) {
     event.preventDefault();
-    const key = SPAREABLE_KEYS[codexCursorIndex];
+    const key = codexKeys[codexCursorIndex];
     if (discoveredMonsters[key]) {
       codexViewMode = "detail";
       renderMonsterCodex();
@@ -1751,6 +1833,7 @@ async function restoreGameFromSaveData(data, persistLoadedDataFn) {
     SPAREABLE_KEYS.forEach(key => { if (!(key in monsterAffection)) monsterAffection[key] = 0; });
     discoveredMonsters = data.discoveredMonsters ? deepClone(data.discoveredMonsters) : {};
     SPAREABLE_KEYS.forEach(key => { if (!(key in discoveredMonsters)) discoveredMonsters[key] = false; });
+    BOSS_MONSTER_KEYS.forEach(key => { if (!(key in discoveredMonsters)) discoveredMonsters[key] = false; }); // ★要望対応：ボスも図鑑対象に含める
     renderStatusHUD();
     applyBackground(data.background); // ★再生が追いつくまでの一瞬、それらしい背景にしておく
     
@@ -1773,6 +1856,7 @@ async function restoreGameFromSaveData(data, persistLoadedDataFn) {
     SPAREABLE_KEYS.forEach(key => { if (!(key in monsterAffection)) monsterAffection[key] = 0; });
     discoveredMonsters = data.discoveredMonsters ? deepClone(data.discoveredMonsters) : {};
     SPAREABLE_KEYS.forEach(key => { if (!(key in discoveredMonsters)) discoveredMonsters[key] = false; });
+    BOSS_MONSTER_KEYS.forEach(key => { if (!(key in discoveredMonsters)) discoveredMonsters[key] = false; }); // ★要望対応：ボスも図鑑対象に含める
     messageLog = deepClone(data.messageLog || []);
     renderStatusHUD();
     applyBackground(data.background); // ★セーブ時点の背景を復元する
