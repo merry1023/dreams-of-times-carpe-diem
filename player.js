@@ -316,6 +316,19 @@ function sanitizeLoadedPlayer(loadedPlayer) {
         loadedPlayer.gauges.sp.max = correctMaxSp;
         loadedPlayer.gauges.sp.current = Math.min(loadedPlayer.gauges.sp.current, correctMaxSp);
       }
+      // ★バグ修正：ロード時にレベルを補正した際、HP・SPの上限は組み直していたのに、
+      //   疲労度・眠気の上限（どちらもレベルが上がるほど少しずつ上がる仕様）だけ組み直しておらず、
+      //   古いレベルのままの上限が残ってしまっていた
+      if (loadedPlayer.gauges && loadedPlayer.gauges.fatigue) {
+        const correctMaxFatigue = (cls.maxFatigue || 100) + getCumulativeGrowth(growth, level, "maxFatigue");
+        loadedPlayer.gauges.fatigue.max = correctMaxFatigue;
+        loadedPlayer.gauges.fatigue.current = Math.min(loadedPlayer.gauges.fatigue.current, correctMaxFatigue);
+      }
+      if (loadedPlayer.gauges && loadedPlayer.gauges.sleepiness) {
+        const correctMaxSleepiness = (cls.maxSleepiness || 100) + getCumulativeGrowth(growth, level, "maxSleepiness");
+        loadedPlayer.gauges.sleepiness.max = correctMaxSleepiness;
+        loadedPlayer.gauges.sleepiness.current = Math.min(loadedPlayer.gauges.sleepiness.current, correctMaxSleepiness);
+      }
     }
   }
   
@@ -1329,6 +1342,10 @@ function switchPlayerClass(newClassName) {
   const newMaxHp = (cls.baseStats.maxHp || 1) + getCumulativeGrowth(growth, targetLevel, "maxHp");
   const newMaxSp = (cls.baseStats.maxSp || 0) + getCumulativeGrowth(growth, targetLevel, "maxSp");
   const newMaxFatigue = (cls.maxFatigue || 100) + getCumulativeGrowth(growth, targetLevel, "maxFatigue");
+  // ★バグ修正：疲労度の上限はレベル分の成長(growth.maxFatigue)を足していたのに、眠気の上限だけ
+  //   cls.maxSleepinessそのまま（＝レベル1相当）になっており、職業変更のたびに眠気の上限が
+  //   下がってしまっていた
+  const newMaxSleepiness = (cls.maxSleepiness || 100) + getCumulativeGrowth(growth, targetLevel, "maxSleepiness");
   
   player.class = newClassName;
   player.level = targetLevel;
@@ -1336,7 +1353,8 @@ function switchPlayerClass(newClassName) {
   player.stats = newStats;
   player.gauges.hp = { current: newMaxHp, max: newMaxHp }; // ★切り替え直後は全回復した状態で始める
   player.gauges.sp = { current: newMaxSp, max: newMaxSp };
-  player.gauges.sleepiness.max = cls.maxSleepiness || 100;
+  player.gauges.sleepiness.max = newMaxSleepiness;
+  player.gauges.sleepiness.current = Math.min(player.gauges.sleepiness.current, newMaxSleepiness); // ★上限が下がった場合に備えて、現在値もはみ出さないようにする
   player.gauges.fatigue = { current: 0, max: newMaxFatigue };
   player.classLevels[newClassName] = targetLevel;
   
