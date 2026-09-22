@@ -5637,10 +5637,24 @@ html, body {
   transition: opacity 0.03s ease;
 }
 
-/* ★要望対応：回想演出などに使う「モノクロ」。effectブロック(monochromeOn/Off)で切り替える */
-body.screen-monochrome {
-  filter: grayscale(1);
+/* ★要望対応：白い閃光フラッシュ（衝撃・雷など、被弾用の赤フラッシュとは別演出） */
+#white-flash-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: #fff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9998;
+  transition: opacity 0.2s ease;
 }
+
+#white-flash-overlay.white-flash-active {
+  opacity: 0.9;
+  transition: opacity 0.02s ease;
+}
+
+/* ★要望対応：モノクロ・セピア・色反転・ぼかしは、mainfunc.jsのupdateScreenFilterEffectStyle()が
+   document.body.style.filter を直接組み立てて反映する（複数同時にONでも重ねてかかるようにするため） */
 
 /* ★要望対応：「暗転」演出。画面全体を黒くフェードアウトさせる（effectブロックのblackoutOn/Offで切り替える） */
 #screen-blackout-overlay {
@@ -5653,6 +5667,81 @@ body.screen-monochrome {
 }
 #screen-blackout-overlay.active {
   opacity: 1;
+}
+
+/* ★要望対応：「ヴィネット」演出。画面端をじわっと暗くする（effectブロックのvignetteOn/Offで切り替える） */
+#screen-vignette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9990; /* ★立ち絵・背景より手前、メッセージウィンドウより奥 */
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.75) 100%);
+}
+#screen-vignette-overlay.active {
+  opacity: 1;
+}
+
+/* ★要望対応：「ズーム」演出。画面を少し拡大して見せる（effectブロックのzoomIn/Outで切り替える） */
+.main-screen.screen-zoomed {
+  transform: scale(1.12);
+  transition: transform 1.2s ease;
+}
+.main-screen {
+  transition: transform 1.2s ease;
+}
+
+/* ★要望対応：「天候」演出。雨・雪・桜吹雪を降らせる（effectブロックのweatherRainOn等で切り替える） */
+#screen-weather-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9991;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.screen-weather-rain .screen-weather-particle {
+  position: absolute;
+  top: -10%;
+  width: 1px;
+  height: 60px;
+  background: linear-gradient(to bottom, transparent, rgba(200, 220, 255, 0.7));
+  animation: screen-weather-fall-rain linear infinite;
+}
+
+.screen-weather-snow .screen-weather-particle {
+  position: absolute;
+  top: -5%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  animation: screen-weather-fall-snow linear infinite;
+}
+
+.screen-weather-sakura .screen-weather-particle {
+  position: absolute;
+  top: -5%;
+  font-size: 16px;
+  animation: screen-weather-fall-sakura linear infinite;
+}
+
+@keyframes screen-weather-fall-rain {
+  from { transform: translateY(-10vh); }
+  to { transform: translateY(110vh); }
+}
+
+@keyframes screen-weather-fall-snow {
+  0% { transform: translate(0, -10vh); }
+  50% { transform: translate(20px, 55vh); }
+  100% { transform: translate(0, 110vh); }
+}
+
+@keyframes screen-weather-fall-sakura {
+  0% { transform: translate(0, -10vh) rotate(0deg); }
+  50% { transform: translate(40px, 55vh) rotate(180deg); }
+  100% { transform: translate(-20px, 110vh) rotate(360deg); }
 }
 
 /* ===== エンディングブロック：簡易エンドロール ===== */
