@@ -8101,7 +8101,7 @@ function renderFacilityManager(container) {
         price: 20, sleepinessRecovery: 40, fatigueRecovery: 40,
         classChangeCost: 100,
         minBet: 10, maxBet: 1000, slotImages: {}, slotWeights: {}, // ★カジノ系で使う項目（他の種類では無視される）
-        entryItemId: "", entryItemQty: 1, floors: [], // ★コロシアム系で使う項目（他の種類では無視される）
+        entryItemId: "", entryItemQty: 1, floors: [], regularEnemyPool: [], bossRoundConfig: {}, // ★コロシアム系で使う項目（他の種類では無視される）
         coinItemIdBlue: "", coinItemIdYellow: "", coinItemIdRed: "",
         milestone10CoinQty: 1, milestone20CoinQty: 1, milestone50CoinQty: 1,
         finalClearBlueCoinQty: 0, finalClearYellowCoinQty: 0, finalClearRedCoinQty: 0,
@@ -8898,58 +8898,69 @@ function buildFacilityRow(facility) {
     entryRow.appendChild(entryQtyInput);
     infoEl.appendChild(entryRow);
     
-    // ===== 各回戦の敵編成 =====
-    const floorsNote = document.createElement("p");
-    floorsNote.className = "devmode-note";
-    floorsNote.style.margin = "10px 0 2px";
-    floorsNote.textContent = "各回戦（階層）の敵編成です。上から1回戦目、2回戦目……の順に対応します。実際の挑戦がここで設定した回戦数を超えたら、一番下（最後）の回戦の編成がそのまま繰り返し使われます。";
-    infoEl.appendChild(floorsNote);
+    // ===== 通常回戦の「様々な敵」プール（要望対応） =====
+    const poolNote = document.createElement("p");
+    poolNote.className = "devmode-note";
+    poolNote.style.margin = "10px 0 2px";
+    poolNote.textContent = "10の倍数（10・20・…・90）と、最後の節目となる99回戦目「以外」の回戦で使う、敵のプールです。回戦ごとに、この中からランダムに5体（重複あり）選ばれて出てきます。";
+    infoEl.appendChild(poolNote);
     
-    if (!Array.isArray(facility.floors)) facility.floors = [];
-    facility.floors.forEach((floor, index) => {
-      const floorBox = document.createElement("div");
-      floorBox.className = "scenariobuild-skill-repeat-body";
+    if (!Array.isArray(facility.regularEnemyPool)) facility.regularEnemyPool = [];
+    infoEl.appendChild(buildTagListEditor({
+      label: "敵ID（同じIDを複数回追加すると、その分ランダムで選ばれやすくなります）：",
+      items: facility.regularEnemyPool,
+      datalistId: "scenariobuild-monster-datalist",
+      placeholder: "敵ID",
+      onChange: () => markScenarioBuildDirty()
+    }));
+    
+    // ===== 節目回戦（10の倍数＋99回戦目）の「指定した敵」（要望対応） =====
+    const bossRoundsNote = document.createElement("p");
+    bossRoundsNote.className = "devmode-note";
+    bossRoundsNote.style.margin = "10px 0 2px";
+    bossRoundsNote.textContent = "10の倍数の回戦と、100回戦が無いため最後の節目となる99回戦目は、ここで指定した「ボス的な」敵編成で固定されます（プールからのランダム抽選の対象外）。レベルを指定すると、その回戦の敵はそのレベルで固定されます（0のままなら、通常通り主人公のレベル±1で決まります）。";
+    infoEl.appendChild(bossRoundsNote);
+    
+    if (!facility.bossRoundConfig || typeof facility.bossRoundConfig !== "object") facility.bossRoundConfig = {};
+    COLOSSEUM_BOSS_ROUND_NUMBERS.forEach(floorNumber => {
+      if (!facility.bossRoundConfig[floorNumber] || typeof facility.bossRoundConfig[floorNumber] !== "object") {
+        facility.bossRoundConfig[floorNumber] = { enemyMonsterKeys: [], level: 0 };
+      }
+      const config = facility.bossRoundConfig[floorNumber];
+      if (!Array.isArray(config.enemyMonsterKeys)) config.enemyMonsterKeys = [];
       
-      const floorHeader = document.createElement("p");
-      floorHeader.className = "devmode-note";
-      floorHeader.style.fontWeight = "bold";
-      floorHeader.textContent = `${index + 1}回戦目`;
-      floorBox.appendChild(floorHeader);
+      const bossBox = document.createElement("div");
+      bossBox.className = "scenariobuild-skill-repeat-body";
       
-      if (!Array.isArray(floor.enemyMonsterKeys)) floor.enemyMonsterKeys = [];
-      floorBox.appendChild(buildTagListEditor({
+      const bossHeader = document.createElement("p");
+      bossHeader.className = "devmode-note";
+      bossHeader.style.fontWeight = "bold";
+      bossHeader.textContent = `${floorNumber}回戦目` + (floorNumber === 99 ? "（最終回戦）" : "");
+      bossBox.appendChild(bossHeader);
+      
+      bossBox.appendChild(buildTagListEditor({
         label: "敵ID（最大5体・同じIDを複数回追加すると同じ敵が複数体出ます。ボスIDを混ぜることも可能です）：",
-        items: floor.enemyMonsterKeys,
+        items: config.enemyMonsterKeys,
         datalistId: "scenariobuild-monster-datalist",
         placeholder: "敵ID",
         onChange: () => markScenarioBuildDirty(),
         maxItems: 5
       }));
       
-      const removeFloorBtn = document.createElement("button");
-      removeFloorBtn.className = "devmode-btn devmode-btn-danger";
-      removeFloorBtn.textContent = "この回戦を削除";
-      removeFloorBtn.onclick = (event) => {
-        event.stopPropagation();
-        facility.floors.splice(index, 1);
-        markScenarioBuildDirty();
-        renderScenarioBuildPanel();
-      };
-      floorBox.appendChild(removeFloorBtn);
+      const levelRow = document.createElement("div");
+      levelRow.className = "scenariobuild-condition-row";
+      levelRow.appendChild(labelSpan("レベル指定（0＝指定なし）："));
+      const levelInput = document.createElement("input");
+      levelInput.type = "number";
+      levelInput.min = "0";
+      levelInput.className = "scenariobuild-condition-input";
+      levelInput.value = config.level || 0;
+      levelInput.onchange = () => { config.level = Math.max(0, Number(levelInput.value) || 0); markScenarioBuildDirty(); };
+      levelRow.appendChild(levelInput);
+      bossBox.appendChild(levelRow);
       
-      infoEl.appendChild(floorBox);
+      infoEl.appendChild(bossBox);
     });
-    
-    const addFloorBtn = document.createElement("button");
-    addFloorBtn.className = "devmode-btn";
-    addFloorBtn.textContent = "＋回戦を追加";
-    addFloorBtn.onclick = (event) => {
-      event.stopPropagation();
-      facility.floors.push({ id: generateId("colosseumfloor"), enemyMonsterKeys: [] });
-      markScenarioBuildDirty();
-      renderScenarioBuildPanel();
-    };
-    infoEl.appendChild(addFloorBtn);
     
     // ===== コインの種類・マイルストーン報酬 =====
     const coinNote = document.createElement("p");
