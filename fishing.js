@@ -63,6 +63,7 @@ function collectOwnedFishingGear(flagKey) {
 }
 
 async function chooseFishingRod() {
+  hideLocationMenu(); // ★バグ修正：行き先メニュー表示中はメッセージウィンドウが隠れており、そのままdisplayMessageを呼んでも何も表示されなかった
   const state = ensurePlayerFishingState();
   const rodIds = collectOwnedFishingGear("isFishingRod");
   if (rodIds.length === 0) {
@@ -90,6 +91,7 @@ async function chooseFishingRod() {
 }
 
 async function chooseFishingBait() {
+  hideLocationMenu(); // ★バグ修正：同上
   const state = ensurePlayerFishingState();
   const baitIds = collectOwnedFishingGear("isFishingBait");
   if (baitIds.length === 0) {
@@ -166,6 +168,7 @@ function pickWeightedFishSpot(spots) {
 // ===== 釣る（糸を垂らす〜食いつき〜ミニゲーム） =====
 
 async function startFishing() {
+  hideLocationMenu(); // ★バグ修正：これが無かったため「釣る」を押しても行き先メニューが表示されたままメッセージウィンドウが隠れており、何も表示されないように見えていた
   const state = ensurePlayerFishingState();
   const rodMaster = state.rodItemId ? ITEM_MASTER[state.rodItemId] : null;
   const baitMaster = state.baitItemId ? ITEM_MASTER[state.baitItemId] : null;

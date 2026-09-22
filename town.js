@@ -855,25 +855,36 @@ function pickQuantity(maxQty, itemLabel, options = {}) {
 let kaitoriOverlayState = null; // { returnTo, entries, selectedIndex }
 
 function getKaitoriSellableEntries() {
-  // ★同じアイテムIDはまとめて1つの行にする。装備中のものと、売値が付いていないもの（お礼の品など）は除外
+  // ★要望対応：同じアイテムIDはまとめて1つの行にする。売値が付いていないもの（お礼の品など）は対象外。
+  //   以前は「誰かが装備中」のアイテムを一覧から完全に除外していたが、今は一覧には出しつつ
+  //   「（〜が装備中）」と表示し、実際に売ろうとした時だけ確認を挟むようにする
   const entries = [];
   const seenItemIds = new Set();
-  const equippedInstanceIds = Object.values(player.equipment).filter(Boolean); // ★今は装備欄にinstanceIdが入っている
   
   inventorySlots.forEach((slot) => {
     if (!slot || seenItemIds.has(slot.itemId)) return;
     const master = ITEM_MASTER[slot.itemId];
     if (!master || !(master.listedPrice > 0) || master.unsellable) return; // ★アイテム管理で「売れない」チェックが付いているものは対象外にする
-    if (equippedInstanceIds.includes(slot.instanceId)) return;
     seenItemIds.add(slot.itemId);
     
-    const totalQty = inventorySlots
-      .filter(s => s && s.itemId === slot.itemId)
-      .reduce((sum, s) => sum + s.quantity, 0);
+    const sameIdSlots = inventorySlots.filter(s => s && s.itemId === slot.itemId);
+    const totalQty = sameIdSlots.reduce((sum, s) => sum + s.quantity, 0);
+    
+    // ★このアイテムIDの実体のうち、今どれかが誰かに装備されていないか調べる（装備品は非スタックなので1マス=1個体）
+    const equippedHolderNames = [];
+    let equippedCount = 0;
+    sameIdSlots.forEach(s => {
+      if (typeof isInstanceEquippedByAnyone === "function" && isInstanceEquippedByAnyone(s.instanceId)) {
+        equippedCount++;
+        const holderName = (typeof describeInstanceHolderName === "function") ? describeInstanceHolderName(s.instanceId) : null;
+        if (holderName && !equippedHolderNames.includes(holderName)) equippedHolderNames.push(holderName);
+      }
+    });
+    
     const basePrice = slot.appraised ? master.trueValue : Math.round(master.listedPrice * 0.7); // ★鑑定済みなら真価、未鑑定なら定価の7割で売れる
     const sellBonus = (typeof hasPassiveSkill === "function" && hasPassiveSkill("sellBonus")) ? 1.15 : 1; // ★お宝鑑定団の「算盤高き目利き」（player.js）
     const price = Math.round(basePrice * sellBonus);
-    entries.push({ itemId: slot.itemId, master, price, totalQty });
+    entries.push({ itemId: slot.itemId, master, price, totalQty, equippedHolderNames, equippedCount });
   });
   return entries;
 }
@@ -932,7 +943,8 @@ function renderKaitoriShopScreen() {
     row.className = "crafting-recipe-row" + (index === state.selectedIndex ? " crafting-recipe-row-selected" : "");
     const nameEl = document.createElement("span");
     nameEl.className = "crafting-recipe-row-name";
-    nameEl.textContent = `${entry.master.name} ×${entry.totalQty}`;
+    // ★要望対応：誰かが装備中のアイテムは名前の後ろに（〜が装備中）と表示する
+    nameEl.textContent = `${entry.master.name} ×${entry.totalQty}` + (entry.equippedHolderNames.length > 0 ? `（${entry.equippedHolderNames.join("・")}が装備中）` : "");
     row.appendChild(nameEl);
     const statusEl = document.createElement("span");
     statusEl.className = "crafting-recipe-row-status";
@@ -968,6 +980,15 @@ function renderKaitoriShopScreen() {
     detailEl.appendChild(descEl);
   }
   
+  // ★要望対応：誰かが装備中の実体が含まれている場合は、詳細パネルにも分かりやすく警告を出す
+  if (entry.equippedHolderNames.length > 0) {
+    const warnEl = document.createElement("p");
+    warnEl.className = "crafting-detail-desc";
+    warnEl.style.color = "#ffb84d";
+    warnEl.textContent = `⚠ 現在、${entry.equippedHolderNames.join("・")}が装備中です。売る個数によっては装備が外れます。`;
+    detailEl.appendChild(warnEl);
+  }
+  
   const infoEl = document.createElement("ul");
   infoEl.className = "crafting-detail-materials";
   const priceLi = document.createElement("li");
@@ -986,6 +1007,32 @@ function renderKaitoriShopScreen() {
     sellSelectedKaitoriEntry();
   };
   detailEl.appendChild(sellBtn);
+}
+
+// ★同じアイテムIDのマスの中から、装備されていないものを優先して消費する。
+//   要望対応：もし装備中の実体まで売る必要が出た場合は、先にforceUnequipInstanceで装備を外してから消費する
+//   （そうしないと、装備欄が消えた実体のinstanceIdを指したまま残ってしまう）
+function removeKaitoriItemsPreferUnequipped(itemId, quantity) {
+  let remaining = quantity;
+  for (let i = 0; i < GRID_SIZE && remaining > 0; i++) {
+    const slot = inventorySlots[i];
+    if (!slot || slot.itemId !== itemId) continue;
+    if (typeof isInstanceEquippedByAnyone === "function" && isInstanceEquippedByAnyone(slot.instanceId)) continue; // ★1回目は未装備分だけ
+    const remove = Math.min(slot.quantity, remaining);
+    slot.quantity -= remove;
+    remaining -= remove;
+    if (slot.quantity <= 0) inventorySlots[i] = null;
+  }
+  for (let i = 0; i < GRID_SIZE && remaining > 0; i++) {
+    const slot = inventorySlots[i];
+    if (!slot || slot.itemId !== itemId) continue; // ★ここまで残っていれば装備中の実体
+    if (typeof forceUnequipInstance === "function") forceUnequipInstance(slot.instanceId);
+    const remove = Math.min(slot.quantity, remaining);
+    slot.quantity -= remove;
+    remaining -= remove;
+    if (slot.quantity <= 0) inventorySlots[i] = null;
+  }
+  return remaining === 0;
 }
 
 // ★確認・数量選択は通常の会話ウィンドウ・専用ミニ画面（pickQuantity）を使い回す。
@@ -1007,7 +1054,20 @@ async function sellSelectedKaitoriEntry() {
     return;
   }
   
-  removeItem(entry.itemId, qty); // inventory.js
+  // ★要望対応：売る個数が、装備されていない在庫数を超える＝装備中の実体まで売ることになる場合は、
+  //   確認を挟む（デフォルトは「いいえ」。showGameConfirmが元々そう作られている）
+  const unequippedQty = entry.totalQty - entry.equippedCount;
+  if (qty > unequippedQty) {
+    const ok = await showGameConfirm(`「${entry.master.name}」は現在${entry.equippedHolderNames.join("・") || "誰か"}が装備中です。売ってしまうと装備が外れますが、よろしいですか？`);
+    if (!ok) {
+      if (!kaitoriOverlayState) return;
+      if (overlay) overlay.classList.remove("hidden");
+      renderKaitoriShopScreen();
+      return;
+    }
+  }
+  
+  removeKaitoriItemsPreferUnequipped(entry.itemId, qty); // ★装備中でない分から優先して消費する
   const totalPrice = entry.price * qty;
   changeGold(totalPrice); // inventory.js
   renderStatusHUD();

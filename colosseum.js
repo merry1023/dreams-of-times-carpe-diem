@@ -44,14 +44,35 @@ function setColosseumBestFloorIfHigher(floor) {
   }
 }
 
-// ★要望対応：n回戦目に配置する敵一覧を返す。施設側で定義した階層数を超えたら、一番最後に定義した
-//   階層の敵編成をそのまま使い続ける（99回戦ぶん全て個別に設定しなくても遊べるようにするため）
-function getColosseumFloorEnemyKeys(facility, floorNumber) {
-  const floors = Array.isArray(facility.floors) ? facility.floors : [];
-  if (floors.length === 0) return [];
-  const idx = Math.min(Math.max(0, floorNumber - 1), floors.length - 1);
-  const floor = floors[idx];
-  return (floor && Array.isArray(floor.enemyMonsterKeys)) ? floor.enemyMonsterKeys.filter(id => id && MONSTER_MASTER[id]) : [];
+// ★要望対応：10の倍数（10・20・…・90）と、100回戦が無いため最後の節目となる99回戦目を「ボス的な」回戦とする。
+//   それ以外の回戦は、施設側で登録した「様々な敵」のプールからランダムに5体選んで出す
+const COLOSSEUM_BOSS_ROUND_NUMBERS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 99];
+
+function isColosseumBossRound(floorNumber) {
+  return COLOSSEUM_BOSS_ROUND_NUMBERS.includes(floorNumber);
+}
+
+// ★n回戦目に出す敵編成と、指定されていればそのレベル（節目の回戦のみ指定可能）を返す
+function getColosseumFloorEncounter(facility, floorNumber) {
+  if (isColosseumBossRound(floorNumber)) {
+    // ★節目の回戦：施設編集で回戦ごとに個別登録した「指定した敵」を使う
+    const config = (facility.bossRoundConfig && facility.bossRoundConfig[floorNumber]) || {};
+    const enemyMonsterKeys = Array.isArray(config.enemyMonsterKeys)
+      ? config.enemyMonsterKeys.filter(id => id && MONSTER_MASTER[id])
+      : [];
+    const fixedLevel = (Number(config.level) > 0) ? Number(config.level) : null;
+    return { enemyMonsterKeys, fixedLevel };
+  }
+  // ★それ以外の回戦：施設編集で登録した「様々な敵」のプールから、重複ありで5体ランダムに選ぶ
+  const pool = Array.isArray(facility.regularEnemyPool)
+    ? facility.regularEnemyPool.filter(id => id && MONSTER_MASTER[id])
+    : [];
+  if (pool.length === 0) return { enemyMonsterKeys: [], fixedLevel: null };
+  const enemyMonsterKeys = [];
+  for (let i = 0; i < 5; i++) {
+    enemyMonsterKeys.push(pool[Math.floor(Math.random() * pool.length)]);
+  }
+  return { enemyMonsterKeys, fixedLevel: null };
 }
 
 function showColosseumLobbyMenu() {
@@ -83,7 +104,7 @@ async function tryStartColosseumRun() {
     showColosseumLobbyMenu();
     return;
   }
-  if (getColosseumFloorEnemyKeys(colosseumFacility, 1).length === 0) {
+  if (getColosseumFloorEncounter(colosseumFacility, 1).enemyMonsterKeys.length === 0) {
     hideLocationMenu();
     changeSpeaker(colosseumFacility.name || "コロシアム");
     await displayMessage("（1回戦目に配置する敵がまだ設定されていないようだ）");
@@ -112,16 +133,18 @@ async function tryStartColosseumRun() {
 //   battle.js側のresolveBattleVictory/handleBattleDefeatからhandleColosseumVictory/handleColosseumDefeatが
 //   呼ばれる形で、そちらから再びここへ戻ってくる（非同期の連鎖で、n回戦を順につないでいく）
 async function runColosseumFloor() {
-  const enemyKeys = getColosseumFloorEnemyKeys(colosseumFacility, colosseumCurrentFloor);
-  if (enemyKeys.length === 0) {
+  const encounter = getColosseumFloorEncounter(colosseumFacility, colosseumCurrentFloor);
+  if (encounter.enemyMonsterKeys.length === 0) {
     changeSpeaker(colosseumFacility.name || "コロシアム");
     await displayMessage("（この階層に配置する敵がまだ設定されていないようだ。挑戦はここまでにしておこう）");
     showColosseumLobbyMenu();
     return;
   }
   changeSpeaker("");
-  await displayMessage(`${colosseumCurrentFloor}回戦目！`);
-  await startBattle(enemyKeys, { isColosseum: true }); // battle.js
+  await displayMessage(`${colosseumCurrentFloor}回戦目！` + (isColosseumBossRound(colosseumCurrentFloor) ? "\n強大な気配を感じる……！" : ""));
+  const battleOptions = { isColosseum: true };
+  if (encounter.fixedLevel != null) battleOptions.fixedLevel = encounter.fixedLevel; // ★節目の回戦で指定されていれば、そのレベルで固定する
+  await startBattle(encounter.enemyMonsterKeys, battleOptions); // battle.js
 }
 
 // ★battle.jsのresolveBattleVictoryから、コロシアム戦に勝った時だけ呼ばれる
