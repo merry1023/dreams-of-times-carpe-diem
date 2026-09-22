@@ -544,6 +544,14 @@ async function openCustomFacility(facility, returnTo) {
     return;
   }
   
+  // ★要望対応：コロシアム施設。実際のロビー・周回・報酬・コイン引き換え処理はcolosseum.jsにまとめてある
+  if (facility.type === "colosseum") {
+    hideLocationMenu();
+    await runFacilityDialogueBlocks(facility, facility.enterBlocks, facility.ownerDialogue); // ★入った時のセリフ
+    openColosseum(facility, goBack); // colosseum.js
+    return;
+  }
+  
   // ★要望対応：釣り場。実際の釣りメニュー・ミニゲームはfishing.jsにまとめてある
   if (facility.type === "fishing") {
     hideLocationMenu();

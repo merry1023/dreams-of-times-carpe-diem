@@ -8051,7 +8051,7 @@ function buildClassStatsRow(className) {
 // ===================================================================
 // ===== サブ画面：施設編集（村に追加できる「酒場/宿屋/店/冒険する」以外の施設） =====
 // ===================================================================
-const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", flavor: "その他（セリフのみ）" };
+const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", flavor: "その他（セリフのみ）" };
 
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
@@ -8100,7 +8100,12 @@ function renderFacilityManager(container) {
         bgTrack: "", bgImage: "", ownerDialogue: "",
         price: 20, sleepinessRecovery: 40, fatigueRecovery: 40,
         classChangeCost: 100,
-        minBet: 10, maxBet: 1000, slotImages: {}, slotWeights: {} // ★カジノ系で使う項目（他の種類では無視される）
+        minBet: 10, maxBet: 1000, slotImages: {}, slotWeights: {}, // ★カジノ系で使う項目（他の種類では無視される）
+        entryItemId: "", entryItemQty: 1, floors: [], // ★コロシアム系で使う項目（他の種類では無視される）
+        coinItemIdBlue: "", coinItemIdYellow: "", coinItemIdRed: "",
+        milestone10CoinQty: 1, milestone20CoinQty: 1, milestone50CoinQty: 1,
+        finalClearBlueCoinQty: 0, finalClearYellowCoinQty: 0, finalClearRedCoinQty: 0,
+        finalClearGoldReward: 0, finalClearExpReward: 0, exchangeOffers: []
       };
       scenarioProject.facilities.push(newFacility);
       // ★以前はここで自動的に村へアタッチしていたが、他の拠点（カデリクの街など）にだけアタッチしたつもりでも
@@ -8864,6 +8869,242 @@ function buildFacilityRow(facility) {
       renderScenarioBuildPanel();
     };
     infoEl.appendChild(addPoolBtn);
+    
+  } else if (facility.type === "colosseum") {
+    // ★要望対応：コロシアム施設。アイテム使用禁止の連戦タワー（実際はn回戦形式）。
+    //   参加費・各回戦の敵編成（追加/削除可）・コインの種類と獲得数・99回戦クリア報酬・コインの引き換え屋を設定できる
+    const entryNote = document.createElement("p");
+    entryNote.className = "devmode-note";
+    entryNote.textContent = "参加すると、指定したアイテムを指定した数だけ消費します（無ければ挑戦できません）。挑戦中はアイテムが一切使えません。1回でも負けたら1回戦目からやり直しになります。10の倍数の回戦をクリアすると全回復、5の倍数（10の倍数を除く）の回戦をクリアするとHP・SPが1/3回復します。";
+    infoEl.appendChild(entryNote);
+    
+    const entryRow = document.createElement("div");
+    entryRow.className = "scenariobuild-condition-row";
+    entryRow.appendChild(labelSpan("参加アイテムID："));
+    const entryItemInput = document.createElement("input");
+    entryItemInput.type = "text";
+    entryItemInput.className = "scenariobuild-title-input";
+    entryItemInput.setAttribute("list", "scenariobuild-item-datalist");
+    entryItemInput.value = facility.entryItemId || "";
+    entryItemInput.onchange = () => { facility.entryItemId = entryItemInput.value.trim(); markScenarioBuildDirty(); };
+    entryRow.appendChild(entryItemInput);
+    entryRow.appendChild(labelSpan("必要数："));
+    const entryQtyInput = document.createElement("input");
+    entryQtyInput.type = "number";
+    entryQtyInput.min = "1";
+    entryQtyInput.className = "scenariobuild-condition-input";
+    entryQtyInput.value = facility.entryItemQty || 1;
+    entryQtyInput.onchange = () => { facility.entryItemQty = Math.max(1, Number(entryQtyInput.value) || 1); markScenarioBuildDirty(); };
+    entryRow.appendChild(entryQtyInput);
+    infoEl.appendChild(entryRow);
+    
+    // ===== 各回戦の敵編成 =====
+    const floorsNote = document.createElement("p");
+    floorsNote.className = "devmode-note";
+    floorsNote.style.margin = "10px 0 2px";
+    floorsNote.textContent = "各回戦（階層）の敵編成です。上から1回戦目、2回戦目……の順に対応します。実際の挑戦がここで設定した回戦数を超えたら、一番下（最後）の回戦の編成がそのまま繰り返し使われます。";
+    infoEl.appendChild(floorsNote);
+    
+    if (!Array.isArray(facility.floors)) facility.floors = [];
+    facility.floors.forEach((floor, index) => {
+      const floorBox = document.createElement("div");
+      floorBox.className = "scenariobuild-skill-repeat-body";
+      
+      const floorHeader = document.createElement("p");
+      floorHeader.className = "devmode-note";
+      floorHeader.style.fontWeight = "bold";
+      floorHeader.textContent = `${index + 1}回戦目`;
+      floorBox.appendChild(floorHeader);
+      
+      if (!Array.isArray(floor.enemyMonsterKeys)) floor.enemyMonsterKeys = [];
+      floorBox.appendChild(buildTagListEditor({
+        label: "敵ID（最大5体・同じIDを複数回追加すると同じ敵が複数体出ます。ボスIDを混ぜることも可能です）：",
+        items: floor.enemyMonsterKeys,
+        datalistId: "scenariobuild-monster-datalist",
+        placeholder: "敵ID",
+        onChange: () => markScenarioBuildDirty(),
+        maxItems: 5
+      }));
+      
+      const removeFloorBtn = document.createElement("button");
+      removeFloorBtn.className = "devmode-btn devmode-btn-danger";
+      removeFloorBtn.textContent = "この回戦を削除";
+      removeFloorBtn.onclick = (event) => {
+        event.stopPropagation();
+        facility.floors.splice(index, 1);
+        markScenarioBuildDirty();
+        renderScenarioBuildPanel();
+      };
+      floorBox.appendChild(removeFloorBtn);
+      
+      infoEl.appendChild(floorBox);
+    });
+    
+    const addFloorBtn = document.createElement("button");
+    addFloorBtn.className = "devmode-btn";
+    addFloorBtn.textContent = "＋回戦を追加";
+    addFloorBtn.onclick = (event) => {
+      event.stopPropagation();
+      facility.floors.push({ id: generateId("colosseumfloor"), enemyMonsterKeys: [] });
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    infoEl.appendChild(addFloorBtn);
+    
+    // ===== コインの種類・マイルストーン報酬 =====
+    const coinNote = document.createElement("p");
+    coinNote.className = "devmode-note";
+    coinNote.style.margin = "10px 0 2px";
+    coinNote.textContent = "10・20・50回戦をクリアすると、それぞれ「青」「黄」「赤」のコインを獲得します。ここではどのアイテムを各色のコインとして扱うか（あらかじめアイテム管理で作っておいたアイテムのIDを指定）と、何個獲得するかを設定します：";
+    infoEl.appendChild(coinNote);
+    
+    const COIN_MILESTONES = [
+      { color: "blue", label: "青コイン（10回戦クリアで獲得）", itemKey: "coinItemIdBlue", qtyKey: "milestone10CoinQty" },
+      { color: "yellow", label: "黄コイン（20回戦クリアで獲得）", itemKey: "coinItemIdYellow", qtyKey: "milestone20CoinQty" },
+      { color: "red", label: "赤コイン（50回戦クリアで獲得）", itemKey: "coinItemIdRed", qtyKey: "milestone50CoinQty" }
+    ];
+    COIN_MILESTONES.forEach(({ label, itemKey, qtyKey }) => {
+      const coinRow = document.createElement("div");
+      coinRow.className = "scenariobuild-condition-row";
+      coinRow.style.flexWrap = "wrap";
+      coinRow.appendChild(labelSpan(`${label}："`));
+      const coinItemInput = document.createElement("input");
+      coinItemInput.type = "text";
+      coinItemInput.className = "scenariobuild-title-input";
+      coinItemInput.placeholder = "アイテムID";
+      coinItemInput.setAttribute("list", "scenariobuild-item-datalist");
+      coinItemInput.value = facility[itemKey] || "";
+      coinItemInput.onchange = () => { facility[itemKey] = coinItemInput.value.trim(); markScenarioBuildDirty(); };
+      coinRow.appendChild(coinItemInput);
+      coinRow.appendChild(labelSpan("獲得数："));
+      const coinQtyInput = document.createElement("input");
+      coinQtyInput.type = "number";
+      coinQtyInput.min = "1";
+      coinQtyInput.className = "scenariobuild-condition-input";
+      coinQtyInput.value = facility[qtyKey] || 1;
+      coinQtyInput.onchange = () => { facility[qtyKey] = Math.max(1, Number(coinQtyInput.value) || 1); markScenarioBuildDirty(); };
+      coinRow.appendChild(coinQtyInput);
+      infoEl.appendChild(coinRow);
+    });
+    
+    // ===== 99回戦クリア報酬 =====
+    const finalNote = document.createElement("p");
+    finalNote.className = "devmode-note";
+    finalNote.style.margin = "10px 0 2px";
+    finalNote.textContent = "99回戦をクリアした時の特別報酬です（0のままなら、その報酬は渡しません）：";
+    infoEl.appendChild(finalNote);
+    
+    const finalRow1 = document.createElement("div");
+    finalRow1.className = "scenariobuild-condition-row";
+    finalRow1.style.flexWrap = "wrap";
+    [["blue", "finalClearBlueCoinQty", "青コイン"], ["yellow", "finalClearYellowCoinQty", "黄コイン"], ["red", "finalClearRedCoinQty", "赤コイン"]].forEach(([, key, label]) => {
+      finalRow1.appendChild(labelSpan(`${label}："`));
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = "0";
+      input.className = "scenariobuild-condition-input";
+      input.value = facility[key] || 0;
+      input.onchange = () => { facility[key] = Math.max(0, Number(input.value) || 0); markScenarioBuildDirty(); };
+      finalRow1.appendChild(input);
+    });
+    infoEl.appendChild(finalRow1);
+    
+    const finalRow2 = document.createElement("div");
+    finalRow2.className = "scenariobuild-condition-row";
+    finalRow2.appendChild(labelSpan("陳："));
+    const finalGoldInput = document.createElement("input");
+    finalGoldInput.type = "number";
+    finalGoldInput.min = "0";
+    finalGoldInput.className = "scenariobuild-condition-input";
+    finalGoldInput.value = facility.finalClearGoldReward || 0;
+    finalGoldInput.onchange = () => { facility.finalClearGoldReward = Math.max(0, Number(finalGoldInput.value) || 0); markScenarioBuildDirty(); };
+    finalRow2.appendChild(finalGoldInput);
+    finalRow2.appendChild(labelSpan("経験値："));
+    const finalExpInput = document.createElement("input");
+    finalExpInput.type = "number";
+    finalExpInput.min = "0";
+    finalExpInput.className = "scenariobuild-condition-input";
+    finalExpInput.value = facility.finalClearExpReward || 0;
+    finalExpInput.onchange = () => { facility.finalClearExpReward = Math.max(0, Number(finalExpInput.value) || 0); markScenarioBuildDirty(); };
+    finalRow2.appendChild(finalExpInput);
+    infoEl.appendChild(finalRow2);
+    
+    // ===== コインの引き換え屋 =====
+    const exchangeNote = document.createElement("p");
+    exchangeNote.className = "devmode-note";
+    exchangeNote.style.margin = "10px 0 2px";
+    exchangeNote.textContent = "コインの引き換え屋のラインナップです（コロシアム内の「コインを引き換える」から選べます）：";
+    infoEl.appendChild(exchangeNote);
+    
+    if (!Array.isArray(facility.exchangeOffers)) facility.exchangeOffers = [];
+    facility.exchangeOffers.forEach((offer, index) => {
+      const offerRow = document.createElement("div");
+      offerRow.className = "scenariobuild-condition-row";
+      offerRow.style.flexWrap = "wrap";
+      
+      const colorSelect = document.createElement("select");
+      colorSelect.className = "scenariobuild-jump-select";
+      [["blue", "青コイン"], ["yellow", "黄コイン"], ["red", "赤コイン"]].forEach(([value, label]) => {
+        const opt = document.createElement("option");
+        opt.value = value;
+        opt.textContent = label;
+        colorSelect.appendChild(opt);
+      });
+      colorSelect.value = offer.coinColor || "blue";
+      colorSelect.onchange = () => { offer.coinColor = colorSelect.value; markScenarioBuildDirty(); };
+      offerRow.appendChild(colorSelect);
+      
+      offerRow.appendChild(labelSpan("×"));
+      const coinQtyInput = document.createElement("input");
+      coinQtyInput.type = "number";
+      coinQtyInput.min = "1";
+      coinQtyInput.className = "scenariobuild-condition-input";
+      coinQtyInput.value = offer.coinQty || 1;
+      coinQtyInput.onchange = () => { offer.coinQty = Math.max(1, Number(coinQtyInput.value) || 1); markScenarioBuildDirty(); };
+      offerRow.appendChild(coinQtyInput);
+      
+      offerRow.appendChild(labelSpan("→ アイテムID："));
+      const offerItemInput = document.createElement("input");
+      offerItemInput.type = "text";
+      offerItemInput.className = "scenariobuild-title-input";
+      offerItemInput.setAttribute("list", "scenariobuild-item-datalist");
+      offerItemInput.value = offer.itemId || "";
+      offerItemInput.onchange = () => { offer.itemId = offerItemInput.value.trim(); markScenarioBuildDirty(); };
+      offerRow.appendChild(offerItemInput);
+      
+      offerRow.appendChild(labelSpan("×"));
+      const offerQtyInput = document.createElement("input");
+      offerQtyInput.type = "number";
+      offerQtyInput.min = "1";
+      offerQtyInput.className = "scenariobuild-condition-input";
+      offerQtyInput.value = offer.itemQty || 1;
+      offerQtyInput.onchange = () => { offer.itemQty = Math.max(1, Number(offerQtyInput.value) || 1); markScenarioBuildDirty(); };
+      offerRow.appendChild(offerQtyInput);
+      
+      const removeOfferBtn = document.createElement("button");
+      removeOfferBtn.className = "devmode-btn devmode-btn-danger";
+      removeOfferBtn.textContent = "×";
+      removeOfferBtn.onclick = (event) => {
+        event.stopPropagation();
+        facility.exchangeOffers.splice(index, 1);
+        markScenarioBuildDirty();
+        renderScenarioBuildPanel();
+      };
+      offerRow.appendChild(removeOfferBtn);
+      
+      infoEl.appendChild(offerRow);
+    });
+    
+    const addOfferBtn = document.createElement("button");
+    addOfferBtn.className = "devmode-btn";
+    addOfferBtn.textContent = "＋交換品を追加";
+    addOfferBtn.onclick = (event) => {
+      event.stopPropagation();
+      facility.exchangeOffers.push({ coinColor: "blue", coinQty: 1, itemId: "", itemQty: 1 });
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    infoEl.appendChild(addOfferBtn);
   }
   
   const bgRow = document.createElement("div");
