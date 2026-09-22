@@ -129,8 +129,10 @@ const CASINO_SLOT_SPIN_SPEED = 0.55;        // px/ms（1マス=76pxを約138ms�
 const CASINO_SLOT_BUFFER_CELLS = 8;         // ★見えている範囲より、常にこの数ぶん先まで帯を伸ばしておく
 const CASINO_SLOT_STOP_TRANSITION_MS = 550; // ★止める時の「滑らかに減速して着地する」アニメーションの長さ
 
-// ★要望対応：各絵柄の「揃う確率」（重み）を施設ごとに変えられるようにする。
-//   施設側でfacility.slotWeights[key]に数値が指定されていればそれを使い、無指定ならCASINO_SLOT_SYMBOLSの既定値を使う
+// ★要望対応：各絵柄の「出現しやすさ」（重み。1マスあたりの抽選比率）を施設ごとに変えられるようにする。
+//   施設側でfacility.slotWeights[key]に数値が指定されていればそれを使い、無指定ならCASINO_SLOT_SYMBOLSの既定値を使う。
+//   実際に1ライン（3マス）が揃う確率は (重み÷全絵柄の重み合計)^3 になる。管理画面（scenariobuild.js）側で
+//   この計算結果を「揃う確率」として別途表示している（以前は重みの数値をそのまま「揃う確率」と誤表示していたための修正）
 function getSlotSymbolWeight(symbol) {
   const override = casinoFacility && casinoFacility.slotWeights && casinoFacility.slotWeights[symbol.key];
   return (typeof override === "number" && override > 0) ? override : symbol.weight;
