@@ -1146,10 +1146,30 @@ function ensureCustomItemsRegistered() {
       rodDurability: item.isFishingRod ? (Number(item.rodDurability) || existing.rodDurability || 20) : existing.rodDurability,
       rodPower: item.isFishingRod ? (Number(item.rodPower) || existing.rodPower || 3) : existing.rodPower,
       isFishingBait: (typeof item.isFishingBait === "boolean") ? item.isFishingBait : !!existing.isFishingBait,
-      baitFishType: item.isFishingBait ? (item.baitFishType || existing.baitFishType || "") : existing.baitFishType,
+      // ★baitFishType（旧・単一文字列）からbaitFishTypes（複数選択の配列）へ移行。
+      //   古いセーブ・古いアイテムデータにbaitFishTypeしか無い場合はそれを配列化して引き継ぐ
+      baitFishTypes: item.isFishingBait ? normalizeBaitFishTypes(item.baitFishTypes, item.baitFishType, existing.baitFishTypes) : existing.baitFishTypes,
       baitBiteRate: item.isFishingBait ? (Number(item.baitBiteRate) || existing.baitBiteRate || 5) : existing.baitBiteRate
     };
   });
+}
+
+// ★釣り餌の「釣れる魚の種類」チェックボックスの選択肢を、登録済みの魚（ITEM_MASTER内のcategory:"fish"）
+//   の「種類」から重複無しで集める。組み込みの魚（items.js）・魚管理タブで追加したカスタムの魚の両方が対象
+function getRegisteredFishTypeOptions() {
+  if (typeof ITEM_MASTER === "undefined") return [];
+  const types = new Set();
+  Object.values(ITEM_MASTER).forEach(master => {
+    if (master && master.category === "fish" && master.fishType) types.add(master.fishType);
+  });
+  return Array.from(types).sort().map(type => ({ value: type, label: type }));
+}
+
+// ★baitFishTypes（配列・新形式）／baitFishType（文字列・旧形式）／既存値のどれから採用するかをまとめる
+function normalizeBaitFishTypes(newArrayValue, legacyStringValue, fallbackArrayValue) {
+  if (Array.isArray(newArrayValue)) return newArrayValue.filter(Boolean); // ★UI側は常に配列を渡してくるので、空配列（未選択＝全種類対象）もそのまま採用する
+  if (typeof legacyStringValue === "string" && legacyStringValue) return [legacyStringValue];
+  return Array.isArray(fallbackArrayValue) ? fallbackArrayValue : [];
 }
 
 // ★要望対応：魚管理タブ（scenarioProject.fishItems）で追加・編集した魚を ITEM_MASTER に反映する。
@@ -5149,7 +5169,11 @@ function getItemManagerConfig() {
       { key: "rodDurability", label: "（釣竿）耐久度", type: "number", placeholder: "20" },
       { key: "rodPower", label: "（釣竿）攻撃力", type: "number", placeholder: "3" },
       { key: "isFishingBait", label: "釣り餌として扱う", type: "checkbox" },
-      { key: "baitFishType", label: "（餌）釣れる魚の種類", type: "text", placeholder: "魚管理タブの「種類」と同じ文字列を入れてください" },
+      // ★バグ修正：以前はフリーテキストで「魚管理タブの『種類』と同じ文字列」を手打ちする方式だったため、
+      //   全角半角やスペース、ちょっとした表記ゆれで一致せず、魚が登録されているのに
+      //   「今はこの餌に反応する魚がいないようだ……」になってしまうバグがあった。
+      //   → 魚管理タブに登録済みの「種類」から選ぶチェックボックス方式（複数選択可）に変更（fishing.js参照）
+      { key: "baitFishTypes", label: "（餌）釣れる魚の種類（複数選択可／未選択ならどの魚にも反応）", type: "multiselect", emptyText: "先に「魚管理」タブで魚を登録すると、ここに種類が選べるようになります", optionsFn: () => getRegisteredFishTypeOptions() },
       { key: "baitBiteRate", label: "（餌）食いつき度（高いほど早く食いつく／目安1〜10）", type: "number", placeholder: "5" }
     ],
     newEntity: () => ({ id: generateId("item"), name: "", category: "material", description: "", rank: "F", listedPrice: 0, trueValue: 0, unsellable: false }),
@@ -9416,6 +9440,45 @@ function appendEntityFieldInputs(config, entity, containerEl) {
         if (config.onChange) config.onChange();
       };
       fieldRow.appendChild(input);
+      containerEl.appendChild(fieldRow);
+      return;
+    }
+    // ★要望対応：複数選択可能なチェックボックスリスト（釣り餌の「釣れる魚の種類」など、
+    //   フリーテキストの表記ゆれで一致しなくなるのを防ぐため、選択肢から選ぶ形式にする）
+    if (field.type === "multiselect") {
+      const wrap = document.createElement("div");
+      wrap.className = "scenariobuild-multiselect";
+      if (!Array.isArray(entity[field.key])) entity[field.key] = [];
+      const options = typeof field.optionsFn === "function" ? field.optionsFn() : (field.options || []);
+      if (options.length === 0) {
+        const emptyNote = document.createElement("span");
+        emptyNote.className = "devmode-note";
+        emptyNote.textContent = field.emptyText || "（選択肢がありません）";
+        wrap.appendChild(emptyNote);
+      }
+      options.forEach(opt => {
+        const optLabel = document.createElement("label");
+        optLabel.className = "scenariobuild-multiselect-option";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = entity[field.key].includes(opt.value);
+        cb.onchange = () => {
+          const list = Array.isArray(entity[field.key]) ? entity[field.key].slice() : [];
+          const idx = list.indexOf(opt.value);
+          if (cb.checked) {
+            if (idx === -1) list.push(opt.value);
+          } else if (idx !== -1) {
+            list.splice(idx, 1);
+          }
+          entity[field.key] = list;
+          markScenarioBuildDirty();
+          if (config.onChange) config.onChange();
+        };
+        optLabel.appendChild(cb);
+        optLabel.appendChild(document.createTextNode(opt.label));
+        wrap.appendChild(optLabel);
+      });
+      fieldRow.appendChild(wrap);
       containerEl.appendChild(fieldRow);
       return;
     }

@@ -5426,6 +5426,22 @@ html, body {
   font-size: 12px;
 }
 
+/* ★複数選択可のチェックボックスリスト（釣り餌の「釣れる魚の種類」など） */
+.scenariobuild-multiselect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.scenariobuild-multiselect-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 /* ★スキル管理タブ：1つの項目（ラベル＋入力欄）をまとめる小さな単位。paramsRowの中で折り返しつつ並ぶ */
 .scenariobuild-inline-field {
   display: inline-flex;
