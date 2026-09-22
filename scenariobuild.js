@@ -132,6 +132,12 @@ function loadCustomScenarioData() {
   runScenarioBuildStepSafely("ensureCustomMonstersRegistered", ensureCustomMonstersRegistered);
   runScenarioBuildStepSafely("ensureCustomBgmRegistered", ensureCustomBgmRegistered);
   runScenarioBuildStepSafely("ensureCustomItemsRegistered", ensureCustomItemsRegistered); // ★アイテム設定で追加・編集したアイテムを念のため最新の状態にしてから使う
+  // ★バグ修正：魚管理タブで追加した魚（scenarioProject.fishItems）が、ここ（loadCustomScenarioData）から
+  //   一切ITEM_MASTERへ登録されていなかった。ensureCustomFishRegistered自体は存在し、シナリオビルド画面の
+  //   undo/redoからは呼ばれていたが、通常のゲーム進行中（町・釣り場を開く時など）に呼ばれるのはこの関数だけのため、
+  //   ITEM_MASTER[spot.fishId]が常にundefinedになり、getMatchingFishSpots（fishing.js）の候補が毎回0件になって
+  //   「今はこの餌に反応する魚がいないようだ……」としか出ず、エラーも出ないまま釣りが一切成立しない不具合の原因だった
+  runScenarioBuildStepSafely("ensureCustomFishRegistered", ensureCustomFishRegistered); // ★魚管理で追加・編集した魚を念のため最新の状態にしてから使う
   runScenarioBuildStepSafely("ensureCustomSkillsRegistered", ensureCustomSkillsRegistered); // ★スキル管理で追加・編集した技を念のため最新の状態にしてから使う
   runScenarioBuildStepSafely("ensureCustomCompanionsRegistered", ensureCustomCompanionsRegistered); // ★仲間編集で追加・編集した仲間を念のため最新の状態にしてから使う
   runScenarioBuildStepSafely("ensureCustomClassStatsRegistered", ensureCustomClassStatsRegistered); // ★職業編集で編集した主人公の職業ステータスを念のため最新の状態にしてから使う
