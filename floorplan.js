@@ -23,10 +23,15 @@ function makeNewFloorPlanRoom(x, y) {
   };
 }
 
-// ★家エリアが間取りデータを持っていなければ、部屋1つ（原点）で初期化する
+// ★家エリアが間取りデータを持っていなければ、部屋1つ（原点）で初期化する。
+//   startRoomIdは「家に入った時にどの部屋から始まるか」の明示的な記録（部屋を削除した時にずれないようにするため）
 function ensureFloorPlan(area) {
   if (!area.floorPlan || !Array.isArray(area.floorPlan.rooms) || area.floorPlan.rooms.length === 0) {
-    area.floorPlan = { rooms: [makeNewFloorPlanRoom(0, 0)] };
+    const firstRoom = makeNewFloorPlanRoom(0, 0);
+    area.floorPlan = { rooms: [firstRoom], startRoomId: firstRoom.id };
+  }
+  if (!area.floorPlan.startRoomId || !area.floorPlan.rooms.some(r => r.id === area.floorPlan.startRoomId)) {
+    area.floorPlan.startRoomId = area.floorPlan.rooms[0].id;
   }
   return area.floorPlan;
 }
@@ -48,7 +53,8 @@ function addFloorPlanRoom(area, fromRoomId, direction) {
   return newRoom;
 }
 
-// ★部屋を削除する（最後の1部屋は削除不可）。隣接部屋側のドアも一緒にOFFにしておく
+// ★部屋を削除する（最後の1部屋は削除不可）。隣接部屋側のドアも一緒にOFFにしておく。
+//   削除した部屋が「開始部屋（startRoomId）」だった場合は、残った部屋のどれかへ付け替える
 function deleteFloorPlanRoom(area, roomId) {
   const floorPlan = ensureFloorPlan(area);
   if (floorPlan.rooms.length <= 1) return false;
@@ -60,6 +66,9 @@ function deleteFloorPlanRoom(area, roomId) {
     if (neighbor) neighbor.doors[opposite] = false;
   });
   floorPlan.rooms = floorPlan.rooms.filter(r => r.id !== roomId);
+  if (floorPlan.startRoomId === roomId) {
+    floorPlan.startRoomId = floorPlan.rooms[0].id;
+  }
   return true;
 }
 
@@ -277,8 +286,7 @@ function buildFloorPlanRoomDetail(area, floorPlan, room, persist) {
 // ===================================================================
 async function openHouseInterior(area, goBack) {
   const floorPlan = ensureFloorPlan(area);
-  const startRoom = findFloorPlanRoomAt(floorPlan, 0, 0) || floorPlan.rooms[0];
-  await showFloorPlanRoomScreen(area, floorPlan, startRoom.id, goBack);
+  await showFloorPlanRoomScreen(area, floorPlan, floorPlan.startRoomId, goBack);
 }
 
 async function showFloorPlanRoomScreen(area, floorPlan, roomId, goBack) {

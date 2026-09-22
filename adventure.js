@@ -339,6 +339,8 @@ async function enterCustomMapArea(area, explicitKey) {
     applyBackground(area.bgImage ? { type: "image", value: area.bgImage } : { type: "color", value: "#000000" });
     if (area.bgTrack && typeof switchScenarioBGM === "function") switchScenarioBGM("field_" + locationKey, { fadeMs: 600 });
     maybeAutoIncrementAreaVisit(locationKey);
+    // ★他のエリア種類と同様、「エリアに来た時」きっかけの自作の話があれば先にそちらを自動再生する
+    if (typeof checkAndAutoRunNextCustomChapter === "function" && await checkAndAutoRunNextCustomChapter("areaVisit", locationKey)) return;
     await openHouseInterior(area, () => openTownMenu()); // floorplan.js
     return;
   }
@@ -348,6 +350,7 @@ async function enterCustomMapArea(area, explicitKey) {
     applyBackground(area.bgImage ? { type: "image", value: area.bgImage } : { type: "color", value: "#000000" });
     if (area.bgTrack && typeof switchScenarioBGM === "function") switchScenarioBGM("field_" + locationKey, { fadeMs: 600 });
     maybeAutoIncrementAreaVisit(locationKey);
+    if (typeof checkAndAutoRunNextCustomChapter === "function" && await checkAndAutoRunNextCustomChapter("areaVisit", locationKey)) return;
     changeSpeaker("");
     await displayMessage("自分の店に入った。（店内の実装は近日予定）");
     if (typeof openTownMenu === "function") await openTownMenu();

@@ -1307,7 +1307,7 @@ function buildEstateAreaEditor(area, persist) {
       event.stopPropagation();
       if (typeof ensureFloorPlan === "function") ensureFloorPlan(area);
       scenarioBuildEditingMapAreaId = area.id;
-      scenarioBuildSelectedRoomId = area.floorPlan.rooms[0].id;
+      scenarioBuildSelectedRoomId = area.floorPlan.startRoomId;
       scenarioBuildMainView = "floorPlanEditor";
       renderScenarioBuildPanel();
     };
