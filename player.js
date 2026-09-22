@@ -781,6 +781,25 @@ function addCompanionToParty(companionId, level) {
   return companion;
 }
 
+// ★その実体（instanceId）が今、主人公または誰か仲間に装備されていたら、確実に外す
+//   （要望対応：買取屋で装備中の物を売る時に、装備欄に消えた実体を指したままの参照が残らないようにする）
+function forceUnequipInstance(instanceId) {
+  if (!player) return;
+  Object.keys(player.equipment).forEach(slot => {
+    if (player.equipment[slot] === instanceId) unequipItem(slot);
+  });
+  (player.companions || []).forEach(c => {
+    Object.keys(c.equipment).forEach(slot => {
+      if (c.equipment[slot] === instanceId) unequipItemForCompanion(c, slot);
+    });
+  });
+  (player.benchedCompanions || []).forEach(c => {
+    Object.keys(c.equipment).forEach(slot => {
+      if (c.equipment[slot] === instanceId) unequipItemForCompanion(c, slot);
+    });
+  });
+}
+
 // ★そのインベントリの実体（instanceId）が、主人公または誰か仲間に、もう装備されていないか確認する
 function isInstanceEquippedByAnyone(instanceId) {
   if (!player) return false;
