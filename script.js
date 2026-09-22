@@ -1,3 +1,11 @@
+// ★要望対応：画像・音楽データをキャッシュして次回以降一瞬で開けるようにする（sw.js）。
+//   登録に失敗しても普通にゲームは遊べるようにする（対応していないブラウザ等への配慮）
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
 // HTMLの準備ができたら自動的に実行される
 document.addEventListener('DOMContentLoaded', async () => {
   loadSettings(); // settings.js（文字送り速度・ログ記憶件数・オートセーブ設定を反映）

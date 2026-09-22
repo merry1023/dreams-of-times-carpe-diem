@@ -552,6 +552,14 @@ async function openCustomFacility(facility, returnTo) {
     return;
   }
   
+  // ★要望対応：釣り場。実際の釣りメニュー・ミニゲームはfishing.jsにまとめてある
+  if (facility.type === "fishing") {
+    hideLocationMenu();
+    await runFacilityDialogueBlocks(facility, facility.enterBlocks, facility.ownerDialogue); // ★入った時のセリフ（施設に入った最初の1回だけ流す）
+    openFishingFacility(facility, goBack); // fishing.js
+    return;
+  }
+  
   // ★バグ修正：店タイプの施設だけこの分岐が無く、「その他（flavor）」扱いになってしまっていた。
   //   拠点（村・街・国）にアタッチした店は、openCustomSettlementArea側で先に振り分けてから
   //   openCustomShopFacilityへ渡すため問題にならないが、敵エリアの「調べる」で見つかる店

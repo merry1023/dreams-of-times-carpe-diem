@@ -304,13 +304,44 @@ function triggerHitFlash() {
   setTimeout(() => flashEl.classList.remove("hit-flash-active"), 120);
 }
 
-// ★要望対応：回想シーンなどに使う「モノクロ」演出。effectブロックのeffectType
-//   monochromeOn/monochromeOffから呼ばれる。画面全体（body）にモノクロフィルターをかけ、
-//   回想終了ブロック（monochromeOff）を通るまでずっと維持される（タブ切り替え・戦闘に入っても継続）
-let isMonochromeEffectActive = false;
+// ★要望対応：白い閃光フラッシュ（衝撃・閃光・雷など）。既存の赤フラッシュ（被弾用）とは別の演出として追加
+function triggerWhiteFlash() {
+  const flashEl = document.getElementById("white-flash-overlay");
+  if (!flashEl) return;
+  flashEl.classList.remove("white-flash-active");
+  void flashEl.offsetWidth;
+  flashEl.classList.add("white-flash-active");
+  setTimeout(() => flashEl.classList.remove("white-flash-active"), 220);
+}
+
+// ★要望対応：モノクロ・セピア・色反転・ぼかしは、演出ブロックから個別にON/OFFできる「画面フィルター」として
+//   まとめて管理する（複数同時にONにすると重ねてかかる。例：セピア＋ぼかし、など）。
+//   回想シーンなどに使い、対応するOFFブロックを通るまでずっと維持される（タブ切り替え・戦闘に入っても継続）
+const screenFilterEffectState = { monochrome: false, sepia: false, invert: false, blur: false };
+function updateScreenFilterEffectStyle() {
+  const parts = [];
+  if (screenFilterEffectState.monochrome) parts.push("grayscale(1)");
+  if (screenFilterEffectState.sepia) parts.push("sepia(0.85)");
+  if (screenFilterEffectState.invert) parts.push("invert(1)");
+  if (screenFilterEffectState.blur) parts.push("blur(6px)");
+  document.body.style.filter = parts.length > 0 ? parts.join(" ") : "";
+  document.body.style.transition = "filter 400ms ease";
+}
 function setMonochromeEffect(active) {
-  isMonochromeEffectActive = !!active;
-  document.body.classList.toggle("screen-monochrome", isMonochromeEffectActive);
+  screenFilterEffectState.monochrome = !!active;
+  updateScreenFilterEffectStyle();
+}
+function setSepiaEffect(active) {
+  screenFilterEffectState.sepia = !!active;
+  updateScreenFilterEffectStyle();
+}
+function setInvertEffect(active) {
+  screenFilterEffectState.invert = !!active;
+  updateScreenFilterEffectStyle();
+}
+function setBlurEffect(active) {
+  screenFilterEffectState.blur = !!active;
+  updateScreenFilterEffectStyle();
 }
 
 // ★要望対応：「暗転」演出。画面全体を黒くフェードアウトさせる（シーン切り替え等に使う）。
@@ -325,6 +356,53 @@ function setBlackoutEffect(active, fadeMs = 600) {
   }
   blackoutOverlayEl.style.transition = `opacity ${fadeMs}ms ease`;
   blackoutOverlayEl.classList.toggle("active", !!active);
+}
+
+// ★要望対応：「ヴィネット」演出。画面端をじわっと暗くして、緊張感や視線誘導を出す
+let vignetteOverlayEl = null;
+function setVignetteEffect(active) {
+  if (!vignetteOverlayEl) {
+    vignetteOverlayEl = document.createElement("div");
+    vignetteOverlayEl.id = "screen-vignette-overlay";
+    document.body.appendChild(vignetteOverlayEl);
+  }
+  vignetteOverlayEl.classList.toggle("active", !!active);
+}
+
+// ★要望対応：「ズーム」演出。画面全体を少し拡大して、盛り上がる場面を強調する
+function setZoomEffect(active) {
+  const target = document.querySelector(".main-screen");
+  if (!target) return;
+  target.classList.toggle("screen-zoomed", !!active);
+}
+
+// ★要望対応：「天候」演出。雨・雪・桜吹雪を画面に降らせる（DOMで粒を降らせるだけの簡易実装）。
+//   同時に降らせられるのは1種類のみ。weatherOffでやめるか、他の種類に切り替えると自動的に前の物は消える
+const WEATHER_PARTICLE_COUNTS = { rain: 60, snow: 40, sakura: 26 };
+let weatherOverlayEl = null;
+let currentWeatherType = null;
+function setWeatherEffect(type) {
+  if (weatherOverlayEl) {
+    weatherOverlayEl.remove();
+    weatherOverlayEl = null;
+  }
+  currentWeatherType = type || null;
+  if (!currentWeatherType) return;
+  
+  weatherOverlayEl = document.createElement("div");
+  weatherOverlayEl.id = "screen-weather-overlay";
+  weatherOverlayEl.className = `screen-weather-overlay screen-weather-${currentWeatherType}`;
+  const count = WEATHER_PARTICLE_COUNTS[currentWeatherType] || 40;
+  for (let i = 0; i < count; i++) {
+    const particle = document.createElement("span");
+    particle.className = "screen-weather-particle";
+    particle.style.left = `${Math.random() * 100}%`;
+    particle.style.animationDuration = `${(currentWeatherType === "rain" ? 0.6 : 4) + Math.random() * (currentWeatherType === "rain" ? 0.5 : 4)}s`;
+    particle.style.animationDelay = `-${Math.random() * 5}s`;
+    if (currentWeatherType === "sakura") particle.textContent = "🌸";
+    weatherOverlayEl.appendChild(particle);
+  }
+  document.body.appendChild(weatherOverlayEl);
 }
 
 // ★エンディングブロック（scenariobuild.js）から呼ばれる、簡易エンドロール（下から上へ流れるスタッフロール風演出）。
@@ -3224,9 +3302,10 @@ function renderInventory() {
       const master = getEffectiveItemMaster(slot); // player.js（サビ取り等の個体ごとの上書きも反映）
       
       const nameSpan = document.createElement("span");
-      // ★要望対応：種類ごとに名前の文字色を変える（武器=赤、防具=茶、道具系=緑、その他=白）
+      // ★要望対応：種類ごとに名前の文字色を変える（武器=赤、防具=茶、道具系=緑、魚=水色、その他=白）
       const categoryColorClass = master && master.category === "weapon" ? "item-name-weapon"
         : master && master.category === "armor" ? "item-name-armor"
+        : master && master.category === "fish" ? "item-name-fish"
         : master && ["herb", "potion", "material", "tool"].includes(master.category) ? "item-name-tool"
         : "item-name-misc";
       nameSpan.className = "item-name " + categoryColorClass;

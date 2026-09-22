@@ -316,6 +316,19 @@ function sanitizeLoadedPlayer(loadedPlayer) {
         loadedPlayer.gauges.sp.max = correctMaxSp;
         loadedPlayer.gauges.sp.current = Math.min(loadedPlayer.gauges.sp.current, correctMaxSp);
       }
+      // ★バグ修正：ロード時にレベルを補正した際、HP・SPの上限は組み直していたのに、
+      //   疲労度・眠気の上限（どちらもレベルが上がるほど少しずつ上がる仕様）だけ組み直しておらず、
+      //   古いレベルのままの上限が残ってしまっていた
+      if (loadedPlayer.gauges && loadedPlayer.gauges.fatigue) {
+        const correctMaxFatigue = (cls.maxFatigue || 100) + getCumulativeGrowth(growth, level, "maxFatigue");
+        loadedPlayer.gauges.fatigue.max = correctMaxFatigue;
+        loadedPlayer.gauges.fatigue.current = Math.min(loadedPlayer.gauges.fatigue.current, correctMaxFatigue);
+      }
+      if (loadedPlayer.gauges && loadedPlayer.gauges.sleepiness) {
+        const correctMaxSleepiness = (cls.maxSleepiness || 100) + getCumulativeGrowth(growth, level, "maxSleepiness");
+        loadedPlayer.gauges.sleepiness.max = correctMaxSleepiness;
+        loadedPlayer.gauges.sleepiness.current = Math.min(loadedPlayer.gauges.sleepiness.current, correctMaxSleepiness);
+      }
     }
   }
   
@@ -441,6 +454,7 @@ function initPlayer(className) {
     lastVisitedBaseKey: "town", // ★要望対応：敗北時に「直前に立ち寄った拠点」へ戻すための記録
     daysSinceTransfer: 0, // 転移してからの経過日数
     gameHour: 8, // ★現在時刻（0〜23時）。転移した日の朝8時からスタート
+    fishing: { rodItemId: null, baitItemId: null }, // ★要望対応：釣り場で選んでいる釣竿・釣り餌（fishing.js）
     fame: 0, // ★隠しステータス「名声度」。クエストをクリアすると増え、一定量たまるとランクが上がる
     rank: "F", // 冒険者ランク（クエスト受注の条件に使う想定）
     clearedTrialRanks: [], // ★ランクC以上への昇格試練のクリア記録（questboard.js参照）
@@ -1059,7 +1073,7 @@ function getHealTargetChoices(caster, includeAllOption = true) {
     const isCaster = u === caster;
     let label;
     if (u === player) {
-      label = isCaster ? "自分" : "主人公"; // ★仲間が回復技を使う時、主人公自身は「主人公」と表示する（casterではないので「自分」ではない）
+      label = isCaster ? "自分" : "田中治郎"; // ★要望対応：仲間が回復技を使う時、主人公自身は「主人公」ではなく名前で表示する（casterではないので「自分」ではない）
     } else {
       const m = getCompanionMaster(u);
       const name = m ? m.name : u.companionId;
@@ -1123,7 +1137,7 @@ function applyGaugeDeltaToUnit(unit, gaugeKey, delta) {
 // ★ユニットから表示名を引く（player.jsからも呼べるよう、battle.js/mainfunc.jsの同名関数と別に持っておく）
 //   caster: これがunitと同じなら「自分」を付ける（仲間が自分を回復した時などに使う）
 function getHealTargetDisplayName(unit, caster) {
-  if (unit === player) return (caster && caster !== player) ? "主人公" : "自分";
+  if (unit === player) return (caster && caster !== player) ? "田中治郎" : "自分"; // ★要望対応：主人公は名前で表示する
   const master = getCompanionMaster(unit);
   const name = master ? master.name : "仲間";
   return (caster && unit === caster) ? `${name}（自分）` : name;
@@ -1329,6 +1343,10 @@ function switchPlayerClass(newClassName) {
   const newMaxHp = (cls.baseStats.maxHp || 1) + getCumulativeGrowth(growth, targetLevel, "maxHp");
   const newMaxSp = (cls.baseStats.maxSp || 0) + getCumulativeGrowth(growth, targetLevel, "maxSp");
   const newMaxFatigue = (cls.maxFatigue || 100) + getCumulativeGrowth(growth, targetLevel, "maxFatigue");
+  // ★バグ修正：疲労度の上限はレベル分の成長(growth.maxFatigue)を足していたのに、眠気の上限だけ
+  //   cls.maxSleepinessそのまま（＝レベル1相当）になっており、職業変更のたびに眠気の上限が
+  //   下がってしまっていた
+  const newMaxSleepiness = (cls.maxSleepiness || 100) + getCumulativeGrowth(growth, targetLevel, "maxSleepiness");
   
   player.class = newClassName;
   player.level = targetLevel;
@@ -1336,9 +1354,19 @@ function switchPlayerClass(newClassName) {
   player.stats = newStats;
   player.gauges.hp = { current: newMaxHp, max: newMaxHp }; // ★切り替え直後は全回復した状態で始める
   player.gauges.sp = { current: newMaxSp, max: newMaxSp };
-  player.gauges.sleepiness.max = cls.maxSleepiness || 100;
+  player.gauges.sleepiness.max = newMaxSleepiness;
+  player.gauges.sleepiness.current = Math.min(player.gauges.sleepiness.current, newMaxSleepiness); // ★上限が下がった場合に備えて、現在値もはみ出さないようにする
   player.gauges.fatigue = { current: 0, max: newMaxFatigue };
   player.classLevels[newClassName] = targetLevel;
+  
+  // ★要望対応：以前この職業だった時に装備していた物（lockedToClassで職業専用ロックされている物）は、
+  //   その職業に戻ってきたタイミングで自動的に着け直す。装備できない理由（別の職業制限や、
+  //   誰か他の人が既に使っている等）があれば無理に着けず、そのまま持ち物に残しておく
+  if (typeof inventorySlots !== "undefined") {
+    inventorySlots
+      .filter(s => s && s.lockedToClass === newClassName)
+      .forEach(s => equipItem(s.instanceId)); // ★装備部位はequipItem内でアイテムのデータから自動判定される
+  }
   
   return { success: true, isNewClass, newLevel: targetLevel };
 }

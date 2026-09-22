@@ -10,7 +10,7 @@ const GRID_SIZE = GRID_COLS * GRID_ROWS; // 240マス
 
 // スタック（積み重ね）できるカテゴリ。ここに無いカテゴリ（武器・防具など）は
 // 装備・貴重品扱いで、1マスに1個しか置けない。
-const STACKABLE_CATEGORIES = ["herb", "potion", "material", "tool"];
+const STACKABLE_CATEGORIES = ["herb", "potion", "material", "tool", "fish"]; // ★要望対応：釣った魚もスタック可能
 const MAX_STACK = 100;
 
 // inventorySlots[i] は null（空きマス）か { itemId, quantity, appraised } のオブジェクト

@@ -132,6 +132,12 @@ function loadCustomScenarioData() {
   runScenarioBuildStepSafely("ensureCustomMonstersRegistered", ensureCustomMonstersRegistered);
   runScenarioBuildStepSafely("ensureCustomBgmRegistered", ensureCustomBgmRegistered);
   runScenarioBuildStepSafely("ensureCustomItemsRegistered", ensureCustomItemsRegistered); // ★アイテム設定で追加・編集したアイテムを念のため最新の状態にしてから使う
+  // ★バグ修正：魚管理タブで追加した魚（scenarioProject.fishItems）が、ここ（loadCustomScenarioData）から
+  //   一切ITEM_MASTERへ登録されていなかった。ensureCustomFishRegistered自体は存在し、シナリオビルド画面の
+  //   undo/redoからは呼ばれていたが、通常のゲーム進行中（町・釣り場を開く時など）に呼ばれるのはこの関数だけのため、
+  //   ITEM_MASTER[spot.fishId]が常にundefinedになり、getMatchingFishSpots（fishing.js）の候補が毎回0件になって
+  //   「今はこの餌に反応する魚がいないようだ……」としか出ず、エラーも出ないまま釣りが一切成立しない不具合の原因だった
+  runScenarioBuildStepSafely("ensureCustomFishRegistered", ensureCustomFishRegistered); // ★魚管理で追加・編集した魚を念のため最新の状態にしてから使う
   runScenarioBuildStepSafely("ensureCustomSkillsRegistered", ensureCustomSkillsRegistered); // ★スキル管理で追加・編集した技を念のため最新の状態にしてから使う
   runScenarioBuildStepSafely("ensureCustomCompanionsRegistered", ensureCustomCompanionsRegistered); // ★仲間編集で追加・編集した仲間を念のため最新の状態にしてから使う
   runScenarioBuildStepSafely("ensureCustomClassStatsRegistered", ensureCustomClassStatsRegistered); // ★職業編集で編集した主人公の職業ステータスを念のため最新の状態にしてから使う
@@ -212,6 +218,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.enemies = data.enemies || [];
   scenarioProject.bosses = data.bosses || [];
   scenarioProject.items = data.items || [];
+  scenarioProject.fishItems = data.fishItems || []; // ★要望対応：魚管理タブ
   scenarioProject.skills = data.skills || [];
   dedupeBuiltinSkillEntries(); // ★取り込んだファイル自体が、過去のバージョンの不具合で重複を含んでいる場合があるので、取り込み直後にも掃除しておく
   // ★旧バージョンで書き出された設定ファイル（状態管理タブが存在しなかった頃のもの）を読み込んだ時は、
@@ -406,6 +413,8 @@ function normalizeScenarioProject() {
   if (!Array.isArray(scenarioProject.enemies)) scenarioProject.enemies = [];
   if (!Array.isArray(scenarioProject.bosses)) scenarioProject.bosses = [];
   if (!Array.isArray(scenarioProject.items)) scenarioProject.items = [];
+  // ★要望対応：魚管理タブ用のデータ。中身自体はアイテムと同じ扱いでITEM_MASTERへ反映される（fishing.js／ensureCustomFishRegistered）
+  if (!Array.isArray(scenarioProject.fishItems)) scenarioProject.fishItems = [];
   if (!Array.isArray(scenarioProject.skills)) scenarioProject.skills = [];
   scenarioProject.skills.forEach(skill => {
     if (!Array.isArray(skill.blocks)) skill.blocks = []; // ★特殊スキル編集（ブロック実行モード）。1件でもあれば固定フィールドは無視される
@@ -949,7 +958,7 @@ function undoScenarioChange() {
   normalizeScenarioProject();
   ensureCustomMonstersRegistered();
   ensureCustomBgmRegistered();
-  ensureCustomItemsRegistered(); // ★アイテム設定で追加・編集したアイテムを念のため最新の状態にしてから使う
+  ensureCustomItemsRegistered(); ensureCustomFishRegistered(); // ★アイテム設定・魚管理で追加・編集したものを念のため最新の状態にしてから使う
   ensureCustomSkillsRegistered(); // ★スキル管理で追加・編集した技を念のため最新の状態にしてから使う
   ensureCustomCompanionsRegistered(); // ★仲間編集で追加・編集した仲間を念のため最新の状態にしてから使う
   ensureCustomClassStatsRegistered(); // ★職業編集で編集した主人公の職業ステータスを念のため最新の状態にしてから使う
@@ -966,7 +975,7 @@ function redoScenarioChange() {
   normalizeScenarioProject();
   ensureCustomMonstersRegistered();
   ensureCustomBgmRegistered();
-  ensureCustomItemsRegistered(); // ★アイテム設定で追加・編集したアイテムを念のため最新の状態にしてから使う
+  ensureCustomItemsRegistered(); ensureCustomFishRegistered(); // ★アイテム設定・魚管理で追加・編集したものを念のため最新の状態にしてから使う
   ensureCustomSkillsRegistered(); // ★スキル管理で追加・編集した技を念のため最新の状態にしてから使う
   ensureCustomCompanionsRegistered(); // ★仲間編集で追加・編集した仲間を念のため最新の状態にしてから使う
   ensureCustomClassStatsRegistered(); // ★職業編集で編集した主人公の職業ステータスを念のため最新の状態にしてから使う
@@ -1067,6 +1076,8 @@ function ensureCustomMonstersRegistered() {
     };
     if (typeof BOSS_MONSTER_KEYS !== "undefined" && !BOSS_MONSTER_KEYS.includes(boss.id)) {
       BOSS_MONSTER_KEYS.push(boss.id); // ★ボス扱い（BGM切り替え等）にする
+      // ★要望対応：魔物図鑑にボスも載るように、まだ無ければ未発見状態を登録しておく
+      if (typeof discoveredMonsters !== "undefined" && !(boss.id in discoveredMonsters)) discoveredMonsters[boss.id] = false;
     }
   });
 }
@@ -1128,7 +1139,46 @@ function ensureCustomItemsRegistered() {
       skillBlocks: (Array.isArray(item.blocks) && item.blocks.length > 0) ? item.blocks : undefined,
       skillVariables: (item.variables && typeof item.variables === "object") ? item.variables : undefined,
       skillActivationMode: item.skillActivationMode === "passive" ? "passive" : "active",
-      skillName: item.skillName || undefined
+      skillName: item.skillName || undefined,
+      // ★要望対応：アイテム編集の（釣竿）（釣り餌）チェック。fishing.jsがこれらのフラグを見て、
+      //   釣り施設の「釣竿を変える」「釣り餌を変える」の候補に出す
+      isFishingRod: (typeof item.isFishingRod === "boolean") ? item.isFishingRod : !!existing.isFishingRod,
+      rodDurability: item.isFishingRod ? (Number(item.rodDurability) || existing.rodDurability || 20) : existing.rodDurability,
+      rodPower: item.isFishingRod ? (Number(item.rodPower) || existing.rodPower || 3) : existing.rodPower,
+      isFishingBait: (typeof item.isFishingBait === "boolean") ? item.isFishingBait : !!existing.isFishingBait,
+      baitFishType: item.isFishingBait ? (item.baitFishType || existing.baitFishType || "") : existing.baitFishType,
+      baitBiteRate: item.isFishingBait ? (Number(item.baitBiteRate) || existing.baitBiteRate || 5) : existing.baitBiteRate
+    };
+  });
+}
+
+// ★要望対応：魚管理タブ（scenarioProject.fishItems）で追加・編集した魚を ITEM_MASTER に反映する。
+//   アイテムと同じ扱い（category:"fish"）でインベントリに入り、水色の文字色で表示される（mainfunc.js／style.css）。
+//   fishPower/fishHp/fishSize/fishType は釣りミニゲーム（fishing.js）が直接参照する
+function ensureCustomFishRegistered() {
+  if (typeof ITEM_MASTER === "undefined") return;
+  if (!Array.isArray(scenarioProject.fishItems)) scenarioProject.fishItems = [];
+  scenarioProject.fishItems.forEach(fish => {
+    const existing = ITEM_MASTER[fish.id] || {};
+    ITEM_MASTER[fish.id] = {
+      ...existing,
+      name: fish.name || existing.name || "名無しの魚",
+      category: "fish",
+      description: fish.description != null ? fish.description : (existing.description || ""),
+      rank: fish.rank || existing.rank || "F", // ★魚管理タブでは「レア度」として表示する
+      listedPrice: Number(fish.listedPrice) || existing.listedPrice || 0,
+      trueValue: Number(fish.trueValue) || existing.trueValue || 0,
+      fishType: fish.fishType || existing.fishType || "", // ★釣り餌の「釣れる魚の種類」と突き合わせる文字列
+      fishPower: Number(fish.power) || existing.fishPower || 3, // ★強さ（釣りミニゲームでの1秒ごとの攻撃力）
+      fishHp: Number(fish.hp) || existing.fishHp || 15, // ★体力
+      fishSize: Number(fish.size) || existing.fishSize || 10, // ★大きさ
+      params: {
+        種類: fish.fishType || "",
+        強さ: Number(fish.power) || 3,
+        大きさ: Number(fish.size) || 10,
+        レア度: fish.rank || "F",
+        体力: Number(fish.hp) || 15
+      }
     };
   });
 }
@@ -1395,6 +1445,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "enemies", label: "敵設定" },
   { view: "bosses", label: "ボス設定" },
   { view: "items", label: "アイテム設定" },
+  { view: "fishmgmt", label: "魚管理" }, // ★要望対応：釣り場で釣れる魚の追加・編集
   { view: "quests", label: "クエスト管理" },
   { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
   { view: "tutorials", label: "チュートリアル管理" },
@@ -1459,7 +1510,7 @@ function renderScenarioBuildPanel() {
 function ensureSharedDatalistsInOverlay() {
   const overlay = document.getElementById("scenariobuild-overlay");
   if (!overlay) return;
-  [buildBgmDatalist, buildBgmFileDatalist, buildMonsterDatalist, buildBossOnlyDatalist, buildItemDatalist, buildCharacterDatalist].forEach(builder => {
+  [buildBgmDatalist, buildBgmFileDatalist, buildMonsterDatalist, buildBossOnlyDatalist, buildItemDatalist, buildFishDatalist, buildCharacterDatalist].forEach(builder => {
     const fresh = builder();
     const existing = document.getElementById(fresh.id);
     if (existing) existing.remove();
@@ -1542,6 +1593,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "enemies") renderEntityManager(bodyEl, getEnemyManagerConfig());
   else if (scenarioBuildSubView === "bosses") { renderTrialGuardianConfig(bodyEl); renderFameThresholdConfig(bodyEl); renderEntityManager(bodyEl, getBossManagerConfig()); }
   else if (scenarioBuildSubView === "items") renderEntityManager(bodyEl, getItemManagerConfig());
+  else if (scenarioBuildSubView === "fishmgmt") renderEntityManager(bodyEl, getFishManagerConfig());
   else if (scenarioBuildSubView === "quests") renderEntityManager(bodyEl, getQuestManagerConfig());
   else if (scenarioBuildSubView === "loginbonus") renderLoginBonusManager(bodyEl); // ★要望対応：ログインボーナス
   else if (scenarioBuildSubView === "companionchat") renderCompanionChatSettingsManager(bodyEl); // ★要望対応：会話AI設定
@@ -2983,7 +3035,29 @@ function blockPreviewText(block) {
   if (block.type === "bossbattle") return block.bossKey + ((block.escorts || []).length > 0 ? `＋雑魚${block.escorts.length}体` : "");
   if (block.type === "choice") return block.prompt.slice(0, 12);
   if (block.type === "effect") {
-    const labels = { shake: "カメラシェイク", flash: "ヒットエフェクト", monochromeOn: "モノクロ開始", monochromeOff: "モノクロ終了（回想終了）", blackoutOn: "暗転する", blackoutOff: "暗転を解除する" };
+    const labels = {
+      shake: "カメラシェイク",
+      flash: "ヒットエフェクト",
+      flashWhite: "白フラッシュ",
+      monochromeOn: "モノクロ開始",
+      monochromeOff: "モノクロ終了（回想終了）",
+      sepiaOn: "セピア調開始",
+      sepiaOff: "セピア調終了",
+      invertOn: "色反転開始",
+      invertOff: "色反転終了",
+      blackoutOn: "暗転する",
+      blackoutOff: "暗転を解除する",
+      vignetteOn: "ヴィネット開始",
+      vignetteOff: "ヴィネット終了",
+      blurOn: "ぼかし開始",
+      blurOff: "ぼかし終了",
+      zoomIn: "ズームする",
+      zoomOut: "ズームを戻す",
+      weatherRainOn: "雨を降らせる",
+      weatherSnowOn: "雪を降らせる",
+      weatherSakuraOn: "桜吹雪を降らせる",
+      weatherOff: "天候演出終了"
+    };
     return labels[block.effectType] || "カメラシェイク";
   }
   if (block.type === "background") return block.path;
@@ -4235,11 +4309,47 @@ function buildBlockFormFields(chapter, block) {
     row.appendChild(labelSpan("種類："));
     const select = document.createElement("select");
     select.className = "scenariobuild-jump-select";
-    [["shake", "カメラシェイク"], ["flash", "ヒットエフェクト（赤点滅）"], ["monochromeOn", "モノクロにする（回想などの開始に）"], ["monochromeOff", "モノクロを解除する（回想終了）"], ["blackoutOn", "暗転する（画面を黒くフェードアウト）"], ["blackoutOff", "暗転を解除する（画面を元に戻す）"]].forEach(([value, label]) => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = label;
-      select.appendChild(option);
+    const groups = [
+      ["揺れ・フラッシュ", [
+        ["shake", "カメラシェイク"],
+        ["flash", "ヒットエフェクト（赤フラッシュ）"],
+        ["flashWhite", "白フラッシュ（閃光・衝撃）"]
+      ]],
+      ["色調フィルター（回想・異常事態など）", [
+        ["monochromeOn", "モノクロにする"],
+        ["monochromeOff", "モノクロを解除する"],
+        ["sepiaOn", "セピア調にする"],
+        ["sepiaOff", "セピア調を解除する"],
+        ["invertOn", "色反転にする"],
+        ["invertOff", "色反転を解除する"],
+        ["blurOn", "画面をぼかす（意識朦朧・夢の中）"],
+        ["blurOff", "ぼかしを解除する"]
+      ]],
+      ["暗転・強調", [
+        ["blackoutOn", "暗転する（画面を黒くフェードアウト）"],
+        ["blackoutOff", "暗転を解除する（画面を元に戻す）"],
+        ["vignetteOn", "画面端を暗くする（緊張感・集中演出）"],
+        ["vignetteOff", "画面端の暗さを解除する"],
+        ["zoomIn", "画面をズームする（強調）"],
+        ["zoomOut", "ズームを戻す"]
+      ]],
+      ["天候演出", [
+        ["weatherRainOn", "雨を降らせる"],
+        ["weatherSnowOn", "雪を降らせる"],
+        ["weatherSakuraOn", "桜吹雪を降らせる"],
+        ["weatherOff", "天候演出をやめる"]
+      ]]
+    ];
+    groups.forEach(([groupLabel, options]) => {
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = groupLabel;
+      options.forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        optgroup.appendChild(option);
+      });
+      select.appendChild(optgroup);
     });
     select.value = block.effectType;
     select.onchange = () => { block.effectType = select.value; persist(); };
@@ -4580,6 +4690,19 @@ function buildItemDatalist() {
     const option = document.createElement("option");
     option.value = item.id;
     option.label = item.name;
+    datalist.appendChild(option);
+  });
+  return datalist;
+}
+
+// ★要望対応：釣り場の「出現する魚」欄で、魚管理タブに登録した魚のIDを選びやすくするための入力候補
+function buildFishDatalist() {
+  const datalist = document.createElement("datalist");
+  datalist.id = "scenariobuild-fish-datalist";
+  (scenarioProject.fishItems || []).forEach(fish => {
+    const option = document.createElement("option");
+    option.value = fish.id;
+    option.label = fish.name;
     datalist.appendChild(option);
   });
   return datalist;
@@ -5020,7 +5143,14 @@ function getItemManagerConfig() {
       { key: "rank", label: "お宝ランク", type: "text", placeholder: "F〜S" },
       { key: "listedPrice", label: "定価", type: "number", placeholder: "0" },
       { key: "trueValue", label: "真価", type: "number", placeholder: "0" },
-      { key: "unsellable", label: "売れない（買取屋の売却対象から外す）", type: "checkbox" }
+      { key: "unsellable", label: "売れない（買取屋の売却対象から外す）", type: "checkbox" },
+      // ★要望対応：どのカテゴリのアイテムでも「釣竿」「釣り餌」として扱えるようにするチェック
+      { key: "isFishingRod", label: "釣竿として扱う", type: "checkbox" },
+      { key: "rodDurability", label: "（釣竿）耐久度", type: "number", placeholder: "20" },
+      { key: "rodPower", label: "（釣竿）攻撃力", type: "number", placeholder: "3" },
+      { key: "isFishingBait", label: "釣り餌として扱う", type: "checkbox" },
+      { key: "baitFishType", label: "（餌）釣れる魚の種類", type: "text", placeholder: "魚管理タブの「種類」と同じ文字列を入れてください" },
+      { key: "baitBiteRate", label: "（餌）食いつき度（高いほど早く食いつく／目安1〜10）", type: "number", placeholder: "5" }
     ],
     newEntity: () => ({ id: generateId("item"), name: "", category: "material", description: "", rank: "F", listedPrice: 0, trueValue: 0, unsellable: false }),
     quickAddOptions: categoryOptions.map(opt => ({
@@ -5035,6 +5165,46 @@ function getItemManagerConfig() {
         name: master.name, category: master.category, description: master.description,
         rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue, unsellable: !!master.unsellable,
         stackable: master.stackable
+      };
+    }
+  };
+}
+
+// ===================================================================
+// ===== サブ画面：魚管理（要望対応：釣り場で釣れる魚の追加・編集） =====
+// ===================================================================
+// ★魚も内部的にはアイテムと同じ扱いで、ensureCustomFishRegistered()を通じて
+//   ITEM_MASTER（category:"fish"）に反映される。インベントリにも普通に入り、水色の文字色で表示される。
+//   「種類」は釣り餌の「（餌）釣れる魚の種類」と同じ文字列を入れることで、その餌で狙えるようになる（fishing.js）
+function getFishManagerConfig() {
+  return {
+    note: "釣り場で釣れる「魚」を登録します。魚も中身はアイテムと同じ扱いで、釣り上げるとインベントリに入ります（文字色は水色）。「種類」は釣り餌の「釣れる魚の種類」と同じ文字列にしておくと、その餌で狙えるようになります。「強さ」「体力」は釣りミニゲームでの魚側のステータスです。施設編集タブの「釣り場」で、どの魚をどの時間帯・天候に出すか設定してください。",
+    category: "fish",
+    useDetailEditor: true,
+    getList: () => scenarioProject.fishItems,
+    fields: [
+      { key: "name", label: "名前", type: "text", placeholder: "魚の名前" },
+      { key: "description", label: "説明", type: "text", placeholder: "説明（任意）" },
+      { key: "fishType", label: "種類", type: "text", placeholder: "例：小物／大物 など自由に" },
+      { key: "power", label: "強さ（釣りミニゲームでの攻撃力）", type: "number", placeholder: "3" },
+      { key: "hp", label: "体力（釣りミニゲームでのHP）", type: "number", placeholder: "15" },
+      { key: "size", label: "大きさ（cm）", type: "number", placeholder: "10" },
+      { key: "rank", label: "レア度（F〜S目安）", type: "text", placeholder: "F〜S" },
+      { key: "listedPrice", label: "定価（売却額の目安）", type: "number", placeholder: "0" },
+      { key: "trueValue", label: "真価", type: "number", placeholder: "0" }
+    ],
+    newEntity: () => ({
+      id: generateId("fish"), name: "", description: "", fishType: "", power: 3, hp: 15, size: 10,
+      rank: "F", listedPrice: 0, trueValue: 0
+    }),
+    onChange: ensureCustomFishRegistered,
+    getDefaultFromMaster: (id) => {
+      const master = typeof ITEM_MASTER !== "undefined" ? ITEM_MASTER[id] : null;
+      if (!master || master.category !== "fish") return null;
+      return {
+        name: master.name, description: master.description, fishType: master.fishType,
+        power: master.fishPower, hp: master.fishHp, size: master.fishSize,
+        rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue
       };
     }
   };
@@ -7881,7 +8051,7 @@ function buildClassStatsRow(className) {
 // ===================================================================
 // ===== サブ画面：施設編集（村に追加できる「酒場/宿屋/店/冒険する」以外の施設） =====
 // ===================================================================
-const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", flavor: "その他（セリフのみ）" };
+const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", flavor: "その他（セリフのみ）" };
 
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
@@ -8251,12 +8421,16 @@ function buildFacilityRow(facility) {
     betRow.appendChild(maxBetInput);
     infoEl.appendChild(betRow);
     
-    // ★スロットの絵柄画像・揃う確率（重み）。画像パスを1つも設定していない絵柄は、ゲーム内では絵文字で表示される。
-    //   「揃う確率」は数値が大きいほどその絵柄が出やすくなる（他の絵柄との相対的な重み。既定値と同じ考え方）
+    // ★修正（バグ報告対応）：以前は「揃う確率」という表示のまま、実際には1マスあたりの
+    //   出現しやすさ（重み、他の絵柄との相対比）を入力させていたため、表示と実態が食い違っていた。
+    //   入力自体はこれまで通り「重み」（ゲームロジック側の抽選に使う値）のままとし、
+    //   実際に3マス揃う確率（＝重み÷全絵柄の重み合計、の3乗）を別途その場で計算して表示するようにする。
+    //   複数ライン同時揃いは各マスが独立抽選される仕組みから自然に生じるため、
+    //   その確率は単純に「確率×確率」の掛け算で近似される（設計方針として確定済み）
     const slotNoteEl = document.createElement("p");
     slotNoteEl.className = "devmode-note";
     slotNoteEl.style.margin = "10px 0 2px";
-    slotNoteEl.textContent = "スロットの絵柄（任意で施設ごとにカスタマイズ）。画像は空欄のままなら絵文字で表示されます。「揃う確率」は数値が大きいほどその絵柄が出やすくなります（他の絵柄との相対的な重み。空欄なら既定値のまま）：";
+    slotNoteEl.textContent = "スロットの絵柄（任意で施設ごとにカスタマイズ）。画像は空欄のままなら絵文字で表示されます。「出現しやすさ（重み）」は数値が大きいほどその絵柄が出やすくなります（他の絵柄との相対的な重み。空欄なら既定値のまま）。実際に1ラインが揃う確率は、その場で自動計算して表示します：";
     infoEl.appendChild(slotNoteEl);
     
     if (!facility.slotImages || typeof facility.slotImages !== "object") facility.slotImages = {};
@@ -8268,6 +8442,29 @@ function buildFacilityRow(facility) {
       { key: "gem", label: "宝石（絵文字：💎）", defaultWeight: 12 },
       { key: "seven", label: "セブン（絵文字：7）", defaultWeight: 8 }
     ];
+    const slotProbabilitySpans = {};
+    let slotTotalProbabilityEl = null;
+    // ★実際の「揃う確率」を再計算して表示を更新する。重みを1つ変えると全絵柄の割合が変わるため、毎回全行分を計算し直す
+    function refreshSlotProbabilityDisplay() {
+      const totalWeight = SLOT_SYMBOL_ROWS.reduce((sum, row) => {
+        const override = facility.slotWeights[row.key];
+        const w = (typeof override === "number" && override > 0) ? override : row.defaultWeight;
+        return sum + w;
+      }, 0);
+      let anyLineTotal = 0;
+      SLOT_SYMBOL_ROWS.forEach(row => {
+        const override = facility.slotWeights[row.key];
+        const w = (typeof override === "number" && override > 0) ? override : row.defaultWeight;
+        const perCell = totalWeight > 0 ? w / totalWeight : 0;
+        const lineProb = Math.pow(perCell, 3); // ★3マス（1ライン）とも同じ絵柄になる確率
+        anyLineTotal += lineProb;
+        const span = slotProbabilitySpans[row.key];
+        if (span) span.textContent = `（1ラインが揃う確率：約${(lineProb * 100).toFixed(2)}%）`;
+      });
+      if (slotTotalProbabilityEl) {
+        slotTotalProbabilityEl.textContent = `いずれかの絵柄で1ラインが揃う確率の合計：約${(anyLineTotal * 100).toFixed(2)}%（複数ラインの同時揃いは、これらの確率同士がさらに掛け算される形で自然に発生します）`;
+      }
+    }
     SLOT_SYMBOL_ROWS.forEach(({ key, label, defaultWeight }) => {
       const slotRow = document.createElement("div");
       slotRow.className = "scenariobuild-condition-row";
@@ -8284,7 +8481,7 @@ function buildFacilityRow(facility) {
         markScenarioBuildDirty();
       };
       slotRow.appendChild(pathInput);
-      slotRow.appendChild(labelSpan("揃う確率："));
+      slotRow.appendChild(labelSpan("出現しやすさ（重み）："));
       const weightInput = document.createElement("input");
       weightInput.type = "number";
       weightInput.min = "0";
@@ -8296,10 +8493,100 @@ function buildFacilityRow(facility) {
         const value = Number(weightInput.value);
         if (weightInput.value !== "" && value > 0) facility.slotWeights[key] = value; else delete facility.slotWeights[key];
         markScenarioBuildDirty();
+        refreshSlotProbabilityDisplay();
       };
       slotRow.appendChild(weightInput);
+      const probSpan = document.createElement("span");
+      probSpan.className = "devmode-note";
+      probSpan.style.marginLeft = "4px";
+      slotProbabilitySpans[key] = probSpan;
+      slotRow.appendChild(probSpan);
       infoEl.appendChild(slotRow);
     });
+    slotTotalProbabilityEl = document.createElement("p");
+    slotTotalProbabilityEl.className = "devmode-note";
+    slotTotalProbabilityEl.style.margin = "4px 0 10px";
+    infoEl.appendChild(slotTotalProbabilityEl);
+    refreshSlotProbabilityDisplay();
+  } else if (facility.type === "fishing") {
+    // ★要望対応：釣り場施設。出現する魚を「時間帯」「天候」ごとに重み付きで登録する。
+    //   時間帯はplayer.gameHour（player.js）、天候はcurrentWeatherType（mainfunc.js）を実際の釣りで参照する
+    const fishingNote = document.createElement("p");
+    fishingNote.className = "devmode-note";
+    fishingNote.textContent = "この釣り場で釣れる魚を登録してください（魚IDは「魚管理」タブで作った魚から選べます）。時間帯・天候を「指定なし」にすると、いつでもその条件を満たします。重みが大きいほど釣れやすくなります。釣竿・釣り餌はここではなく、それらを扱う「店」タイプの施設で売ってください（アイテム設定で釣竿・釣り餌チェックを付けたアイテムです）。";
+    infoEl.appendChild(fishingNote);
+    
+    if (!Array.isArray(facility.fishingSpots)) facility.fishingSpots = [];
+    facility.fishingSpots.forEach((entry, i) => {
+      const spotRow = document.createElement("div");
+      spotRow.className = "scenariobuild-condition-row";
+      
+      spotRow.appendChild(labelSpan("魚ID："));
+      const fishInput = document.createElement("input");
+      fishInput.type = "text";
+      fishInput.className = "scenariobuild-title-input";
+      fishInput.placeholder = "魚ID";
+      fishInput.setAttribute("list", "scenariobuild-fish-datalist");
+      fishInput.value = entry.fishId || "";
+      fishInput.onchange = () => { entry.fishId = fishInput.value.trim(); markScenarioBuildDirty(); };
+      spotRow.appendChild(fishInput);
+      
+      spotRow.appendChild(labelSpan("重み："));
+      const weightInput = document.createElement("input");
+      weightInput.type = "number";
+      weightInput.min = "1";
+      weightInput.className = "scenariobuild-condition-input";
+      weightInput.value = entry.weight != null ? entry.weight : 1;
+      weightInput.onchange = () => { entry.weight = Math.max(1, Number(weightInput.value) || 1); markScenarioBuildDirty(); };
+      spotRow.appendChild(weightInput);
+      
+      spotRow.appendChild(labelSpan("時間帯："));
+      const timeSelect = document.createElement("select");
+      timeSelect.className = "scenariobuild-jump-select";
+      [["any", "指定なし"], ["morning", "朝（5〜10時）"], ["day", "昼（10〜16時）"], ["evening", "夕（16〜19時）"], ["night", "夜（19〜5時）"]].forEach(([v, label]) => {
+        const opt = document.createElement("option");
+        opt.value = v; opt.textContent = label;
+        timeSelect.appendChild(opt);
+      });
+      timeSelect.value = entry.timeOfDay || "any";
+      timeSelect.onchange = () => { entry.timeOfDay = timeSelect.value; markScenarioBuildDirty(); };
+      spotRow.appendChild(timeSelect);
+      
+      spotRow.appendChild(labelSpan("天候："));
+      const weatherSelect = document.createElement("select");
+      weatherSelect.className = "scenariobuild-jump-select";
+      [["any", "指定なし"], ["clear", "晴れ（演出無し）"], ["rain", "雨"], ["snow", "雪"], ["sakura", "桜吹雪"]].forEach(([v, label]) => {
+        const opt = document.createElement("option");
+        opt.value = v; opt.textContent = label;
+        weatherSelect.appendChild(opt);
+      });
+      weatherSelect.value = entry.weather || "any";
+      weatherSelect.onchange = () => { entry.weather = weatherSelect.value; markScenarioBuildDirty(); };
+      spotRow.appendChild(weatherSelect);
+      
+      const removeSpotBtn = document.createElement("button");
+      removeSpotBtn.className = "devmode-btn devmode-btn-danger";
+      removeSpotBtn.textContent = "×";
+      removeSpotBtn.onclick = (event) => {
+        event.stopPropagation();
+        facility.fishingSpots.splice(i, 1);
+        markScenarioBuildDirty();
+        renderScenarioBuildPanel();
+      };
+      spotRow.appendChild(removeSpotBtn);
+      infoEl.appendChild(spotRow);
+    });
+    
+    const addSpotBtn = document.createElement("button");
+    addSpotBtn.className = "devmode-btn";
+    addSpotBtn.textContent = "＋出現する魚を追加";
+    addSpotBtn.onclick = (event) => {
+      event.stopPropagation();
+      facility.fishingSpots.push({ fishId: "", weight: 1, timeOfDay: "any", weather: "any" });
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    infoEl.appendChild(addSpotBtn);
   } else if (facility.type === "shop") {
     const buyRow = document.createElement("div");
     buyRow.className = "scenariobuild-condition-row";
@@ -10598,6 +10885,7 @@ function getEntityManagerConfigByCategory(category) {
   if (category === "enemies") return getEnemyManagerConfig();
   if (category === "bosses") return getBossManagerConfig();
   if (category === "items") return getItemManagerConfig();
+  if (category === "fish") return getFishManagerConfig();
   if (category === "bgmTracks") return getBgmManagerConfig();
   return null;
 }
@@ -11332,7 +11620,7 @@ function renderDataManager(container) {
   
   const statsEl = document.createElement("p");
   statsEl.className = "devmode-note";
-  statsEl.textContent = `現在：話${scenarioProject.chapters.length}件／キャラ${scenarioProject.characters.length}件／敵${scenarioProject.enemies.length}件／ボス${scenarioProject.bosses.length}件／アイテム${scenarioProject.items.length}件／技${scenarioProject.skills.length}件／仲間${scenarioProject.companions.length}件／マップ${scenarioProject.mapAreas.length}件／フラグ${scenarioProject.flagDefs.length}件／変数${scenarioProject.variableDefs.length}件／レシピ${scenarioProject.recipes.length}件／ランダム名前${scenarioProject.randomNamePool.length}件`;
+  statsEl.textContent = `現在：話${scenarioProject.chapters.length}件／キャラ${scenarioProject.characters.length}件／敵${scenarioProject.enemies.length}件／ボス${scenarioProject.bosses.length}件／アイテム${scenarioProject.items.length}件／魚${(scenarioProject.fishItems || []).length}件／技${scenarioProject.skills.length}件／仲間${scenarioProject.companions.length}件／マップ${scenarioProject.mapAreas.length}件／フラグ${scenarioProject.flagDefs.length}件／変数${scenarioProject.variableDefs.length}件／レシピ${scenarioProject.recipes.length}件／ランダム名前${scenarioProject.randomNamePool.length}件`;
   container.appendChild(statsEl);
 }
 
@@ -11381,6 +11669,7 @@ function exportGameSettingsAsJsFile() {
     enemies: scenarioProject.enemies,
     bosses: scenarioProject.bosses,
     items: scenarioProject.items,
+    fishItems: scenarioProject.fishItems, // ★要望対応：魚管理タブ
     skills: scenarioProject.skills,
     statusAilments: scenarioProject.statusAilments,
     statusBuffs: scenarioProject.statusBuffs,
@@ -12099,7 +12388,7 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
   }
   
   if (block.type === "give") {
-    ensureCustomItemsRegistered(); // ★アイテム設定で追加したアイテムを念のため最新の状態にしてから付与する
+    ensureCustomItemsRegistered(); ensureCustomFishRegistered(); // ★アイテム設定・魚管理で追加したものを念のため最新の状態にしてから付与する
     if (block.itemId && typeof ITEM_MASTER !== "undefined" && ITEM_MASTER[block.itemId]) {
       addItem(block.itemId, Math.max(1, block.quantity || 1)); // inventory.js
       renderStatusHUD();
@@ -12155,16 +12444,47 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     } else if (block.effectType === "flash" && typeof triggerHitFlash === "function") {
       triggerHitFlash(); // mainfunc.js
       await wait(200);
+    } else if (block.effectType === "flashWhite" && typeof triggerWhiteFlash === "function") {
+      triggerWhiteFlash(); // mainfunc.js（要望対応：白い閃光フラッシュ）
+      await wait(300);
     } else if (block.effectType === "monochromeOn" && typeof setMonochromeEffect === "function") {
       setMonochromeEffect(true); // mainfunc.js（要望対応：回想演出などに使うモノクロ表示）
     } else if (block.effectType === "monochromeOff" && typeof setMonochromeEffect === "function") {
       setMonochromeEffect(false); // mainfunc.js
+    } else if (block.effectType === "sepiaOn" && typeof setSepiaEffect === "function") {
+      setSepiaEffect(true); // mainfunc.js（要望対応：セピア調の回想演出）
+    } else if (block.effectType === "sepiaOff" && typeof setSepiaEffect === "function") {
+      setSepiaEffect(false); // mainfunc.js
+    } else if (block.effectType === "invertOn" && typeof setInvertEffect === "function") {
+      setInvertEffect(true); // mainfunc.js（要望対応：色反転演出）
+    } else if (block.effectType === "invertOff" && typeof setInvertEffect === "function") {
+      setInvertEffect(false); // mainfunc.js
+    } else if (block.effectType === "blurOn" && typeof setBlurEffect === "function") {
+      setBlurEffect(true); // mainfunc.js（要望対応：ぼかし演出。意識朦朧・夢の中など）
+    } else if (block.effectType === "blurOff" && typeof setBlurEffect === "function") {
+      setBlurEffect(false); // mainfunc.js
     } else if (block.effectType === "blackoutOn" && typeof setBlackoutEffect === "function") {
       setBlackoutEffect(true); // mainfunc.js（要望対応：暗転演出。画面が黒くなるまで少し待つ）
       await wait(650);
     } else if (block.effectType === "blackoutOff" && typeof setBlackoutEffect === "function") {
       setBlackoutEffect(false); // mainfunc.js
       await wait(650);
+    } else if (block.effectType === "vignetteOn" && typeof setVignetteEffect === "function") {
+      setVignetteEffect(true); // mainfunc.js（要望対応：ヴィネット演出。緊張感・集中演出）
+    } else if (block.effectType === "vignetteOff" && typeof setVignetteEffect === "function") {
+      setVignetteEffect(false); // mainfunc.js
+    } else if (block.effectType === "zoomIn" && typeof setZoomEffect === "function") {
+      setZoomEffect(true); // mainfunc.js（要望対応：ズーム演出。盛り上がる場面の強調）
+    } else if (block.effectType === "zoomOut" && typeof setZoomEffect === "function") {
+      setZoomEffect(false); // mainfunc.js
+    } else if (block.effectType === "weatherRainOn" && typeof setWeatherEffect === "function") {
+      setWeatherEffect("rain"); // mainfunc.js（要望対応：天候演出）
+    } else if (block.effectType === "weatherSnowOn" && typeof setWeatherEffect === "function") {
+      setWeatherEffect("snow"); // mainfunc.js
+    } else if (block.effectType === "weatherSakuraOn" && typeof setWeatherEffect === "function") {
+      setWeatherEffect("sakura"); // mainfunc.js
+    } else if (block.effectType === "weatherOff" && typeof setWeatherEffect === "function") {
+      setWeatherEffect(null); // mainfunc.js
     }
     return nextDefaultId;
   }
