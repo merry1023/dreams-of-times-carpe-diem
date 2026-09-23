@@ -4915,6 +4915,18 @@ html, body {
   background-color: rgba(255, 193, 7, 0.2);
 }
 
+/* ★鍛冶屋・素材合成屋・買取屋（素材屋）共通：品一覧のスクロール欄。
+   料理タブ追加時に誤って丸ごと消してしまっていたのを復元（バグ修正） */
+.crafting-recipe-list {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+}
+
 
 /* ★要望対応：料理タブ */
 .cooking-root {
