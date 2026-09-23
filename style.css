@@ -5079,6 +5079,35 @@ html, body {
   font-size: 0.9em;
 }
 
+/* ★要望対応：キーボード操作中のカーソル位置を示すハイライト */
+.cooking-cursor {
+  outline: 2px solid #ffc107;
+  outline-offset: 1px;
+}
+
+.cooking-slot-row-editing {
+  background-color: rgba(255, 193, 7, 0.12);
+  border-radius: 4px;
+}
+
+/* ★要望対応：「作る」を押してから完成するまでのゲージ */
+.cooking-gauge-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 12px;
+}
+
+.cooking-gauge-outer {
+  width: 100%;
+  max-width: 320px;
+}
+
+.cooking-gauge-fill {
+  background-color: #ffc107;
+}
+
   flex: 1;
   min-width: 0;
   overflow-y: auto;

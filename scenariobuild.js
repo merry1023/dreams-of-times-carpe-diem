@@ -1152,7 +1152,16 @@ function ensureCustomItemsRegistered() {
       // ★baitFishType（旧・単一文字列）からbaitFishTypes（複数選択の配列）へ移行。
       //   古いセーブ・古いアイテムデータにbaitFishTypeしか無い場合はそれを配列化して引き継ぐ
       baitFishTypes: item.isFishingBait ? normalizeBaitFishTypes(item.baitFishTypes, item.baitFishType, existing.baitFishTypes) : existing.baitFishTypes,
-      baitBiteRate: item.isFishingBait ? (Number(item.baitBiteRate) || existing.baitBiteRate || 5) : existing.baitBiteRate
+      baitBiteRate: item.isFishingBait ? (Number(item.baitBiteRate) || existing.baitBiteRate || 5) : existing.baitBiteRate,
+      // ★バグ修正：料理タブ用のフィールドがここで一切ITEM_MASTERへコピーされておらず、
+      //   アイテム管理タブで耐久度・スロット数・バフ等を設定しても実際のゲームには反映されていなかった
+      toolDurability: item.category === "cookingTool" ? (Number(item.toolDurability) || existing.toolDurability || 30) : existing.toolDurability,
+      toolSlotCount: item.category === "cookingTool" ? (Number(item.toolSlotCount) || existing.toolSlotCount || 3) : existing.toolSlotCount,
+      foodBuffKind: item.category === "food" ? (item.foodBuffKind || existing.foodBuffKind || "") : existing.foodBuffKind,
+      foodBuffDuration: item.category === "food" ? (Number(item.foodBuffDuration) || existing.foodBuffDuration || 3) : existing.foodBuffDuration,
+      foodBuffPower: item.category === "food" ? (Number(item.foodBuffPower) || existing.foodBuffPower || 0) : existing.foodBuffPower,
+      isRecipeItem: (typeof item.isRecipeItem === "boolean") ? item.isRecipeItem : !!existing.isRecipeItem,
+      unlockRecipeId: item.isRecipeItem ? (item.unlockRecipeId || existing.unlockRecipeId || "") : existing.unlockRecipeId
     };
   });
 }
@@ -5689,6 +5698,22 @@ function buildRecipeRow(recipe) {
     toolSelect.onchange = () => { recipe.toolItemId = toolSelect.value || ""; markScenarioBuildDirty(); };
     typeRow.appendChild(toolSelect);
     recipe.mode = "create"; // ★料理に強化モードは無いので、常に「作成」扱いで固定する
+    
+    // ★要望対応：「作る」を押してから完成するまで、ゲージが溜まるのを待たせる秒数
+    typeRow.appendChild(labelSpan("完成までの待ち時間（秒）："));
+    const cookTimeInput = document.createElement("input");
+    cookTimeInput.type = "number";
+    cookTimeInput.min = "0";
+    cookTimeInput.step = "0.5";
+    cookTimeInput.className = "scenariobuild-condition-input";
+    cookTimeInput.placeholder = "3";
+    cookTimeInput.value = recipe.cookTimeSeconds != null ? recipe.cookTimeSeconds : "";
+    cookTimeInput.onchange = () => {
+      const value = Number(cookTimeInput.value);
+      recipe.cookTimeSeconds = (cookTimeInput.value !== "" && value >= 0) ? value : null;
+      markScenarioBuildDirty();
+    };
+    typeRow.appendChild(cookTimeInput);
   } else {
     typeRow.appendChild(labelSpan("対象の店："));
     const facilitySelect = document.createElement("select");
