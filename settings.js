@@ -73,21 +73,29 @@ function getPlayTabVisibilityMap() {
   return gameSettings.playTabVisibility;
 }
 
-// ★要望対応：シナリオエディタの「タブ管理」で会話AI設定（companionchat）を有効にしているかどうか。
-//   scenariobuild.jsのscenarioProjectを参照する（未読み込み等で参照できない場合はfalse扱い）
+// ★要望対応：シナリオエディタの「タブ管理」で、このシナリオのプレイ画面タブ（PLAY_SCREEN_TAB_DEFS）を
+//   タブごとに有効／無効にできる。scenarioProject.scenarioBuildTabVisibility を、
+//   （以前のようにシナリオエディタ自身のタブではなく）PLAY_SCREEN_TAB_DEFSのidをキーに見る
+//   （未読み込み等で参照できない場合や、明示的な設定が無い場合は、そのタブのenabledByDefaultに従う）
+function isScenarioPlayTabEnabled(tabId) {
+  if (typeof scenarioProject !== "undefined" && scenarioProject && scenarioProject.scenarioBuildTabVisibility
+    && typeof scenarioProject.scenarioBuildTabVisibility[tabId] === "boolean") {
+    return scenarioProject.scenarioBuildTabVisibility[tabId];
+  }
+  const def = PLAY_SCREEN_TAB_DEFS.find(t => t.id === tabId);
+  return def ? def.enabledByDefault !== false : true;
+}
+
+// ★互換用：以前は「会話」タブ専用の判定関数だったが、中身は上記の汎用判定に統一した
 function isScenarioCompanionChatEnabled() {
-  return typeof scenarioProject !== "undefined" && !!scenarioProject
-    && !!scenarioProject.scenarioBuildTabVisibility
-    && scenarioProject.scenarioBuildTabVisibility.companionchat === true;
+  return isScenarioPlayTabEnabled("tab-companionchat");
 }
 
 function isPlayTabEnabled(tabId) {
   if (!tabId) return false;
-  // ★バグ修正：シナリオエディタのタブ管理で会話AI設定をONにしても、以前はプレイヤー側の「会話」タブが
-  //   出てこなかった（プレイヤー自身の設定は、シナリオ側の有効/無効と一切連動していなかったため）。
-  //   シナリオ側で無効なままの時は、プレイヤーが自分の設定でONにしていても表示しない
-  //   （機能自体がこのシナリオに用意されていないため）
-  if (tabId === "tab-companionchat" && !isScenarioCompanionChatEnabled()) return false;
+  // ★バグ修正：シナリオエディタのタブ管理でOFFにしたタブは、プレイヤー自身の設定でONにしていても表示しない
+  //   （このシナリオでは用意されていない／使わせたくない機能のため）
+  if (!isScenarioPlayTabEnabled(tabId)) return false;
   const map = getPlayTabVisibilityMap();
   return map[tabId] !== false;
 }
