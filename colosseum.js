@@ -52,6 +52,8 @@ function isColosseumBossRound(floorNumber) {
   return COLOSSEUM_BOSS_ROUND_NUMBERS.includes(floorNumber);
 }
 
+const COLOSSEUM_TEN_MULTIPLE_ROUND_NUMBERS = [10, 20, 30, 40, 50, 60, 70, 80, 90]; // ★「10の倍数回戦」＝節目の回戦のうち、99回戦目（最終回）を除いたもの
+
 // ★n回戦目に出す敵編成と、指定されていればそのレベル（節目の回戦のみ指定可能）を返す
 function getColosseumFloorEncounter(facility, floorNumber) {
   if (isColosseumBossRound(floorNumber)) {
@@ -61,25 +63,35 @@ function getColosseumFloorEncounter(facility, floorNumber) {
       ? config.enemyMonsterKeys.filter(id => id && MONSTER_MASTER[id])
       : [];
     const fixedLevel = (Number(config.level) > 0) ? Number(config.level) : null;
-    // ★要望対応：レベルを指定した節目回戦は、先頭（＝ボス本体。battle.jsのisBoss判定と同じ並び順の約束）を
-    //   指定レベルのまま、それ以外（雑魚敵）は「指定レベル×0.6」を新しいレベルとして割り当てる
-    //   （ステータスを直接0.6倍にするのではなく、あくまでレベルを0.6倍にした上で、通常のレベル別ステータス
-    //   計算式（scaleMonsterStatsForLevel）にそのまま乗せる）。startBattleのoptions.perEnemyLevelsに渡す
-    const perEnemyLevels = fixedLevel != null
-      ? enemyMonsterKeys.map((id, i) => i === 0 ? fixedLevel : Math.max(1, Math.round(fixedLevel * 0.6)))
-      : null;
-    return { enemyMonsterKeys, fixedLevel, perEnemyLevels };
+    return { enemyMonsterKeys, fixedLevel };
   }
-  // ★それ以外の回戦：施設編集で登録した「様々な敵」のプールから、重複ありで5体ランダムに選ぶ
+  // ★それ以外の回戦（雑魚敵＝10の倍数回戦以外でランダムに出る敵）：
+  //   施設編集で登録した「様々な敵」のプールから、重複ありで5体ランダムに選ぶ
   const pool = Array.isArray(facility.regularEnemyPool)
     ? facility.regularEnemyPool.filter(id => id && MONSTER_MASTER[id])
     : [];
-  if (pool.length === 0) return { enemyMonsterKeys: [], fixedLevel: null, perEnemyLevels: null };
+  if (pool.length === 0) return { enemyMonsterKeys: [], fixedLevel: null };
   const enemyMonsterKeys = [];
   for (let i = 0; i < 5; i++) {
     enemyMonsterKeys.push(pool[Math.floor(Math.random() * pool.length)]);
   }
-  return { enemyMonsterKeys, fixedLevel: null, perEnemyLevels: null };
+  // ★要望対応：雑魚敵（10の倍数回戦以外でランダムに出る敵）のレベルは、
+  //   一番回戦が近くて強い10の倍数回戦目（＝直後に控えている10の倍数回戦。無ければ直前のもの）に
+  //   指定してあるレベル×0.6にする（ステータスを直接0.6倍にするのではなく、レベルを0.6倍にした値を
+  //   新しいレベルとして扱い、通常のレベル別ステータス計算式にそのまま乗せる）
+  const nearestTenMultipleLevel = getColosseumNearestTenMultipleLevel(facility, floorNumber);
+  const fixedLevel = nearestTenMultipleLevel != null ? Math.max(1, Math.round(nearestTenMultipleLevel * 0.6)) : null;
+  return { enemyMonsterKeys, fixedLevel };
+}
+
+// ★floorNumberから見て、一番近くて強い（＝この先すぐに迫ってくる）10の倍数回戦のレベルを返す。
+//   90回戦より後（91〜98回戦）など、この先に10の倍数回戦が無い場合は、直前の10の倍数回戦にフォールバックする。
+//   該当するレベルが指定されていない（0のまま）場合はnull＝今まで通り自動決定
+function getColosseumNearestTenMultipleLevel(facility, floorNumber) {
+  const upcoming = COLOSSEUM_TEN_MULTIPLE_ROUND_NUMBERS.find(n => n >= floorNumber);
+  const candidate = upcoming != null ? upcoming : COLOSSEUM_TEN_MULTIPLE_ROUND_NUMBERS[COLOSSEUM_TEN_MULTIPLE_ROUND_NUMBERS.length - 1];
+  const config = facility.bossRoundConfig && facility.bossRoundConfig[candidate];
+  return (config && Number(config.level) > 0) ? Number(config.level) : null;
 }
 
 function showColosseumLobbyMenu() {
@@ -150,8 +162,7 @@ async function runColosseumFloor() {
   changeSpeaker("");
   await displayMessage(`${colosseumCurrentFloor}回戦目！` + (isColosseumBossRound(colosseumCurrentFloor) ? "\n強大な気配を感じる……！" : ""));
   const battleOptions = { isColosseum: true };
-  if (encounter.fixedLevel != null) battleOptions.fixedLevel = encounter.fixedLevel; // ★節目の回戦で指定されていれば、そのレベルで固定する
-  if (encounter.perEnemyLevels) battleOptions.perEnemyLevels = encounter.perEnemyLevels; // ★節目の回戦：雑魚敵だけ指定レベル×0.6に弱める
+  if (encounter.fixedLevel != null) battleOptions.fixedLevel = encounter.fixedLevel; // ★節目の回戦の指定レベル、または雑魚敵回戦なら直近の節目回戦レベル×0.6で固定する
   await startBattle(encounter.enemyMonsterKeys, battleOptions); // battle.js
 }
 
