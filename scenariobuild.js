@@ -1438,8 +1438,9 @@ window.addEventListener("beforeunload", (event) => {
 });
 
 // ★左（メイン）＝話一覧／ブロックエディタ、右（サブ）＝キャラ・敵・ボス・アイテム・BGM・データ管理。
-//   ゲームの画面構成（メイン画面／サブ画面）と同じ考え方で、常に両方が見えている状態にする
-//   タブ管理を追加し、会話AI設定は安定するまで非表示にする（デフォルトOFF）
+//   ゲームの画面構成（メイン画面／サブ画面）と同じ考え方で、常に両方が見えている状態にする。
+//   これらエディタ自身のタブは常に全部表示される（非表示切替は無い）。「タブ管理」はこのエディタの
+//   タブではなく、プレイヤーがこのシナリオを遊ぶ時の画面タブの方を管理する（バグ修正で変更）
 const SCENARIOBUILD_SUB_TABS = [
   { view: "characters", label: "キャラ管理" },
   { view: "enemies", label: "敵設定" },
@@ -1457,7 +1458,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "randomnames", label: "ランダム名前管理" }, // ★要望対応：オークションNPC等のランダム名前バリエーション管理
   { view: "elements", label: "属性管理" }, // ★要望対応：属性一覧と属性相性表
   { view: "loginbonus", label: "ログボ報酬" }, // ★要望対応：ログインボーナス（7日分の報酬編集）
-  { view: "companionchat", label: "会話AI設定", enabledByDefault: false }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集。安定するまで非表示
+  { view: "companionchat", label: "会話AI設定" }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集
   { view: "companions", label: "仲間編集" },
   { view: "classes", label: "職業編集" },
   { view: "bgm", label: "BGM設定" },
@@ -1467,34 +1468,19 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "endings", label: "エンディング一覧" },
   { view: "variables", label: "変数一覧" }, // ★要望対応：式の中で使えるシステム変数の名前が分かるよう、サブ画面に一覧を出す
   { view: "data", label: "データ管理" },
-  { view: "tabmanager", label: "タブ管理" }
+  { view: "tabmanager", label: "タブ管理" } // ★バグ修正：中身はプレイ画面タブ（メイン/インベントリ/スキル…）の管理に変更した
 ];
 
-function getScenarioBuildTabVisibilityMap() {
-  if (!scenarioProject || !scenarioProject.scenarioBuildTabVisibility || typeof scenarioProject.scenarioBuildTabVisibility !== "object") {
+// ★要望対応：以前はここでシナリオエディタ自身の右側タブ（キャラ管理・敵設定…）の表示/非表示を
+//   管理していたが、本来やりたかったのは「このシナリオをプレイする時の画面タブ（メイン/インベントリ/
+//   スキル…）」の方の管理だったため、PLAY_SCREEN_TAB_DEFS（settings.js）を対象にするよう修正した。
+//   判定自体はisScenarioPlayTabEnabled()（settings.js）に一本化してあるので、ここでは編集用の
+//   書き込みヘルパーだけ持つ
+function setScenarioPlayTabEnabled(tabId, enabled) {
+  if (!scenarioProject.scenarioBuildTabVisibility || typeof scenarioProject.scenarioBuildTabVisibility !== "object") {
     scenarioProject.scenarioBuildTabVisibility = {};
   }
-  SCENARIOBUILD_SUB_TABS.forEach(tab => {
-    if (tab.view === "tabmanager") return;
-    const hasExplicitValue = typeof scenarioProject.scenarioBuildTabVisibility[tab.view] === "boolean";
-    if (!hasExplicitValue) {
-      scenarioProject.scenarioBuildTabVisibility[tab.view] = tab.enabledByDefault !== false;
-    }
-  });
-  if (typeof scenarioProject.scenarioBuildTabVisibility.companionchat !== "boolean") {
-    scenarioProject.scenarioBuildTabVisibility.companionchat = false;
-  }
-  return scenarioProject.scenarioBuildTabVisibility;
-}
-
-function isScenarioBuildTabEnabled(view) {
-  if (view === "tabmanager") return true;
-  const visibility = getScenarioBuildTabVisibilityMap();
-  return visibility[view] !== false;
-}
-
-function getScenarioBuildVisibleTabs() {
-  return SCENARIOBUILD_SUB_TABS.filter(tab => tab.view === "tabmanager" || isScenarioBuildTabEnabled(tab.view));
+  scenarioProject.scenarioBuildTabVisibility[tabId] = enabled;
 }
 
 function renderScenarioBuildPanel() {
@@ -1561,7 +1547,7 @@ function renderScenarioBuildSub() {
   const tabsEl = document.getElementById("scenariobuild-sub-tabs");
   const bodyEl = document.getElementById("scenariobuild-sub-content");
   if (!tabsEl || !bodyEl) return;
-  const visibleTabs = getScenarioBuildVisibleTabs();
+  const visibleTabs = SCENARIOBUILD_SUB_TABS; // ★エディタ自身のタブは常に全て表示する（非表示切替は廃止。「タブ管理」はプレイ画面タブの方を管理する）
   if (!visibleTabs.some(tab => tab.view === scenarioBuildSubView)) {
     scenarioBuildSubView = visibleTabs[0] ? visibleTabs[0].view : "characters";
   }
@@ -1621,17 +1607,20 @@ function renderScenarioBuildSub() {
 // ===================================================================
 // ===== 変数一覧（要望対応：式の中で使えるシステム変数の名前が分からないので一覧を出してほしい） =====
 // ===================================================================
+// ★要望対応：このシナリオをプレイする時の画面タブ（メイン/インベントリ/スキル/仲間/会話/強さ/装備/
+//   便利/ログ/設定）を、タブごとに有効／無効にできる。ここでOFFにしたタブは、プレイヤー自身の
+//   個人設定（設定タブの「プレイ画面のタブ管理」）でONにしていても表示されない（settings.js側で判定）
 function renderScenarioBuildTabManager(container) {
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
-  introEl.textContent = "シナリオエディタの右側タブを有効／無効に切り替えられます。会話AI設定はまだ安定していないため、デフォルトでは非表示です。";
+  introEl.textContent = "このシナリオをプレイする時に、下部の「サブ画面」に出すタブを選べます（シナリオエディタ自身の右側タブとは無関係です）。ここでOFFにしたタブは、プレイヤーが自分の設定でONにしていても表示されません。「会話」タブは、会話AI設定でキャラクターを用意していない場合は意味が無いため、デフォルトではOFFにしています。";
   container.appendChild(introEl);
   
   const rows = document.createElement("div");
   rows.className = "scenariobuild-list";
   container.appendChild(rows);
   
-  SCENARIOBUILD_SUB_TABS.filter(tab => tab.view !== "tabmanager").forEach(tab => {
+  PLAY_SCREEN_TAB_DEFS.forEach(tab => {
     const row = document.createElement("label");
     row.className = "scenariobuild-condition-row";
     row.style.justifyContent = "space-between";
@@ -1643,14 +1632,10 @@ function renderScenarioBuildTabManager(container) {
     
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.checked = isScenarioBuildTabEnabled(tab.view);
+    checkbox.checked = isScenarioPlayTabEnabled(tab.id);
     checkbox.onchange = () => {
-      getScenarioBuildTabVisibilityMap();
-      scenarioProject.scenarioBuildTabVisibility[tab.view] = checkbox.checked;
+      setScenarioPlayTabEnabled(tab.id, checkbox.checked);
       if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
-      if (!isScenarioBuildTabEnabled(scenarioBuildSubView)) {
-        scenarioBuildSubView = getScenarioBuildVisibleTabs()[0].view;
-      }
       renderScenarioBuildPanel();
     };
     row.appendChild(checkbox);
