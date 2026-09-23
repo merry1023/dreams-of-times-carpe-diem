@@ -574,6 +574,14 @@ async function openCustomFacility(facility, returnTo) {
     return;
   }
   
+  // ★要望対応：追憶の館。クリア済みの話を選んで再体験できる（memoryHall.jsにまとめてある）
+  if (facility.type === "memoryHall") {
+    hideLocationMenu();
+    await runFacilityDialogueBlocks(facility, facility.enterBlocks, facility.ownerDialogue);
+    openMemoryHallFacility(facility, goBack); // memoryHall.js
+    return;
+  }
+  
   // ★バグ修正：店タイプの施設だけこの分岐が無く、「その他（flavor）」扱いになってしまっていた。
   //   拠点（村・街・国）にアタッチした店は、openCustomSettlementArea側で先に振り分けてから
   //   openCustomShopFacilityへ渡すため問題にならないが、敵エリアの「調べる」で見つかる店

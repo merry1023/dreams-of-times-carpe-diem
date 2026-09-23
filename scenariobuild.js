@@ -5174,7 +5174,7 @@ function getItemManagerConfig() {
       { key: "toolDurability", label: "（料理道具）耐久度", type: "number", placeholder: "30" },
       { key: "toolSlotCount", label: "（料理道具）材料スロット数", type: "number", placeholder: "3" },
       // ★要望対応：種類を「料理」にした時だけ意味を持つ、戦闘中だけの自己バフ（技の自己強化と同じ仕組みを流用）
-      { key: "foodBuffKind", label: "（料理）戦闘中バフの種類（状態強化の管理タブで作ったID）", type: "text", placeholder: "空欄ならバフ無し" },
+      { key: "foodBuffKind", label: "（料理）戦闘中バフの種類", type: "select", options: getSkillSelfBuffKindOptions() },
       { key: "foodBuffDuration", label: "（料理）バフの持続ターン数", type: "number", placeholder: "3" },
       { key: "foodBuffPower", label: "（料理）バフの効果量", type: "number", placeholder: "5" },
       // ★要望対応：このアイテムを「使う」と、指定した料理レシピがレシピ帳に登録される（レシピ発見アイテム）
@@ -8140,7 +8140,7 @@ function buildClassStatsRow(className) {
 // ===================================================================
 // ===== サブ画面：施設編集（村に追加できる「酒場/宿屋/店/冒険する」以外の施設） =====
 // ===================================================================
-const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", realEstate: "不動産屋系（家・店の売買・賃貸）", furnitureShop: "家具屋系（家具・倉庫の販売）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", flavor: "その他（セリフのみ）" };
+const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", realEstate: "不動産屋系（家・店の売買・賃貸）", furnitureShop: "家具屋系（家具・倉庫の販売）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", memoryHall: "追憶の館系（クリア済みの話を再体験できる）", flavor: "その他（セリフのみ）" };
 
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
@@ -8599,7 +8599,7 @@ function buildFacilityRow(facility) {
     refreshSlotProbabilityDisplay();
   } else if (facility.type === "fishing") {
     // ★要望対応：釣り場施設。出現する魚を「時間帯」「天候」ごとに重み付きで登録する。
-    //   時間帯はplayer.gameHour（player.js）、天候はcurrentWeatherType（mainfunc.js）を実際の釣りで参照する
+    //   時間帯はplayer.gameHour（player.js）、天候はplayer.weather.current（player.js・天候システム）を実際の釣りで参照する
     const fishingNote = document.createElement("p");
     fishingNote.className = "devmode-note";
     fishingNote.textContent = "この釣り場で釣れる魚を登録してください（魚IDは「魚管理」タブで作った魚から選べます）。時間帯・天候を「指定なし」にすると、いつでもその条件を満たします。重みが大きいほど釣れやすくなります。釣竿・釣り餌はここではなく、それらを扱う「店」タイプの施設で売ってください（アイテム設定で釣竿・釣り餌チェックを付けたアイテムです）。";
@@ -8644,7 +8644,7 @@ function buildFacilityRow(facility) {
       spotRow.appendChild(labelSpan("天候："));
       const weatherSelect = document.createElement("select");
       weatherSelect.className = "scenariobuild-jump-select";
-      [["any", "指定なし"], ["clear", "晴れ（演出無し）"], ["rain", "雨"], ["snow", "雪"], ["sakura", "桜吹雪"]].forEach(([v, label]) => {
+      [["any", "指定なし"], ["clear", "晴れ"], ["cloudy", "曇り"], ["rain", "雨"], ["snow", "雪"], ["sakura", "桜吹雪"]].forEach(([v, label]) => {
         const opt = document.createElement("option");
         opt.value = v; opt.textContent = label;
         weatherSelect.appendChild(opt);
@@ -9045,7 +9045,7 @@ function buildFacilityRow(facility) {
     //   参加費・各回戦の敵編成（追加/削除可）・コインの種類と獲得数・99回戦クリア報酬・コインの引き換え屋を設定できる
     const entryNote = document.createElement("p");
     entryNote.className = "devmode-note";
-    entryNote.textContent = "参加すると、指定したアイテムを指定した数だけ消費します（無ければ挑戦できません）。挑戦中はアイテムが一切使えません。1回でも負けたら1回戦目からやり直しになります。10の倍数の回戦をクリアすると全回復、5の倍数（10の倍数を除く）の回戦をクリアするとHP・SPが1/3回復します。";
+    entryNote.textContent = "参加すると、指定したアイテムを指定した数だけ消費します（無ければ挑戦できません）。挑戦中はアイテムが一切使えません。1回でも負けたら1回戦目からやり直しになります。10の倍数の回戦をクリアすると全回復、5の倍数（10の倍数を除く）の回戦をクリアするとHP・SPが1/3回復します。各回戦に勝利するたびに、次の回戦へ進むかここでやめる（リタイア）かを選べます（リタイアしてもそこまでの自己ベスト・獲得済みコインはそのまま持ち帰れます）。";
     infoEl.appendChild(entryNote);
     
     const entryRow = document.createElement("div");
@@ -9088,7 +9088,7 @@ function buildFacilityRow(facility) {
     const bossRoundsNote = document.createElement("p");
     bossRoundsNote.className = "devmode-note";
     bossRoundsNote.style.margin = "10px 0 2px";
-    bossRoundsNote.textContent = "10の倍数の回戦と、100回戦が無いため最後の節目となる99回戦目は、ここで指定した「ボス的な」敵編成で固定されます（プールからのランダム抽選の対象外）。レベルを指定すると、その回戦の敵はそのレベルで固定されます（0のままなら、通常通り主人公のレベル±1で決まります）。";
+    bossRoundsNote.textContent = "10の倍数の回戦と、100回戦が無いため最後の節目となる99回戦目は、ここで指定した「ボス的な」敵編成で固定されます（プールからのランダム抽選の対象外）。レベルを指定すると、その回戦の敵はそのレベルで固定されます（0のままなら、通常通り主人公のレベル±1で決まります）。また、10の倍数の回戦（99回戦目を除く）にレベルを指定しておくと、それ以外の回戦でランダムに出る雑魚敵のレベルが「一番近くて強い10の倍数回戦のレベル×0.6」になります。";
     infoEl.appendChild(bossRoundsNote);
     
     if (!facility.bossRoundConfig || typeof facility.bossRoundConfig !== "object") facility.bossRoundConfig = {};
@@ -9119,7 +9119,7 @@ function buildFacilityRow(facility) {
       
       const levelRow = document.createElement("div");
       levelRow.className = "scenariobuild-condition-row";
-      levelRow.appendChild(labelSpan("レベル指定（0＝指定なし）："));
+    levelRow.appendChild(labelSpan("レベル指定（0＝指定なし。この回戦以外でランダムに出る雑魚敵のレベル計算にも使われます）："));
       const levelInput = document.createElement("input");
       levelInput.type = "number";
       levelInput.min = "0";

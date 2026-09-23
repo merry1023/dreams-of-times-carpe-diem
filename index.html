@@ -305,6 +305,13 @@
             <span id="gold-value" class="main-tab-top-row-item gold-value">0陳</span>
           </div>
           
+          <!-- ★要望対応：天候システム。時計のすぐ上に「今日の天候」「次に来る天候」を表示する（player.weather、player.js） -->
+          <div id="main-tab-weather-display" class="main-tab-weather-display">
+            <span id="main-tab-weather-current" class="main-tab-weather-current">☀️ 晴れ</span>
+            <span class="main-tab-weather-arrow">→</span>
+            <span id="main-tab-weather-next" class="main-tab-weather-next">次：☀️ 晴れ</span>
+          </div>
+          
           <!-- ★メインタブの40%くらいの大きさのアナログ時計（針は時針・分針のみ）と、その下にデジタル時計（要望対応）。
                img/clock/clock.png（文字盤）・img/clock/hour.png（時針）・img/clock/minutes.png（分針）を重ねて表示する。
                針の画像は、文字盤と同じサイズで、中心を軸に回転させる前提（画像の中心＝時計の針の付け根） -->
@@ -522,6 +529,7 @@
 <script src="colosseum.js"></script>
 <script src="town.js"></script>
 <script src="fishing.js"></script>
+<script src="memoryHall.js"></script>
 <script src="crafting.js"></script>
 <script src="cooking.js"></script>
 <script src="questboard.js"></script>

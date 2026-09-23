@@ -121,10 +121,19 @@ async function switchScenarioBGM(trackName, options = {}) {
 
 // 今の曲をフェードアウトしながら止める
 async function stopScenarioBGM(options = {}) {
+  // ★バグ修正：このフェード処理は最後まで待たれずに（例：戦闘勝利時のstopBattleBGM）呼ばれることが多く、
+  //   フェード中（awaitしている間）に次の曲へ切り替わってしまうことがある。ここでフェード対象を先に
+  //   控えておき、フェードが終わった時点でまだ同じ曲を指している場合だけ記録を消す。無条件に消してしまうと、
+  //   フェード完了時には既に別の曲（次の戦闘のBGMなど）が鳴っているのに、その再生中の曲の記録だけを
+  //   currentBgmAudio=nullで消してしまい、以後その曲を止められなくなって、さらにその次の曲に切り替わる時に
+  //   古い曲が鳴りっぱなしのまま新しい曲が重なって二重に聞こえる不具合の原因になっていた
+  const audioBeingStopped = currentBgmAudio;
   const fadeMs = options.fadeMs !== undefined ? options.fadeMs : BGM_DEFAULT_FADE_MS;
   await fadeOutCurrentBgm(fadeMs);
-  currentBgmAudio = null;
-  currentBgmName = null;
+  if (currentBgmAudio === audioBeingStopped) {
+    currentBgmAudio = null;
+    currentBgmName = null;
+  }
 }
 
 // ===== 内部処理 =====

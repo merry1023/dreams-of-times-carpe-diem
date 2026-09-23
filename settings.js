@@ -51,6 +51,7 @@ let gameSettings = {
   focusMainSwitchesToMainTab: false, // ★ONの時、Aキーでメイン画面に移行すると、サブ画面もメインタブに戻る（要望対応）
   showMainTabParams: false, // ★ONにすると主人公・仲間のパラメータをメインタブ内に表示する。OFF（デフォルト）だと
                             //   メインタブには表示せず、常時左上に表示する（要望対応）
+  weatherEffectEnabled: true, // ★要望対応：話の「天候演出」ブロック（雨・雪・桜吹雪を画面に降らせる視覚効果）のON/OFF。OFFなら演出は一切表示しない
   playTabVisibility: {}
 };
 
@@ -270,9 +271,9 @@ window.addEventListener("beforeunload", () => autoSaveToSlot("onclose"));
 
 let settingsCursorIndex = 0;
 let isPlayTabVisibilityPanelOpen = false;
-const SETTINGS_ROW_COUNT = 13; // 0:文字送り速度 1:ログ記憶数 2:BGM音量 3:オートセーブON/OFF 4:オートセーブから再開する
-                               // 5:正解の選択肢を表示 6:Aキーでメインタブに戻す 7:メインタブのパラメータ表示
-                               // 8:全画面表示 9:開発者ボタン 10:Googleアカウント（auth.js） 11:プレイ画面のタブ管理 12:メインメニューに戻る
+const SETTINGS_ROW_COUNT = 14; // 0:文字送り速度 1:ログ記憶数 2:BGM音量 3:オートセーブON/OFF 4:オートセーブから再開する
+                               // 5:正解の選択肢を表示 6:Aキーでメインタブに戻す 7:メインタブのパラメータ表示 8:天候演出
+                               // 9:全画面表示 10:開発者ボタン 11:Googleアカウント（auth.js） 12:プレイ画面のタブ管理 13:メインメニューに戻る
 
 // ★要望対応：BGM音量を「┃」を20本並べたバーで表示する。現在の音量までを塗り、それ以降は薄い色のままにする
 function renderVolumeBarSegments(container, level, max) {
@@ -318,6 +319,7 @@ function renderSettingsTab() {
     { label: "正解の選択肢を表示", value: gameSettings.showCorrectChoice ? "ON" : "OFF", hint: "◀／▶／決定で切替（選択肢のうち話が進む方に★が付く）" },
     { label: "メイン画面に移行する時、メインタブに切り替える", value: gameSettings.focusMainSwitchesToMainTab ? "ON" : "OFF", hint: "◀／▶／決定で切替（Aキーでメイン画面に移行した時だけ有効。タップでの切り替えは対象外）" },
     { label: "メインタブのパラメータ表示", value: gameSettings.showMainTabParams ? "ON" : "OFF", hint: "◀／▶／決定で切替（OFFだと、主人公・仲間のパラメータは常時左上に表示されます）" },
+    { label: "天候演出", value: gameSettings.weatherEffectEnabled ? "ON" : "OFF", hint: "◀／▶／決定で切替（OFFにすると、話の「天候演出」ブロックによる雨・雪・桜吹雪の視覚効果を表示しません）" },
     { label: "全画面表示", value: isFullscreenActive() ? "ON" : "OFF", hint: "決定／タップで切替（対応していない端末・ブラウザでは反応しません）" },
     { label: "開発者ボタン", value: gameSettings.developerModeUnlocked ? "解除済み" : "未解除", hint: gameSettings.developerModeUnlocked ? "画面左端のタブから開発者モードを開けます" : "決定でパスワードを入力" },
     (typeof getGoogleAccountSettingsRow === "function") ? getGoogleAccountSettingsRow() : { label: "Googleアカウント", value: "未ログイン", hint: "決定でログイン" }, // auth.js（要望対応）
@@ -459,6 +461,14 @@ function adjustCurrentSetting(direction) {
     saveSettings();
     if (typeof applyMainTabParamsDisplayMode === "function") applyMainTabParamsDisplayMode(); // mainfunc.js
     renderSettingsTab();
+    
+  } else if (settingsCursorIndex === 8) {
+    // 天候演出 ON/OFF（左右どちらでもトグルする）
+    gameSettings.weatherEffectEnabled = !gameSettings.weatherEffectEnabled;
+    saveSettings();
+    // ★OFFにした瞬間、既に降っている演出があればすぐ消す（mainfunc.js）
+    if (!gameSettings.weatherEffectEnabled && typeof setWeatherEffect === "function") setWeatherEffect(null);
+    renderSettingsTab();
   }
 }
 
@@ -508,15 +518,17 @@ function executeSettingsDecideAction(index) {
   } else if (index === 7) {
     adjustCurrentSetting(1); // ★メインタブのパラメータ表示 行も決定でトグルできるようにする
   } else if (index === 8) {
-    toggleFullscreen().then(() => renderSettingsTab()); // mainfunc.js（要望対応：設定から全画面表示）
+    adjustCurrentSetting(1); // ★天候演出 行も決定でトグルできるようにする
   } else if (index === 9) {
-    handleDevModeButtonDecide(); // ★未解除ならパスワード入力を開く。解除済みなら特に何もしない（左端タブから操作する）
+    toggleFullscreen().then(() => renderSettingsTab()); // mainfunc.js（要望対応：設定から全画面表示）
   } else if (index === 10) {
-    if (typeof handleGoogleAccountSettingsDecide === "function") handleGoogleAccountSettingsDecide(); // auth.js（要望対応：Googleアカウントログイン/ログアウト）
+    handleDevModeButtonDecide(); // ★未解除ならパスワード入力を開く。解除済みなら特に何もしない（左端タブから操作する）
   } else if (index === 11) {
+    if (typeof handleGoogleAccountSettingsDecide === "function") handleGoogleAccountSettingsDecide(); // auth.js（要望対応：Googleアカウントログイン/ログアウト）
+  } else if (index === 12) {
     isPlayTabVisibilityPanelOpen = !isPlayTabVisibilityPanelOpen;
     renderSettingsTab();
-  } else if (index === 12) {
+  } else if (index === 13) {
     handleReturnToMainMenuFromSettings();
   }
 }
