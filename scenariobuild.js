@@ -8568,7 +8568,7 @@ function buildFacilityRow(facility) {
     refreshSlotProbabilityDisplay();
   } else if (facility.type === "fishing") {
     // ★要望対応：釣り場施設。出現する魚を「時間帯」「天候」ごとに重み付きで登録する。
-    //   時間帯はplayer.gameHour（player.js）、天候はcurrentWeatherType（mainfunc.js）を実際の釣りで参照する
+    //   時間帯はplayer.gameHour（player.js）、天候はplayer.weather.current（player.js・天候システム）を実際の釣りで参照する
     const fishingNote = document.createElement("p");
     fishingNote.className = "devmode-note";
     fishingNote.textContent = "この釣り場で釣れる魚を登録してください（魚IDは「魚管理」タブで作った魚から選べます）。時間帯・天候を「指定なし」にすると、いつでもその条件を満たします。重みが大きいほど釣れやすくなります。釣竿・釣り餌はここではなく、それらを扱う「店」タイプの施設で売ってください（アイテム設定で釣竿・釣り餌チェックを付けたアイテムです）。";
@@ -8613,7 +8613,7 @@ function buildFacilityRow(facility) {
       spotRow.appendChild(labelSpan("天候："));
       const weatherSelect = document.createElement("select");
       weatherSelect.className = "scenariobuild-jump-select";
-      [["any", "指定なし"], ["clear", "晴れ（演出無し）"], ["rain", "雨"], ["snow", "雪"], ["sakura", "桜吹雪"]].forEach(([v, label]) => {
+      [["any", "指定なし"], ["clear", "晴れ"], ["cloudy", "曇り"], ["rain", "雨"], ["snow", "雪"], ["sakura", "桜吹雪"]].forEach(([v, label]) => {
         const opt = document.createElement("option");
         opt.value = v; opt.textContent = label;
         weatherSelect.appendChild(opt);

@@ -130,10 +130,12 @@ function getCurrentFishingTimeOfDay() {
   return "night";
 }
 
-// currentWeatherType（mainfunc.js）から天候キーを出す。null（演出無し）は"clear"扱い
+// ★要望対応：天候システム（player.weather、player.js）から今日の天候キーを出す。
+//   以前はcurrentWeatherType（mainfunc.jsの「天候演出」＝話の演出で手動で降らせる雨雪桜のスイッチ）を
+//   見ていたが、これは普段はほぼ常にnull（＝いつも"clear"扱い）で、実質的に天候が変化しないのと同じだった
 function getCurrentFishingWeather() {
-  if (typeof currentWeatherType === "undefined" || !currentWeatherType) return "clear";
-  return currentWeatherType;
+  if (player && player.weather && player.weather.current) return player.weather.current;
+  return "clear";
 }
 
 // ★餌の「釣れる魚の種類」を配列で取得する。
