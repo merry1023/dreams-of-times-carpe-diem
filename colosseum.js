@@ -291,32 +291,37 @@ async function handleColosseumDefeat() {
 }
 
 // ===== コインの引き換え屋 =====
-function showColosseumExchangeMenu() {
+// ★要望対応：店（showCustomShopMenu）と同じ、セリフの選択肢（displayChoices）で選ぶ形式にした
+async function showColosseumExchangeMenu() {
   const offers = Array.isArray(colosseumFacility.exchangeOffers) ? colosseumFacility.exchangeOffers : [];
   changeSpeaker(colosseumFacility.name || "コロシアム");
   if (offers.length === 0) {
-    displayMessage("（まだ何も並んでいないようだ）").then(() => showColosseumLobbyMenu());
+    await displayMessage("（まだ何も並んでいないようだ）");
+    showColosseumLobbyMenu();
     return;
   }
   
-  const options = offers.map(offer => {
+  const choices = offers.map((offer, index) => {
     const coinItemId = colosseumCoinItemId(offer.coinColor);
     const coinLabel = coinItemId ? itemNameOfColosseum(coinItemId) : `${colosseumCoinLabel(offer.coinColor)}コイン（未設定）`;
     const itemLabel = itemNameOfColosseum(offer.itemId);
-    return {
-      label: `${coinLabel}×${offer.coinQty || 1} → ${itemLabel}×${offer.itemQty || 1}`,
-      action: () => tryColosseumExchange(offer)
-    };
+    return { text: `${coinLabel}×${offer.coinQty || 1} → ${itemLabel}×${offer.itemQty || 1}`, next: String(index) };
   });
-  options.push({ label: "戻る", action: () => showColosseumLobbyMenu() });
-  showLocationMenu(options, colosseumFacility.name || "コロシアム");
+  choices.push({ text: "やめる", next: "cancel", isBack: true });
+  await displayMessage("何と交換する？");
+  const picked = await displayChoices(choices);
+  if (picked.next === "cancel") {
+    showColosseumLobbyMenu();
+    return;
+  }
+  
+  await tryColosseumExchange(offers[Number(picked.next)]);
 }
 
 async function tryColosseumExchange(offer) {
   const coinItemId = colosseumCoinItemId(offer.coinColor);
   const coinQty = Math.max(1, offer.coinQty || 1);
   if (!coinItemId || !offer.itemId) {
-    hideLocationMenu();
     changeSpeaker(colosseumFacility.name || "コロシアム");
     await displayMessage("（この交換の設定がまだ揃っていないようだ）");
     showColosseumExchangeMenu();
@@ -326,7 +331,6 @@ async function tryColosseumExchange(offer) {
   const have = getTotalItemCount(coinItemId);
   const maxTimes = Math.floor(have / coinQty);
   if (maxTimes <= 0) {
-    hideLocationMenu();
     changeSpeaker(colosseumFacility.name || "コロシアム");
     await displayMessage(`「${itemNameOfColosseum(coinItemId)}」が足りないようだ。`);
     showColosseumExchangeMenu();
@@ -345,10 +349,23 @@ async function tryColosseumExchange(offer) {
     return;
   }
   
+  // ★要望対応：店と同じように、実際に交換する前に確認ダイアログを挟む
+  const confirmed = await showGameConfirm(`「${itemNameOfColosseum(coinItemId)}」×${coinQty * times}を「${itemNameOfColosseum(offer.itemId)}」×${itemQtyEach * times}と交換しますか？`); // mainfunc.js
+  if (!confirmed) {
+    showColosseumExchangeMenu();
+    return;
+  }
+  
   removeItem(coinItemId, coinQty * times);
-  addItem(offer.itemId, itemQtyEach * times);
+  const added = addItem(offer.itemId, itemQtyEach * times);
   renderStatusHUD();
   changeSpeaker(colosseumFacility.name || "コロシアム");
-  await displayMessage(`「${itemNameOfColosseum(offer.itemId)}」を${itemQtyEach * times}個手に入れた！`);
+  if (added) {
+    await displayMessage(`「${itemNameOfColosseum(offer.itemId)}」を${itemQtyEach * times}個手に入れた！`);
+  } else {
+    await displayMessage("持ち物がいっぱいで、受け取れなかったようだ……");
+    addItem(coinItemId, coinQty * times); // ★受け取れなかった分はコインを返す
+    renderStatusHUD();
+  }
   showColosseumExchangeMenu();
 }
