@@ -388,6 +388,8 @@ function setWeatherEffect(type) {
   }
   currentWeatherType = type || null;
   if (!currentWeatherType) return;
+  // ★要望対応：設定「天候演出」がOFFなら、話の演出ブロックから呼ばれても何も表示しない
+  if (typeof gameSettings !== "undefined" && gameSettings && gameSettings.weatherEffectEnabled === false) return;
   
   weatherOverlayEl = document.createElement("div");
   weatherOverlayEl.id = "screen-weather-overlay";
@@ -1625,11 +1627,26 @@ function renderStatusHUD() {
   
   // ★メインタブのアナログ/デジタル時計を、今のゲーム内時刻に合わせて描画する（要望対応）
   renderMainTabClock();
+  renderMainTabWeather(); // ★要望対応：天候システムの現在・次の天候表示
   
   renderMainTabCompanionParams();
   renderObjectiveBanner();
   renderActiveQuestBanner(); // ★要望対応：話の目標のすぐ下に、受注中のクエストがあれば表示する
   renderRankUpBanner();
+}
+
+// ★要望対応：天候システム（player.weather、player.js）の「現在」「次」をメインタブの時計の上に表示する
+const WEATHER_TYPE_EMOJI = { clear: "☀️", cloudy: "☁️", rain: "☔", snow: "❄️", sakura: "🌸" };
+function renderMainTabWeather() {
+  if (!player) return;
+  if (typeof ensurePlayerWeatherState === "function") ensurePlayerWeatherState(); // player.js（旧セーブ互換）
+  const weather = player.weather || { current: "clear", next: "clear" };
+  const currentEl = document.getElementById("main-tab-weather-current");
+  const nextEl = document.getElementById("main-tab-weather-next");
+  const currentLabel = (typeof WEATHER_TYPE_LABELS_JA !== "undefined" && WEATHER_TYPE_LABELS_JA[weather.current]) || "晴れ";
+  const nextLabel = (typeof WEATHER_TYPE_LABELS_JA !== "undefined" && WEATHER_TYPE_LABELS_JA[weather.next]) || "晴れ";
+  if (currentEl) currentEl.textContent = `${WEATHER_TYPE_EMOJI[weather.current] || "☀️"} ${currentLabel}`;
+  if (nextEl) nextEl.textContent = `次：${WEATHER_TYPE_EMOJI[weather.next] || "☀️"} ${nextLabel}`;
 }
 
 // ★メインタブのアナログ時計（時針・分針のみ）とデジタル時計を、player.gameHour（0〜24の小数）に合わせて描画する

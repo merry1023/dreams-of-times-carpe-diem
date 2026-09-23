@@ -510,6 +510,29 @@ html, body {
     color: #eee;
 }
 
+/* ★要望対応：天候システム。時計のすぐ上に「現在の天候」「次に来る天候」を表示する */
+.main-tab-weather-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #cfe8ff;
+    margin-top: 2px;
+}
+
+.main-tab-weather-current {
+    font-weight: bold;
+}
+
+.main-tab-weather-arrow {
+    color: #888;
+}
+
+.main-tab-weather-next {
+    color: #aaa;
+}
+
 /* ★メインタブの中央：アナログ時計（40%くらいの大きさ）＋その下にデジタル時計（要望対応） */
 .main-tab-clock-area {
     display: flex;
