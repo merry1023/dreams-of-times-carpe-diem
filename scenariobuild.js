@@ -133,6 +133,12 @@ function loadCustomScenarioData() {
   runScenarioBuildStepSafely("ensureCustomMonstersRegistered", ensureCustomMonstersRegistered);
   runScenarioBuildStepSafely("ensureCustomBgmRegistered", ensureCustomBgmRegistered);
   runScenarioBuildStepSafely("ensureCustomItemsRegistered", ensureCustomItemsRegistered); // ★アイテム設定で追加・編集したアイテムを念のため最新の状態にしてから使う
+  // ★バグ修正：魚管理タブで追加した魚（scenarioProject.fishItems）が、ここ（loadCustomScenarioData）から
+  //   一切ITEM_MASTERへ登録されていなかった。ensureCustomFishRegistered自体は存在し、シナリオビルド画面の
+  //   undo/redoからは呼ばれていたが、通常のゲーム進行中（町・釣り場を開く時など）に呼ばれるのはこの関数だけのため、
+  //   ITEM_MASTER[spot.fishId]が常にundefinedになり、getMatchingFishSpots（fishing.js）の候補が毎回0件になって
+  //   「今はこの餌に反応する魚がいないようだ……」としか出ず、エラーも出ないまま釣りが一切成立しない不具合の原因だった
+  runScenarioBuildStepSafely("ensureCustomFishRegistered", ensureCustomFishRegistered); // ★魚管理で追加・編集した魚を念のため最新の状態にしてから使う
   runScenarioBuildStepSafely("ensureCustomSkillsRegistered", ensureCustomSkillsRegistered); // ★スキル管理で追加・編集した技を念のため最新の状態にしてから使う
   runScenarioBuildStepSafely("ensureCustomCompanionsRegistered", ensureCustomCompanionsRegistered); // ★仲間編集で追加・編集した仲間を念のため最新の状態にしてから使う
   runScenarioBuildStepSafely("ensureCustomClassStatsRegistered", ensureCustomClassStatsRegistered); // ★職業編集で編集した主人公の職業ステータスを念のため最新の状態にしてから使う
@@ -214,6 +220,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.bosses = data.bosses || [];
   scenarioProject.items = data.items || [];
   scenarioProject.furniture = data.furniture || []; // ★要望対応：不動産システムの家具管理タブ（家具屋系施設で販売する家具の登録）
+  scenarioProject.fishItems = data.fishItems || []; // ★要望対応：魚管理タブ
   scenarioProject.skills = data.skills || [];
   dedupeBuiltinSkillEntries(); // ★取り込んだファイル自体が、過去のバージョンの不具合で重複を含んでいる場合があるので、取り込み直後にも掃除しておく
   // ★旧バージョンで書き出された設定ファイル（状態管理タブが存在しなかった頃のもの）を読み込んだ時は、
@@ -409,6 +416,8 @@ function normalizeScenarioProject() {
   if (!Array.isArray(scenarioProject.bosses)) scenarioProject.bosses = [];
   if (!Array.isArray(scenarioProject.items)) scenarioProject.items = [];
   if (!Array.isArray(scenarioProject.furniture)) scenarioProject.furniture = [];
+  // ★要望対応：魚管理タブ用のデータ。中身自体はアイテムと同じ扱いでITEM_MASTERへ反映される（fishing.js／ensureCustomFishRegistered）
+  if (!Array.isArray(scenarioProject.fishItems)) scenarioProject.fishItems = [];
   if (!Array.isArray(scenarioProject.skills)) scenarioProject.skills = [];
   scenarioProject.skills.forEach(skill => {
     if (!Array.isArray(skill.blocks)) skill.blocks = []; // ★特殊スキル編集（ブロック実行モード）。1件でもあれば固定フィールドは無視される
@@ -952,7 +961,7 @@ function undoScenarioChange() {
   normalizeScenarioProject();
   ensureCustomMonstersRegistered();
   ensureCustomBgmRegistered();
-  ensureCustomItemsRegistered(); // ★アイテム設定で追加・編集したアイテムを念のため最新の状態にしてから使う
+  ensureCustomItemsRegistered(); ensureCustomFishRegistered(); // ★アイテム設定・魚管理で追加・編集したものを念のため最新の状態にしてから使う
   ensureCustomSkillsRegistered(); // ★スキル管理で追加・編集した技を念のため最新の状態にしてから使う
   ensureCustomCompanionsRegistered(); // ★仲間編集で追加・編集した仲間を念のため最新の状態にしてから使う
   ensureCustomClassStatsRegistered(); // ★職業編集で編集した主人公の職業ステータスを念のため最新の状態にしてから使う
@@ -969,7 +978,7 @@ function redoScenarioChange() {
   normalizeScenarioProject();
   ensureCustomMonstersRegistered();
   ensureCustomBgmRegistered();
-  ensureCustomItemsRegistered(); // ★アイテム設定で追加・編集したアイテムを念のため最新の状態にしてから使う
+  ensureCustomItemsRegistered(); ensureCustomFishRegistered(); // ★アイテム設定・魚管理で追加・編集したものを念のため最新の状態にしてから使う
   ensureCustomSkillsRegistered(); // ★スキル管理で追加・編集した技を念のため最新の状態にしてから使う
   ensureCustomCompanionsRegistered(); // ★仲間編集で追加・編集した仲間を念のため最新の状態にしてから使う
   ensureCustomClassStatsRegistered(); // ★職業編集で編集した主人公の職業ステータスを念のため最新の状態にしてから使う
@@ -1133,7 +1142,66 @@ function ensureCustomItemsRegistered() {
       skillBlocks: (Array.isArray(item.blocks) && item.blocks.length > 0) ? item.blocks : undefined,
       skillVariables: (item.variables && typeof item.variables === "object") ? item.variables : undefined,
       skillActivationMode: item.skillActivationMode === "passive" ? "passive" : "active",
-      skillName: item.skillName || undefined
+      skillName: item.skillName || undefined,
+      // ★要望対応：アイテム編集の（釣竿）（釣り餌）チェック。fishing.jsがこれらのフラグを見て、
+      //   釣り施設の「釣竿を変える」「釣り餌を変える」の候補に出す
+      isFishingRod: (typeof item.isFishingRod === "boolean") ? item.isFishingRod : !!existing.isFishingRod,
+      rodDurability: item.isFishingRod ? (Number(item.rodDurability) || existing.rodDurability || 20) : existing.rodDurability,
+      rodPower: item.isFishingRod ? (Number(item.rodPower) || existing.rodPower || 3) : existing.rodPower,
+      isFishingBait: (typeof item.isFishingBait === "boolean") ? item.isFishingBait : !!existing.isFishingBait,
+      // ★baitFishType（旧・単一文字列）からbaitFishTypes（複数選択の配列）へ移行。
+      //   古いセーブ・古いアイテムデータにbaitFishTypeしか無い場合はそれを配列化して引き継ぐ
+      baitFishTypes: item.isFishingBait ? normalizeBaitFishTypes(item.baitFishTypes, item.baitFishType, existing.baitFishTypes) : existing.baitFishTypes,
+      baitBiteRate: item.isFishingBait ? (Number(item.baitBiteRate) || existing.baitBiteRate || 5) : existing.baitBiteRate
+    };
+  });
+}
+
+// ★釣り餌の「釣れる魚の種類」チェックボックスの選択肢を、登録済みの魚（ITEM_MASTER内のcategory:"fish"）
+//   の「種類」から重複無しで集める。組み込みの魚（items.js）・魚管理タブで追加したカスタムの魚の両方が対象
+function getRegisteredFishTypeOptions() {
+  if (typeof ITEM_MASTER === "undefined") return [];
+  const types = new Set();
+  Object.values(ITEM_MASTER).forEach(master => {
+    if (master && master.category === "fish" && master.fishType) types.add(master.fishType);
+  });
+  return Array.from(types).sort().map(type => ({ value: type, label: type }));
+}
+
+// ★baitFishTypes（配列・新形式）／baitFishType（文字列・旧形式）／既存値のどれから採用するかをまとめる
+function normalizeBaitFishTypes(newArrayValue, legacyStringValue, fallbackArrayValue) {
+  if (Array.isArray(newArrayValue)) return newArrayValue.filter(Boolean); // ★UI側は常に配列を渡してくるので、空配列（未選択＝全種類対象）もそのまま採用する
+  if (typeof legacyStringValue === "string" && legacyStringValue) return [legacyStringValue];
+  return Array.isArray(fallbackArrayValue) ? fallbackArrayValue : [];
+}
+
+// ★要望対応：魚管理タブ（scenarioProject.fishItems）で追加・編集した魚を ITEM_MASTER に反映する。
+//   アイテムと同じ扱い（category:"fish"）でインベントリに入り、水色の文字色で表示される（mainfunc.js／style.css）。
+//   fishPower/fishHp/fishSize/fishType は釣りミニゲーム（fishing.js）が直接参照する
+function ensureCustomFishRegistered() {
+  if (typeof ITEM_MASTER === "undefined") return;
+  if (!Array.isArray(scenarioProject.fishItems)) scenarioProject.fishItems = [];
+  scenarioProject.fishItems.forEach(fish => {
+    const existing = ITEM_MASTER[fish.id] || {};
+    ITEM_MASTER[fish.id] = {
+      ...existing,
+      name: fish.name || existing.name || "名無しの魚",
+      category: "fish",
+      description: fish.description != null ? fish.description : (existing.description || ""),
+      rank: fish.rank || existing.rank || "F", // ★魚管理タブでは「レア度」として表示する
+      listedPrice: Number(fish.listedPrice) || existing.listedPrice || 0,
+      trueValue: Number(fish.trueValue) || existing.trueValue || 0,
+      fishType: fish.fishType || existing.fishType || "", // ★釣り餌の「釣れる魚の種類」と突き合わせる文字列
+      fishPower: Number(fish.power) || existing.fishPower || 3, // ★強さ（釣りミニゲームでの1秒ごとの攻撃力）
+      fishHp: Number(fish.hp) || existing.fishHp || 15, // ★体力
+      fishSize: Number(fish.size) || existing.fishSize || 10, // ★大きさ
+      params: {
+        種類: fish.fishType || "",
+        強さ: Number(fish.power) || 3,
+        大きさ: Number(fish.size) || 10,
+        レア度: fish.rank || "F",
+        体力: Number(fish.hp) || 15
+      }
     };
   });
 }
@@ -1393,13 +1461,15 @@ window.addEventListener("beforeunload", (event) => {
 });
 
 // ★左（メイン）＝話一覧／ブロックエディタ、右（サブ）＝キャラ・敵・ボス・アイテム・BGM・データ管理。
-//   ゲームの画面構成（メイン画面／サブ画面）と同じ考え方で、常に両方が見えている状態にする
-//   タブ管理を追加し、会話AI設定は安定するまで非表示にする（デフォルトOFF）
+//   ゲームの画面構成（メイン画面／サブ画面）と同じ考え方で、常に両方が見えている状態にする。
+//   これらエディタ自身のタブは常に全部表示される（非表示切替は無い）。「タブ管理」はこのエディタの
+//   タブではなく、プレイヤーがこのシナリオを遊ぶ時の画面タブの方を管理する（バグ修正で変更）
 const SCENARIOBUILD_SUB_TABS = [
   { view: "characters", label: "キャラ管理" },
   { view: "enemies", label: "敵設定" },
   { view: "bosses", label: "ボス設定" },
   { view: "items", label: "アイテム設定" },
+  { view: "fishmgmt", label: "魚管理" }, // ★要望対応：釣り場で釣れる魚の追加・編集
   { view: "quests", label: "クエスト管理" },
   { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
   { view: "tutorials", label: "チュートリアル管理" },
@@ -1411,7 +1481,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "randomnames", label: "ランダム名前管理" }, // ★要望対応：オークションNPC等のランダム名前バリエーション管理
   { view: "elements", label: "属性管理" }, // ★要望対応：属性一覧と属性相性表
   { view: "loginbonus", label: "ログボ報酬" }, // ★要望対応：ログインボーナス（7日分の報酬編集）
-  { view: "companionchat", label: "会話AI設定", enabledByDefault: false }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集。安定するまで非表示
+  { view: "companionchat", label: "会話AI設定" }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集
   { view: "companions", label: "仲間編集" },
   { view: "classes", label: "職業編集" },
   { view: "bgm", label: "BGM設定" },
@@ -1421,34 +1491,19 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "endings", label: "エンディング一覧" },
   { view: "variables", label: "変数一覧" }, // ★要望対応：式の中で使えるシステム変数の名前が分かるよう、サブ画面に一覧を出す
   { view: "data", label: "データ管理" },
-  { view: "tabmanager", label: "タブ管理" }
+  { view: "tabmanager", label: "タブ管理" } // ★バグ修正：中身はプレイ画面タブ（メイン/インベントリ/スキル…）の管理に変更した
 ];
 
-function getScenarioBuildTabVisibilityMap() {
-  if (!scenarioProject || !scenarioProject.scenarioBuildTabVisibility || typeof scenarioProject.scenarioBuildTabVisibility !== "object") {
+// ★要望対応：以前はここでシナリオエディタ自身の右側タブ（キャラ管理・敵設定…）の表示/非表示を
+//   管理していたが、本来やりたかったのは「このシナリオをプレイする時の画面タブ（メイン/インベントリ/
+//   スキル…）」の方の管理だったため、PLAY_SCREEN_TAB_DEFS（settings.js）を対象にするよう修正した。
+//   判定自体はisScenarioPlayTabEnabled()（settings.js）に一本化してあるので、ここでは編集用の
+//   書き込みヘルパーだけ持つ
+function setScenarioPlayTabEnabled(tabId, enabled) {
+  if (!scenarioProject.scenarioBuildTabVisibility || typeof scenarioProject.scenarioBuildTabVisibility !== "object") {
     scenarioProject.scenarioBuildTabVisibility = {};
   }
-  SCENARIOBUILD_SUB_TABS.forEach(tab => {
-    if (tab.view === "tabmanager") return;
-    const hasExplicitValue = typeof scenarioProject.scenarioBuildTabVisibility[tab.view] === "boolean";
-    if (!hasExplicitValue) {
-      scenarioProject.scenarioBuildTabVisibility[tab.view] = tab.enabledByDefault !== false;
-    }
-  });
-  if (typeof scenarioProject.scenarioBuildTabVisibility.companionchat !== "boolean") {
-    scenarioProject.scenarioBuildTabVisibility.companionchat = false;
-  }
-  return scenarioProject.scenarioBuildTabVisibility;
-}
-
-function isScenarioBuildTabEnabled(view) {
-  if (view === "tabmanager") return true;
-  const visibility = getScenarioBuildTabVisibilityMap();
-  return visibility[view] !== false;
-}
-
-function getScenarioBuildVisibleTabs() {
-  return SCENARIOBUILD_SUB_TABS.filter(tab => tab.view === "tabmanager" || isScenarioBuildTabEnabled(tab.view));
+  scenarioProject.scenarioBuildTabVisibility[tabId] = enabled;
 }
 
 function renderScenarioBuildPanel() {
@@ -1464,7 +1519,7 @@ function renderScenarioBuildPanel() {
 function ensureSharedDatalistsInOverlay() {
   const overlay = document.getElementById("scenariobuild-overlay");
   if (!overlay) return;
-  [buildBgmDatalist, buildBgmFileDatalist, buildMonsterDatalist, buildBossOnlyDatalist, buildItemDatalist, buildCharacterDatalist].forEach(builder => {
+  [buildBgmDatalist, buildBgmFileDatalist, buildMonsterDatalist, buildBossOnlyDatalist, buildItemDatalist, buildFishDatalist, buildCharacterDatalist].forEach(builder => {
     const fresh = builder();
     const existing = document.getElementById(fresh.id);
     if (existing) existing.remove();
@@ -1517,7 +1572,7 @@ function renderScenarioBuildSub() {
   const tabsEl = document.getElementById("scenariobuild-sub-tabs");
   const bodyEl = document.getElementById("scenariobuild-sub-content");
   if (!tabsEl || !bodyEl) return;
-  const visibleTabs = getScenarioBuildVisibleTabs();
+  const visibleTabs = SCENARIOBUILD_SUB_TABS; // ★エディタ自身のタブは常に全て表示する（非表示切替は廃止。「タブ管理」はプレイ画面タブの方を管理する）
   if (!visibleTabs.some(tab => tab.view === scenarioBuildSubView)) {
     scenarioBuildSubView = visibleTabs[0] ? visibleTabs[0].view : "characters";
   }
@@ -1549,6 +1604,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "enemies") renderEntityManager(bodyEl, getEnemyManagerConfig());
   else if (scenarioBuildSubView === "bosses") { renderTrialGuardianConfig(bodyEl); renderFameThresholdConfig(bodyEl); renderEntityManager(bodyEl, getBossManagerConfig()); }
   else if (scenarioBuildSubView === "items") renderEntityManager(bodyEl, getItemManagerConfig());
+  else if (scenarioBuildSubView === "fishmgmt") renderEntityManager(bodyEl, getFishManagerConfig());
   else if (scenarioBuildSubView === "quests") renderEntityManager(bodyEl, getQuestManagerConfig());
   else if (scenarioBuildSubView === "loginbonus") renderLoginBonusManager(bodyEl); // ★要望対応：ログインボーナス
   else if (scenarioBuildSubView === "companionchat") renderCompanionChatSettingsManager(bodyEl); // ★要望対応：会話AI設定
@@ -1576,17 +1632,20 @@ function renderScenarioBuildSub() {
 // ===================================================================
 // ===== 変数一覧（要望対応：式の中で使えるシステム変数の名前が分からないので一覧を出してほしい） =====
 // ===================================================================
+// ★要望対応：このシナリオをプレイする時の画面タブ（メイン/インベントリ/スキル/仲間/会話/強さ/装備/
+//   便利/ログ/設定）を、タブごとに有効／無効にできる。ここでOFFにしたタブは、プレイヤー自身の
+//   個人設定（設定タブの「プレイ画面のタブ管理」）でONにしていても表示されない（settings.js側で判定）
 function renderScenarioBuildTabManager(container) {
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
-  introEl.textContent = "シナリオエディタの右側タブを有効／無効に切り替えられます。会話AI設定はまだ安定していないため、デフォルトでは非表示です。";
+  introEl.textContent = "このシナリオをプレイする時に、下部の「サブ画面」に出すタブを選べます（シナリオエディタ自身の右側タブとは無関係です）。ここでOFFにしたタブは、プレイヤーが自分の設定でONにしていても表示されません。「会話」タブは、会話AI設定でキャラクターを用意していない場合は意味が無いため、デフォルトではOFFにしています。";
   container.appendChild(introEl);
   
   const rows = document.createElement("div");
   rows.className = "scenariobuild-list";
   container.appendChild(rows);
   
-  SCENARIOBUILD_SUB_TABS.filter(tab => tab.view !== "tabmanager").forEach(tab => {
+  PLAY_SCREEN_TAB_DEFS.forEach(tab => {
     const row = document.createElement("label");
     row.className = "scenariobuild-condition-row";
     row.style.justifyContent = "space-between";
@@ -1598,14 +1657,10 @@ function renderScenarioBuildTabManager(container) {
     
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.checked = isScenarioBuildTabEnabled(tab.view);
+    checkbox.checked = isScenarioPlayTabEnabled(tab.id);
     checkbox.onchange = () => {
-      getScenarioBuildTabVisibilityMap();
-      scenarioProject.scenarioBuildTabVisibility[tab.view] = checkbox.checked;
+      setScenarioPlayTabEnabled(tab.id, checkbox.checked);
       if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
-      if (!isScenarioBuildTabEnabled(scenarioBuildSubView)) {
-        scenarioBuildSubView = getScenarioBuildVisibleTabs()[0].view;
-      }
       renderScenarioBuildPanel();
     };
     row.appendChild(checkbox);
@@ -4650,6 +4705,19 @@ function buildItemDatalist() {
   return datalist;
 }
 
+// ★要望対応：釣り場の「出現する魚」欄で、魚管理タブに登録した魚のIDを選びやすくするための入力候補
+function buildFishDatalist() {
+  const datalist = document.createElement("datalist");
+  datalist.id = "scenariobuild-fish-datalist";
+  (scenarioProject.fishItems || []).forEach(fish => {
+    const option = document.createElement("option");
+    option.value = fish.id;
+    option.label = fish.name;
+    datalist.appendChild(option);
+  });
+  return datalist;
+}
+
 // ===================================================================
 // ===== サブ画面：キャラ／敵／ボス／アイテムの管理（共通パターン） =====
 // ===================================================================
@@ -5065,7 +5133,9 @@ function getItemManagerConfig() {
   const categoryOptions = [
     { value: "herb", label: "薬草" }, { value: "potion", label: "ポーション" },
     { value: "material", label: "魔物素材" }, { value: "weapon", label: "武器" },
-    { value: "armor", label: "防具" }, { value: "tool", label: "道具" }, { value: "misc", label: "その他" }
+    { value: "armor", label: "防具" }, { value: "tool", label: "道具" },
+    { value: "cookingTool", label: "料理道具" }, { value: "food", label: "料理" },
+    { value: "misc", label: "その他" }
   ];
   return {
     note: "既にあるアイテム（items.js）も一覧に出ており、直接編集・削除できます（実際のゲームデータそのものが変わります）。ギヴ（アイテム付与）ブロックのアイテムIDにこのIDを入れれば付与できます。「編集」を押すと、回復量や薬効などの効果パラメータも含めて詳しく設定できます。武器・防具は個体差の範囲も設定できます。",
@@ -5076,7 +5146,8 @@ function getItemManagerConfig() {
     filterDefault: "misc",
     filterOptions: [
       { key: "equipment", label: "装備", values: ["weapon", "armor"] },
-      { key: "tools", label: "道具", values: ["herb", "potion", "material", "tool", "misc"] }
+      { key: "tools", label: "道具", values: ["herb", "potion", "material", "tool", "misc"] },
+      { key: "cooking", label: "料理関連", values: ["cookingTool", "food"] }
     ],
     fields: [
       { key: "name", label: "名前", type: "text", placeholder: "アイテム名" },
@@ -5085,7 +5156,28 @@ function getItemManagerConfig() {
       { key: "rank", label: "お宝ランク", type: "text", placeholder: "F〜S" },
       { key: "listedPrice", label: "定価", type: "number", placeholder: "0" },
       { key: "trueValue", label: "真価", type: "number", placeholder: "0" },
-      { key: "unsellable", label: "売れない（買取屋の売却対象から外す）", type: "checkbox" }
+      { key: "unsellable", label: "売れない（買取屋の売却対象から外す）", type: "checkbox" },
+      // ★要望対応：どのカテゴリのアイテムでも「釣竿」「釣り餌」として扱えるようにするチェック
+      { key: "isFishingRod", label: "釣竿として扱う", type: "checkbox" },
+      { key: "rodDurability", label: "（釣竿）耐久度", type: "number", placeholder: "20" },
+      { key: "rodPower", label: "（釣竿）攻撃力", type: "number", placeholder: "3" },
+      { key: "isFishingBait", label: "釣り餌として扱う", type: "checkbox" },
+      // ★バグ修正：以前はフリーテキストで「魚管理タブの『種類』と同じ文字列」を手打ちする方式だったため、
+      //   全角半角やスペース、ちょっとした表記ゆれで一致せず、魚が登録されているのに
+      //   「今はこの餌に反応する魚がいないようだ……」になってしまうバグがあった。
+      //   → 魚管理タブに登録済みの「種類」から選ぶチェックボックス方式（複数選択可）に変更（fishing.js参照）
+      { key: "baitFishTypes", label: "（餌）釣れる魚の種類（複数選択可／未選択ならどの魚にも反応）", type: "multiselect", emptyText: "先に「魚管理」タブで魚を登録すると、ここに種類が選べるようになります", optionsFn: () => getRegisteredFishTypeOptions() },
+      { key: "baitBiteRate", label: "（餌）食いつき度（高いほど早く食いつく／目安1〜10）", type: "number", placeholder: "5" },
+      // ★要望対応：料理タブ用。種類を「料理道具」にした時だけ意味を持つ
+      { key: "toolDurability", label: "（料理道具）耐久度", type: "number", placeholder: "30" },
+      { key: "toolSlotCount", label: "（料理道具）材料スロット数", type: "number", placeholder: "3" },
+      // ★要望対応：種類を「料理」にした時だけ意味を持つ、戦闘中だけの自己バフ（技の自己強化と同じ仕組みを流用）
+      { key: "foodBuffKind", label: "（料理）戦闘中バフの種類（状態強化の管理タブで作ったID）", type: "text", placeholder: "空欄ならバフ無し" },
+      { key: "foodBuffDuration", label: "（料理）バフの持続ターン数", type: "number", placeholder: "3" },
+      { key: "foodBuffPower", label: "（料理）バフの効果量", type: "number", placeholder: "5" },
+      // ★要望対応：このアイテムを「使う」と、指定した料理レシピがレシピ帳に登録される（レシピ発見アイテム）
+      { key: "isRecipeItem", label: "料理レシピとして扱う（使うとレシピ帳に登録）", type: "checkbox" },
+      { key: "unlockRecipeId", label: "（レシピ）登録される料理レシピのID", type: "text", placeholder: "レシピ管理タブで確認できるID" }
     ],
     newEntity: () => ({ id: generateId("item"), name: "", category: "material", description: "", rank: "F", listedPrice: 0, trueValue: 0, unsellable: false }),
     quickAddOptions: categoryOptions.map(opt => ({
@@ -5100,6 +5192,46 @@ function getItemManagerConfig() {
         name: master.name, category: master.category, description: master.description,
         rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue, unsellable: !!master.unsellable,
         stackable: master.stackable
+      };
+    }
+  };
+}
+
+// ===================================================================
+// ===== サブ画面：魚管理（要望対応：釣り場で釣れる魚の追加・編集） =====
+// ===================================================================
+// ★魚も内部的にはアイテムと同じ扱いで、ensureCustomFishRegistered()を通じて
+//   ITEM_MASTER（category:"fish"）に反映される。インベントリにも普通に入り、水色の文字色で表示される。
+//   「種類」は釣り餌の「（餌）釣れる魚の種類」と同じ文字列を入れることで、その餌で狙えるようになる（fishing.js）
+function getFishManagerConfig() {
+  return {
+    note: "釣り場で釣れる「魚」を登録します。魚も中身はアイテムと同じ扱いで、釣り上げるとインベントリに入ります（文字色は水色）。「種類」は釣り餌の「釣れる魚の種類」と同じ文字列にしておくと、その餌で狙えるようになります。「強さ」「体力」は釣りミニゲームでの魚側のステータスです。施設編集タブの「釣り場」で、どの魚をどの時間帯・天候に出すか設定してください。",
+    category: "fish",
+    useDetailEditor: true,
+    getList: () => scenarioProject.fishItems,
+    fields: [
+      { key: "name", label: "名前", type: "text", placeholder: "魚の名前" },
+      { key: "description", label: "説明", type: "text", placeholder: "説明（任意）" },
+      { key: "fishType", label: "種類", type: "text", placeholder: "例：小物／大物 など自由に" },
+      { key: "power", label: "強さ（釣りミニゲームでの攻撃力）", type: "number", placeholder: "3" },
+      { key: "hp", label: "体力（釣りミニゲームでのHP）", type: "number", placeholder: "15" },
+      { key: "size", label: "大きさ（cm）", type: "number", placeholder: "10" },
+      { key: "rank", label: "レア度（F〜S目安）", type: "text", placeholder: "F〜S" },
+      { key: "listedPrice", label: "定価（売却額の目安）", type: "number", placeholder: "0" },
+      { key: "trueValue", label: "真価", type: "number", placeholder: "0" }
+    ],
+    newEntity: () => ({
+      id: generateId("fish"), name: "", description: "", fishType: "", power: 3, hp: 15, size: 10,
+      rank: "F", listedPrice: 0, trueValue: 0
+    }),
+    onChange: ensureCustomFishRegistered,
+    getDefaultFromMaster: (id) => {
+      const master = typeof ITEM_MASTER !== "undefined" ? ITEM_MASTER[id] : null;
+      if (!master || master.category !== "fish") return null;
+      return {
+        name: master.name, description: master.description, fishType: master.fishType,
+        power: master.fishPower, hp: master.fishHp, size: master.fishSize,
+        rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue
       };
     }
   };
@@ -5422,7 +5554,8 @@ function renderRecipeManager(container) {
   // ★要望対応：種類ごとにタブ分けして見やすくする
   const RECIPE_FILTER_OPTIONS = [
     { key: "blacksmith", label: "鍛冶屋" },
-    { key: "synthesis", label: "素材合成屋" }
+    { key: "synthesis", label: "素材合成屋" },
+    { key: "cooking", label: "料理" }
   ];
   const filterRow = document.createElement("div");
   filterRow.className = "scenariobuild-filter-row";
@@ -5456,7 +5589,8 @@ function renderRecipeManager(container) {
     { label: "鍛冶屋の作成レシピ", shopType: "blacksmith", mode: "create" },
     { label: "鍛冶屋の強化レシピ", shopType: "blacksmith", mode: "upgrade" },
     { label: "素材合成屋の作成レシピ", shopType: "synthesis", mode: "create" },
-    { label: "素材合成屋の強化レシピ", shopType: "synthesis", mode: "upgrade" }
+    { label: "素材合成屋の強化レシピ", shopType: "synthesis", mode: "upgrade" },
+    { label: "料理のレシピ", shopType: "cooking", mode: "create" }
   ].forEach(opt => {
     const btn = document.createElement("button");
     btn.className = "devmode-btn";
@@ -5499,7 +5633,7 @@ function buildRecipeRow(recipe) {
   typeRow.appendChild(labelSpan("扱う店："));
   const shopSelect = document.createElement("select");
   shopSelect.className = "scenariobuild-jump-select";
-  [{ value: "blacksmith", label: "鍛冶屋" }, { value: "synthesis", label: "素材合成屋" }].forEach(opt => {
+  [{ value: "blacksmith", label: "鍛冶屋" }, { value: "synthesis", label: "素材合成屋" }, { value: "cooking", label: "料理" }].forEach(opt => {
     const optionEl = document.createElement("option");
     optionEl.value = opt.value;
     optionEl.textContent = opt.label;
@@ -5509,37 +5643,65 @@ function buildRecipeRow(recipe) {
   shopSelect.onchange = () => { recipe.shopType = shopSelect.value; markScenarioBuildDirty(); renderScenarioBuildPanel(); };
   typeRow.appendChild(shopSelect);
   
-  // ★要望対応：鍛冶屋・素材合成屋が複数ある時、このレシピをどの店で使えるようにするか指定できる
-  typeRow.appendChild(labelSpan("対象の店："));
-  const facilitySelect = document.createElement("select");
-  facilitySelect.className = "scenariobuild-jump-select";
-  const anyFacilityOpt = document.createElement("option");
-  anyFacilityOpt.value = "";
-  anyFacilityOpt.textContent = "（指定なし：この種類の店なら全部で使える）";
-  facilitySelect.appendChild(anyFacilityOpt);
-  scenarioProject.facilities.filter(f => f.type === (recipe.shopType || "blacksmith")).forEach(f => {
-    const opt = document.createElement("option");
-    opt.value = f.id;
-    opt.textContent = f.name || "（名称未設定の店）";
-    facilitySelect.appendChild(opt);
-  });
-  facilitySelect.value = recipe.facilityId || "";
-  facilitySelect.onchange = () => { recipe.facilityId = facilitySelect.value || null; markScenarioBuildDirty(); };
-  typeRow.appendChild(facilitySelect);
-  
-  typeRow.appendChild(labelSpan("種別："));
-  const modeSelect = document.createElement("select");
-  modeSelect.className = "scenariobuild-jump-select";
-  [{ value: "create", label: "作成（材料だけを消費）" }, { value: "upgrade", label: "強化（材料＋指定した装備1個を消費）" }].forEach(opt => {
-    const optionEl = document.createElement("option");
-    optionEl.value = opt.value;
-    optionEl.textContent = opt.label;
-    modeSelect.appendChild(optionEl);
-  });
-  modeSelect.value = recipe.mode || "create";
-  modeSelect.onchange = () => { recipe.mode = modeSelect.value; markScenarioBuildDirty(); renderScenarioBuildPanel(); };
-  typeRow.appendChild(modeSelect);
+  // ★要望対応：鍛冶屋・素材合成屋が複数ある時、このレシピをどの店で使えるようにするか指定できる。
+  //   料理レシピの場合は「店」ではなく「どの料理道具（アイテム）を使うレシピか」を指定する
+  if (recipe.shopType === "cooking") {
+    typeRow.appendChild(labelSpan("対象の料理道具："));
+    const toolSelect = document.createElement("select");
+    toolSelect.className = "scenariobuild-jump-select";
+    const noToolOpt = document.createElement("option");
+    noToolOpt.value = "";
+    noToolOpt.textContent = "（未選択：料理道具を選んでください）";
+    toolSelect.appendChild(noToolOpt);
+    scenarioProject.items.filter(it => it.category === "cookingTool").forEach(it => {
+      const opt = document.createElement("option");
+      opt.value = it.id;
+      opt.textContent = it.name || "（名称未設定の料理道具）";
+      toolSelect.appendChild(opt);
+    });
+    toolSelect.value = recipe.toolItemId || "";
+    toolSelect.onchange = () => { recipe.toolItemId = toolSelect.value || ""; markScenarioBuildDirty(); };
+    typeRow.appendChild(toolSelect);
+    recipe.mode = "create"; // ★料理に強化モードは無いので、常に「作成」扱いで固定する
+  } else {
+    typeRow.appendChild(labelSpan("対象の店："));
+    const facilitySelect = document.createElement("select");
+    facilitySelect.className = "scenariobuild-jump-select";
+    const anyFacilityOpt = document.createElement("option");
+    anyFacilityOpt.value = "";
+    anyFacilityOpt.textContent = "（指定なし：この種類の店なら全部で使える）";
+    facilitySelect.appendChild(anyFacilityOpt);
+    scenarioProject.facilities.filter(f => f.type === (recipe.shopType || "blacksmith")).forEach(f => {
+      const opt = document.createElement("option");
+      opt.value = f.id;
+      opt.textContent = f.name || "（名称未設定の店）";
+      facilitySelect.appendChild(opt);
+    });
+    facilitySelect.value = recipe.facilityId || "";
+    facilitySelect.onchange = () => { recipe.facilityId = facilitySelect.value || null; markScenarioBuildDirty(); };
+    typeRow.appendChild(facilitySelect);
+    
+    typeRow.appendChild(labelSpan("種別："));
+    const modeSelect = document.createElement("select");
+    modeSelect.className = "scenariobuild-jump-select";
+    [{ value: "create", label: "作成（材料だけを消費）" }, { value: "upgrade", label: "強化（材料＋指定した装備1個を消費）" }].forEach(opt => {
+      const optionEl = document.createElement("option");
+      optionEl.value = opt.value;
+      optionEl.textContent = opt.label;
+      modeSelect.appendChild(optionEl);
+    });
+    modeSelect.value = recipe.mode || "create";
+    modeSelect.onchange = () => { recipe.mode = modeSelect.value; markScenarioBuildDirty(); renderScenarioBuildPanel(); };
+    typeRow.appendChild(modeSelect);
+  }
   infoEl.appendChild(typeRow);
+  
+  if (recipe.shopType === "cooking") {
+    const cookingNoteEl = document.createElement("p");
+    cookingNoteEl.className = "devmode-note";
+    cookingNoteEl.textContent = "料理タブでは、下の「必要な材料」と個数まで完全に一致する材料を置いた時だけ成立します（多い分・少ない分・種類違いはすべて失敗＝材料ロスになります）。このレシピのIDは、種類「料理」のレシピ発見アイテム（アイテム管理タブの「（レシピ）登録される料理レシピのID」）に設定すると、そのアイテムを使った時にレシピ帳へ登録されます。IDはこの行の右下に表示されます。";
+    infoEl.appendChild(cookingNoteEl);
+  }
   
   if (recipe.mode === "upgrade") {
     const baseRow = document.createElement("div");
@@ -5650,6 +5812,12 @@ function buildRecipeRow(recipe) {
   infoEl.appendChild(descRow);
   
   row.appendChild(infoEl);
+  
+  const idEl = document.createElement("p");
+  idEl.className = "devmode-note";
+  idEl.style.margin = "0 0 4px";
+  idEl.textContent = `ID：${recipe.id}`;
+  row.appendChild(idEl);
   
   const deleteBtn = document.createElement("button");
   deleteBtn.className = "devmode-btn devmode-btn-danger";
@@ -7946,7 +8114,7 @@ function buildClassStatsRow(className) {
 // ===================================================================
 // ===== サブ画面：施設編集（村に追加できる「酒場/宿屋/店/冒険する」以外の施設） =====
 // ===================================================================
-const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", realEstate: "不動産屋系（家・店の売買・賃貸）", flavor: "その他（セリフのみ）" };
+const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", realEstate: "不動産屋系（家・店の売買・賃貸）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", flavor: "その他（セリフのみ）" };
 
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
@@ -7995,7 +8163,12 @@ function renderFacilityManager(container) {
         bgTrack: "", bgImage: "", ownerDialogue: "",
         price: 20, sleepinessRecovery: 40, fatigueRecovery: 40,
         classChangeCost: 100,
-        minBet: 10, maxBet: 1000, slotImages: {}, slotWeights: {} // ★カジノ系で使う項目（他の種類では無視される）
+        minBet: 10, maxBet: 1000, slotImages: {}, slotWeights: {}, // ★カジノ系で使う項目（他の種類では無視される）
+        entryItemId: "", entryItemQty: 1, floors: [], regularEnemyPool: [], bossRoundConfig: {}, // ★コロシアム系で使う項目（他の種類では無視される）
+        coinItemIdBlue: "", coinItemIdYellow: "", coinItemIdRed: "",
+        milestone10CoinQty: 1, milestone20CoinQty: 1, milestone50CoinQty: 1,
+        finalClearBlueCoinQty: 0, finalClearYellowCoinQty: 0, finalClearRedCoinQty: 0,
+        finalClearGoldReward: 0, finalClearExpReward: 0, exchangeOffers: []
       };
       scenarioProject.facilities.push(newFacility);
       // ★以前はここで自動的に村へアタッチしていたが、他の拠点（カデリクの街など）にだけアタッチしたつもりでも
@@ -8311,12 +8484,16 @@ function buildFacilityRow(facility) {
     betRow.appendChild(maxBetInput);
     infoEl.appendChild(betRow);
     
-    // ★スロットの絵柄画像・揃う確率（重み）。画像パスを1つも設定していない絵柄は、ゲーム内では絵文字で表示される。
-    //   「揃う確率」は数値が大きいほどその絵柄が出やすくなる（他の絵柄との相対的な重み。既定値と同じ考え方）
+    // ★修正（バグ報告対応）：以前は「揃う確率」という表示のまま、実際には1マスあたりの
+    //   出現しやすさ（重み、他の絵柄との相対比）を入力させていたため、表示と実態が食い違っていた。
+    //   入力自体はこれまで通り「重み」（ゲームロジック側の抽選に使う値）のままとし、
+    //   実際に3マス揃う確率（＝重み÷全絵柄の重み合計、の3乗）を別途その場で計算して表示するようにする。
+    //   複数ライン同時揃いは各マスが独立抽選される仕組みから自然に生じるため、
+    //   その確率は単純に「確率×確率」の掛け算で近似される（設計方針として確定済み）
     const slotNoteEl = document.createElement("p");
     slotNoteEl.className = "devmode-note";
     slotNoteEl.style.margin = "10px 0 2px";
-    slotNoteEl.textContent = "スロットの絵柄（任意で施設ごとにカスタマイズ）。画像は空欄のままなら絵文字で表示されます。「揃う確率」は数値が大きいほどその絵柄が出やすくなります（他の絵柄との相対的な重み。空欄なら既定値のまま）：";
+    slotNoteEl.textContent = "スロットの絵柄（任意で施設ごとにカスタマイズ）。画像は空欄のままなら絵文字で表示されます。「出現しやすさ（重み）」は数値が大きいほどその絵柄が出やすくなります（他の絵柄との相対的な重み。空欄なら既定値のまま）。実際に1ラインが揃う確率は、その場で自動計算して表示します：";
     infoEl.appendChild(slotNoteEl);
     
     if (!facility.slotImages || typeof facility.slotImages !== "object") facility.slotImages = {};
@@ -8328,6 +8505,29 @@ function buildFacilityRow(facility) {
       { key: "gem", label: "宝石（絵文字：💎）", defaultWeight: 12 },
       { key: "seven", label: "セブン（絵文字：7）", defaultWeight: 8 }
     ];
+    const slotProbabilitySpans = {};
+    let slotTotalProbabilityEl = null;
+    // ★実際の「揃う確率」を再計算して表示を更新する。重みを1つ変えると全絵柄の割合が変わるため、毎回全行分を計算し直す
+    function refreshSlotProbabilityDisplay() {
+      const totalWeight = SLOT_SYMBOL_ROWS.reduce((sum, row) => {
+        const override = facility.slotWeights[row.key];
+        const w = (typeof override === "number" && override > 0) ? override : row.defaultWeight;
+        return sum + w;
+      }, 0);
+      let anyLineTotal = 0;
+      SLOT_SYMBOL_ROWS.forEach(row => {
+        const override = facility.slotWeights[row.key];
+        const w = (typeof override === "number" && override > 0) ? override : row.defaultWeight;
+        const perCell = totalWeight > 0 ? w / totalWeight : 0;
+        const lineProb = Math.pow(perCell, 3); // ★3マス（1ライン）とも同じ絵柄になる確率
+        anyLineTotal += lineProb;
+        const span = slotProbabilitySpans[row.key];
+        if (span) span.textContent = `（1ラインが揃う確率：約${(lineProb * 100).toFixed(2)}%）`;
+      });
+      if (slotTotalProbabilityEl) {
+        slotTotalProbabilityEl.textContent = `いずれかの絵柄で1ラインが揃う確率の合計：約${(anyLineTotal * 100).toFixed(2)}%（複数ラインの同時揃いは、これらの確率同士がさらに掛け算される形で自然に発生します）`;
+      }
+    }
     SLOT_SYMBOL_ROWS.forEach(({ key, label, defaultWeight }) => {
       const slotRow = document.createElement("div");
       slotRow.className = "scenariobuild-condition-row";
@@ -8344,7 +8544,7 @@ function buildFacilityRow(facility) {
         markScenarioBuildDirty();
       };
       slotRow.appendChild(pathInput);
-      slotRow.appendChild(labelSpan("揃う確率："));
+      slotRow.appendChild(labelSpan("出現しやすさ（重み）："));
       const weightInput = document.createElement("input");
       weightInput.type = "number";
       weightInput.min = "0";
@@ -8356,10 +8556,100 @@ function buildFacilityRow(facility) {
         const value = Number(weightInput.value);
         if (weightInput.value !== "" && value > 0) facility.slotWeights[key] = value; else delete facility.slotWeights[key];
         markScenarioBuildDirty();
+        refreshSlotProbabilityDisplay();
       };
       slotRow.appendChild(weightInput);
+      const probSpan = document.createElement("span");
+      probSpan.className = "devmode-note";
+      probSpan.style.marginLeft = "4px";
+      slotProbabilitySpans[key] = probSpan;
+      slotRow.appendChild(probSpan);
       infoEl.appendChild(slotRow);
     });
+    slotTotalProbabilityEl = document.createElement("p");
+    slotTotalProbabilityEl.className = "devmode-note";
+    slotTotalProbabilityEl.style.margin = "4px 0 10px";
+    infoEl.appendChild(slotTotalProbabilityEl);
+    refreshSlotProbabilityDisplay();
+  } else if (facility.type === "fishing") {
+    // ★要望対応：釣り場施設。出現する魚を「時間帯」「天候」ごとに重み付きで登録する。
+    //   時間帯はplayer.gameHour（player.js）、天候はcurrentWeatherType（mainfunc.js）を実際の釣りで参照する
+    const fishingNote = document.createElement("p");
+    fishingNote.className = "devmode-note";
+    fishingNote.textContent = "この釣り場で釣れる魚を登録してください（魚IDは「魚管理」タブで作った魚から選べます）。時間帯・天候を「指定なし」にすると、いつでもその条件を満たします。重みが大きいほど釣れやすくなります。釣竿・釣り餌はここではなく、それらを扱う「店」タイプの施設で売ってください（アイテム設定で釣竿・釣り餌チェックを付けたアイテムです）。";
+    infoEl.appendChild(fishingNote);
+    
+    if (!Array.isArray(facility.fishingSpots)) facility.fishingSpots = [];
+    facility.fishingSpots.forEach((entry, i) => {
+      const spotRow = document.createElement("div");
+      spotRow.className = "scenariobuild-condition-row";
+      
+      spotRow.appendChild(labelSpan("魚ID："));
+      const fishInput = document.createElement("input");
+      fishInput.type = "text";
+      fishInput.className = "scenariobuild-title-input";
+      fishInput.placeholder = "魚ID";
+      fishInput.setAttribute("list", "scenariobuild-fish-datalist");
+      fishInput.value = entry.fishId || "";
+      fishInput.onchange = () => { entry.fishId = fishInput.value.trim(); markScenarioBuildDirty(); };
+      spotRow.appendChild(fishInput);
+      
+      spotRow.appendChild(labelSpan("重み："));
+      const weightInput = document.createElement("input");
+      weightInput.type = "number";
+      weightInput.min = "1";
+      weightInput.className = "scenariobuild-condition-input";
+      weightInput.value = entry.weight != null ? entry.weight : 1;
+      weightInput.onchange = () => { entry.weight = Math.max(1, Number(weightInput.value) || 1); markScenarioBuildDirty(); };
+      spotRow.appendChild(weightInput);
+      
+      spotRow.appendChild(labelSpan("時間帯："));
+      const timeSelect = document.createElement("select");
+      timeSelect.className = "scenariobuild-jump-select";
+      [["any", "指定なし"], ["morning", "朝（5〜10時）"], ["day", "昼（10〜16時）"], ["evening", "夕（16〜19時）"], ["night", "夜（19〜5時）"]].forEach(([v, label]) => {
+        const opt = document.createElement("option");
+        opt.value = v; opt.textContent = label;
+        timeSelect.appendChild(opt);
+      });
+      timeSelect.value = entry.timeOfDay || "any";
+      timeSelect.onchange = () => { entry.timeOfDay = timeSelect.value; markScenarioBuildDirty(); };
+      spotRow.appendChild(timeSelect);
+      
+      spotRow.appendChild(labelSpan("天候："));
+      const weatherSelect = document.createElement("select");
+      weatherSelect.className = "scenariobuild-jump-select";
+      [["any", "指定なし"], ["clear", "晴れ（演出無し）"], ["rain", "雨"], ["snow", "雪"], ["sakura", "桜吹雪"]].forEach(([v, label]) => {
+        const opt = document.createElement("option");
+        opt.value = v; opt.textContent = label;
+        weatherSelect.appendChild(opt);
+      });
+      weatherSelect.value = entry.weather || "any";
+      weatherSelect.onchange = () => { entry.weather = weatherSelect.value; markScenarioBuildDirty(); };
+      spotRow.appendChild(weatherSelect);
+      
+      const removeSpotBtn = document.createElement("button");
+      removeSpotBtn.className = "devmode-btn devmode-btn-danger";
+      removeSpotBtn.textContent = "×";
+      removeSpotBtn.onclick = (event) => {
+        event.stopPropagation();
+        facility.fishingSpots.splice(i, 1);
+        markScenarioBuildDirty();
+        renderScenarioBuildPanel();
+      };
+      spotRow.appendChild(removeSpotBtn);
+      infoEl.appendChild(spotRow);
+    });
+    
+    const addSpotBtn = document.createElement("button");
+    addSpotBtn.className = "devmode-btn";
+    addSpotBtn.textContent = "＋出現する魚を追加";
+    addSpotBtn.onclick = (event) => {
+      event.stopPropagation();
+      facility.fishingSpots.push({ fishId: "", weight: 1, timeOfDay: "any", weather: "any" });
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    infoEl.appendChild(addSpotBtn);
   } else if (facility.type === "shop") {
     const buyRow = document.createElement("div");
     buyRow.className = "scenariobuild-condition-row";
@@ -8686,6 +8976,252 @@ function buildFacilityRow(facility) {
       optionRow.appendChild(document.createTextNode(` ${estateArea.name || "（名前未設定）"}（${typeLabel}・${priceLabel}）`));
       infoEl.appendChild(optionRow);
     });
+  } else if (facility.type === "colosseum") {
+    // ★要望対応：コロシアム施設。アイテム使用禁止の連戦タワー（実際はn回戦形式）。
+    //   参加費・各回戦の敵編成（追加/削除可）・コインの種類と獲得数・99回戦クリア報酬・コインの引き換え屋を設定できる
+    const entryNote = document.createElement("p");
+    entryNote.className = "devmode-note";
+    entryNote.textContent = "参加すると、指定したアイテムを指定した数だけ消費します（無ければ挑戦できません）。挑戦中はアイテムが一切使えません。1回でも負けたら1回戦目からやり直しになります。10の倍数の回戦をクリアすると全回復、5の倍数（10の倍数を除く）の回戦をクリアするとHP・SPが1/3回復します。";
+    infoEl.appendChild(entryNote);
+    
+    const entryRow = document.createElement("div");
+    entryRow.className = "scenariobuild-condition-row";
+    entryRow.appendChild(labelSpan("参加アイテムID："));
+    const entryItemInput = document.createElement("input");
+    entryItemInput.type = "text";
+    entryItemInput.className = "scenariobuild-title-input";
+    entryItemInput.setAttribute("list", "scenariobuild-item-datalist");
+    entryItemInput.value = facility.entryItemId || "";
+    entryItemInput.onchange = () => { facility.entryItemId = entryItemInput.value.trim(); markScenarioBuildDirty(); };
+    entryRow.appendChild(entryItemInput);
+    entryRow.appendChild(labelSpan("必要数："));
+    const entryQtyInput = document.createElement("input");
+    entryQtyInput.type = "number";
+    entryQtyInput.min = "1";
+    entryQtyInput.className = "scenariobuild-condition-input";
+    entryQtyInput.value = facility.entryItemQty || 1;
+    entryQtyInput.onchange = () => { facility.entryItemQty = Math.max(1, Number(entryQtyInput.value) || 1); markScenarioBuildDirty(); };
+    entryRow.appendChild(entryQtyInput);
+    infoEl.appendChild(entryRow);
+    
+    // ===== 通常回戦の「様々な敵」プール（要望対応） =====
+    const poolNote = document.createElement("p");
+    poolNote.className = "devmode-note";
+    poolNote.style.margin = "10px 0 2px";
+    poolNote.textContent = "10の倍数（10・20・…・90）と、最後の節目となる99回戦目「以外」の回戦で使う、敵のプールです。回戦ごとに、この中からランダムに5体（重複あり）選ばれて出てきます。";
+    infoEl.appendChild(poolNote);
+    
+    if (!Array.isArray(facility.regularEnemyPool)) facility.regularEnemyPool = [];
+    infoEl.appendChild(buildTagListEditor({
+      label: "敵ID（同じIDを複数回追加すると、その分ランダムで選ばれやすくなります）：",
+      items: facility.regularEnemyPool,
+      datalistId: "scenariobuild-monster-datalist",
+      placeholder: "敵ID",
+      onChange: () => markScenarioBuildDirty()
+    }));
+    
+    // ===== 節目回戦（10の倍数＋99回戦目）の「指定した敵」（要望対応） =====
+    const bossRoundsNote = document.createElement("p");
+    bossRoundsNote.className = "devmode-note";
+    bossRoundsNote.style.margin = "10px 0 2px";
+    bossRoundsNote.textContent = "10の倍数の回戦と、100回戦が無いため最後の節目となる99回戦目は、ここで指定した「ボス的な」敵編成で固定されます（プールからのランダム抽選の対象外）。レベルを指定すると、その回戦の敵はそのレベルで固定されます（0のままなら、通常通り主人公のレベル±1で決まります）。";
+    infoEl.appendChild(bossRoundsNote);
+    
+    if (!facility.bossRoundConfig || typeof facility.bossRoundConfig !== "object") facility.bossRoundConfig = {};
+    COLOSSEUM_BOSS_ROUND_NUMBERS.forEach(floorNumber => {
+      if (!facility.bossRoundConfig[floorNumber] || typeof facility.bossRoundConfig[floorNumber] !== "object") {
+        facility.bossRoundConfig[floorNumber] = { enemyMonsterKeys: [], level: 0 };
+      }
+      const config = facility.bossRoundConfig[floorNumber];
+      if (!Array.isArray(config.enemyMonsterKeys)) config.enemyMonsterKeys = [];
+      
+      const bossBox = document.createElement("div");
+      bossBox.className = "scenariobuild-skill-repeat-body";
+      
+      const bossHeader = document.createElement("p");
+      bossHeader.className = "devmode-note";
+      bossHeader.style.fontWeight = "bold";
+      bossHeader.textContent = `${floorNumber}回戦目` + (floorNumber === 99 ? "（最終回戦）" : "");
+      bossBox.appendChild(bossHeader);
+      
+      bossBox.appendChild(buildTagListEditor({
+        label: "敵ID（最大5体・同じIDを複数回追加すると同じ敵が複数体出ます。ボスIDを混ぜることも可能です）：",
+        items: config.enemyMonsterKeys,
+        datalistId: "scenariobuild-monster-datalist",
+        placeholder: "敵ID",
+        onChange: () => markScenarioBuildDirty(),
+        maxItems: 5
+      }));
+      
+      const levelRow = document.createElement("div");
+      levelRow.className = "scenariobuild-condition-row";
+      levelRow.appendChild(labelSpan("レベル指定（0＝指定なし）："));
+      const levelInput = document.createElement("input");
+      levelInput.type = "number";
+      levelInput.min = "0";
+      levelInput.className = "scenariobuild-condition-input";
+      levelInput.value = config.level || 0;
+      levelInput.onchange = () => { config.level = Math.max(0, Number(levelInput.value) || 0); markScenarioBuildDirty(); };
+      levelRow.appendChild(levelInput);
+      bossBox.appendChild(levelRow);
+      
+      infoEl.appendChild(bossBox);
+    });
+    
+    // ===== コインの種類・マイルストーン報酬 =====
+    const coinNote = document.createElement("p");
+    coinNote.className = "devmode-note";
+    coinNote.style.margin = "10px 0 2px";
+    coinNote.textContent = "10・20・50回戦をクリアすると、それぞれ「青」「黄」「赤」のコインを獲得します。ここではどのアイテムを各色のコインとして扱うか（あらかじめアイテム管理で作っておいたアイテムのIDを指定）と、何個獲得するかを設定します：";
+    infoEl.appendChild(coinNote);
+    
+    const COIN_MILESTONES = [
+      { color: "blue", label: "青コイン（10回戦クリアで獲得）", itemKey: "coinItemIdBlue", qtyKey: "milestone10CoinQty" },
+      { color: "yellow", label: "黄コイン（20回戦クリアで獲得）", itemKey: "coinItemIdYellow", qtyKey: "milestone20CoinQty" },
+      { color: "red", label: "赤コイン（50回戦クリアで獲得）", itemKey: "coinItemIdRed", qtyKey: "milestone50CoinQty" }
+    ];
+    COIN_MILESTONES.forEach(({ label, itemKey, qtyKey }) => {
+      const coinRow = document.createElement("div");
+      coinRow.className = "scenariobuild-condition-row";
+      coinRow.style.flexWrap = "wrap";
+      coinRow.appendChild(labelSpan(`${label}："`));
+      const coinItemInput = document.createElement("input");
+      coinItemInput.type = "text";
+      coinItemInput.className = "scenariobuild-title-input";
+      coinItemInput.placeholder = "アイテムID";
+      coinItemInput.setAttribute("list", "scenariobuild-item-datalist");
+      coinItemInput.value = facility[itemKey] || "";
+      coinItemInput.onchange = () => { facility[itemKey] = coinItemInput.value.trim(); markScenarioBuildDirty(); };
+      coinRow.appendChild(coinItemInput);
+      coinRow.appendChild(labelSpan("獲得数："));
+      const coinQtyInput = document.createElement("input");
+      coinQtyInput.type = "number";
+      coinQtyInput.min = "1";
+      coinQtyInput.className = "scenariobuild-condition-input";
+      coinQtyInput.value = facility[qtyKey] || 1;
+      coinQtyInput.onchange = () => { facility[qtyKey] = Math.max(1, Number(coinQtyInput.value) || 1); markScenarioBuildDirty(); };
+      coinRow.appendChild(coinQtyInput);
+      infoEl.appendChild(coinRow);
+    });
+    
+    // ===== 99回戦クリア報酬 =====
+    const finalNote = document.createElement("p");
+    finalNote.className = "devmode-note";
+    finalNote.style.margin = "10px 0 2px";
+    finalNote.textContent = "99回戦をクリアした時の特別報酬です（0のままなら、その報酬は渡しません）：";
+    infoEl.appendChild(finalNote);
+    
+    const finalRow1 = document.createElement("div");
+    finalRow1.className = "scenariobuild-condition-row";
+    finalRow1.style.flexWrap = "wrap";
+    [["blue", "finalClearBlueCoinQty", "青コイン"], ["yellow", "finalClearYellowCoinQty", "黄コイン"], ["red", "finalClearRedCoinQty", "赤コイン"]].forEach(([, key, label]) => {
+      finalRow1.appendChild(labelSpan(`${label}："`));
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = "0";
+      input.className = "scenariobuild-condition-input";
+      input.value = facility[key] || 0;
+      input.onchange = () => { facility[key] = Math.max(0, Number(input.value) || 0); markScenarioBuildDirty(); };
+      finalRow1.appendChild(input);
+    });
+    infoEl.appendChild(finalRow1);
+    
+    const finalRow2 = document.createElement("div");
+    finalRow2.className = "scenariobuild-condition-row";
+    finalRow2.appendChild(labelSpan("陳："));
+    const finalGoldInput = document.createElement("input");
+    finalGoldInput.type = "number";
+    finalGoldInput.min = "0";
+    finalGoldInput.className = "scenariobuild-condition-input";
+    finalGoldInput.value = facility.finalClearGoldReward || 0;
+    finalGoldInput.onchange = () => { facility.finalClearGoldReward = Math.max(0, Number(finalGoldInput.value) || 0); markScenarioBuildDirty(); };
+    finalRow2.appendChild(finalGoldInput);
+    finalRow2.appendChild(labelSpan("経験値："));
+    const finalExpInput = document.createElement("input");
+    finalExpInput.type = "number";
+    finalExpInput.min = "0";
+    finalExpInput.className = "scenariobuild-condition-input";
+    finalExpInput.value = facility.finalClearExpReward || 0;
+    finalExpInput.onchange = () => { facility.finalClearExpReward = Math.max(0, Number(finalExpInput.value) || 0); markScenarioBuildDirty(); };
+    finalRow2.appendChild(finalExpInput);
+    infoEl.appendChild(finalRow2);
+    
+    // ===== コインの引き換え屋 =====
+    const exchangeNote = document.createElement("p");
+    exchangeNote.className = "devmode-note";
+    exchangeNote.style.margin = "10px 0 2px";
+    exchangeNote.textContent = "コインの引き換え屋のラインナップです（コロシアム内の「コインを引き換える」から選べます）：";
+    infoEl.appendChild(exchangeNote);
+    
+    if (!Array.isArray(facility.exchangeOffers)) facility.exchangeOffers = [];
+    facility.exchangeOffers.forEach((offer, index) => {
+      const offerRow = document.createElement("div");
+      offerRow.className = "scenariobuild-condition-row";
+      offerRow.style.flexWrap = "wrap";
+      
+      const colorSelect = document.createElement("select");
+      colorSelect.className = "scenariobuild-jump-select";
+      [["blue", "青コイン"], ["yellow", "黄コイン"], ["red", "赤コイン"]].forEach(([value, label]) => {
+        const opt = document.createElement("option");
+        opt.value = value;
+        opt.textContent = label;
+        colorSelect.appendChild(opt);
+      });
+      colorSelect.value = offer.coinColor || "blue";
+      colorSelect.onchange = () => { offer.coinColor = colorSelect.value; markScenarioBuildDirty(); };
+      offerRow.appendChild(colorSelect);
+      
+      offerRow.appendChild(labelSpan("×"));
+      const coinQtyInput = document.createElement("input");
+      coinQtyInput.type = "number";
+      coinQtyInput.min = "1";
+      coinQtyInput.className = "scenariobuild-condition-input";
+      coinQtyInput.value = offer.coinQty || 1;
+      coinQtyInput.onchange = () => { offer.coinQty = Math.max(1, Number(coinQtyInput.value) || 1); markScenarioBuildDirty(); };
+      offerRow.appendChild(coinQtyInput);
+      
+      offerRow.appendChild(labelSpan("→ アイテムID："));
+      const offerItemInput = document.createElement("input");
+      offerItemInput.type = "text";
+      offerItemInput.className = "scenariobuild-title-input";
+      offerItemInput.setAttribute("list", "scenariobuild-item-datalist");
+      offerItemInput.value = offer.itemId || "";
+      offerItemInput.onchange = () => { offer.itemId = offerItemInput.value.trim(); markScenarioBuildDirty(); };
+      offerRow.appendChild(offerItemInput);
+      
+      offerRow.appendChild(labelSpan("×"));
+      const offerQtyInput = document.createElement("input");
+      offerQtyInput.type = "number";
+      offerQtyInput.min = "1";
+      offerQtyInput.className = "scenariobuild-condition-input";
+      offerQtyInput.value = offer.itemQty || 1;
+      offerQtyInput.onchange = () => { offer.itemQty = Math.max(1, Number(offerQtyInput.value) || 1); markScenarioBuildDirty(); };
+      offerRow.appendChild(offerQtyInput);
+      
+      const removeOfferBtn = document.createElement("button");
+      removeOfferBtn.className = "devmode-btn devmode-btn-danger";
+      removeOfferBtn.textContent = "×";
+      removeOfferBtn.onclick = (event) => {
+        event.stopPropagation();
+        facility.exchangeOffers.splice(index, 1);
+        markScenarioBuildDirty();
+        renderScenarioBuildPanel();
+      };
+      offerRow.appendChild(removeOfferBtn);
+      
+      infoEl.appendChild(offerRow);
+    });
+    
+    const addOfferBtn = document.createElement("button");
+    addOfferBtn.className = "devmode-btn";
+    addOfferBtn.textContent = "＋交換品を追加";
+    addOfferBtn.onclick = (event) => {
+      event.stopPropagation();
+      facility.exchangeOffers.push({ coinColor: "blue", coinQty: 1, itemId: "", itemQty: 1 });
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    infoEl.appendChild(addOfferBtn);
   }
   
   const bgRow = document.createElement("div");
@@ -8986,6 +9522,45 @@ function appendEntityFieldInputs(config, entity, containerEl) {
         if (config.onChange) config.onChange();
       };
       fieldRow.appendChild(input);
+      containerEl.appendChild(fieldRow);
+      return;
+    }
+    // ★要望対応：複数選択可能なチェックボックスリスト（釣り餌の「釣れる魚の種類」など、
+    //   フリーテキストの表記ゆれで一致しなくなるのを防ぐため、選択肢から選ぶ形式にする）
+    if (field.type === "multiselect") {
+      const wrap = document.createElement("div");
+      wrap.className = "scenariobuild-multiselect";
+      if (!Array.isArray(entity[field.key])) entity[field.key] = [];
+      const options = typeof field.optionsFn === "function" ? field.optionsFn() : (field.options || []);
+      if (options.length === 0) {
+        const emptyNote = document.createElement("span");
+        emptyNote.className = "devmode-note";
+        emptyNote.textContent = field.emptyText || "（選択肢がありません）";
+        wrap.appendChild(emptyNote);
+      }
+      options.forEach(opt => {
+        const optLabel = document.createElement("label");
+        optLabel.className = "scenariobuild-multiselect-option";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = entity[field.key].includes(opt.value);
+        cb.onchange = () => {
+          const list = Array.isArray(entity[field.key]) ? entity[field.key].slice() : [];
+          const idx = list.indexOf(opt.value);
+          if (cb.checked) {
+            if (idx === -1) list.push(opt.value);
+          } else if (idx !== -1) {
+            list.splice(idx, 1);
+          }
+          entity[field.key] = list;
+          markScenarioBuildDirty();
+          if (config.onChange) config.onChange();
+        };
+        optLabel.appendChild(cb);
+        optLabel.appendChild(document.createTextNode(opt.label));
+        wrap.appendChild(optLabel);
+      });
+      fieldRow.appendChild(wrap);
       containerEl.appendChild(fieldRow);
       return;
     }
@@ -10466,6 +11041,7 @@ function getEntityManagerConfigByCategory(category) {
   if (category === "enemies") return getEnemyManagerConfig();
   if (category === "bosses") return getBossManagerConfig();
   if (category === "items") return getItemManagerConfig();
+  if (category === "fish") return getFishManagerConfig();
   if (category === "bgmTracks") return getBgmManagerConfig();
   return null;
 }
@@ -11200,7 +11776,7 @@ function renderDataManager(container) {
   
   const statsEl = document.createElement("p");
   statsEl.className = "devmode-note";
-  statsEl.textContent = `現在：話${scenarioProject.chapters.length}件／キャラ${scenarioProject.characters.length}件／敵${scenarioProject.enemies.length}件／ボス${scenarioProject.bosses.length}件／アイテム${scenarioProject.items.length}件／技${scenarioProject.skills.length}件／仲間${scenarioProject.companions.length}件／マップ${scenarioProject.mapAreas.length}件／フラグ${scenarioProject.flagDefs.length}件／変数${scenarioProject.variableDefs.length}件／レシピ${scenarioProject.recipes.length}件／ランダム名前${scenarioProject.randomNamePool.length}件`;
+  statsEl.textContent = `現在：話${scenarioProject.chapters.length}件／キャラ${scenarioProject.characters.length}件／敵${scenarioProject.enemies.length}件／ボス${scenarioProject.bosses.length}件／アイテム${scenarioProject.items.length}件／魚${(scenarioProject.fishItems || []).length}件／技${scenarioProject.skills.length}件／仲間${scenarioProject.companions.length}件／マップ${scenarioProject.mapAreas.length}件／フラグ${scenarioProject.flagDefs.length}件／変数${scenarioProject.variableDefs.length}件／レシピ${scenarioProject.recipes.length}件／ランダム名前${scenarioProject.randomNamePool.length}件`;
   container.appendChild(statsEl);
 }
 
@@ -11249,6 +11825,7 @@ function exportGameSettingsAsJsFile() {
     enemies: scenarioProject.enemies,
     bosses: scenarioProject.bosses,
     items: scenarioProject.items,
+    fishItems: scenarioProject.fishItems, // ★要望対応：魚管理タブ
     skills: scenarioProject.skills,
     statusAilments: scenarioProject.statusAilments,
     statusBuffs: scenarioProject.statusBuffs,
@@ -11555,6 +12132,9 @@ async function tryRunBuiltinChapterOverride(chapterId) {
 }
 
 async function runScenarioChapterBlocksForReal(chapter, startBlockId) {
+  // ★要望対応：料理タブ等、「シナリオ再生中は使えない」機能の判定用フラグ。
+  //   話の実行が始まってから終わるまでの間、ずっとtrueにしておく
+  window.isScenarioChapterPlaying = true;
   // ★目標（タスク）表示は「クリア前」だけでなく「まだ始まっていない」間だけ出すためのフラグ。
   //   以前はclearedだけを見ていたため、この話を実際にプレイし始めた後もクリアするまでずっと
   //   目標表示が出続け（そのくせ「一回消えてもまた出てくる」ように見える不具合の原因になっていた）
@@ -11607,6 +12187,7 @@ async function runScenarioChapterBlocksForReal(chapter, startBlockId) {
       openTownMenu(); // town.js
     }
   }
+  window.isScenarioChapterPlaying = false; // ★話の実行がここで終わるので、料理タブ等を再び使えるようにする
 }
 
 // ★選択肢を選ぶと、その選択肢自身が持つ内容（option.blocks。専用の編集画面で書く）をその場で実行する。
@@ -11967,7 +12548,7 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
   }
   
   if (block.type === "give") {
-    ensureCustomItemsRegistered(); // ★アイテム設定で追加したアイテムを念のため最新の状態にしてから付与する
+    ensureCustomItemsRegistered(); ensureCustomFishRegistered(); // ★アイテム設定・魚管理で追加したものを念のため最新の状態にしてから付与する
     if (block.itemId && typeof ITEM_MASTER !== "undefined" && ITEM_MASTER[block.itemId]) {
       addItem(block.itemId, Math.max(1, block.quantity || 1)); // inventory.js
       renderStatusHUD();

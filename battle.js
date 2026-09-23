@@ -197,8 +197,8 @@ async function startBattle(monsterKeys, options = {}) {
   if (!primaryMaster) return;
   
   // ★好感度が十分高い相手（見逃せる魔物のみ対象）だと、たまに戦わずに手助け・贈り物をしてくれる。
-  //   複数体の群れ相手だと成立させづらいイベントなので、1体だけの遭遇の時に限る
-  if (!options.isScripted && keys.length === 1 && SPAREABLE_KEYS.includes(keys[0]) && (await tryMonsterSupportEncounter(keys[0]))) {
+  //   複数体の群れ相手だと成立させづらいイベントなので、1体だけの遭遇の時に限る（コロシアムは真剣勝負なので対象外）
+  if (!options.isScripted && !options.isColosseum && keys.length === 1 && SPAREABLE_KEYS.includes(keys[0]) && (await tryMonsterSupportEncounter(keys[0]))) {
     return;
   }
   
@@ -221,6 +221,7 @@ async function startBattle(monsterKeys, options = {}) {
     targetIndex: 0, // ★今カーソルが乗っている（＝次に選ばれる）敵のenemies内インデックス
     isBoss: isBoss,
     isScripted: !!options.isScripted, // ★シナリオ演出用の戦闘かどうか
+    isColosseum: !!options.isColosseum, // ★要望対応：コロシアム（施設編集）の戦闘かどうか。アイテム使用禁止・逃走不可・専用の勝敗処理になる
     isTrial: false,
     // ★プレイヤー側の状態効果（敵ごとではなく戦闘全体で1つ）
     playerDamageReductionTurns: 0, // ★「静かなる権威」の残りターン数
@@ -723,7 +724,7 @@ async function handleFightMenu() {
     { text: "スキル", next: "skill" }
   ];
   if (activeWeaponSkills.length > 0) fightChoices.push({ text: "武器スキル", next: "weaponskill" });
-  fightChoices.push({ text: "道具", next: "item" });
+  if (!battleState.isColosseum) fightChoices.push({ text: "道具", next: "item" }); // ★要望対応：コロシアムはアイテム使用禁止
   fightChoices.push({ text: "戻る", next: "back", isBack: true });
   const choice = await displayChoices(fightChoices);
   
@@ -965,7 +966,7 @@ async function handleItemMenuInBattle() {
   inventorySlots.forEach((slot) => {
     if (!slot) return;
     const master = ITEM_MASTER[slot.itemId];
-    if (master && master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒)) {
+    if (master && ((master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒)) || master.foodBuffKind)) {
       healableEntries.push({ slot, master });
     }
   });
@@ -1114,7 +1115,8 @@ async function attemptFlee() {
   changeSpeaker("");
   
   // ★シナリオ演出戦（isScripted）は物語上ここで退けないボス戦なので、判定すらせず必ず失敗させる
-  if (battleState.isScripted) {
+  // ★要望対応：コロシアムも真剣勝負なので同様に逃げられない
+  if (battleState.isScripted || battleState.isColosseum) {
     await displayMessage("この戦いから逃げることはできない……！");
     return false;
   }
@@ -1352,7 +1354,7 @@ async function performCompanionAction(companion) {
     { text: "スキル", next: "skill" }
   ];
   if (activeWeaponSkills.length > 0) actionChoices.push({ text: "武器スキル", next: "weaponskill" });
-  actionChoices.push({ text: "道具", next: "item" }); // ★要望対応：以前は主人公のターンでしか道具を使えなかったが、仲間の行動選択でも使えるようにする
+  if (!battleState.isColosseum) actionChoices.push({ text: "道具", next: "item" }); // ★要望対応：以前は主人公のターンでしか道具を使えなかったが、仲間の行動選択でも使えるようにする（コロシアムはアイテム使用禁止）
   
   const action = await displayChoices(actionChoices);
   
@@ -3351,6 +3353,14 @@ async function resolveBattleVictory() {
     }
   }
   
+  // ★要望対応：コロシアム（施設編集）での戦闘は、通常の経験値・ドロップ・クエスト進捗とは別扱い
+  if (battleState.isColosseum) {
+    hideBattleHud();
+    battleState = null;
+    if (typeof handleColosseumVictory === "function") await handleColosseumVictory(); // colosseum.js
+    return;
+  }
+  
   // ★試練の祭殿での戦闘は、通常の経験値・ドロップ・クエスト進捗とは別扱い
   if (battleState.isTrial) {
     await handleTrialVictory(battleState.trialRank);
@@ -3491,6 +3501,8 @@ async function handleBattleDefeat() {
   await displayMessage("目の前が真っ暗になった……");
   stopBattleBGM(); // bgm.js
   
+  const wasColosseum = battleState.isColosseum; // ★要望対応：先に読んでおく（下のペナルティ有無・分岐に使う）
+  
   // ★要望対応：以前は主人公だけHPを全回復させていたが、パーティ全滅が敗北条件になったのに合わせて、
   //   主人公・仲間（戦闘不能だった仲間も含む）全員を、最大HPの1割で戦闘不能状態から回復させる
   //   （今はゲームオーバー演出を用意していないので、この状態で送還する）
@@ -3500,8 +3512,9 @@ async function handleBattleDefeat() {
     companion.gauges.hp.current = Math.max(1, Math.round(companion.gauges.hp.max * 0.1));
   });
   
-  // ★負けたペナルティとして、所持金を少し失う（今の所持金の1割、最低でも10陳）
-  const goldLost = Math.min(gold, Math.max(10, Math.round(gold * 0.1)));
+  // ★負けたペナルティとして、所持金を少し失う（今の所持金の1割、最低でも10陳）。
+  //   ただしコロシアムは「1回負けたら最初から」という専用のペナルティが既にあるため、これは適用しない
+  const goldLost = wasColosseum ? 0 : Math.min(gold, Math.max(10, Math.round(gold * 0.1)));
   if (goldLost > 0) {
     changeGold(-goldLost); // inventory.js
   }
@@ -3512,6 +3525,11 @@ async function handleBattleDefeat() {
   const wasScripted = battleState.isScripted;
   hideBattleHud();
   battleState = null;
+  
+  if (wasColosseum) {
+    if (typeof handleColosseumDefeat === "function") await handleColosseumDefeat(); // colosseum.js
+    return;
+  }
   
   if (wasTrial) {
     changeSpeaker("");

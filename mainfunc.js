@@ -1351,6 +1351,11 @@ function switchTab(tabId) {
     renderEquipmentTab();
   }
   
+  // 料理タブに切り替えたら、画面を描画し直す
+  if (tabId === 'tab-cooking' && typeof renderCookingTab === "function") {
+    renderCookingTab(); // cooking.js
+  }
+  
   // 便利タブに切り替えたら、アイコン一覧の画面に戻す（セーブ/ロード画面を開いたままにしない）
   if (tabId === 'tab-convenience') {
     renderConvenienceIcons();
@@ -2983,7 +2988,7 @@ function decideInventorySelection() {
   
   if (isItemDetailOpen) {
     const master = ITEM_MASTER[slot.itemId];
-    const isUsable = master && master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒 || master.params.帰還);
+    const isUsable = master && ((master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒 || master.params.帰還)) || master.isRecipeItem);
     const inBattle = typeof battleState !== "undefined" && !!battleState;
     if (isUsable && !inBattle) {
       useItemFromInventoryTab(slot.itemId, master);
@@ -3076,7 +3081,7 @@ function showItemDetail(slot) {
   panel.appendChild(paramsEl);
   
   // ★回復量・疲労回復量のいずれかを持つアイテム（薬草・ポーションなど）は、戦闘中でなくてもここから使える
-  const isUsable = master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒 || master.params.帰還);
+  const isUsable = (master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒 || master.params.帰還)) || master.isRecipeItem;
   if (isUsable) {
     const useBtn = document.createElement("button");
     const inBattle = typeof battleState !== "undefined" && !!battleState;
@@ -3197,7 +3202,18 @@ async function performItemHealWithTargetSelection(master) {
   const messageParts = [];
   targets.forEach(unit => {
     const effect = applyHealingItemEffect(master, unit, divisor);
-    if (effect.message) messageParts.push(`${getHealTargetDisplayName(unit)}：${effect.message}`); // player.js
+    const parts = [];
+    if (effect.message) parts.push(effect.message);
+    // ★要望対応：料理（foodBuffKindを持つアイテム）は、戦闘中に食べた相手へ一時的なバフをかける（技の自己強化と同じ仕組みを流用）。
+    //   戦闘外で使った場合や、battleStateが無い場合は何も起きない（applySelfBuffFromSkill/applyCompanionSelfBuffが内部で判定する）
+    if (master.foodBuffKind) {
+      const buffEffect = { kind: master.foodBuffKind, duration: master.foodBuffDuration, power: master.foodBuffPower };
+      const label = (unit === player)
+        ? (typeof applySelfBuffFromSkill === "function" ? applySelfBuffFromSkill(buffEffect) : null) // battle.js
+        : (typeof applyCompanionSelfBuff === "function" ? applyCompanionSelfBuff(unit, buffEffect) : null); // battle.js
+      if (label) parts.push(`${label}状態になった`);
+    }
+    if (parts.length > 0) messageParts.push(`${getHealTargetDisplayName(unit)}：${parts.join("。")}`);
   });
   return messageParts.length > 0 ? messageParts.join(" ") : "特に変化は無かった。";
 }
@@ -3245,6 +3261,23 @@ async function useItemFromInventoryTab(itemId, master) {
     if (typeof battleState !== "undefined" && battleState) {
       changeSpeaker("");
       await displayMessage("戦闘中は、「たたかう」→「道具」から使ってほしいようだ。", { allowSubFocus: true });
+      return;
+    }
+    
+    // ★要望対応：料理レシピ発見アイテム。使うと対象のレシピIDをレシピ帳（player.knownCookingRecipeIds）に登録する
+    if (master.isRecipeItem) {
+      if (!Array.isArray(player.knownCookingRecipeIds)) player.knownCookingRecipeIds = [];
+      const recipeId = master.unlockRecipeId;
+      const alreadyKnown = recipeId && player.knownCookingRecipeIds.includes(recipeId);
+      if (recipeId && !alreadyKnown) player.knownCookingRecipeIds.push(recipeId);
+      removeItem(itemId, 1);
+      closeItemDetail();
+      renderInventory();
+      changeSpeaker("");
+      const msg = !recipeId ? "レシピの中身は……よく読み取れなかった。"
+        : alreadyKnown ? "「" + master.name + "」を読んだ。……このレシピは、もう知っているようだ。"
+        : "「" + master.name + "」を読んだ！ 料理タブのレシピ帳に新しいレシピが記録された。";
+      await displayMessage(msg, { allowSubFocus: true });
       return;
     }
     
@@ -3302,9 +3335,10 @@ function renderInventory() {
       const master = getEffectiveItemMaster(slot); // player.js（サビ取り等の個体ごとの上書きも反映）
       
       const nameSpan = document.createElement("span");
-      // ★要望対応：種類ごとに名前の文字色を変える（武器=赤、防具=茶、道具系=緑、その他=白）
+      // ★要望対応：種類ごとに名前の文字色を変える（武器=赤、防具=茶、道具系=緑、魚=水色、その他=白）
       const categoryColorClass = master && master.category === "weapon" ? "item-name-weapon"
         : master && master.category === "armor" ? "item-name-armor"
+        : master && master.category === "fish" ? "item-name-fish"
         : master && ["herb", "potion", "material", "tool"].includes(master.category) ? "item-name-tool"
         : "item-name-misc";
       nameSpan.className = "item-name " + categoryColorClass;

@@ -316,6 +316,19 @@ function sanitizeLoadedPlayer(loadedPlayer) {
         loadedPlayer.gauges.sp.max = correctMaxSp;
         loadedPlayer.gauges.sp.current = Math.min(loadedPlayer.gauges.sp.current, correctMaxSp);
       }
+      // ★バグ修正：ロード時にレベルを補正した際、HP・SPの上限は組み直していたのに、
+      //   疲労度・眠気の上限（どちらもレベルが上がるほど少しずつ上がる仕様）だけ組み直しておらず、
+      //   古いレベルのままの上限が残ってしまっていた
+      if (loadedPlayer.gauges && loadedPlayer.gauges.fatigue) {
+        const correctMaxFatigue = (cls.maxFatigue || 100) + getCumulativeGrowth(growth, level, "maxFatigue");
+        loadedPlayer.gauges.fatigue.max = correctMaxFatigue;
+        loadedPlayer.gauges.fatigue.current = Math.min(loadedPlayer.gauges.fatigue.current, correctMaxFatigue);
+      }
+      if (loadedPlayer.gauges && loadedPlayer.gauges.sleepiness) {
+        const correctMaxSleepiness = (cls.maxSleepiness || 100) + getCumulativeGrowth(growth, level, "maxSleepiness");
+        loadedPlayer.gauges.sleepiness.max = correctMaxSleepiness;
+        loadedPlayer.gauges.sleepiness.current = Math.min(loadedPlayer.gauges.sleepiness.current, correctMaxSleepiness);
+      }
     }
   }
   
@@ -446,6 +459,7 @@ function initPlayer(className) {
     daysSinceTransfer: 0, // 転移してからの経過日数
     gameHour: 8, // ★現在時刻（0〜23時）。転移した日の朝8時からスタート
     ownedProperties: {}, // ★不動産システム：購入した家・店の記録（キー＝エリアのlocationKey）。realestate.js参照
+    fishing: { rodItemId: null, baitItemId: null }, // ★要望対応：釣り場で選んでいる釣竿・釣り餌（fishing.js）
     fame: 0, // ★隠しステータス「名声度」。クエストをクリアすると増え、一定量たまるとランクが上がる
     rank: "F", // 冒険者ランク（クエスト受注の条件に使う想定）
     clearedTrialRanks: [], // ★ランクC以上への昇格試練のクリア記録（questboard.js参照）
@@ -466,6 +480,7 @@ function initPlayer(className) {
     totalHealingDone: 0, // 累計回復量（HP）
     totalDamageTaken: 0, // 累計被ダメージ量
     unlockedAchievementIds: [], // 達成済みの実績ID一覧
+    knownCookingRecipeIds: [], // ★要望対応：レシピ発見アイテムを使って判明した料理レシピのID一覧（料理タブ参照）
     // ★話の始まるきっかけ（「エリアに来た時」）やシナリオ専用エリアのn回目判定に使う、拠点ごとの来訪回数
     areaVisitCounts: {}, // { locationKey: 来訪回数 }
     // ★マップのエリア解放条件（「特定のクエストをクリアした」）の判定用の記録
@@ -783,6 +798,25 @@ function addCompanionToParty(companionId, level) {
   });
   
   return companion;
+}
+
+// ★その実体（instanceId）が今、主人公または誰か仲間に装備されていたら、確実に外す
+//   （要望対応：買取屋で装備中の物を売る時に、装備欄に消えた実体を指したままの参照が残らないようにする）
+function forceUnequipInstance(instanceId) {
+  if (!player) return;
+  Object.keys(player.equipment).forEach(slot => {
+    if (player.equipment[slot] === instanceId) unequipItem(slot);
+  });
+  (player.companions || []).forEach(c => {
+    Object.keys(c.equipment).forEach(slot => {
+      if (c.equipment[slot] === instanceId) unequipItemForCompanion(c, slot);
+    });
+  });
+  (player.benchedCompanions || []).forEach(c => {
+    Object.keys(c.equipment).forEach(slot => {
+      if (c.equipment[slot] === instanceId) unequipItemForCompanion(c, slot);
+    });
+  });
 }
 
 // ★そのインベントリの実体（instanceId）が、主人公または誰か仲間に、もう装備されていないか確認する
@@ -1336,6 +1370,10 @@ function switchPlayerClass(newClassName) {
   const newMaxHp = (cls.baseStats.maxHp || 1) + getCumulativeGrowth(growth, targetLevel, "maxHp");
   const newMaxSp = (cls.baseStats.maxSp || 0) + getCumulativeGrowth(growth, targetLevel, "maxSp");
   const newMaxFatigue = (cls.maxFatigue || 100) + getCumulativeGrowth(growth, targetLevel, "maxFatigue");
+  // ★バグ修正：疲労度の上限はレベル分の成長(growth.maxFatigue)を足していたのに、眠気の上限だけ
+  //   cls.maxSleepinessそのまま（＝レベル1相当）になっており、職業変更のたびに眠気の上限が
+  //   下がってしまっていた
+  const newMaxSleepiness = (cls.maxSleepiness || 100) + getCumulativeGrowth(growth, targetLevel, "maxSleepiness");
   
   player.class = newClassName;
   player.level = targetLevel;
@@ -1343,7 +1381,8 @@ function switchPlayerClass(newClassName) {
   player.stats = newStats;
   player.gauges.hp = { current: newMaxHp, max: newMaxHp }; // ★切り替え直後は全回復した状態で始める
   player.gauges.sp = { current: newMaxSp, max: newMaxSp };
-  player.gauges.sleepiness.max = cls.maxSleepiness || 100;
+  player.gauges.sleepiness.max = newMaxSleepiness;
+  player.gauges.sleepiness.current = Math.min(player.gauges.sleepiness.current, newMaxSleepiness); // ★上限が下がった場合に備えて、現在値もはみ出さないようにする
   player.gauges.fatigue = { current: 0, max: newMaxFatigue };
   player.classLevels[newClassName] = targetLevel;
   

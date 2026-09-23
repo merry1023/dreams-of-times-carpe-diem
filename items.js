@@ -6,6 +6,7 @@
   ITEM_MASTER の共通フィールド:
   - name        : アイテム名
   - category    : "herb"(薬草) / "potion"(ポーション) / "material"(魔物素材) / "weapon"(武器) / "armor"(防具) / "tool"(回復以外の特殊効果を持つ道具)
+                  / "cookingTool"(料理道具。料理タブで使う。耐久度・材料スロット数を持つ) / "food"(料理。料理タブの完成品。回復系params＋戦闘中だけの自己バフを持てる)
   - description : アイテムの説明文
   - rank        : お宝ランク（鑑定結果に使う目安。F〜S等）
   - listedPrice : 定価。町の買取屋が普通につける価格。プレイヤーは鑑定しなくてもこの額は見える想定
@@ -359,6 +360,103 @@ const ITEM_MASTER = {
     listedPrice: 5,
     trueValue: 5,
     params: {}
+  },
+  
+  // ===== 釣り関連（要望対応：釣り場・釣竿・釣り餌・魚） =====
+  // ★釣竿・釣り餌は、既存のカテゴリ（tool等）のアイテムに isFishingRod / isFishingBait の
+  //   フラグを立てたもの。シナリオエディタの「アイテム設定」でも同様にチェックを入れて作れる
+  "fishrod_001": {
+    name: "木の釣竿",
+    category: "tool",
+    description: "どこにでもありそうな、素朴な木の釣竿。駆け出しの釣り人向け。",
+    rank: "F",
+    listedPrice: 100,
+    trueValue: 100,
+    buyPrice: 200,
+    isFishingRod: true,
+    rodDurability: 30, // ★釣りミニゲームでの耐久度（1秒ごとに魚の攻撃力ぶん減る）
+    rodPower: 4, // ★釣りミニゲームでの攻撃力（1秒ごとに魚の体力を削る量）
+    params: { 希少度: 1 }
+  },
+  "fishrod_002": {
+    name: "鋼の釣竿",
+    category: "tool",
+    description: "しなりが良く、大物相手でも粘れる上質な釣竿。",
+    rank: "D",
+    listedPrice: 600,
+    trueValue: 600,
+    buyPrice: 1200,
+    isFishingRod: true,
+    rodDurability: 60,
+    rodPower: 9,
+    params: { 希少度: 2 }
+  },
+  "fishbait_001": {
+    name: "ミミズ",
+    category: "material",
+    description: "川辺で掘れば見つかる、ごく普通の釣り餌。小物がよく食いつく。",
+    rank: "F",
+    listedPrice: 5,
+    trueValue: 5,
+    buyPrice: 10,
+    isFishingBait: true,
+    baitFishType: "小物", // ★この種類の魚が食いつきやすい
+    baitBiteRate: 6, // ★食いつき度（高いほど短い間隔で食いつく）
+    params: { 希少度: 1 }
+  },
+  "fishbait_002": {
+    name: "特製ルアー",
+    category: "material",
+    description: "職人が作った本物そっくりの疑似餌。大物ほど反応しやすい。",
+    rank: "D",
+    listedPrice: 200,
+    trueValue: 200,
+    buyPrice: 400,
+    isFishingBait: true,
+    baitFishType: "大物",
+    baitBiteRate: 3,
+    params: { 希少度: 3 }
+  },
+  // ★魚アイテム。category:"fish" で、インベントリでは水色の文字色になる（mainfunc.js）。
+  //   fishType/fishPower/fishHp/fishSize は釣りミニゲーム（fishing.js）が参照するステータス
+  "fish_001": {
+    name: "ふなっこ",
+    category: "fish",
+    description: "どこの川にもいる、ありふれた小魚。",
+    rank: "F",
+    listedPrice: 10,
+    trueValue: 10,
+    fishType: "小物",
+    fishPower: 2,
+    fishHp: 10,
+    fishSize: 12,
+    params: { 種類: "小物", 強さ: 2, 大きさ: 12, レア度: "F", 体力: 10 }
+  },
+  "fish_002": {
+    name: "銀鱗のアユ",
+    category: "fish",
+    description: "光を弾くような美しい銀色の鱗を持つアユ。塩焼きにすると絶品らしい。",
+    rank: "D",
+    listedPrice: 80,
+    trueValue: 80,
+    fishType: "小物",
+    fishPower: 4,
+    fishHp: 22,
+    fishSize: 25,
+    params: { 種類: "小物", 強さ: 4, 大きさ: 25, レア度: "D", 体力: 22 }
+  },
+  "fish_003": {
+    name: "怪魚ヌシ",
+    category: "fish",
+    description: "川の主とも噂される、正体不明の巨大魚。生半可な釣竿ではすぐに糸を切られてしまう。",
+    rank: "B",
+    listedPrice: 1500,
+    trueValue: 1500,
+    fishType: "大物",
+    fishPower: 10,
+    fishHp: 70,
+    fishSize: 180,
+    params: { 種類: "大物", 強さ: 10, 大きさ: 180, レア度: "B", 体力: 70 }
   }
   
 };
