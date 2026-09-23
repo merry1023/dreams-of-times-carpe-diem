@@ -1215,6 +1215,10 @@ function advanceDay(days = 1) {
     player.weather.current = player.weather.next;
     player.weather.next = pickRandomWeatherType();
   }
+  // ★バグ修正：日付が変わったタイミングで、話の演出ブロックによる手動天候指定をリセットし、
+  //   新しい「今日の天候」を実際の画面演出にも反映する（mainfunc.js）
+  if (typeof weatherManualOverride !== "undefined") weatherManualOverride = false;
+  if (typeof applyAmbientWeatherEffect === "function") applyAmbientWeatherEffect();
 }
 
 /**

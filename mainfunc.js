@@ -381,6 +381,10 @@ function setZoomEffect(active) {
 const WEATHER_PARTICLE_COUNTS = { rain: 60, snow: 40, sakura: 26 };
 let weatherOverlayEl = null;
 let currentWeatherType = null;
+// ★バグ修正：話の「天候」演出ブロック（weatherRainOn等）で明示的に指定した天候は、
+//   このフラグが立っている間はアンビエント天候（下記）で勝手に上書きされないようにする。
+//   1日進む（advanceDay、player.js）たびにfalseへ戻し、アンビエント天候を再適用する
+let weatherManualOverride = false;
 function setWeatherEffect(type) {
   if (weatherOverlayEl) {
     weatherOverlayEl.remove();
@@ -405,6 +409,18 @@ function setWeatherEffect(type) {
     weatherOverlayEl.appendChild(particle);
   }
   document.body.appendChild(weatherOverlayEl);
+}
+
+// ★バグ修正：天候システム（player.weather、player.js）で決まっている「今日の天候」は、
+//   これまでメインタブの時計上にテキスト表示されるだけで、実際の画面演出（setWeatherEffect）には
+//   一切反映されていなかった。renderMainTabWeather()（かなり頻繁に呼ばれるrenderStatusHUD経由）
+//   から毎回呼ぶことで、常に最新のアンビエント天候を反映する。
+//   話の演出ブロックで手動指定中（weatherManualOverride）は上書きしない
+function applyAmbientWeatherEffect() {
+  if (weatherManualOverride) return;
+  if (typeof player === "undefined" || !player || !player.weather) return;
+  const type = player.weather.current;
+  setWeatherEffect((type === "clear" || type === "cloudy") ? null : type); // ★晴れ・曇りは演出無し（元々rain/snow/sakuraにしか演出が無いため）
 }
 
 // ★エンディングブロック（scenariobuild.js）から呼ばれる、簡易エンドロール（下から上へ流れるスタッフロール風演出）。
@@ -1647,6 +1663,7 @@ function renderMainTabWeather() {
   const nextLabel = (typeof WEATHER_TYPE_LABELS_JA !== "undefined" && WEATHER_TYPE_LABELS_JA[weather.next]) || "晴れ";
   if (currentEl) currentEl.textContent = `${WEATHER_TYPE_EMOJI[weather.current] || "☀️"} ${currentLabel}`;
   if (nextEl) nextEl.textContent = `次：${WEATHER_TYPE_EMOJI[weather.next] || "☀️"} ${nextLabel}`;
+  if (typeof applyAmbientWeatherEffect === "function") applyAmbientWeatherEffect(); // ★バグ修正：天候演出を実際に反映する
 }
 
 // ★メインタブのアナログ時計（時針・分針のみ）とデジタル時計を、player.gameHour（0〜24の小数）に合わせて描画する
