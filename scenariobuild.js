@@ -8976,7 +8976,7 @@ function buildFacilityRow(facility) {
     const bossRoundsNote = document.createElement("p");
     bossRoundsNote.className = "devmode-note";
     bossRoundsNote.style.margin = "10px 0 2px";
-    bossRoundsNote.textContent = "10の倍数の回戦と、100回戦が無いため最後の節目となる99回戦目は、ここで指定した「ボス的な」敵編成で固定されます（プールからのランダム抽選の対象外）。レベルを指定すると、ボスID以外（雑魚敵）はそのレベル×0.6の強さに弱まり、ボスはそのままのレベルで固定されます（0のままなら、通常通り主人公のレベル±1で決まります）。";
+    bossRoundsNote.textContent = "10の倍数の回戦と、100回戦が無いため最後の節目となる99回戦目は、ここで指定した「ボス的な」敵編成で固定されます（プールからのランダム抽選の対象外）。敵IDは先頭がボス本体として扱われます。レベルを指定すると、先頭（ボス）はそのレベルのまま、それ以外（雑魚敵）はレベルを「指定レベル×0.6」にした上で強さが決まります（0のままなら、通常通り主人公のレベル±1で決まります）。";
     infoEl.appendChild(bossRoundsNote);
     
     if (!facility.bossRoundConfig || typeof facility.bossRoundConfig !== "object") facility.bossRoundConfig = {};
@@ -8997,7 +8997,7 @@ function buildFacilityRow(facility) {
       bossBox.appendChild(bossHeader);
       
       bossBox.appendChild(buildTagListEditor({
-        label: "敵ID（最大5体・同じIDを複数回追加すると同じ敵が複数体出ます。ボスIDを混ぜることも可能です）：",
+        label: "敵ID（最大5体・先頭がボス本体扱いです。同じIDを複数回追加すると同じ敵が複数体出ます。ボスIDを混ぜることも可能です）：",
         items: config.enemyMonsterKeys,
         datalistId: "scenariobuild-monster-datalist",
         placeholder: "敵ID",
@@ -9007,7 +9007,7 @@ function buildFacilityRow(facility) {
       
       const levelRow = document.createElement("div");
       levelRow.className = "scenariobuild-condition-row";
-    levelRow.appendChild(labelSpan("ボスのレベル指定（0＝指定なし。指定すると雑魚敵はこのレベル×0.6に弱まる）："));
+    levelRow.appendChild(labelSpan("ボスのレベル指定（0＝指定なし。指定すると雑魚敵のレベルはこの×0.6になる）："));
       const levelInput = document.createElement("input");
       levelInput.type = "number";
       levelInput.min = "0";

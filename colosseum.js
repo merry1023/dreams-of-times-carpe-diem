@@ -61,10 +61,12 @@ function getColosseumFloorEncounter(facility, floorNumber) {
       ? config.enemyMonsterKeys.filter(id => id && MONSTER_MASTER[id])
       : [];
     const fixedLevel = (Number(config.level) > 0) ? Number(config.level) : null;
-    // ★要望対応：レベルを指定した節目回戦は、ボスID以外（雑魚敵）を指定レベル×0.6の強さに弱める
-    //   （ボス本体は指定レベルのまま）。startBattleのoptions.perEnemyLevelsに渡す配列を組み立てる
+    // ★要望対応：レベルを指定した節目回戦は、先頭（＝ボス本体。battle.jsのisBoss判定と同じ並び順の約束）を
+    //   指定レベルのまま、それ以外（雑魚敵）は「指定レベル×0.6」を新しいレベルとして割り当てる
+    //   （ステータスを直接0.6倍にするのではなく、あくまでレベルを0.6倍にした上で、通常のレベル別ステータス
+    //   計算式（scaleMonsterStatsForLevel）にそのまま乗せる）。startBattleのoptions.perEnemyLevelsに渡す
     const perEnemyLevels = fixedLevel != null
-      ? enemyMonsterKeys.map(id => (typeof BOSS_MONSTER_KEYS !== "undefined" && BOSS_MONSTER_KEYS.includes(id)) ? fixedLevel : Math.max(1, Math.round(fixedLevel * 0.6)))
+      ? enemyMonsterKeys.map((id, i) => i === 0 ? fixedLevel : Math.max(1, Math.round(fixedLevel * 0.6)))
       : null;
     return { enemyMonsterKeys, fixedLevel, perEnemyLevels };
   }
