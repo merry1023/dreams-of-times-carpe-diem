@@ -213,6 +213,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.enemies = data.enemies || [];
   scenarioProject.bosses = data.bosses || [];
   scenarioProject.items = data.items || [];
+  scenarioProject.furniture = data.furniture || []; // ★要望対応：不動産システムの家具管理タブ（家具屋系施設で販売する家具の登録）
   scenarioProject.skills = data.skills || [];
   dedupeBuiltinSkillEntries(); // ★取り込んだファイル自体が、過去のバージョンの不具合で重複を含んでいる場合があるので、取り込み直後にも掃除しておく
   // ★旧バージョンで書き出された設定ファイル（状態管理タブが存在しなかった頃のもの）を読み込んだ時は、
@@ -407,6 +408,7 @@ function normalizeScenarioProject() {
   if (!Array.isArray(scenarioProject.enemies)) scenarioProject.enemies = [];
   if (!Array.isArray(scenarioProject.bosses)) scenarioProject.bosses = [];
   if (!Array.isArray(scenarioProject.items)) scenarioProject.items = [];
+  if (!Array.isArray(scenarioProject.furniture)) scenarioProject.furniture = [];
   if (!Array.isArray(scenarioProject.skills)) scenarioProject.skills = [];
   scenarioProject.skills.forEach(skill => {
     if (!Array.isArray(skill.blocks)) skill.blocks = []; // ★特殊スキル編集（ブロック実行モード）。1件でもあれば固定フィールドは無視される
