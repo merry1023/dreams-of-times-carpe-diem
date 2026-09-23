@@ -69,6 +69,14 @@ function doesRecipeMatchPicks(recipe, picks) {
   return materials.every(mat => filled.some(p => p.itemId === mat.itemId && Number(p.count) === Number(mat.count)));
 }
 
+// ★要望対応：今スロットに置いている材料で、実際に完成する（一致する）レシピを1つ返す（無ければnull）。
+//   「作る」を押す前に見せるプレビュー表示と、実際に作る処理（attemptCook）の両方から使う
+function getMatchedCookingRecipe(tool, picks) {
+  if (!tool) return null;
+  const candidateRecipes = (scenarioProject.recipes || []).filter(r => r.shopType === "cooking" && r.toolItemId === tool.slot.itemId);
+  return candidateRecipes.find(r => doesRecipeMatchPicks(r, picks)) || null;
+}
+
 // ★要望対応：キーボード操作用の「操作対象一覧」。上から順に、道具一覧→（道具選択済みなら）材料スロット→作る個数→作るボタン
 function getCookingFocusList() {
   const tools = getOwnedCookingTools();
@@ -152,8 +160,7 @@ async function attemptCook() {
   }
   
   // ★対象の道具向けレシピの中から、個数までぴったり一致するものを探す（ゲージの待ち時間はここで先に決める）
-  const candidateRecipes = (scenarioProject.recipes || []).filter(r => r.shopType === "cooking" && r.toolItemId === tool.slot.itemId);
-  const matchedRecipe = candidateRecipes.find(r => doesRecipeMatchPicks(r, cookingSlotPicks));
+  const matchedRecipe = getMatchedCookingRecipe(tool, cookingSlotPicks);
   
   // ★要望対応：レシピ管理タブで指定した秒数ぶん、ゲージが溜まるまで待たせる（一致しなかった時は既定の短い待ち時間）
   const waitSeconds = matchedRecipe && matchedRecipe.cookTimeSeconds != null ? Number(matchedRecipe.cookTimeSeconds) : (matchedRecipe ? 3 : 2);
@@ -331,15 +338,26 @@ function renderCookingTab() {
       const card = document.createElement("button");
       card.type = "button";
       const isCursorHere = currentFocus && currentFocus.type === "tool" && currentFocus.index === toolIndex;
-      card.className = "cooking-tool-card" + (slot.instanceId === cookingSelectedToolInstanceId ? " selected" : "") + (isCursorHere ? " cooking-cursor" : "");
+      const isSelected = slot.instanceId === cookingSelectedToolInstanceId;
+      card.className = "cooking-tool-card" + (isSelected ? " selected" : "") + (isCursorHere ? " cooking-cursor" : "");
+      const nameLine = document.createElement("span");
+      nameLine.className = "cooking-tool-name-line";
+      if (isSelected) {
+        const badge = document.createElement("span");
+        badge.className = "cooking-tool-selected-badge";
+        badge.textContent = "使用中";
+        nameLine.appendChild(badge);
+      }
       const nameEl = document.createElement("span");
       nameEl.className = "cooking-tool-name";
       nameEl.textContent = `${master.name}（スロット${Math.max(1, Number(master.toolSlotCount) || 3)}）`;
+      nameLine.appendChild(nameEl);
       const maxDurability = Math.max(1, Number(master.toolDurability) || 30);
+      const durability = slot.durability != null ? slot.durability : maxDurability;
       const durEl = document.createElement("span");
-      durEl.className = "cooking-tool-durability";
-      durEl.textContent = `耐久 ${slot.durability != null ? slot.durability : maxDurability} / ${maxDurability}`;
-      card.appendChild(nameEl);
+      durEl.className = "cooking-tool-durability" + (durability <= maxDurability * 0.25 ? " cooking-tool-durability-low" : "");
+      durEl.textContent = `耐久 ${durability} / ${maxDurability}`;
+      card.appendChild(nameLine);
       card.appendChild(durEl);
       card.onclick = () => { selectCookingTool(slot.instanceId); cookingCursorIndex = 0; };
       toolListEl.appendChild(card);
@@ -356,8 +374,12 @@ function renderCookingTab() {
   materialSection.className = "cooking-section";
   const materialTitle = document.createElement("h4");
   materialTitle.className = "cooking-section-title";
-  materialTitle.textContent = "材料を置く（←→キーでも材料・個数を変えられます）";
+  materialTitle.textContent = "材料を置く";
   materialSection.appendChild(materialTitle);
+  const materialHint = document.createElement("p");
+  materialHint.className = "cooking-hint";
+  materialHint.textContent = "↑↓で移動、←→で材料や個数を変更、Zで個数調整モード（もう一度Zで確定）";
+  materialSection.appendChild(materialHint);
   
   const slotListEl = document.createElement("div");
   slotListEl.className = "cooking-slot-list";
@@ -368,10 +390,14 @@ function renderCookingTab() {
     const isEditingCount = cookingSlotCountEditIndex === slotIndex;
     row.className = "cooking-slot-row" + (isCursorHere ? " cooking-cursor" : "") + (isEditingCount ? " cooking-slot-row-editing" : "");
     
-    const label = document.createElement("span");
-    label.className = "cooking-slot-label";
-    label.textContent = `材料${slotIndex + 1}`;
-    row.appendChild(label);
+    // ★上段：材料番号＋どれを置くか選ぶプルダウン
+    const topLine = document.createElement("div");
+    topLine.className = "cooking-slot-top-line";
+    
+    const slotBadge = document.createElement("span");
+    slotBadge.className = "cooking-slot-badge";
+    slotBadge.textContent = slotIndex + 1;
+    topLine.appendChild(slotBadge);
     
     const select = document.createElement("select");
     const emptyOpt = document.createElement("option");
@@ -389,54 +415,106 @@ function renderCookingTab() {
       cookingSlotPicks[slotIndex] = { itemId: select.value, count: pick.count || 1 };
       renderCookingTab();
     };
-    row.appendChild(select);
+    topLine.appendChild(select);
+    row.appendChild(topLine);
     
-    const countInput = document.createElement("input");
-    countInput.type = "number";
-    countInput.min = "1";
-    countInput.value = pick.count || 1;
-    countInput.disabled = !pick.itemId;
-    countInput.onchange = () => {
-      const value = Math.max(1, Math.floor(Number(countInput.value) || 1));
-      cookingSlotPicks[slotIndex] = { itemId: pick.itemId, count: value };
+    // ★下段：個数のステッパー（−／数字／＋）と、枠を空にするボタン
+    const bottomLine = document.createElement("div");
+    bottomLine.className = "cooking-slot-bottom-line";
+    
+    const stepper = document.createElement("div");
+    stepper.className = "cooking-stepper" + (isEditingCount ? " cooking-stepper-editing" : "");
+    const minusBtn = document.createElement("button");
+    minusBtn.type = "button";
+    minusBtn.className = "cooking-stepper-btn";
+    minusBtn.textContent = "−";
+    minusBtn.disabled = !pick.itemId || (pick.count || 1) <= 1;
+    minusBtn.onclick = () => {
+      cookingSlotPicks[slotIndex] = { itemId: pick.itemId, count: Math.max(1, (Number(pick.count) || 1) - 1) };
+      renderCookingTab();
     };
-    row.appendChild(countInput);
+    const countDisplay = document.createElement("span");
+    countDisplay.className = "cooking-stepper-value";
+    countDisplay.textContent = pick.count || 1;
+    const plusBtn = document.createElement("button");
+    plusBtn.type = "button";
+    plusBtn.className = "cooking-stepper-btn";
+    plusBtn.textContent = "＋";
+    plusBtn.disabled = !pick.itemId;
+    plusBtn.onclick = () => {
+      cookingSlotPicks[slotIndex] = { itemId: pick.itemId, count: (Number(pick.count) || 1) + 1 };
+      renderCookingTab();
+    };
+    stepper.appendChild(minusBtn);
+    stepper.appendChild(countDisplay);
+    stepper.appendChild(plusBtn);
+    bottomLine.appendChild(stepper);
     
     const clearBtn = document.createElement("button");
     clearBtn.type = "button";
     clearBtn.className = "cooking-slot-clear-btn";
-    clearBtn.textContent = "✕";
-    clearBtn.title = "この材料枠を空にする";
+    clearBtn.textContent = "✕ 空にする";
     clearBtn.disabled = !pick.itemId;
     clearBtn.onclick = () => {
       cookingSlotPicks[slotIndex] = { itemId: "", count: 1 };
       renderCookingTab();
     };
-    row.appendChild(clearBtn);
+    bottomLine.appendChild(clearBtn);
     
     if (isEditingCount) {
-      const hint = document.createElement("span");
-      hint.className = "cooking-slot-label";
-      hint.textContent = "個数調整中（←→、Zで確定）";
-      row.appendChild(hint);
+      const editHint = document.createElement("span");
+      editHint.className = "cooking-slot-edit-hint";
+      editHint.textContent = "個数調整中";
+      bottomLine.appendChild(editHint);
     }
     
+    row.appendChild(bottomLine);
     slotListEl.appendChild(row);
   });
   materialSection.appendChild(slotListEl);
+  
+  // ★要望対応：今置いている材料で実際に何が出来るか、作る前にプレビュー表示する
+  const previewRecipe = getMatchedCookingRecipe(tool, cookingSlotPicks);
+  const hasAnyFilledSlotForPreview = cookingSlotPicks.some(p => p.itemId && p.count > 0);
+  const previewEl = document.createElement("div");
+  previewEl.className = "cooking-match-preview" + (previewRecipe ? " cooking-match-preview-hit" : "");
+  if (previewRecipe) {
+    const resultMaster = ITEM_MASTER[previewRecipe.resultItemId];
+    previewEl.textContent = `✓ 「${resultMaster ? resultMaster.name : previewRecipe.resultItemId}」が出来上がりそう！`;
+  } else if (hasAnyFilledSlotForPreview) {
+    previewEl.textContent = "……この組み合わせでは、まだ何も出来なさそうだ。";
+  } else {
+    previewEl.textContent = "材料を置くと、ここに完成予想が表示されます。";
+  }
+  materialSection.appendChild(previewEl);
   
   const batchRow = document.createElement("div");
   const isBatchCursorHere = currentFocus && currentFocus.type === "batch";
   batchRow.className = "cooking-batch-row" + (isBatchCursorHere ? " cooking-cursor" : "");
   const batchLabel = document.createElement("span");
-  batchLabel.textContent = "作る個数：";
-  const batchInput = document.createElement("input");
-  batchInput.type = "number";
-  batchInput.min = "1";
-  batchInput.value = cookingBatchCount;
-  batchInput.onchange = () => { cookingBatchCount = Math.max(1, Math.floor(Number(batchInput.value) || 1)); };
+  batchLabel.className = "cooking-batch-label";
+  batchLabel.textContent = "作る個数";
   batchRow.appendChild(batchLabel);
-  batchRow.appendChild(batchInput);
+  const batchStepper = document.createElement("div");
+  batchStepper.className = "cooking-stepper";
+  const batchMinusBtn = document.createElement("button");
+  batchMinusBtn.type = "button";
+  batchMinusBtn.className = "cooking-stepper-btn";
+  batchMinusBtn.textContent = "−";
+  batchMinusBtn.disabled = cookingBatchCount <= 1;
+  batchMinusBtn.onclick = () => { cookingBatchCount = Math.max(1, cookingBatchCount - 1); renderCookingTab(); };
+  const batchCountDisplay = document.createElement("span");
+  batchCountDisplay.className = "cooking-stepper-value";
+  batchCountDisplay.textContent = cookingBatchCount;
+  const batchPlusBtn = document.createElement("button");
+  batchPlusBtn.type = "button";
+  batchPlusBtn.className = "cooking-stepper-btn";
+  batchPlusBtn.textContent = "＋";
+  batchPlusBtn.onclick = () => { cookingBatchCount = cookingBatchCount + 1; renderCookingTab(); };
+  batchStepper.appendChild(batchMinusBtn);
+  batchStepper.appendChild(batchCountDisplay);
+  batchStepper.appendChild(batchPlusBtn);
+  batchRow.appendChild(batchStepper);
   materialSection.appendChild(batchRow);
   
   const hasAnyFilledSlot = cookingSlotPicks.some(p => p.itemId && p.count > 0);
@@ -472,10 +550,21 @@ function renderCookingTab() {
   } else {
     knownRecipes.forEach(recipe => {
       const card = document.createElement("div");
-      card.className = "cooking-recipe-card";
+      const isCurrentlyMatched = !!previewRecipe && previewRecipe === recipe;
+      card.className = "cooking-recipe-card" + (isCurrentlyMatched ? " cooking-recipe-card-hit" : "");
+      
+      const nameLine = document.createElement("div");
+      nameLine.className = "cooking-recipe-card-name";
+      nameLine.textContent = recipe.name || "名称未設定";
+      card.appendChild(nameLine);
+      
       const materialsText = (recipe.materials || []).map(mat => `${ITEM_MASTER[mat.itemId] ? ITEM_MASTER[mat.itemId].name : mat.itemId}×${mat.count}`).join("、");
       const resultMaster = ITEM_MASTER[recipe.resultItemId];
-      card.textContent = `${recipe.name || "名称未設定"}：${materialsText} → ${resultMaster ? resultMaster.name : recipe.resultItemId}`;
+      const detailLine = document.createElement("div");
+      detailLine.className = "cooking-recipe-card-detail";
+      detailLine.textContent = `${materialsText}　→　${resultMaster ? resultMaster.name : recipe.resultItemId}`;
+      card.appendChild(detailLine);
+      
       bookEl.appendChild(card);
     });
   }

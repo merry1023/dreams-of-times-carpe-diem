@@ -4935,39 +4935,46 @@ html, body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   padding: 4px 2px;
 }
 
 .cooking-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .cooking-section-title {
   margin: 0;
-  font-size: 0.95em;
+  font-size: 1em;
   color: #ffc107;
   border-left: 3px solid #ffc107;
-  padding-left: 6px;
+  padding-left: 8px;
+}
+
+.cooking-hint {
+  margin: -4px 0 0;
+  color: #888;
+  font-size: 0.78em;
 }
 
 .cooking-tool-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .cooking-tool-card {
   background-color: #222;
   border: 1px solid #444;
-  border-radius: 6px;
-  padding: 8px 10px;
+  border-radius: 8px;
+  padding: 10px 12px;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   color: #eee;
   font: inherit;
   width: 100%;
@@ -4981,66 +4988,153 @@ html, body {
 
 .cooking-tool-card.selected {
   border-color: #ffc107;
-  box-shadow: 0 0 8px #ffc107;
+  box-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
   background-color: #2a2205;
+}
+
+.cooking-tool-name-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cooking-tool-selected-badge {
+  flex: none;
+  background-color: #ffc107;
+  color: #241a00;
+  font-size: 0.72em;
+  font-weight: bold;
+  padding: 1px 6px;
+  border-radius: 4px;
 }
 
 .cooking-tool-name {
   font-weight: bold;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cooking-tool-durability {
+  flex: none;
   font-size: 0.85em;
   color: #bbb;
+}
+
+.cooking-tool-durability-low {
+  color: #ff8a65;
+  font-weight: bold;
 }
 
 .cooking-slot-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   background-color: #1c1c1c;
   border: 1px solid #333;
-  border-radius: 6px;
-  padding: 8px;
+  border-radius: 8px;
+  padding: 10px;
 }
 
 .cooking-slot-row {
   display: flex;
+  flex-direction: column;
   gap: 6px;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+
+.cooking-slot-top-line {
+  display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.cooking-slot-label {
-  color: #999;
-  font-size: 0.85em;
-  min-width: 3.5em;
+.cooking-slot-badge {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6em;
+  height: 1.6em;
+  border-radius: 50%;
+  background-color: #333;
+  color: #ccc;
+  font-size: 0.8em;
+  font-weight: bold;
 }
 
-.cooking-slot-row select,
-.cooking-slot-row input[type="number"] {
+.cooking-slot-top-line select {
+  flex: 1;
+  min-width: 0;
   background-color: #111;
   color: #eee;
   border: 1px solid #555;
   border-radius: 4px;
-  padding: 4px 6px;
+  padding: 6px 8px;
+  font-size: 0.95em;
 }
 
-.cooking-slot-row select {
-  flex: 1;
-  min-width: 0;
+.cooking-slot-bottom-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-left: calc(1.6em + 8px);
 }
 
-.cooking-slot-row input[type="number"] {
-  width: 60px;
+.cooking-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid #555;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cooking-stepper-editing {
+  border-color: #ffc107;
+  box-shadow: 0 0 6px rgba(255, 193, 7, 0.5);
+}
+
+.cooking-stepper-btn {
+  background-color: #333;
+  color: #ffc107;
+  border: none;
+  width: 2em;
+  height: 2em;
+  font-size: 0.95em;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.cooking-stepper-btn:disabled {
+  color: #666;
+  cursor: default;
+}
+
+.cooking-stepper-value {
+  display: inline-block;
+  min-width: 2.2em;
+  text-align: center;
+  background-color: #111;
+  color: #eee;
+  font-size: 0.95em;
+  padding: 0 4px;
+  align-self: stretch;
+  line-height: 2em;
 }
 
 .cooking-slot-clear-btn {
   background-color: #333;
   color: #ccc;
   border: 1px solid #555;
-  border-radius: 4px;
-  padding: 4px 8px;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.85em;
   cursor: pointer;
 }
 
@@ -5049,19 +5143,46 @@ html, body {
   cursor: default;
 }
 
+.cooking-slot-edit-hint {
+  color: #ffc107;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.cooking-match-preview {
+  border: 1px dashed #555;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #999;
+  font-size: 0.9em;
+  text-align: center;
+}
+
+.cooking-match-preview-hit {
+  border: 1px solid #7ed957;
+  color: #7ed957;
+  font-weight: bold;
+  background-color: rgba(126, 217, 87, 0.08);
+}
+
 .cooking-batch-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+}
+
+.cooking-batch-label {
+  color: #ccc;
+  font-size: 0.9em;
 }
 
 .cooking-cook-btn {
   background-color: #4a3220;
   color: #ffc107;
   border: 1px solid #ffc107;
-  border-radius: 6px;
-  padding: 10px 16px;
-  font-size: 1.05em;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 1.1em;
   font-weight: bold;
   cursor: pointer;
   align-self: stretch;
@@ -5075,15 +5196,33 @@ html, body {
 .cooking-recipe-book {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .cooking-recipe-card {
   background-color: #1c1c1c;
   border: 1px solid #333;
-  border-radius: 6px;
-  padding: 6px 8px;
+  border-radius: 8px;
+  padding: 8px 10px;
   font-size: 0.9em;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cooking-recipe-card-hit {
+  border-color: #7ed957;
+  background-color: rgba(126, 217, 87, 0.08);
+}
+
+.cooking-recipe-card-name {
+  font-weight: bold;
+  color: #ffc107;
+}
+
+.cooking-recipe-card-detail {
+  color: #ccc;
+  font-size: 0.92em;
 }
 
 .cooking-empty-note {
@@ -5099,7 +5238,7 @@ html, body {
 
 .cooking-slot-row-editing {
   background-color: rgba(255, 193, 7, 0.12);
-  border-radius: 4px;
+  border-color: rgba(255, 193, 7, 0.4);
 }
 
 /* ★要望対応：「作る」を押してから完成するまでのゲージ */
@@ -5118,15 +5257,6 @@ html, body {
 
 .cooking-gauge-fill {
   background-color: #ffc107;
-}
-
-  flex: 1;
-  min-width: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-right: 4px;
 }
 
 .crafting-recipe-row {
