@@ -220,19 +220,17 @@ function buildFloorPlanRoomDetail(area, floorPlan, room, persist) {
   const heightInput = document.createElement("input");
   heightInput.type = "number";
   heightInput.min = "1";
-  heightInput.max = "20";
   heightInput.className = "scenariobuild-condition-input";
   heightInput.value = room.height || 4;
-  heightInput.onchange = () => { room.height = Math.max(1, Math.min(20, Math.floor(Number(heightInput.value)) || 4)); persist(); };
+  heightInput.onchange = () => { room.height = Math.max(1, Math.floor(Number(heightInput.value)) || 4); persist(); };
   sizeRow.appendChild(heightInput);
   sizeRow.appendChild(labelSpan("横："));
   const widthInput = document.createElement("input");
   widthInput.type = "number";
   widthInput.min = "1";
-  widthInput.max = "20";
   widthInput.className = "scenariobuild-condition-input";
   widthInput.value = room.width || 4;
-  widthInput.onchange = () => { room.width = Math.max(1, Math.min(20, Math.floor(Number(widthInput.value)) || 4)); persist(); };
+  widthInput.onchange = () => { room.width = Math.max(1, Math.floor(Number(widthInput.value)) || 4); persist(); };
   sizeRow.appendChild(widthInput);
   infoEl.appendChild(sizeRow);
   

@@ -351,9 +351,7 @@ async function enterCustomMapArea(area, explicitKey) {
     if (area.bgTrack && typeof switchScenarioBGM === "function") switchScenarioBGM("field_" + locationKey, { fadeMs: 600 });
     maybeAutoIncrementAreaVisit(locationKey);
     if (typeof checkAndAutoRunNextCustomChapter === "function" && await checkAndAutoRunNextCustomChapter("areaVisit", locationKey)) return;
-    changeSpeaker("");
-    await displayMessage("自分の店に入った。（店内の実装は近日予定）");
-    if (typeof openTownMenu === "function") await openTownMenu();
+    await openShopManagement(area, () => openTownMenu()); // estateshop.js
     return;
   }
   

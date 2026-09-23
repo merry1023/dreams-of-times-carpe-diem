@@ -80,6 +80,112 @@ function isFurniturePlacementFree(room, x, y, w, h, excludeInstanceId) {
   });
 }
 
+// ★部屋への家具配置を、矢印キー／ボタンで視覚的に選べるミニ画面（quantity-pickerと同じ作りのオーバーレイ）。
+//   Promiseで { x, y }（決定時）または null（キャンセル時）を返す
+function pickFurniturePlacement(room, furnitureDef, excludeInstanceId, labelText) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById("furniture-placement-overlay");
+    const labelEl = document.getElementById("furniture-placement-label");
+    const gridEl = document.getElementById("furniture-placement-grid");
+    const confirmBtn = document.getElementById("furniture-placement-confirm");
+    const cancelBtn = document.getElementById("furniture-placement-cancel");
+    const upBtn = document.getElementById("furniture-placement-up");
+    const downBtn = document.getElementById("furniture-placement-down");
+    const leftBtn = document.getElementById("furniture-placement-left");
+    const rightBtn = document.getElementById("furniture-placement-right");
+    
+    if (!overlay || !gridEl) { resolve(null); return; } // ★万一オーバーレイが見つからなければ、置けなかった扱いにする
+    
+    const w = furnitureDef.width || 1, h = furnitureDef.height || 1;
+    const roomW = room.width || 1, roomH = room.height || 1;
+    const maxX = Math.max(0, roomW - w), maxY = Math.max(0, roomH - h);
+    const others = getRoomPlacedFurniture(room.id).filter(inst => inst.instanceId !== excludeInstanceId);
+    
+    // ★最初のカーソル位置は、置ける場所があればそこから探す
+    let cursor = { x: 0, y: 0 };
+    outer: for (let y = 0; y <= maxY; y++) {
+      for (let x = 0; x <= maxX; x++) {
+        if (isFurniturePlacementFree(room, x, y, w, h, excludeInstanceId)) { cursor = { x, y }; break outer; }
+      }
+    }
+    
+    gridEl.style.gridTemplateColumns = `repeat(${roomW}, 26px)`;
+    labelEl.textContent = labelText || `「${furnitureDef.name}」をどこに置く？`;
+    
+    function isValidHere() {
+      return isFurniturePlacementFree(room, cursor.x, cursor.y, w, h, excludeInstanceId);
+    }
+    
+    function render() {
+      gridEl.innerHTML = "";
+      const validNow = isValidHere();
+      confirmBtn.disabled = !validNow;
+      for (let y = 0; y < roomH; y++) {
+        for (let x = 0; x < roomW; x++) {
+          const cell = document.createElement("div");
+          const inCursorFootprint = x >= cursor.x && x < cursor.x + w && y >= cursor.y && y < cursor.y + h;
+          const isOccupied = others.some(inst => {
+            const def = findFurnitureDef(inst.furnitureId);
+            if (!def) return false;
+            const pw = def.width || 1, ph = def.height || 1;
+            return x >= inst.placement.x && x < inst.placement.x + pw && y >= inst.placement.y && y < inst.placement.y + ph;
+          });
+          let cls = "furniture-placement-cell";
+          if (inCursorFootprint) cls += validNow ? " furniture-placement-cell-cursor-ok" : " furniture-placement-cell-cursor-bad";
+          else if (isOccupied) cls += " furniture-placement-cell-occupied";
+          cell.className = cls;
+          gridEl.appendChild(cell);
+        }
+      }
+    }
+    
+    function move(dx, dy) {
+      cursor.x = Math.max(0, Math.min(maxX, cursor.x + dx));
+      cursor.y = Math.max(0, Math.min(maxY, cursor.y + dy));
+      render();
+    }
+    
+    function cleanup() {
+      overlay.classList.add("hidden");
+      window.removeEventListener("keydown", handleKeyDown);
+      upBtn.onclick = null; downBtn.onclick = null; leftBtn.onclick = null; rightBtn.onclick = null;
+      confirmBtn.onclick = null; cancelBtn.onclick = null;
+    }
+    
+    function confirm() {
+      if (!isValidHere()) return;
+      cleanup();
+      resolve({ x: cursor.x, y: cursor.y });
+    }
+    
+    function cancel() {
+      cleanup();
+      resolve(null);
+    }
+    
+    function handleKeyDown(event) {
+      if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★シナリオエディタ表示中は反応しない
+      if (event.key === "ArrowUp") { event.preventDefault(); move(0, -1); }
+      else if (event.key === "ArrowDown") { event.preventDefault(); move(0, 1); }
+      else if (event.key === "ArrowLeft") { event.preventDefault(); move(-1, 0); }
+      else if (event.key === "ArrowRight") { event.preventDefault(); move(1, 0); }
+      else if (event.key === "Enter") { event.preventDefault(); confirm(); }
+      else if (event.key === "Escape") { event.preventDefault(); cancel(); }
+    }
+    
+    upBtn.onclick = () => move(0, -1);
+    downBtn.onclick = () => move(0, 1);
+    leftBtn.onclick = () => move(-1, 0);
+    rightBtn.onclick = () => move(1, 0);
+    confirmBtn.onclick = confirm;
+    cancelBtn.onclick = cancel;
+    window.addEventListener("keydown", handleKeyDown);
+    
+    overlay.classList.remove("hidden");
+    render();
+  });
+}
+
 function findValidFurniturePositions(room, furnitureDef, excludeInstanceId) {
   const w = furnitureDef.width || 1, h = furnitureDef.height || 1;
   const positions = [];
@@ -122,6 +228,7 @@ async function manageRoomFurniture(area, floorPlan, room, goBackToRoom) {
     const def = inst && findFurnitureDef(inst.furnitureId);
     const options = [];
     if (def && def.isStorage) options.push({ text: "収納を開ける", next: "storage" });
+    options.push({ text: "位置を移動する", next: "move" });
     options.push({ text: "片付ける（未設置に戻す）", next: "unplace" });
     options.push({ text: "やめる", next: "cancel", isBack: true });
     await displayMessage(`「${def ? def.name : "？"}」`);
@@ -129,6 +236,14 @@ async function manageRoomFurniture(area, floorPlan, room, goBackToRoom) {
     if (sub.next === "storage") {
       await manageFurnitureStorage(inst, () => manageRoomFurniture(area, floorPlan, room, goBackToRoom));
       return;
+    }
+    if (sub.next === "move" && def) {
+      const pos = await pickFurniturePlacement(room, def, inst.instanceId, `「${def.name}」をどこに移動する？（横${room.width}×縦${room.height}マス）`);
+      if (pos) {
+        inst.placement.x = pos.x;
+        inst.placement.y = pos.y;
+        await displayMessage(`「${def.name}」を移動した。`);
+      }
     }
     if (sub.next === "unplace") {
       inst.placement = null;
@@ -144,19 +259,16 @@ async function manageRoomFurniture(area, floorPlan, room, goBackToRoom) {
     const def = inst && findFurnitureDef(inst.furnitureId);
     if (!def) { await manageRoomFurniture(area, floorPlan, room, goBackToRoom); return; }
     
-    const positions = findValidFurniturePositions(room, def, null);
-    if (positions.length === 0) {
+    if (findValidFurniturePositions(room, def, null).length === 0) {
       await displayMessage("この部屋には、もう置ける場所が無いようだ。");
       await manageRoomFurniture(area, floorPlan, room, goBackToRoom);
       return;
     }
-    const posChoices = positions.map(p => ({ text: `(${p.x + 1}, ${p.y + 1})に置く`, next: `${p.x},${p.y}` }));
-    posChoices.push({ text: "やめる", next: "cancel", isBack: true });
-    await displayMessage(`「${def.name}」をどこに置く？（部屋の左上を(1,1)として、横${room.width}×縦${room.height}マス）`);
-    const posPicked = await displayChoices(posChoices);
-    if (posPicked.next !== "cancel") {
-      const [px, py] = posPicked.next.split(",").map(Number);
-      inst.placement = { areaKey, roomId: room.id, x: px, y: py };
+    
+    // ★要望対応：選択肢ではなく、矢印キー／ボタンで視覚的に位置を選ぶミニ画面
+    const pos = await pickFurniturePlacement(room, def, null, `「${def.name}」をどこに置く？（横${room.width}×縦${room.height}マス）`);
+    if (pos) {
+      inst.placement = { areaKey, roomId: room.id, x: pos.x, y: pos.y };
       await displayMessage(`「${def.name}」を置いた。`);
     }
     await manageRoomFurniture(area, floorPlan, room, goBackToRoom);

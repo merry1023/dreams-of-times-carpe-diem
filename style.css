@@ -6776,3 +6776,142 @@ html, body {
   user-select: none;
   touch-action: none;
 }
+
+/* ★不動産システム：部屋への家具配置ミニ画面（furniture.js pickFurniturePlacement） */
+.furniture-placement-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 201000;
+}
+
+.furniture-placement-overlay.hidden {
+  display: none !important;
+  pointer-events: none;
+}
+
+.furniture-placement-box {
+  width: 420px;
+  max-width: 92vw;
+  background-color: #1a1a1a;
+  border: 3px solid #ffc107;
+  border-radius: 10px;
+  padding: 18px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.furniture-placement-label {
+  color: #eee;
+  font-size: 13px;
+  margin: 0 0 12px 0;
+  white-space: pre-line;
+}
+
+.furniture-placement-grid {
+  display: grid;
+  gap: 2px;
+  justify-content: center;
+  margin: 0 auto 14px auto;
+  overflow: auto;
+  max-width: 100%;
+  max-height: 44vh;
+  padding: 4px;
+  background-color: #111;
+  border: 1px solid #444;
+  border-radius: 6px;
+}
+
+.furniture-placement-cell {
+  width: 26px;
+  height: 26px;
+  background-color: #2a2a2a;
+  border-radius: 3px;
+}
+
+.furniture-placement-cell-occupied {
+  background-color: #5a4a2a;
+  border: 1px solid #8a6a3a;
+}
+
+.furniture-placement-cell-cursor-ok {
+  background-color: #2a5a2a;
+  border: 1px solid #6adb6a;
+}
+
+.furniture-placement-cell-cursor-bad {
+  background-color: #5a2a2a;
+  border: 1px solid #db6a6a;
+}
+
+.furniture-placement-dpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.furniture-placement-dpad-row {
+  display: flex;
+  gap: 24px;
+}
+
+.furniture-placement-dpad-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: none;
+  background-color: #444;
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.furniture-placement-dpad-btn:hover {
+  background-color: #666;
+}
+
+.furniture-placement-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.furniture-placement-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background-color: #444;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.furniture-placement-btn:hover {
+  background-color: #666;
+}
+
+.furniture-placement-confirm-btn {
+  background-color: #2a6a2a;
+}
+
+.furniture-placement-confirm-btn:hover {
+  background-color: #368a36;
+}
+
+.furniture-placement-confirm-btn:disabled {
+  background-color: #333;
+  color: #888;
+  cursor: not-allowed;
+}
