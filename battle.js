@@ -209,7 +209,13 @@ async function startBattle(monsterKeys, options = {}) {
     ? primaryMaster.level
     : (typeof options.fixedLevel === "number" && options.fixedLevel > 0 ? options.fixedLevel : null);
   const level = fixedLevel != null ? fixedLevel : generateMonsterLevel(); // ★主人公のレベル±1で決まる、この群れ全体のレベル（固定レベル指定が無い場合のみ）
-  const enemies = keys.map(key => createEnemyUnit(key, level));
+  // ★要望対応：コロシアムの節目回戦のように、同じ群れの中でも敵ごとに違うレベルを使いたい場合、
+  //   options.perEnemyLevels（keysと同じ順番の配列。数値が入っている位置だけ上書き）で個別指定できる
+  const enemies = keys.map((key, i) => {
+    const overrideLevel = Array.isArray(options.perEnemyLevels) ? options.perEnemyLevels[i] : null;
+    const enemyLevel = (typeof overrideLevel === "number" && overrideLevel > 0) ? overrideLevel : level;
+    return createEnemyUnit(key, enemyLevel);
+  });
   assignDisplayNames(enemies);
   const isBoss = BOSS_MONSTER_KEYS.includes(keys[0]); // ★BGMの切り替えや演出の判定に使う（先頭＝ボス本体）
   

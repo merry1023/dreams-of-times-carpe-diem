@@ -8933,7 +8933,7 @@ function buildFacilityRow(facility) {
     //   参加費・各回戦の敵編成（追加/削除可）・コインの種類と獲得数・99回戦クリア報酬・コインの引き換え屋を設定できる
     const entryNote = document.createElement("p");
     entryNote.className = "devmode-note";
-    entryNote.textContent = "参加すると、指定したアイテムを指定した数だけ消費します（無ければ挑戦できません）。挑戦中はアイテムが一切使えません。1回でも負けたら1回戦目からやり直しになります。10の倍数の回戦をクリアすると全回復、5の倍数（10の倍数を除く）の回戦をクリアするとHP・SPが1/3回復します。";
+    entryNote.textContent = "参加すると、指定したアイテムを指定した数だけ消費します（無ければ挑戦できません）。挑戦中はアイテムが一切使えません。1回でも負けたら1回戦目からやり直しになります。10の倍数の回戦をクリアすると全回復、5の倍数（10の倍数を除く）の回戦をクリアするとHP・SPが1/3回復します。各回戦に勝利するたびに、次の回戦へ進むかここでやめる（リタイア）かを選べます（リタイアしてもそこまでの自己ベスト・獲得済みコインはそのまま持ち帰れます）。";
     infoEl.appendChild(entryNote);
     
     const entryRow = document.createElement("div");
@@ -8976,7 +8976,7 @@ function buildFacilityRow(facility) {
     const bossRoundsNote = document.createElement("p");
     bossRoundsNote.className = "devmode-note";
     bossRoundsNote.style.margin = "10px 0 2px";
-    bossRoundsNote.textContent = "10の倍数の回戦と、100回戦が無いため最後の節目となる99回戦目は、ここで指定した「ボス的な」敵編成で固定されます（プールからのランダム抽選の対象外）。レベルを指定すると、その回戦の敵はそのレベルで固定されます（0のままなら、通常通り主人公のレベル±1で決まります）。";
+    bossRoundsNote.textContent = "10の倍数の回戦と、100回戦が無いため最後の節目となる99回戦目は、ここで指定した「ボス的な」敵編成で固定されます（プールからのランダム抽選の対象外）。レベルを指定すると、ボスID以外（雑魚敵）はそのレベル×0.6の強さに弱まり、ボスはそのままのレベルで固定されます（0のままなら、通常通り主人公のレベル±1で決まります）。";
     infoEl.appendChild(bossRoundsNote);
     
     if (!facility.bossRoundConfig || typeof facility.bossRoundConfig !== "object") facility.bossRoundConfig = {};
@@ -9007,7 +9007,7 @@ function buildFacilityRow(facility) {
       
       const levelRow = document.createElement("div");
       levelRow.className = "scenariobuild-condition-row";
-      levelRow.appendChild(labelSpan("レベル指定（0＝指定なし）："));
+    levelRow.appendChild(labelSpan("ボスのレベル指定（0＝指定なし。指定すると雑魚敵はこのレベル×0.6に弱まる）："));
       const levelInput = document.createElement("input");
       levelInput.type = "number";
       levelInput.min = "0";
