@@ -475,6 +475,7 @@ function initPlayer(className) {
     totalHealingDone: 0, // 累計回復量（HP）
     totalDamageTaken: 0, // 累計被ダメージ量
     unlockedAchievementIds: [], // 達成済みの実績ID一覧
+    knownCookingRecipeIds: [], // ★要望対応：レシピ発見アイテムを使って判明した料理レシピのID一覧（料理タブ参照）
     // ★話の始まるきっかけ（「エリアに来た時」）やシナリオ専用エリアのn回目判定に使う、拠点ごとの来訪回数
     areaVisitCounts: {}, // { locationKey: 来訪回数 }
     // ★マップのエリア解放条件（「特定のクエストをクリアした」）の判定用の記録

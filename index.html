@@ -278,6 +278,7 @@
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-companionchat')">会話</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-strength')">強さ</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-equipment')">装備</button>
+        <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-cooking')">料理</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-convenience')">便利</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-log')">ログ</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-setting')">設定</button>
@@ -384,6 +385,11 @@
         <div id="tab-equipment" class="tab-content">
           <div id="equipment-slots" class="equipment-slots"></div>
           <div id="equipment-inventory-list" class="equipment-inventory-list"></div>
+        </div>
+
+        <!-- ★要望対応：料理タブ。料理道具を選ぶ→材料スロットに材料を置く→作る、の一連の操作をcooking.jsが描画する -->
+        <div id="tab-cooking" class="tab-content">
+          <div id="cooking-root" class="cooking-root"></div>
         </div>
 
         <div id="tab-convenience" class="tab-content">
@@ -515,6 +521,7 @@
 <script src="town.js"></script>
 <script src="fishing.js"></script>
 <script src="crafting.js"></script>
+<script src="cooking.js"></script>
 <script src="questboard.js"></script>
 <script src="auction.js"></script>
 <script src="enemy.js"></script>
