@@ -965,7 +965,7 @@ async function handleItemMenuInBattle() {
   inventorySlots.forEach((slot) => {
     if (!slot) return;
     const master = ITEM_MASTER[slot.itemId];
-    if (master && master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒)) {
+    if (master && ((master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒)) || master.foodBuffKind)) {
       healableEntries.push({ slot, master });
     }
   });
