@@ -12704,12 +12704,16 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     } else if (block.effectType === "zoomOut" && typeof setZoomEffect === "function") {
       setZoomEffect(false); // mainfunc.js
     } else if (block.effectType === "weatherRainOn" && typeof setWeatherEffect === "function") {
+      if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true; // ★バグ修正：アンビエント天候による自動上書きを止める
       setWeatherEffect("rain"); // mainfunc.js（要望対応：天候演出）
     } else if (block.effectType === "weatherSnowOn" && typeof setWeatherEffect === "function") {
+      if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true;
       setWeatherEffect("snow"); // mainfunc.js
     } else if (block.effectType === "weatherSakuraOn" && typeof setWeatherEffect === "function") {
+      if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true;
       setWeatherEffect("sakura"); // mainfunc.js
     } else if (block.effectType === "weatherOff" && typeof setWeatherEffect === "function") {
+      if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true; // ★明示的に「天候OFF」にした状態も、次の日になるまでは維持する
       setWeatherEffect(null); // mainfunc.js
     }
     return nextDefaultId;
