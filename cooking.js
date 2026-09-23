@@ -47,7 +47,8 @@ function getCookableMaterialOptions() {
 function selectCookingTool(instanceId) {
   cookingSelectedToolInstanceId = instanceId;
   const tool = getSelectedCookingTool();
-  const slotCount = tool ? Math.max(1, Number(tool.master.toolSlotCount) || 1) : 0;
+  // ★要望対応：スロット数を設定し忘れていても材料が1つしか選べなくならないよう、未設定時は既定値3を使う（アイテム編集欄のプレースホルダーと合わせる）
+  const slotCount = tool ? Math.max(1, Number(tool.master.toolSlotCount) || 3) : 0;
   cookingSlotPicks = new Array(slotCount).fill(null).map(() => ({ itemId: "", count: 1 }));
   renderCookingTab();
 }
@@ -140,6 +141,13 @@ function renderCookingTab() {
   
   const tools = getOwnedCookingTools();
   
+  const toolSection = document.createElement("div");
+  toolSection.className = "cooking-section";
+  const toolTitle = document.createElement("h4");
+  toolTitle.className = "cooking-section-title";
+  toolTitle.textContent = "料理道具を選ぶ";
+  toolSection.appendChild(toolTitle);
+  
   const toolListEl = document.createElement("div");
   toolListEl.className = "cooking-tool-list";
   if (tools.length === 0) {
@@ -149,31 +157,48 @@ function renderCookingTab() {
     toolListEl.appendChild(note);
   } else {
     tools.forEach(({ slot, master }) => {
-      const card = document.createElement("div");
+      // ★要望対応：divのクリックだけだとキーボード操作できないので、実際の<button>にしてTab移動・Enter決定に対応させる
+      const card = document.createElement("button");
+      card.type = "button";
       card.className = "cooking-tool-card" + (slot.instanceId === cookingSelectedToolInstanceId ? " selected" : "");
       const nameEl = document.createElement("span");
-      nameEl.textContent = `${master.name}（スロット${Math.max(1, Number(master.toolSlotCount) || 1)}）`;
+      nameEl.className = "cooking-tool-name";
+      nameEl.textContent = `${master.name}（スロット${Math.max(1, Number(master.toolSlotCount) || 3)}）`;
+      const maxDurability = Math.max(1, Number(master.toolDurability) || 30);
       const durEl = document.createElement("span");
       durEl.className = "cooking-tool-durability";
-      durEl.textContent = `耐久 ${slot.durability != null ? slot.durability : (master.toolDurability || 0)} / ${master.toolDurability || 0}`;
+      durEl.textContent = `耐久 ${slot.durability != null ? slot.durability : maxDurability} / ${maxDurability}`;
       card.appendChild(nameEl);
       card.appendChild(durEl);
       card.onclick = () => selectCookingTool(slot.instanceId);
       toolListEl.appendChild(card);
     });
   }
-  root.appendChild(toolListEl);
+  toolSection.appendChild(toolListEl);
+  root.appendChild(toolSection);
   
   const tool = getSelectedCookingTool();
   if (!tool) return;
   
   const materialOptions = getCookableMaterialOptions();
+  const materialSection = document.createElement("div");
+  materialSection.className = "cooking-section";
+  const materialTitle = document.createElement("h4");
+  materialTitle.className = "cooking-section-title";
+  materialTitle.textContent = "材料を置く";
+  materialSection.appendChild(materialTitle);
+  
   const slotListEl = document.createElement("div");
   slotListEl.className = "cooking-slot-list";
   
   cookingSlotPicks.forEach((pick, slotIndex) => {
     const row = document.createElement("div");
     row.className = "cooking-slot-row";
+    
+    const label = document.createElement("span");
+    label.className = "cooking-slot-label";
+    label.textContent = `材料${slotIndex + 1}`;
+    row.appendChild(label);
     
     const select = document.createElement("select");
     const emptyOpt = document.createElement("option");
@@ -204,9 +229,21 @@ function renderCookingTab() {
     };
     row.appendChild(countInput);
     
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "cooking-slot-clear-btn";
+    clearBtn.textContent = "✕";
+    clearBtn.title = "この材料枠を空にする";
+    clearBtn.disabled = !pick.itemId;
+    clearBtn.onclick = () => {
+      cookingSlotPicks[slotIndex] = { itemId: "", count: 1 };
+      renderCookingTab();
+    };
+    row.appendChild(clearBtn);
+    
     slotListEl.appendChild(row);
   });
-  root.appendChild(slotListEl);
+  materialSection.appendChild(slotListEl);
   
   const batchRow = document.createElement("div");
   batchRow.className = "cooking-batch-row";
@@ -219,13 +256,16 @@ function renderCookingTab() {
   batchInput.onchange = () => { cookingBatchCount = Math.max(1, Math.floor(Number(batchInput.value) || 1)); };
   batchRow.appendChild(batchLabel);
   batchRow.appendChild(batchInput);
-  root.appendChild(batchRow);
+  materialSection.appendChild(batchRow);
   
+  const hasAnyFilledSlot = cookingSlotPicks.some(p => p.itemId && p.count > 0);
   const cookBtn = document.createElement("button");
   cookBtn.className = "cooking-cook-btn";
   cookBtn.textContent = "作る";
+  cookBtn.disabled = !hasAnyFilledSlot;
   cookBtn.onclick = () => attemptCook();
-  root.appendChild(cookBtn);
+  materialSection.appendChild(cookBtn);
+  root.appendChild(materialSection);
   
   // ★レシピ帳：この道具向けの、既に発見済みのレシピだけを一覧表示する
   const knownIds = (typeof player !== "undefined" && player && Array.isArray(player.knownCookingRecipeIds)) ? player.knownCookingRecipeIds : [];
@@ -233,11 +273,15 @@ function renderCookingTab() {
   const knownRecipes = toolRecipes.filter(r => knownIds.includes(r.id));
   const unknownCount = toolRecipes.length - knownRecipes.length;
   
+  const bookSection = document.createElement("div");
+  bookSection.className = "cooking-section";
+  const bookTitle = document.createElement("h4");
+  bookTitle.className = "cooking-section-title";
+  bookTitle.textContent = "レシピ帳";
+  bookSection.appendChild(bookTitle);
+  
   const bookEl = document.createElement("div");
   bookEl.className = "cooking-recipe-book";
-  const bookTitle = document.createElement("p");
-  bookTitle.textContent = "レシピ帳";
-  bookEl.appendChild(bookTitle);
   if (knownRecipes.length === 0) {
     const note = document.createElement("p");
     note.className = "cooking-empty-note";
@@ -259,5 +303,6 @@ function renderCookingTab() {
     note.textContent = `この道具にはまだ発見していないレシピが${unknownCount}件ある。材料さえ合っていれば、知らなくても作れる。`;
     bookEl.appendChild(note);
   }
-  root.appendChild(bookEl);
+  bookSection.appendChild(bookEl);
+  root.appendChild(bookSection);
 }

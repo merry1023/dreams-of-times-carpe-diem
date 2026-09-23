@@ -61,9 +61,9 @@ function sanitizeInventoryInstanceIds() {
     if (slot && typeof slot.acquiredSeq !== "number") {
       slot.acquiredSeq = nextInventoryAcquiredSeq++;
     }
-    // ★要望対応：料理道具導入前のセーブデータには耐久度が無いので、アイテムマスターの初期値で補う
+    // ★要望対応：料理道具導入前のセーブデータには耐久度が無いので、アイテムマスターの初期値で補う（未設定なら既定値30）
     if (slot && slot.durability === undefined && ITEM_MASTER[slot.itemId] && ITEM_MASTER[slot.itemId].category === "cookingTool") {
-      slot.durability = Math.max(1, Number(ITEM_MASTER[slot.itemId].toolDurability) || 1);
+      slot.durability = Math.max(1, Number(ITEM_MASTER[slot.itemId].toolDurability) || 30);
     }
   });
 }
@@ -127,8 +127,9 @@ function addItem(itemId, quantity = 1, options = {}) {
         // ★店で「買った」装備は、個体差の当たり外れが無いよう±0にする（options.noStatBonus）。
         //   冒険で拾った・敵が落とした装備だけ、掘り出し物のランダムな個体差がつく
         statBonus: options.noStatBonus ? null : rollEquipmentStatBonus(master),
-        // ★要望対応：料理道具は個体ごとに耐久度を持ち、使うたびに減っていき、0になると壊れて消える
-        durability: master.category === "cookingTool" ? Math.max(1, Number(master.toolDurability) || 1) : undefined
+        // ★要望対応：料理道具は個体ごとに耐久度を持ち、使うたびに減っていき、0になると壊れて消える。
+        //   耐久度を設定し忘れていても一瞬で壊れてしまわないよう、未設定時は既定値30を使う（アイテム編集欄のプレースホルダーと合わせる）
+        durability: master.category === "cookingTool" ? Math.max(1, Number(master.toolDurability) || 30) : undefined
       };
     }
     return true;

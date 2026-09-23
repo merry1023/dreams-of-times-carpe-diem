@@ -5152,7 +5152,7 @@ function getItemManagerConfig() {
       { key: "toolDurability", label: "（料理道具）耐久度", type: "number", placeholder: "30" },
       { key: "toolSlotCount", label: "（料理道具）材料スロット数", type: "number", placeholder: "3" },
       // ★要望対応：種類を「料理」にした時だけ意味を持つ、戦闘中だけの自己バフ（技の自己強化と同じ仕組みを流用）
-      { key: "foodBuffKind", label: "（料理）戦闘中バフの種類（状態強化の管理タブで作ったID）", type: "text", placeholder: "空欄ならバフ無し" },
+      { key: "foodBuffKind", label: "（料理）戦闘中バフの種類", type: "select", options: getSkillSelfBuffKindOptions() },
       { key: "foodBuffDuration", label: "（料理）バフの持続ターン数", type: "number", placeholder: "3" },
       { key: "foodBuffPower", label: "（料理）バフの効果量", type: "number", placeholder: "5" },
       // ★要望対応：このアイテムを「使う」と、指定した料理レシピがレシピ帳に登録される（レシピ発見アイテム）

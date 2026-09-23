@@ -4900,7 +4900,22 @@ html, body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+  padding: 4px 2px;
+}
+
+.cooking-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cooking-section-title {
+  margin: 0;
+  font-size: 0.95em;
+  color: #ffc107;
+  border-left: 3px solid #ffc107;
+  padding-left: 6px;
 }
 
 .cooking-tool-list {
@@ -4918,12 +4933,25 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  color: #eee;
+  font: inherit;
+  width: 100%;
+  text-align: left;
+}
+
+.cooking-tool-card:focus-visible {
+  outline: 2px solid #ffc107;
+  outline-offset: 1px;
 }
 
 .cooking-tool-card.selected {
   border-color: #ffc107;
   box-shadow: 0 0 8px #ffc107;
   background-color: #2a2205;
+}
+
+.cooking-tool-name {
+  font-weight: bold;
 }
 
 .cooking-tool-durability {
@@ -4948,6 +4976,12 @@ html, body {
   flex-wrap: wrap;
 }
 
+.cooking-slot-label {
+  color: #999;
+  font-size: 0.85em;
+  min-width: 3.5em;
+}
+
 .cooking-slot-row select,
 .cooking-slot-row input[type="number"] {
   background-color: #111;
@@ -4966,6 +5000,20 @@ html, body {
   width: 60px;
 }
 
+.cooking-slot-clear-btn {
+  background-color: #333;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.cooking-slot-clear-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 .cooking-batch-row {
   display: flex;
   align-items: center;
@@ -4977,10 +5025,11 @@ html, body {
   color: #ffc107;
   border: 1px solid #ffc107;
   border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 1em;
+  padding: 10px 16px;
+  font-size: 1.05em;
+  font-weight: bold;
   cursor: pointer;
-  align-self: flex-start;
+  align-self: stretch;
 }
 
 .cooking-cook-btn:disabled {
@@ -4989,8 +5038,6 @@ html, body {
 }
 
 .cooking-recipe-book {
-  border-top: 1px solid #333;
-  padding-top: 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
