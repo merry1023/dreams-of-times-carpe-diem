@@ -42,6 +42,9 @@ async function openCustomSettlementArea(area) {
   
   if (typeof loadCustomScenarioData === "function") loadCustomScenarioData(); // scenariobuild.js
   
+  // ★不動産のローン・家賃の滞納が起きていれば、拠点に来たタイミングでまとめて知らせる（realestate.js）
+  if (typeof flushRealEstateNotices === "function") await flushRealEstateNotices();
+  
   const locations = [];
   if (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.facilities)) {
     const attachedIds = Array.isArray(area.facilityIds) ? area.facilityIds : null;
@@ -110,6 +113,9 @@ async function openTownMenu() {
     if (typeof maybeAutoIncrementAreaVisit === "function") maybeAutoIncrementAreaVisit("village");
     if (typeof checkAndAutoRunNextCustomChapter === "function" && await checkAndAutoRunNextCustomChapter("areaVisit", "village")) return;
   }
+  
+  // ★不動産のローン・家賃の滞納が起きていれば、村に戻ったタイミングでまとめて知らせる（realestate.js）
+  if (typeof flushRealEstateNotices === "function") await flushRealEstateNotices();
   
   const locations = [
     { label: "酒場", action: () => { tavernReturnTo = null; currentLocationKey = "tavern"; openTavern(); } },
@@ -541,6 +547,22 @@ async function openCustomFacility(facility, returnTo) {
     hideLocationMenu();
     await runFacilityDialogueBlocks(facility, facility.enterBlocks, facility.ownerDialogue); // ★入った時のセリフ
     await openAuction(facility, goBack); // auction.js
+    return;
+  }
+  
+  // ★新規：不動産屋系の施設。実際の購入・ローン・賃貸処理はrealestate.jsにまとめてある
+  if (facility.type === "realEstate") {
+    hideLocationMenu();
+    await runFacilityDialogueBlocks(facility, facility.enterBlocks, facility.ownerDialogue); // ★入った時のセリフ
+    await openRealEstateFacility(facility, goBack); // realestate.js
+    return;
+  }
+  
+  // ★新規：家具屋系の施設。実際の購入・配置・倉庫処理はfurniture.jsにまとめてある
+  if (facility.type === "furnitureShop") {
+    hideLocationMenu();
+    await runFacilityDialogueBlocks(facility, facility.enterBlocks, facility.ownerDialogue); // ★入った時のセリフ
+    await openFurnitureShop(facility, goBack); // furniture.js
     return;
   }
   

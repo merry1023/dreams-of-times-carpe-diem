@@ -15,8 +15,15 @@ const MAP_AREA_TYPES = {
   enemy: "敵エリア",
   scenario: "シナリオ専用エリア",
   placeholder: "未実装（表示のみ・「街」等に変更すると入れる場所になります）",
-  unknown: "？（未発見・「街」等に変更すると入れる場所になります）"
+  unknown: "？（未発見・「街」等に変更すると入れる場所になります）",
+  estateHouse: "不動産：家",
+  estateShop: "不動産：店"
 };
+
+// ★不動産（家・店）タイプのエリアかどうか
+function isEstateAreaType(type) {
+  return type === "estateHouse" || type === "estateShop";
+}
 
 // ★エリアを削除する時、そのエリアが関わっている線（つながり）もあわせて消しておく
 function removeMapEdgesForNodeId(nodeId) {
@@ -892,7 +899,23 @@ function buildMapAreaCard(area, index) {
       typeSelect.appendChild(option);
     });
     typeSelect.value = area.type;
-    typeSelect.onchange = () => { area.type = typeSelect.value; persist(); renderScenarioBuildPanel(); };
+    typeSelect.onchange = () => {
+      area.type = typeSelect.value;
+      // ★「不動産：家／店」にした時は、購入するまで地図上で「？」表示・入場不可になるよう
+      //   解放条件（unlockConditions）へ自動で「propertyOwned」を追加する（手動設定は不要）。
+      //   逆に、不動産タイプから別の種類に変え直した時は、この自動追加分を外しておく
+      //   （残したままだと、二度と誰も購入しない条件のせいでそのエリアが永久にロックされ続けてしまう）
+      if (isEstateAreaType(area.type)) {
+        if (!Array.isArray(area.unlockConditions)) area.unlockConditions = [];
+        if (!area.unlockConditions.some(c => c.type === "propertyOwned")) {
+          area.unlockConditions.push({ type: "propertyOwned" });
+        }
+      } else if (Array.isArray(area.unlockConditions)) {
+        area.unlockConditions = area.unlockConditions.filter(c => c.type !== "propertyOwned");
+      }
+      persist();
+      renderScenarioBuildPanel();
+    };
     typeRow.appendChild(typeSelect);
     infoEl.appendChild(typeRow);
     
@@ -926,6 +949,10 @@ function buildMapAreaCard(area, index) {
       nonScenarioInput.onchange = () => { area.nonScenarioMessage = nonScenarioInput.value; persist(); };
       nonScenarioRow.appendChild(nonScenarioInput);
       infoEl.appendChild(nonScenarioRow);
+    }
+    
+    if (isEstateAreaType(area.type)) {
+      infoEl.appendChild(buildEstateAreaEditor(area, persist));
     }
     
     // ★このエリアの「来た回数」を、マップから来るたびに自動で増やすか、専用ブロックでのみ増やすか
@@ -1209,6 +1236,87 @@ function buildFacilityAttachEditor(area, persist) {
 }
 
 // ★「敵ID」「アイテムID」のような、複数件を+で追加していくタグリストの共通UI
+// ★不動産（家・店）エリア専用：価格・（店の場合）賃貸か購入かの編集UI。
+//   一括払い／ローンの選択そのものは、プレイヤーが不動産施設で購入する時に選ぶため、ここでは価格だけ決める
+function buildEstateAreaEditor(area, persist) {
+  const wrap = document.createElement("div");
+  wrap.className = "scenariobuild-skill-details";
+  wrap.style.display = "block";
+  
+  const heading = document.createElement("p");
+  heading.className = "devmode-note";
+  heading.style.margin = "0 0 6px 0";
+  heading.textContent = "不動産の設定（購入・契約するまでは地図上で「？」表示になり入れません。このエリアを取り扱う「不動産屋系」の施設から購入できます。施設編集タブで、この物件を取り扱う不動産屋に追加してください）：";
+  wrap.appendChild(heading);
+  
+  if (area.type === "estateShop") {
+    const modeRow = document.createElement("div");
+    modeRow.className = "scenariobuild-condition-row";
+    modeRow.appendChild(labelSpan("契約形態："));
+    const modeSelect = document.createElement("select");
+    modeSelect.className = "scenariobuild-jump-select";
+    [["purchase", "店舗購入（一括／ローン）"], ["rent", "賃貸（7日ごとに家賃）"]].forEach(([value, label]) => {
+      const opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = label;
+      modeSelect.appendChild(opt);
+    });
+    modeSelect.value = area.estateMode === "rent" ? "rent" : "purchase";
+    modeSelect.onchange = () => { area.estateMode = modeSelect.value; persist(); renderScenarioBuildPanel(); };
+    modeRow.appendChild(modeSelect);
+    wrap.appendChild(modeRow);
+  }
+  
+  const isRentShop = area.type === "estateShop" && area.estateMode === "rent";
+  
+  const priceRow = document.createElement("div");
+  priceRow.className = "scenariobuild-condition-row";
+  priceRow.appendChild(labelSpan(isRentShop ? "家賃（陳・7日ごと）：" : "価格（陳）："));
+  const priceInput = document.createElement("input");
+  priceInput.type = "number";
+  priceInput.min = "0";
+  priceInput.className = "scenariobuild-condition-input";
+  if (isRentShop) {
+    priceInput.value = area.estateRentAmount != null ? area.estateRentAmount : 0;
+    priceInput.onchange = () => { area.estateRentAmount = Math.max(0, Number(priceInput.value) || 0); persist(); };
+  } else {
+    priceInput.value = area.estatePrice != null ? area.estatePrice : 0;
+    priceInput.onchange = () => { area.estatePrice = Math.max(0, Number(priceInput.value) || 0); persist(); };
+  }
+  priceRow.appendChild(priceInput);
+  wrap.appendChild(priceRow);
+  
+  if (!isRentShop) {
+    const loanNote = document.createElement("p");
+    loanNote.className = "devmode-note scenariobuild-condition";
+    loanNote.textContent = "一括払い／ローン払いはプレイヤーが購入時に選べます（ローンの利率＝分割回数×2.5%、上限50%。7日ごとに請求、滞納中は入場不可＆請求も止まります）。";
+    wrap.appendChild(loanNote);
+  } else {
+    const rentNote = document.createElement("p");
+    rentNote.className = "devmode-note scenariobuild-condition";
+    rentNote.textContent = "滞納するとローンと同様に入場不可＆請求が止まります（不動産屋で滞納分だけ払えば再開します）。";
+    wrap.appendChild(rentNote);
+  }
+  
+  if (area.type === "estateHouse") {
+    // ★間取り編集（部屋の追加・削除・サイズ・ドア設置）は開発者専用。実際の部屋間移動・家具配置はプレイヤー側（floorplan.js）
+    const floorPlanBtn = document.createElement("button");
+    floorPlanBtn.className = "devmode-btn";
+    floorPlanBtn.textContent = "間取り編集";
+    floorPlanBtn.onclick = (event) => {
+      event.stopPropagation();
+      if (typeof ensureFloorPlan === "function") ensureFloorPlan(area);
+      scenarioBuildEditingMapAreaId = area.id;
+      scenarioBuildSelectedRoomId = area.floorPlan.startRoomId;
+      scenarioBuildMainView = "floorPlanEditor";
+      renderScenarioBuildPanel();
+    };
+    wrap.appendChild(floorPlanBtn);
+  }
+  
+  return wrap;
+}
+
 // ★エリアの解放条件（unlockConditions）を編集するUI。条件は複数追加でき、全て満たすまで地図上で「？」表示になる
 function buildMapAreaUnlockConditionsEditor(area, persist) {
   if (!Array.isArray(area.unlockConditions)) area.unlockConditions = [];
@@ -1228,7 +1336,8 @@ function buildMapAreaUnlockConditionsEditor(area, persist) {
     flag: "指定したフラグが立った",
     enemyKills: "指定した／全ての敵をn体倒した",
     questCleared: "特定のクエストをクリアした",
-    daysSinceTransfer: "転移してからn日経過した"
+    daysSinceTransfer: "転移してからn日経過した",
+    propertyOwned: "（不動産）このエリアを購入・契約済み"
   };
   
   area.unlockConditions.forEach((cond, condIndex) => {

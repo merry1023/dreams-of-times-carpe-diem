@@ -59,6 +59,7 @@ let scenarioBuildMainView = "list"; // "list" | "editor" | "maps" | "mapEditor" 
 let scenarioBuildSubView = "characters"; // ★右（サブ）側。常時表示なので独立して切り替わる
 let scenarioBuildEditingChapterId = null;
 let scenarioBuildEditingMapAreaId = null; // ★マップ設定の専用全画面エディタで、今どのエリアを編集中か
+let scenarioBuildSelectedRoomId = null; // ★間取りエディタで、今どの部屋を選択中か（realestate floorplan）
 let scenarioBuildEditingOptionRef = null; // ★選択肢の専用全画面エディタで、今どの選択肢を編集中か（{ chapterId, blockId, optionId }）
 let scenarioBuildEditingIfRef = null; // ★ifブロックの専用全画面エディタで、今どのブロックを編集中か（{ chapterId, blockId }）
 let scenarioBuildEditingSkillIfBlockId = null; // ★特殊技のifブロック専用全画面エディタで、今編集中のブロックid（対象の技はscenarioBuildEditingSkillIdから分かる）
@@ -218,6 +219,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.enemies = data.enemies || [];
   scenarioProject.bosses = data.bosses || [];
   scenarioProject.items = data.items || [];
+  scenarioProject.furniture = data.furniture || []; // ★要望対応：不動産システムの家具管理タブ（家具屋系施設で販売する家具の登録）
   scenarioProject.fishItems = data.fishItems || []; // ★要望対応：魚管理タブ
   scenarioProject.skills = data.skills || [];
   dedupeBuiltinSkillEntries(); // ★取り込んだファイル自体が、過去のバージョンの不具合で重複を含んでいる場合があるので、取り込み直後にも掃除しておく
@@ -413,6 +415,7 @@ function normalizeScenarioProject() {
   if (!Array.isArray(scenarioProject.enemies)) scenarioProject.enemies = [];
   if (!Array.isArray(scenarioProject.bosses)) scenarioProject.bosses = [];
   if (!Array.isArray(scenarioProject.items)) scenarioProject.items = [];
+  if (!Array.isArray(scenarioProject.furniture)) scenarioProject.furniture = [];
   // ★要望対応：魚管理タブ用のデータ。中身自体はアイテムと同じ扱いでITEM_MASTERへ反映される（fishing.js／ensureCustomFishRegistered）
   if (!Array.isArray(scenarioProject.fishItems)) scenarioProject.fishItems = [];
   if (!Array.isArray(scenarioProject.skills)) scenarioProject.skills = [];
@@ -1466,6 +1469,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "enemies", label: "敵設定" },
   { view: "bosses", label: "ボス設定" },
   { view: "items", label: "アイテム設定" },
+  { view: "furniture", label: "家具管理" }, // ★不動産システム：家具屋系施設で販売する家具の登録（名前・画像・価格・縦横サイズ・倉庫かどうか）
   { view: "fishmgmt", label: "魚管理" }, // ★要望対応：釣り場で釣れる魚の追加・編集
   { view: "quests", label: "クエスト管理" },
   { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
@@ -1534,6 +1538,8 @@ function renderScenarioBuildMain() {
     renderMapAreaFullList(container);
   } else if (scenarioBuildMainView === "mapEditor") {
     renderMapAreaEditor(container);
+  } else if (scenarioBuildMainView === "floorPlanEditor") {
+    renderFloorPlanEditor(container);
   } else if (scenarioBuildMainView === "optionEditor") {
     renderChoiceOptionEditor(container);
   } else if (scenarioBuildMainView === "ifEditor") {
@@ -1599,6 +1605,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "enemies") renderEntityManager(bodyEl, getEnemyManagerConfig());
   else if (scenarioBuildSubView === "bosses") { renderTrialGuardianConfig(bodyEl); renderFameThresholdConfig(bodyEl); renderEntityManager(bodyEl, getBossManagerConfig()); }
   else if (scenarioBuildSubView === "items") renderEntityManager(bodyEl, getItemManagerConfig());
+  else if (scenarioBuildSubView === "furniture") renderEntityManager(bodyEl, getFurnitureManagerConfig());
   else if (scenarioBuildSubView === "fishmgmt") renderEntityManager(bodyEl, getFishManagerConfig());
   else if (scenarioBuildSubView === "quests") renderEntityManager(bodyEl, getQuestManagerConfig());
   else if (scenarioBuildSubView === "loginbonus") renderLoginBonusManager(bodyEl); // ★要望対応：ログインボーナス
@@ -5232,6 +5239,30 @@ function getFishManagerConfig() {
   };
 }
 
+// ★不動産システム：家具管理タブ。「家具屋系」施設で販売する家具を、アイテムと同じ感覚で登録する
+//   （名前・画像・価格・縦横サイズ。倉庫チェックを付けると、部屋に置いた時に専用の収納として使える）
+function getFurnitureManagerConfig() {
+  return {
+    note: "「家具屋系」施設で販売する家具を登録します。縦・横のサイズは、家の部屋に配置する時のマス目の大きさです（部屋の広さは、マップ設定タブの「間取り編集」で設定）。「倉庫として使える」を付けた家具は、部屋に置くと専用の収納になります（インベントリとは別枠。倉庫家具1つ1つが別々の収納です）。",
+    category: "furniture",
+    useDetailEditor: true,
+    getList: () => scenarioProject.furniture,
+    fields: [
+      { key: "name", label: "名前", type: "text", placeholder: "例：木の椅子" },
+      { key: "imagePath", label: "画像パス（任意）", type: "text", placeholder: "例：img/furniture/chair.png" },
+      { key: "price", label: "価格（陳）", type: "number", placeholder: "0" },
+      { key: "width", label: "横（マス）", type: "number", placeholder: "1" },
+      { key: "height", label: "縦（マス）", type: "number", placeholder: "1" },
+      { key: "isStorage", label: "倉庫として使える", type: "checkbox" },
+      { key: "storageSlots", label: "収納数（倉庫の場合のみ使用）", type: "number", placeholder: "10" }
+    ],
+    newEntity: () => ({
+      id: generateId("furniture"), name: "新しい家具", imagePath: "", price: 0,
+      width: 1, height: 1, isStorage: false, storageSlots: 10
+    })
+  };
+}
+
 let scenarioBuildEntityFilterValue = {}; // ★カテゴリごとのフィルタ選択状態を覚えておく（例：{ characters: "main" }）
 
 function renderEntityManager(container, config) {
@@ -8109,7 +8140,7 @@ function buildClassStatsRow(className) {
 // ===================================================================
 // ===== サブ画面：施設編集（村に追加できる「酒場/宿屋/店/冒険する」以外の施設） =====
 // ===================================================================
-const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", memoryHall: "追憶の館系（クリア済みの話を再体験できる）", flavor: "その他（セリフのみ）" };
+const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", realEstate: "不動産屋系（家・店の売買・賃貸）", furnitureShop: "家具屋系（家具・倉庫の販売）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", memoryHall: "追憶の館系（クリア済みの話を再体験できる）", flavor: "その他（セリフのみ）" };
 
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
@@ -8927,7 +8958,88 @@ function buildFacilityRow(facility) {
       renderScenarioBuildPanel();
     };
     infoEl.appendChild(addPoolBtn);
+  } else if (facility.type === "realEstate") {
+    // ★新規：不動産屋系施設。取り扱う物件（マップ設定タブで「不動産：家／店」にしたエリア）を選ぶだけで、
+    //   価格・賃貸か購入かはエリア編集側の設定を使う。実際の購入・ローン・請求処理はrealestate.jsにまとめてある
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note";
+    noteEl.textContent = "この施設で取り扱う物件を選んでください（価格・賃貸／購入の別は、マップ設定タブのエリア編集側で設定します）。";
+    infoEl.appendChild(noteEl);
     
+    if (!Array.isArray(facility.propertyAreaIds)) facility.propertyAreaIds = [];
+    const estateAreas = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.mapAreas))
+      ? scenarioProject.mapAreas.filter(a => a.type === "estateHouse" || a.type === "estateShop")
+      : [];
+    
+    if (estateAreas.length === 0) {
+      const emptyEl = document.createElement("p");
+      emptyEl.className = "devmode-note scenariobuild-condition";
+      emptyEl.textContent = "まだ「不動産：家」「不動産：店」タイプのエリアがありません（マップ設定タブで作成してください）。";
+      infoEl.appendChild(emptyEl);
+    }
+    
+    estateAreas.forEach(estateArea => {
+      const estateKey = estateArea.builtin ? estateArea.locationKey : ("custom_" + estateArea.id);
+      const optionRow = document.createElement("label");
+      optionRow.className = "scenariobuild-condition-row";
+      optionRow.style.cursor = "pointer";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = facility.propertyAreaIds.includes(estateKey);
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          if (!facility.propertyAreaIds.includes(estateKey)) facility.propertyAreaIds.push(estateKey);
+        } else {
+          facility.propertyAreaIds = facility.propertyAreaIds.filter(id => id !== estateKey);
+        }
+        markScenarioBuildDirty();
+      };
+      optionRow.appendChild(checkbox);
+      const typeLabel = estateArea.type === "estateShop" ? "店" : "家";
+      const priceLabel = estateArea.type === "estateShop" && estateArea.estateMode === "rent"
+        ? `賃貸・家賃${estateArea.estateRentAmount || 0}陳/7日`
+        : `${estateArea.estatePrice || 0}陳`;
+      optionRow.appendChild(document.createTextNode(` ${estateArea.name || "（名前未設定）"}（${typeLabel}・${priceLabel}）`));
+      infoEl.appendChild(optionRow);
+    });
+  } else if (facility.type === "furnitureShop") {
+    // ★新規：家具屋系施設。取り扱う家具（家具管理タブで登録したもの）をチェックボックスで選ぶ。
+    //   購入・部屋への配置処理はfurniture.jsにまとめてある
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note";
+    noteEl.textContent = "この施設で取り扱う家具を選んでください（家具そのものの登録は「家具管理」タブで行います）。";
+    infoEl.appendChild(noteEl);
+    
+    if (!Array.isArray(facility.furnitureIds)) facility.furnitureIds = [];
+    const furnitureList = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.furniture)) ? scenarioProject.furniture : [];
+    
+    if (furnitureList.length === 0) {
+      const emptyEl = document.createElement("p");
+      emptyEl.className = "devmode-note scenariobuild-condition";
+      emptyEl.textContent = "まだ家具が登録されていません（「家具管理」タブで登録してください）。";
+      infoEl.appendChild(emptyEl);
+    }
+    
+    furnitureList.forEach(furniture => {
+      const optionRow = document.createElement("label");
+      optionRow.className = "scenariobuild-condition-row";
+      optionRow.style.cursor = "pointer";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = facility.furnitureIds.includes(furniture.id);
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          if (!facility.furnitureIds.includes(furniture.id)) facility.furnitureIds.push(furniture.id);
+        } else {
+          facility.furnitureIds = facility.furnitureIds.filter(id => id !== furniture.id);
+        }
+        markScenarioBuildDirty();
+      };
+      optionRow.appendChild(checkbox);
+      const storageLabel = furniture.isStorage ? "・倉庫" : "";
+      optionRow.appendChild(document.createTextNode(` ${furniture.name || "（名前未設定）"}（${furniture.price || 0}陳・${furniture.width || 1}×${furniture.height || 1}${storageLabel}）`));
+      infoEl.appendChild(optionRow);
+    });
   } else if (facility.type === "colosseum") {
     // ★要望対応：コロシアム施設。アイテム使用禁止の連戦タワー（実際はn回戦形式）。
     //   参加費・各回戦の敵編成（追加/削除可）・コインの種類と獲得数・99回戦クリア報酬・コインの引き換え屋を設定できる
@@ -10993,6 +11105,7 @@ function getEntityManagerConfigByCategory(category) {
   if (category === "enemies") return getEnemyManagerConfig();
   if (category === "bosses") return getBossManagerConfig();
   if (category === "items") return getItemManagerConfig();
+  if (category === "furniture") return getFurnitureManagerConfig();
   if (category === "fish") return getFishManagerConfig();
   if (category === "bgmTracks") return getBgmManagerConfig();
   return null;
@@ -11777,6 +11890,7 @@ function exportGameSettingsAsJsFile() {
     enemies: scenarioProject.enemies,
     bosses: scenarioProject.bosses,
     items: scenarioProject.items,
+    furniture: scenarioProject.furniture,
     fishItems: scenarioProject.fishItems, // ★要望対応：魚管理タブ
     skills: scenarioProject.skills,
     statusAilments: scenarioProject.statusAilments,

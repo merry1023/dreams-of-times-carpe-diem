@@ -333,6 +333,30 @@ async function enterCustomMapArea(area, explicitKey) {
     return;
   }
   
+  // ★不動産（家）エリア：購入済みでないと入れない（propertyOwned解放条件でここまで来ない）。
+  //   間取り（部屋間移動）はfloorplan.jsで実装済み。家具配置はフェーズ2で追加予定
+  if (area.type === "estateHouse") {
+    applyBackground(area.bgImage ? { type: "image", value: area.bgImage } : { type: "color", value: "#000000" });
+    if (area.bgTrack && typeof switchScenarioBGM === "function") switchScenarioBGM("field_" + locationKey, { fadeMs: 600 });
+    maybeAutoIncrementAreaVisit(locationKey);
+    // ★他のエリア種類と同様、「エリアに来た時」きっかけの自作の話があれば先にそちらを自動再生する
+    if (typeof checkAndAutoRunNextCustomChapter === "function" && await checkAndAutoRunNextCustomChapter("areaVisit", locationKey)) return;
+    await openHouseInterior(area, () => openTownMenu()); // floorplan.js
+    return;
+  }
+  
+  // ★不動産（店）エリア：店の中身（商品棚・バイト雇用・開店モード）はフェーズ4で実装予定のため、今はメッセージのみ
+  if (area.type === "estateShop") {
+    applyBackground(area.bgImage ? { type: "image", value: area.bgImage } : { type: "color", value: "#000000" });
+    if (area.bgTrack && typeof switchScenarioBGM === "function") switchScenarioBGM("field_" + locationKey, { fadeMs: 600 });
+    maybeAutoIncrementAreaVisit(locationKey);
+    if (typeof checkAndAutoRunNextCustomChapter === "function" && await checkAndAutoRunNextCustomChapter("areaVisit", locationKey)) return;
+    changeSpeaker("");
+    await displayMessage("自分の店に入った。（店内の実装は近日予定）");
+    if (typeof openTownMenu === "function") await openTownMenu();
+    return;
+  }
+  
   // ★街・国・村タイプは、森・草原・洞窟のようなダンジョン探索ではなく、カリの村と同じ
   //   「施設一覧から選ぶ」平和な拠点として開く（以前はtypeを見ずに全部ダンジョン探索扱いになっていた）
   if (["city", "country", "village"].includes(area.type) && typeof openCustomSettlementArea === "function") {

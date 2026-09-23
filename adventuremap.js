@@ -370,6 +370,11 @@ function evaluateMapAreaUnlockConditions(area) {
     if (cond.type === "playerLevel") {
       return !!(player && player.level >= (cond.level || 1)); // ★要望対応：レベルによる解放条件
     }
+    if (cond.type === "propertyOwned") {
+      // ★不動産システム：このエリア自身を購入・契約済みで、かつ滞納中でない時だけ解放（realestate.js）
+      const key = area.builtin ? area.locationKey : ("custom_" + area.id);
+      return typeof isPropertyAccessible === "function" ? isPropertyAccessible(key) : false;
+    }
     return true;
   });
 }
