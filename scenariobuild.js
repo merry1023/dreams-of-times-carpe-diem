@@ -8109,7 +8109,7 @@ function buildClassStatsRow(className) {
 // ===================================================================
 // ===== サブ画面：施設編集（村に追加できる「酒場/宿屋/店/冒険する」以外の施設） =====
 // ===================================================================
-const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", flavor: "その他（セリフのみ）" };
+const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", memoryHall: "追憶の館系（クリア済みの話を再体験できる）", flavor: "その他（セリフのみ）" };
 
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
