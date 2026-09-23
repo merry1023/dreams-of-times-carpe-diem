@@ -136,19 +136,33 @@ function getCurrentFishingWeather() {
   return currentWeatherType;
 }
 
+// ★餌の「釣れる魚の種類」を配列で取得する。
+//   baitFishTypes（新・複数選択形式）が無ければbaitFishType（旧・単一文字列）から互換を取る
+function getBaitFishTypes(baitMaster) {
+  if (!baitMaster) return [];
+  if (Array.isArray(baitMaster.baitFishTypes)) return baitMaster.baitFishTypes.filter(Boolean);
+  if (baitMaster.baitFishType) return [baitMaster.baitFishType]; // ★旧データ互換
+  return [];
+}
+
 // ★施設のfishingSpotsのうち、今の時間帯・天候・セットしている餌の「釣れる魚の種類」に合う魚の候補を絞り込む
 function getMatchingFishSpots(facility, baitMaster) {
   const timeOfDay = getCurrentFishingTimeOfDay();
   const weather = getCurrentFishingWeather();
   const spots = Array.isArray(facility.fishingSpots) ? facility.fishingSpots : [];
+  // ★バグ修正：以前は餌の「釣れる魚の種類」がフリーテキストの単一文字列で、魚側の「種類」と
+  //   1文字でも表記が違う（全角半角・スペース・打ち間違いなど）と一致せず、魚を登録していても
+  //   「今はこの餌に反応する魚がいないようだ……」になってしまっていた。
+  //   → 魚管理タブに登録済みの「種類」一覧から選ぶ複数選択リストに変更し、表記ゆれで不一致になる余地を無くした
+  const baitTypes = getBaitFishTypes(baitMaster);
   return spots.filter(spot => {
     if (!spot.fishId || !ITEM_MASTER[spot.fishId]) return false;
     if (spot.timeOfDay && spot.timeOfDay !== "any" && spot.timeOfDay !== timeOfDay) return false;
     if (spot.weather && spot.weather !== "any" && spot.weather !== weather) return false;
-    // ★餌の「釣れる魚の種類」が指定されていれば、その種類の魚だけに絞る（未指定の餌ならどの魚にも使える）
-    if (baitMaster && baitMaster.baitFishType) {
+    // ★餌に「釣れる魚の種類」が1つ以上選ばれていれば、そのいずれかに一致する魚だけに絞る（未選択の餌ならどの魚にも使える）
+    if (baitTypes.length > 0) {
       const fishMaster = ITEM_MASTER[spot.fishId];
-      if ((fishMaster.fishType || "") !== baitMaster.baitFishType) return false;
+      if (!baitTypes.includes(fishMaster.fishType || "")) return false;
     }
     return true;
   });
