@@ -1458,8 +1458,9 @@ window.addEventListener("beforeunload", (event) => {
 });
 
 // ★左（メイン）＝話一覧／ブロックエディタ、右（サブ）＝キャラ・敵・ボス・アイテム・BGM・データ管理。
-//   ゲームの画面構成（メイン画面／サブ画面）と同じ考え方で、常に両方が見えている状態にする
-//   タブ管理を追加し、会話AI設定は安定するまで非表示にする（デフォルトOFF）
+//   ゲームの画面構成（メイン画面／サブ画面）と同じ考え方で、常に両方が見えている状態にする。
+//   これらエディタ自身のタブは常に全部表示される（非表示切替は無い）。「タブ管理」はこのエディタの
+//   タブではなく、プレイヤーがこのシナリオを遊ぶ時の画面タブの方を管理する（バグ修正で変更）
 const SCENARIOBUILD_SUB_TABS = [
   { view: "characters", label: "キャラ管理" },
   { view: "enemies", label: "敵設定" },
@@ -1477,7 +1478,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "randomnames", label: "ランダム名前管理" }, // ★要望対応：オークションNPC等のランダム名前バリエーション管理
   { view: "elements", label: "属性管理" }, // ★要望対応：属性一覧と属性相性表
   { view: "loginbonus", label: "ログボ報酬" }, // ★要望対応：ログインボーナス（7日分の報酬編集）
-  { view: "companionchat", label: "会話AI設定", enabledByDefault: false }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集。安定するまで非表示
+  { view: "companionchat", label: "会話AI設定" }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集
   { view: "companions", label: "仲間編集" },
   { view: "classes", label: "職業編集" },
   { view: "bgm", label: "BGM設定" },
@@ -1487,34 +1488,19 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "endings", label: "エンディング一覧" },
   { view: "variables", label: "変数一覧" }, // ★要望対応：式の中で使えるシステム変数の名前が分かるよう、サブ画面に一覧を出す
   { view: "data", label: "データ管理" },
-  { view: "tabmanager", label: "タブ管理" }
+  { view: "tabmanager", label: "タブ管理" } // ★バグ修正：中身はプレイ画面タブ（メイン/インベントリ/スキル…）の管理に変更した
 ];
 
-function getScenarioBuildTabVisibilityMap() {
-  if (!scenarioProject || !scenarioProject.scenarioBuildTabVisibility || typeof scenarioProject.scenarioBuildTabVisibility !== "object") {
+// ★要望対応：以前はここでシナリオエディタ自身の右側タブ（キャラ管理・敵設定…）の表示/非表示を
+//   管理していたが、本来やりたかったのは「このシナリオをプレイする時の画面タブ（メイン/インベントリ/
+//   スキル…）」の方の管理だったため、PLAY_SCREEN_TAB_DEFS（settings.js）を対象にするよう修正した。
+//   判定自体はisScenarioPlayTabEnabled()（settings.js）に一本化してあるので、ここでは編集用の
+//   書き込みヘルパーだけ持つ
+function setScenarioPlayTabEnabled(tabId, enabled) {
+  if (!scenarioProject.scenarioBuildTabVisibility || typeof scenarioProject.scenarioBuildTabVisibility !== "object") {
     scenarioProject.scenarioBuildTabVisibility = {};
   }
-  SCENARIOBUILD_SUB_TABS.forEach(tab => {
-    if (tab.view === "tabmanager") return;
-    const hasExplicitValue = typeof scenarioProject.scenarioBuildTabVisibility[tab.view] === "boolean";
-    if (!hasExplicitValue) {
-      scenarioProject.scenarioBuildTabVisibility[tab.view] = tab.enabledByDefault !== false;
-    }
-  });
-  if (typeof scenarioProject.scenarioBuildTabVisibility.companionchat !== "boolean") {
-    scenarioProject.scenarioBuildTabVisibility.companionchat = false;
-  }
-  return scenarioProject.scenarioBuildTabVisibility;
-}
-
-function isScenarioBuildTabEnabled(view) {
-  if (view === "tabmanager") return true;
-  const visibility = getScenarioBuildTabVisibilityMap();
-  return visibility[view] !== false;
-}
-
-function getScenarioBuildVisibleTabs() {
-  return SCENARIOBUILD_SUB_TABS.filter(tab => tab.view === "tabmanager" || isScenarioBuildTabEnabled(tab.view));
+  scenarioProject.scenarioBuildTabVisibility[tabId] = enabled;
 }
 
 function renderScenarioBuildPanel() {
@@ -1581,7 +1567,7 @@ function renderScenarioBuildSub() {
   const tabsEl = document.getElementById("scenariobuild-sub-tabs");
   const bodyEl = document.getElementById("scenariobuild-sub-content");
   if (!tabsEl || !bodyEl) return;
-  const visibleTabs = getScenarioBuildVisibleTabs();
+  const visibleTabs = SCENARIOBUILD_SUB_TABS; // ★エディタ自身のタブは常に全て表示する（非表示切替は廃止。「タブ管理」はプレイ画面タブの方を管理する）
   if (!visibleTabs.some(tab => tab.view === scenarioBuildSubView)) {
     scenarioBuildSubView = visibleTabs[0] ? visibleTabs[0].view : "characters";
   }
@@ -1641,17 +1627,20 @@ function renderScenarioBuildSub() {
 // ===================================================================
 // ===== 変数一覧（要望対応：式の中で使えるシステム変数の名前が分からないので一覧を出してほしい） =====
 // ===================================================================
+// ★要望対応：このシナリオをプレイする時の画面タブ（メイン/インベントリ/スキル/仲間/会話/強さ/装備/
+//   便利/ログ/設定）を、タブごとに有効／無効にできる。ここでOFFにしたタブは、プレイヤー自身の
+//   個人設定（設定タブの「プレイ画面のタブ管理」）でONにしていても表示されない（settings.js側で判定）
 function renderScenarioBuildTabManager(container) {
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
-  introEl.textContent = "シナリオエディタの右側タブを有効／無効に切り替えられます。会話AI設定はまだ安定していないため、デフォルトでは非表示です。";
+  introEl.textContent = "このシナリオをプレイする時に、下部の「サブ画面」に出すタブを選べます（シナリオエディタ自身の右側タブとは無関係です）。ここでOFFにしたタブは、プレイヤーが自分の設定でONにしていても表示されません。「会話」タブは、会話AI設定でキャラクターを用意していない場合は意味が無いため、デフォルトではOFFにしています。";
   container.appendChild(introEl);
   
   const rows = document.createElement("div");
   rows.className = "scenariobuild-list";
   container.appendChild(rows);
   
-  SCENARIOBUILD_SUB_TABS.filter(tab => tab.view !== "tabmanager").forEach(tab => {
+  PLAY_SCREEN_TAB_DEFS.forEach(tab => {
     const row = document.createElement("label");
     row.className = "scenariobuild-condition-row";
     row.style.justifyContent = "space-between";
@@ -1663,14 +1652,10 @@ function renderScenarioBuildTabManager(container) {
     
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.checked = isScenarioBuildTabEnabled(tab.view);
+    checkbox.checked = isScenarioPlayTabEnabled(tab.id);
     checkbox.onchange = () => {
-      getScenarioBuildTabVisibilityMap();
-      scenarioProject.scenarioBuildTabVisibility[tab.view] = checkbox.checked;
+      setScenarioPlayTabEnabled(tab.id, checkbox.checked);
       if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
-      if (!isScenarioBuildTabEnabled(scenarioBuildSubView)) {
-        scenarioBuildSubView = getScenarioBuildVisibleTabs()[0].view;
-      }
       renderScenarioBuildPanel();
     };
     row.appendChild(checkbox);
@@ -5143,7 +5128,9 @@ function getItemManagerConfig() {
   const categoryOptions = [
     { value: "herb", label: "薬草" }, { value: "potion", label: "ポーション" },
     { value: "material", label: "魔物素材" }, { value: "weapon", label: "武器" },
-    { value: "armor", label: "防具" }, { value: "tool", label: "道具" }, { value: "misc", label: "その他" }
+    { value: "armor", label: "防具" }, { value: "tool", label: "道具" },
+    { value: "cookingTool", label: "料理道具" }, { value: "food", label: "料理" },
+    { value: "misc", label: "その他" }
   ];
   return {
     note: "既にあるアイテム（items.js）も一覧に出ており、直接編集・削除できます（実際のゲームデータそのものが変わります）。ギヴ（アイテム付与）ブロックのアイテムIDにこのIDを入れれば付与できます。「編集」を押すと、回復量や薬効などの効果パラメータも含めて詳しく設定できます。武器・防具は個体差の範囲も設定できます。",
@@ -5154,7 +5141,8 @@ function getItemManagerConfig() {
     filterDefault: "misc",
     filterOptions: [
       { key: "equipment", label: "装備", values: ["weapon", "armor"] },
-      { key: "tools", label: "道具", values: ["herb", "potion", "material", "tool", "misc"] }
+      { key: "tools", label: "道具", values: ["herb", "potion", "material", "tool", "misc"] },
+      { key: "cooking", label: "料理関連", values: ["cookingTool", "food"] }
     ],
     fields: [
       { key: "name", label: "名前", type: "text", placeholder: "アイテム名" },
@@ -5174,7 +5162,17 @@ function getItemManagerConfig() {
       //   「今はこの餌に反応する魚がいないようだ……」になってしまうバグがあった。
       //   → 魚管理タブに登録済みの「種類」から選ぶチェックボックス方式（複数選択可）に変更（fishing.js参照）
       { key: "baitFishTypes", label: "（餌）釣れる魚の種類（複数選択可／未選択ならどの魚にも反応）", type: "multiselect", emptyText: "先に「魚管理」タブで魚を登録すると、ここに種類が選べるようになります", optionsFn: () => getRegisteredFishTypeOptions() },
-      { key: "baitBiteRate", label: "（餌）食いつき度（高いほど早く食いつく／目安1〜10）", type: "number", placeholder: "5" }
+      { key: "baitBiteRate", label: "（餌）食いつき度（高いほど早く食いつく／目安1〜10）", type: "number", placeholder: "5" },
+      // ★要望対応：料理タブ用。種類を「料理道具」にした時だけ意味を持つ
+      { key: "toolDurability", label: "（料理道具）耐久度", type: "number", placeholder: "30" },
+      { key: "toolSlotCount", label: "（料理道具）材料スロット数", type: "number", placeholder: "3" },
+      // ★要望対応：種類を「料理」にした時だけ意味を持つ、戦闘中だけの自己バフ（技の自己強化と同じ仕組みを流用）
+      { key: "foodBuffKind", label: "（料理）戦闘中バフの種類（状態強化の管理タブで作ったID）", type: "text", placeholder: "空欄ならバフ無し" },
+      { key: "foodBuffDuration", label: "（料理）バフの持続ターン数", type: "number", placeholder: "3" },
+      { key: "foodBuffPower", label: "（料理）バフの効果量", type: "number", placeholder: "5" },
+      // ★要望対応：このアイテムを「使う」と、指定した料理レシピがレシピ帳に登録される（レシピ発見アイテム）
+      { key: "isRecipeItem", label: "料理レシピとして扱う（使うとレシピ帳に登録）", type: "checkbox" },
+      { key: "unlockRecipeId", label: "（レシピ）登録される料理レシピのID", type: "text", placeholder: "レシピ管理タブで確認できるID" }
     ],
     newEntity: () => ({ id: generateId("item"), name: "", category: "material", description: "", rank: "F", listedPrice: 0, trueValue: 0, unsellable: false }),
     quickAddOptions: categoryOptions.map(opt => ({
@@ -5551,7 +5549,8 @@ function renderRecipeManager(container) {
   // ★要望対応：種類ごとにタブ分けして見やすくする
   const RECIPE_FILTER_OPTIONS = [
     { key: "blacksmith", label: "鍛冶屋" },
-    { key: "synthesis", label: "素材合成屋" }
+    { key: "synthesis", label: "素材合成屋" },
+    { key: "cooking", label: "料理" }
   ];
   const filterRow = document.createElement("div");
   filterRow.className = "scenariobuild-filter-row";
@@ -5585,7 +5584,8 @@ function renderRecipeManager(container) {
     { label: "鍛冶屋の作成レシピ", shopType: "blacksmith", mode: "create" },
     { label: "鍛冶屋の強化レシピ", shopType: "blacksmith", mode: "upgrade" },
     { label: "素材合成屋の作成レシピ", shopType: "synthesis", mode: "create" },
-    { label: "素材合成屋の強化レシピ", shopType: "synthesis", mode: "upgrade" }
+    { label: "素材合成屋の強化レシピ", shopType: "synthesis", mode: "upgrade" },
+    { label: "料理のレシピ", shopType: "cooking", mode: "create" }
   ].forEach(opt => {
     const btn = document.createElement("button");
     btn.className = "devmode-btn";
@@ -5628,7 +5628,7 @@ function buildRecipeRow(recipe) {
   typeRow.appendChild(labelSpan("扱う店："));
   const shopSelect = document.createElement("select");
   shopSelect.className = "scenariobuild-jump-select";
-  [{ value: "blacksmith", label: "鍛冶屋" }, { value: "synthesis", label: "素材合成屋" }].forEach(opt => {
+  [{ value: "blacksmith", label: "鍛冶屋" }, { value: "synthesis", label: "素材合成屋" }, { value: "cooking", label: "料理" }].forEach(opt => {
     const optionEl = document.createElement("option");
     optionEl.value = opt.value;
     optionEl.textContent = opt.label;
@@ -5638,37 +5638,65 @@ function buildRecipeRow(recipe) {
   shopSelect.onchange = () => { recipe.shopType = shopSelect.value; markScenarioBuildDirty(); renderScenarioBuildPanel(); };
   typeRow.appendChild(shopSelect);
   
-  // ★要望対応：鍛冶屋・素材合成屋が複数ある時、このレシピをどの店で使えるようにするか指定できる
-  typeRow.appendChild(labelSpan("対象の店："));
-  const facilitySelect = document.createElement("select");
-  facilitySelect.className = "scenariobuild-jump-select";
-  const anyFacilityOpt = document.createElement("option");
-  anyFacilityOpt.value = "";
-  anyFacilityOpt.textContent = "（指定なし：この種類の店なら全部で使える）";
-  facilitySelect.appendChild(anyFacilityOpt);
-  scenarioProject.facilities.filter(f => f.type === (recipe.shopType || "blacksmith")).forEach(f => {
-    const opt = document.createElement("option");
-    opt.value = f.id;
-    opt.textContent = f.name || "（名称未設定の店）";
-    facilitySelect.appendChild(opt);
-  });
-  facilitySelect.value = recipe.facilityId || "";
-  facilitySelect.onchange = () => { recipe.facilityId = facilitySelect.value || null; markScenarioBuildDirty(); };
-  typeRow.appendChild(facilitySelect);
-  
-  typeRow.appendChild(labelSpan("種別："));
-  const modeSelect = document.createElement("select");
-  modeSelect.className = "scenariobuild-jump-select";
-  [{ value: "create", label: "作成（材料だけを消費）" }, { value: "upgrade", label: "強化（材料＋指定した装備1個を消費）" }].forEach(opt => {
-    const optionEl = document.createElement("option");
-    optionEl.value = opt.value;
-    optionEl.textContent = opt.label;
-    modeSelect.appendChild(optionEl);
-  });
-  modeSelect.value = recipe.mode || "create";
-  modeSelect.onchange = () => { recipe.mode = modeSelect.value; markScenarioBuildDirty(); renderScenarioBuildPanel(); };
-  typeRow.appendChild(modeSelect);
+  // ★要望対応：鍛冶屋・素材合成屋が複数ある時、このレシピをどの店で使えるようにするか指定できる。
+  //   料理レシピの場合は「店」ではなく「どの料理道具（アイテム）を使うレシピか」を指定する
+  if (recipe.shopType === "cooking") {
+    typeRow.appendChild(labelSpan("対象の料理道具："));
+    const toolSelect = document.createElement("select");
+    toolSelect.className = "scenariobuild-jump-select";
+    const noToolOpt = document.createElement("option");
+    noToolOpt.value = "";
+    noToolOpt.textContent = "（未選択：料理道具を選んでください）";
+    toolSelect.appendChild(noToolOpt);
+    scenarioProject.items.filter(it => it.category === "cookingTool").forEach(it => {
+      const opt = document.createElement("option");
+      opt.value = it.id;
+      opt.textContent = it.name || "（名称未設定の料理道具）";
+      toolSelect.appendChild(opt);
+    });
+    toolSelect.value = recipe.toolItemId || "";
+    toolSelect.onchange = () => { recipe.toolItemId = toolSelect.value || ""; markScenarioBuildDirty(); };
+    typeRow.appendChild(toolSelect);
+    recipe.mode = "create"; // ★料理に強化モードは無いので、常に「作成」扱いで固定する
+  } else {
+    typeRow.appendChild(labelSpan("対象の店："));
+    const facilitySelect = document.createElement("select");
+    facilitySelect.className = "scenariobuild-jump-select";
+    const anyFacilityOpt = document.createElement("option");
+    anyFacilityOpt.value = "";
+    anyFacilityOpt.textContent = "（指定なし：この種類の店なら全部で使える）";
+    facilitySelect.appendChild(anyFacilityOpt);
+    scenarioProject.facilities.filter(f => f.type === (recipe.shopType || "blacksmith")).forEach(f => {
+      const opt = document.createElement("option");
+      opt.value = f.id;
+      opt.textContent = f.name || "（名称未設定の店）";
+      facilitySelect.appendChild(opt);
+    });
+    facilitySelect.value = recipe.facilityId || "";
+    facilitySelect.onchange = () => { recipe.facilityId = facilitySelect.value || null; markScenarioBuildDirty(); };
+    typeRow.appendChild(facilitySelect);
+    
+    typeRow.appendChild(labelSpan("種別："));
+    const modeSelect = document.createElement("select");
+    modeSelect.className = "scenariobuild-jump-select";
+    [{ value: "create", label: "作成（材料だけを消費）" }, { value: "upgrade", label: "強化（材料＋指定した装備1個を消費）" }].forEach(opt => {
+      const optionEl = document.createElement("option");
+      optionEl.value = opt.value;
+      optionEl.textContent = opt.label;
+      modeSelect.appendChild(optionEl);
+    });
+    modeSelect.value = recipe.mode || "create";
+    modeSelect.onchange = () => { recipe.mode = modeSelect.value; markScenarioBuildDirty(); renderScenarioBuildPanel(); };
+    typeRow.appendChild(modeSelect);
+  }
   infoEl.appendChild(typeRow);
+  
+  if (recipe.shopType === "cooking") {
+    const cookingNoteEl = document.createElement("p");
+    cookingNoteEl.className = "devmode-note";
+    cookingNoteEl.textContent = "料理タブでは、下の「必要な材料」と個数まで完全に一致する材料を置いた時だけ成立します（多い分・少ない分・種類違いはすべて失敗＝材料ロスになります）。このレシピのIDは、種類「料理」のレシピ発見アイテム（アイテム管理タブの「（レシピ）登録される料理レシピのID」）に設定すると、そのアイテムを使った時にレシピ帳へ登録されます。IDはこの行の右下に表示されます。";
+    infoEl.appendChild(cookingNoteEl);
+  }
   
   if (recipe.mode === "upgrade") {
     const baseRow = document.createElement("div");
@@ -5779,6 +5807,12 @@ function buildRecipeRow(recipe) {
   infoEl.appendChild(descRow);
   
   row.appendChild(infoEl);
+  
+  const idEl = document.createElement("p");
+  idEl.className = "devmode-note";
+  idEl.style.margin = "0 0 4px";
+  idEl.textContent = `ID：${recipe.id}`;
+  row.appendChild(idEl);
   
   const deleteBtn = document.createElement("button");
   deleteBtn.className = "devmode-btn devmode-btn-danger";
@@ -12050,6 +12084,9 @@ async function tryRunBuiltinChapterOverride(chapterId) {
 }
 
 async function runScenarioChapterBlocksForReal(chapter, startBlockId) {
+  // ★要望対応：料理タブ等、「シナリオ再生中は使えない」機能の判定用フラグ。
+  //   話の実行が始まってから終わるまでの間、ずっとtrueにしておく
+  window.isScenarioChapterPlaying = true;
   // ★目標（タスク）表示は「クリア前」だけでなく「まだ始まっていない」間だけ出すためのフラグ。
   //   以前はclearedだけを見ていたため、この話を実際にプレイし始めた後もクリアするまでずっと
   //   目標表示が出続け（そのくせ「一回消えてもまた出てくる」ように見える不具合の原因になっていた）
@@ -12102,6 +12139,7 @@ async function runScenarioChapterBlocksForReal(chapter, startBlockId) {
       openTownMenu(); // town.js
     }
   }
+  window.isScenarioChapterPlaying = false; // ★話の実行がここで終わるので、料理タブ等を再び使えるようにする
 }
 
 // ★選択肢を選ぶと、その選択肢自身が持つ内容（option.blocks。専用の編集画面で書く）をその場で実行する。
