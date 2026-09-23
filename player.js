@@ -1234,6 +1234,7 @@ function advanceGameTime(hours) {
     if (typeof resetDailyQuestBoard === "function") resetDailyQuestBoard();
     // ★日付が変わった瞬間に、不動産のローン・家賃の請求（7日ごと）を判定する（realestate.js）
     if (typeof processRealEstateDailyTick === "function") processRealEstateDailyTick();
+    if (typeof processEstateShopDailyTick === "function") processEstateShopDailyTick(); // ★不動産:店の放置販売収入（estateshop.js）
   }
 }
 

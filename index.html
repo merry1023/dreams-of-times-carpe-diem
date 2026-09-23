@@ -65,6 +65,26 @@
       </div>
     </div>
     
+    <!-- ★不動産システム：部屋への家具配置（furniture.js pickFurniturePlacement）。矢印キー／ボタンで視覚的に移動できるミニ画面 -->
+    <div id="furniture-placement-overlay" class="furniture-placement-overlay hidden">
+      <div class="furniture-placement-box">
+        <p id="furniture-placement-label" class="furniture-placement-label"></p>
+        <div id="furniture-placement-grid" class="furniture-placement-grid"></div>
+        <div class="furniture-placement-dpad">
+          <button id="furniture-placement-up" class="furniture-placement-dpad-btn furniture-placement-dpad-up">↑</button>
+          <div class="furniture-placement-dpad-row">
+            <button id="furniture-placement-left" class="furniture-placement-dpad-btn">←</button>
+            <button id="furniture-placement-right" class="furniture-placement-dpad-btn">→</button>
+          </div>
+          <button id="furniture-placement-down" class="furniture-placement-dpad-btn furniture-placement-dpad-down">↓</button>
+        </div>
+        <div class="furniture-placement-controls">
+          <button id="furniture-placement-confirm" class="furniture-placement-btn furniture-placement-confirm-btn">ここに置く<span class="key-badge">Enter</span></button>
+          <button id="furniture-placement-cancel" class="furniture-placement-btn">やめる<span class="key-badge">Esc</span></button>
+        </div>
+      </div>
+    </div>
+    
     <!-- ★店の個数選択（town.js pickQuantity）。以前は文章の選択肢だったのを、専用のミニ画面に変更 -->
     <div id="quantity-picker" class="quantity-picker hidden">
       <div class="quantity-picker-box">
@@ -527,6 +547,7 @@
 <script src="realestate.js"></script>
 <script src="floorplan.js"></script>
 <script src="furniture.js"></script>
+<script src="estateshop.js"></script>
 <script src="colosseum.js"></script>
 <script src="town.js"></script>
 <script src="fishing.js"></script>

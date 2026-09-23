@@ -1298,6 +1298,33 @@ function buildEstateAreaEditor(area, persist) {
     wrap.appendChild(rentNote);
   }
   
+  if (area.type === "estateShop") {
+    // ★店の中身（商品棚の上限・雇えるバイトの人数）はエリアごとに設定する
+    const shelfRow = document.createElement("div");
+    shelfRow.className = "scenariobuild-condition-row";
+    shelfRow.appendChild(labelSpan("商品棚の上限数："));
+    const shelfInput = document.createElement("input");
+    shelfInput.type = "number";
+    shelfInput.min = "1";
+    shelfInput.className = "scenariobuild-condition-input";
+    shelfInput.value = area.estateShelfCapacity != null ? area.estateShelfCapacity : 6;
+    shelfInput.onchange = () => { area.estateShelfCapacity = Math.max(1, Math.floor(Number(shelfInput.value)) || 6); persist(); };
+    shelfRow.appendChild(shelfInput);
+    wrap.appendChild(shelfRow);
+    
+    const empRow = document.createElement("div");
+    empRow.className = "scenariobuild-condition-row";
+    empRow.appendChild(labelSpan("雇えるバイトの最大人数："));
+    const empInput = document.createElement("input");
+    empInput.type = "number";
+    empInput.min = "0";
+    empInput.className = "scenariobuild-condition-input";
+    empInput.value = area.estateMaxEmployees != null ? area.estateMaxEmployees : 1;
+    empInput.onchange = () => { area.estateMaxEmployees = Math.max(0, Math.floor(Number(empInput.value)) || 0); persist(); };
+    empRow.appendChild(empInput);
+    wrap.appendChild(empRow);
+  }
+  
   if (area.type === "estateHouse") {
     // ★間取り編集（部屋の追加・削除・サイズ・ドア設置）は開発者専用。実際の部屋間移動・家具配置はプレイヤー側（floorplan.js）
     const floorPlanBtn = document.createElement("button");
