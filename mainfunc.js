@@ -388,6 +388,8 @@ function setWeatherEffect(type) {
   }
   currentWeatherType = type || null;
   if (!currentWeatherType) return;
+  // ★要望対応：設定「天候演出」がOFFなら、話の演出ブロックから呼ばれても何も表示しない
+  if (typeof gameSettings !== "undefined" && gameSettings && gameSettings.weatherEffectEnabled === false) return;
   
   weatherOverlayEl = document.createElement("div");
   weatherOverlayEl.id = "screen-weather-overlay";
