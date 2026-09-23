@@ -301,16 +301,26 @@ async function showFloorPlanRoomScreen(area, floorPlan, roomId, goBack) {
     if (!neighbor) return;
     doorChoices.push({ text: `${dir.label}のドアへ進む（${neighbor.name || "部屋"}）`, next: neighbor.id });
   });
-  const choices = doorChoices.concat([{ text: "家を出る", next: "leave", isBack: true }]);
+  const placedFurniture = (typeof getRoomPlacedFurniture === "function") ? getRoomPlacedFurniture(room.id) : []; // furniture.js
+  const choices = doorChoices.concat([
+    { text: "家具を置く／片付ける", next: "furniture" },
+    { text: "家を出る", next: "leave", isBack: true }
+  ]);
   
   const roomLabel = room.name || "部屋";
-  const emptyNote = "この部屋には何も置かれていないようだ。（家具の配置は近日実装予定）";
+  const furnitureNote = placedFurniture.length === 0
+    ? "この部屋には何も置かれていないようだ。"
+    : `置いてある家具：${placedFurniture.map(inst => { const def = findFurnitureDef(inst.furnitureId); return def ? def.name : "？"; }).join("、")}`;
   const doorNote = doorChoices.length === 0 ? "この部屋にはドアが無いようだ。" : "";
-  await displayMessage(`${roomLabel}にいる。\n${emptyNote}${doorNote ? "\n" + doorNote : ""}`);
+  await displayMessage(`${roomLabel}にいる。\n${furnitureNote}${doorNote ? "\n" + doorNote : ""}`);
   
   const picked = await displayChoices(choices);
   if (picked.next === "leave") {
     goBack();
+    return;
+  }
+  if (picked.next === "furniture") {
+    await manageRoomFurniture(area, floorPlan, room, () => showFloorPlanRoomScreen(area, floorPlan, room.id, goBack)); // furniture.js
     return;
   }
   await showFloorPlanRoomScreen(area, floorPlan, picked.next, goBack);

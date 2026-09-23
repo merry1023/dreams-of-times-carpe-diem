@@ -558,6 +558,14 @@ async function openCustomFacility(facility, returnTo) {
     return;
   }
   
+  // ★新規：家具屋系の施設。実際の購入・配置・倉庫処理はfurniture.jsにまとめてある
+  if (facility.type === "furnitureShop") {
+    hideLocationMenu();
+    await runFacilityDialogueBlocks(facility, facility.enterBlocks, facility.ownerDialogue); // ★入った時のセリフ
+    await openFurnitureShop(facility, goBack); // furniture.js
+    return;
+  }
+  
   // ★要望対応：コロシアム施設。実際のロビー・周回・報酬・コイン引き換え処理はcolosseum.jsにまとめてある
   if (facility.type === "colosseum") {
     hideLocationMenu();
