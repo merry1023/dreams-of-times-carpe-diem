@@ -54,22 +54,22 @@ function getColosseumFloorEnemyKeys(facility, floorNumber) {
   return (floor && Array.isArray(floor.enemyMonsterKeys)) ? floor.enemyMonsterKeys.filter(id => id && MONSTER_MASTER[id]) : [];
 }
 
-// ★要望対応：n回戦目に指定してある敵レベルを返す（未設定ならnull＝今まで通り自動決定）
-function getColosseumFloorLevel(facility, floorNumber) {
+// ★要望対応：n回戦目が10の倍数回戦なら、そのボスに指定してあるレベルを返す（未設定/10の倍数でなければnull＝自動決定）
+function getColosseumFloorBossLevel(facility, floorNumber) {
+  if (floorNumber % 10 !== 0) return null;
   const floors = Array.isArray(facility.floors) ? facility.floors : [];
   if (floors.length === 0) return null;
   const idx = Math.min(Math.max(0, floorNumber - 1), floors.length - 1);
   const floor = floors[idx];
-  return (floor && typeof floor.enemyLevel === "number" && floor.enemyLevel > 0) ? floor.enemyLevel : null;
+  return (floor && typeof floor.bossLevel === "number" && floor.bossLevel > 0) ? floor.bossLevel : null;
 }
 
-// ★要望対応：10の倍数回戦（10・20・30…）は、指定レベルのうちボスID以外（雑魚敵）だけ
-//   レベル×0.6の強さに弱める。startBattleのoptions.perEnemyLevelsに渡す配列を組み立てる
-function buildColosseumPerEnemyLevels(enemyKeys, specifiedLevel, floorNumber) {
-  if (specifiedLevel == null) return null;
-  if (floorNumber % 10 !== 0) return null;
-  const weakLevel = Math.max(1, Math.round(specifiedLevel * 0.6));
-  return enemyKeys.map(key => (typeof BOSS_MONSTER_KEYS !== "undefined" && BOSS_MONSTER_KEYS.includes(key)) ? specifiedLevel : weakLevel);
+// ★要望対応：10の倍数回戦（10・20・30…）で、ボスのレベルが指定されている時だけ、
+//   ボスIDはそのレベルのまま、それ以外（雑魚敵）はレベル×0.6の強さに弱めたperEnemyLevelsを組み立てる
+function buildColosseumPerEnemyLevels(enemyKeys, bossLevel) {
+  if (bossLevel == null) return null;
+  const weakLevel = Math.max(1, Math.round(bossLevel * 0.6));
+  return enemyKeys.map(key => (typeof BOSS_MONSTER_KEYS !== "undefined" && BOSS_MONSTER_KEYS.includes(key)) ? bossLevel : weakLevel);
 }
 
 function showColosseumLobbyMenu() {
@@ -137,13 +137,13 @@ async function runColosseumFloor() {
     showColosseumLobbyMenu();
     return;
   }
-  // ★要望対応：この回戦に指定してある敵レベル（未設定ならnullのままで今まで通り自動決定）。
-  //   10の倍数回戦だけは、雑魚敵（ボスID以外）を指定レベル×0.6に弱めたperEnemyLevelsを組み立てる
-  const specifiedLevel = getColosseumFloorLevel(colosseumFacility, colosseumCurrentFloor);
+  // ★要望対応：10の倍数回戦なら、この回戦のボスに指定してあるレベル（未設定ならnullのままで自動決定）。
+  //   指定されていれば、ボスはそのレベルのまま、雑魚敵（ボスID以外）だけレベル×0.6に弱めたperEnemyLevelsを組み立てる
+  const bossLevel = getColosseumFloorBossLevel(colosseumFacility, colosseumCurrentFloor);
   const battleOptions = { isColosseum: true };
-  if (specifiedLevel != null) {
-    battleOptions.fixedLevel = specifiedLevel;
-    const perEnemyLevels = buildColosseumPerEnemyLevels(enemyKeys, specifiedLevel, colosseumCurrentFloor);
+  if (bossLevel != null) {
+    battleOptions.fixedLevel = bossLevel;
+    const perEnemyLevels = buildColosseumPerEnemyLevels(enemyKeys, bossLevel);
     if (perEnemyLevels) battleOptions.perEnemyLevels = perEnemyLevels;
   }
   

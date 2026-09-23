@@ -8875,7 +8875,7 @@ function buildFacilityRow(facility) {
     //   参加費・各回戦の敵編成（追加/削除可）・コインの種類と獲得数・99回戦クリア報酬・コインの引き換え屋を設定できる
     const entryNote = document.createElement("p");
     entryNote.className = "devmode-note";
-    entryNote.textContent = "参加すると、指定したアイテムを指定した数だけ消費します（無ければ挑戦できません）。挑戦中はアイテムが一切使えません。1回でも負けたら1回戦目からやり直しになります。10の倍数の回戦をクリアすると全回復、5の倍数（10の倍数を除く）の回戦をクリアするとHP・SPが1/3回復します。各回戦に勝利するたびに、次の回戦へ進むかここでやめる（リタイア）かを選べます（リタイアしてもそこまでの自己ベスト・獲得済みコインはそのまま持ち帰れます）。";
+    entryNote.textContent = "参加すると、指定したアイテムを指定した数だけ消費します（無ければ挑戦できません）。挑戦中はアイテムが一切使えません。1回でも負けたら1回戦目からやり直しになります。10の倍数の回戦をクリアすると全回復、5の倍数（10の倍数を除く）の回戦をクリアするとHP・SPが1/3回復します。10の倍数の回戦だけ、その回戦のボスのレベルを指定でき、雑魚敵（ボスID以外）はそのレベル×0.6の強さに弱まります。各回戦に勝利するたびに、次の回戦へ進むかここでやめる（リタイア）かを選べます（リタイアしてもそこまでの自己ベスト・獲得済みコインはそのまま持ち帰れます）。";
     infoEl.appendChild(entryNote);
     
     const entryRow = document.createElement("div");
@@ -8926,21 +8926,23 @@ function buildFacilityRow(facility) {
         maxItems: 5
       }));
       
-      // ★要望対応：この回戦の敵レベルを指定できるように。10の倍数の回戦（10・20・30…）だけは、
-      //   ここで指定したレベルのうちボスID以外（雑魚敵）が指定レベル×0.6の強さに弱まる
-      //   （空欄の場合は今まで通り、敵自身の固定レベルまたは主人公のレベル±1で自動決定される）
-      const floorLevelRow = document.createElement("div");
-      floorLevelRow.className = "scenariobuild-condition-row";
-      floorLevelRow.appendChild(labelSpan("敵のレベル（指定。10の倍数の回戦は雑魚敵のみ×0.6に弱まる。空欄＝自動）："));
-      const floorLevelInput = document.createElement("input");
-      floorLevelInput.type = "number";
-      floorLevelInput.min = "1";
-      floorLevelInput.className = "scenariobuild-condition-input";
-      floorLevelInput.placeholder = "空欄＝自動";
-      floorLevelInput.value = floor.enemyLevel != null ? floor.enemyLevel : "";
-      floorLevelInput.onchange = () => { floor.enemyLevel = floorLevelInput.value ? Math.max(1, Number(floorLevelInput.value) || 1) : null; markScenarioBuildDirty(); };
-      floorLevelRow.appendChild(floorLevelInput);
-      floorBox.appendChild(floorLevelRow);
+      // ★要望対応：10の倍数の回戦（10・20・30…）だけ、その回戦のボスのレベルを指定できるように。
+      //   指定した場合、雑魚敵（ボスID以外）はそのレベル×0.6の強さに弱まる（ボス本体は指定レベルのまま）。
+      //   10の倍数以外の回戦にはこの項目は出さず、今まで通り自動（敵自身の固定レベルまたは主人公のレベル±1）で決まる
+      if ((index + 1) % 10 === 0) {
+        const floorLevelRow = document.createElement("div");
+        floorLevelRow.className = "scenariobuild-condition-row";
+        floorLevelRow.appendChild(labelSpan("ボスのレベル（指定。雑魚敵はこのレベル×0.6に弱まる。空欄＝自動）："));
+        const floorLevelInput = document.createElement("input");
+        floorLevelInput.type = "number";
+        floorLevelInput.min = "1";
+        floorLevelInput.className = "scenariobuild-condition-input";
+        floorLevelInput.placeholder = "空欄＝自動";
+        floorLevelInput.value = floor.bossLevel != null ? floor.bossLevel : "";
+        floorLevelInput.onchange = () => { floor.bossLevel = floorLevelInput.value ? Math.max(1, Number(floorLevelInput.value) || 1) : null; markScenarioBuildDirty(); };
+        floorLevelRow.appendChild(floorLevelInput);
+        floorBox.appendChild(floorLevelRow);
+      }
       
       const removeFloorBtn = document.createElement("button");
       removeFloorBtn.className = "devmode-btn devmode-btn-danger";
@@ -8961,7 +8963,7 @@ function buildFacilityRow(facility) {
     addFloorBtn.textContent = "＋回戦を追加";
     addFloorBtn.onclick = (event) => {
       event.stopPropagation();
-      facility.floors.push({ id: generateId("colosseumfloor"), enemyMonsterKeys: [], enemyLevel: null });
+      facility.floors.push({ id: generateId("colosseumfloor"), enemyMonsterKeys: [], bossLevel: null });
       markScenarioBuildDirty();
       renderScenarioBuildPanel();
     };
