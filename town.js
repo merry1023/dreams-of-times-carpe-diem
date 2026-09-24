@@ -43,6 +43,7 @@ async function openCustomSettlementArea(area) {
   if (typeof loadCustomScenarioData === "function") loadCustomScenarioData(); // scenariobuild.js
   
   // ★不動産のローン・家賃の滞納が起きていれば、拠点に来たタイミングでまとめて知らせる（realestate.js）
+  if (typeof hideRoomView === "function") hideRoomView(); // furniture.js（部屋を出ずに移動した場合の保険）
   if (typeof flushRealEstateNotices === "function") await flushRealEstateNotices();
   
   const locations = [];
@@ -115,6 +116,7 @@ async function openTownMenu() {
   }
   
   // ★不動産のローン・家賃の滞納が起きていれば、村に戻ったタイミングでまとめて知らせる（realestate.js）
+  if (typeof hideRoomView === "function") hideRoomView(); // furniture.js（部屋を出ずに移動した場合の保険）
   if (typeof flushRealEstateNotices === "function") await flushRealEstateNotices();
   
   const locations = [

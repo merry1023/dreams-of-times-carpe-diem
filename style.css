@@ -7087,3 +7087,31 @@ html, body {
   color: #888;
   cursor: not-allowed;
 }
+
+/* ★不動産システム：家の部屋にいる間、メイン画面に間取りと家具を表示するパネル（furniture.js renderRoomView） */
+.room-view-panel {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2; /* ★立ち絵(1)より手前、メッセージウィンドウ(10)より奥 */
+  pointer-events: none; /* ★演出表示なので、下の背景やボタン操作をブロックしない */
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+}
+
+.room-view-panel.hidden {
+  display: none !important;
+}
+
+.room-view-grid {
+  display: grid;
+  gap: 2px;
+}
+
+.room-view-cell {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+}

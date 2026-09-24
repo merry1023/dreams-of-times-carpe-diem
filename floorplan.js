@@ -291,6 +291,9 @@ async function showFloorPlanRoomScreen(area, floorPlan, roomId, goBack) {
   const room = floorPlan.rooms.find(r => r.id === roomId) || floorPlan.rooms[0];
   changeSpeaker("");
   
+  // ★要望対応：部屋にいる間、間取り（指定した幅）と置いてある家具をメイン画面に視覚的に表示する
+  if (typeof renderRoomView === "function") renderRoomView(room); // furniture.js
+  
   const doorChoices = [];
   Object.keys(FLOORPLAN_DIRECTIONS).forEach(dirKey => {
     if (!room.doors[dirKey]) return;
@@ -306,14 +309,13 @@ async function showFloorPlanRoomScreen(area, floorPlan, roomId, goBack) {
   ]);
   
   const roomLabel = room.name || "部屋";
-  const furnitureNote = placedFurniture.length === 0
-    ? "この部屋には何も置かれていないようだ。"
-    : `置いてある家具：${placedFurniture.map(inst => { const def = findFurnitureDef(inst.furnitureId); return def ? def.name : "？"; }).join("、")}`;
+  const furnitureNote = placedFurniture.length === 0 ? "この部屋には何も置かれていないようだ。" : "";
   const doorNote = doorChoices.length === 0 ? "この部屋にはドアが無いようだ。" : "";
-  await displayMessage(`${roomLabel}にいる。\n${furnitureNote}${doorNote ? "\n" + doorNote : ""}`);
+  await displayMessage(`${roomLabel}にいる。${furnitureNote}${doorNote ? "\n" + doorNote : ""}`);
   
   const picked = await displayChoices(choices);
   if (picked.next === "leave") {
+    if (typeof hideRoomView === "function") hideRoomView(); // furniture.js
     goBack();
     return;
   }
