@@ -457,6 +457,17 @@ const ITEM_MASTER = {
     fishHp: 70,
     fishSize: 180,
     params: { 種類: "大物", 強さ: 10, 大きさ: 180, レア度: "B", 体力: 70 }
+  },
+  
+  // ===== 料理関連（要望対応：どのレシピにも一致しなかった時にできる失敗作） =====
+  "food_cooking_fail": {
+    name: "ゲロ以下のにおいがプンプンする料理",
+    category: "food",
+    description: "材料の組み合わせが噛み合わなかったのか、見た目も匂いもひどいことになってしまった一品。とても食べる気にはなれない。",
+    rank: "F",
+    listedPrice: 1,
+    trueValue: 1,
+    params: {}
   }
   
 };
