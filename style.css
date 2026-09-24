@@ -5023,6 +5023,23 @@ html, body {
   width: 60px;
 }
 
+/* ★要望対応：材料選択を、リスト（select）ではなくインベントリ風グリッドを開いて選ぶボタンに変更 */
+.cooking-slot-pick-btn {
+  flex: 1;
+  min-width: 0;
+  background-color: #111;
+  color: #eee;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 4px 6px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cooking-slot-pick-btn:hover {
+  border-color: #ffc107;
+}
+
 .cooking-slot-clear-btn {
   background-color: #333;
   color: #ccc;
