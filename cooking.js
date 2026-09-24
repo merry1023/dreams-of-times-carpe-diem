@@ -18,6 +18,11 @@ let cookingCursorIndex = 0;
 let cookingSlotCountEditIndex = null;
 // ★「作る」を押してからゲージが溜まるまでの間、trueにして他の操作を受け付けないようにする
 let cookingGaugeActive = false;
+// ★要望対応：材料をプルダウン（select）ではなく、鍛冶屋・素材合成屋の素材選択（crafting.jsの
+//   pickEquipmentInstances）と同じ、インベントリ風グリッドを開いて選ぶ形式にする。
+//   今どのスロット向けに選んでいるか（nullなら非表示）。crafting.jsの装備選択ピッカーと同じく、
+//   開いている間はマウス操作のみで選んでもらう（キーボードのカーソル移動とは独立）
+let cookingMaterialPickerSlotIndex = null;
 
 // ★戦闘中・話（シナリオ）再生中は料理できない（要望対応）
 function isCookingBlocked() {
@@ -58,6 +63,25 @@ function selectCookingTool(instanceId) {
   const slotCount = tool ? Math.max(1, Number(tool.master.toolSlotCount) || 3) : 0;
   cookingSlotPicks = new Array(slotCount).fill(null).map(() => ({ itemId: "", count: 1 }));
   cookingSlotCountEditIndex = null;
+  cookingMaterialPickerSlotIndex = null;
+  renderCookingTab();
+}
+
+// ★要望対応：材料選択（鍛冶屋・素材合成屋の素材選択と同じ、インベントリ風グリッドから選ぶ形式）
+function openCookingMaterialPicker(slotIndex) {
+  cookingMaterialPickerSlotIndex = slotIndex;
+  renderCookingTab();
+}
+
+function closeCookingMaterialPicker() {
+  cookingMaterialPickerSlotIndex = null;
+  renderCookingTab();
+}
+
+function pickCookingMaterial(slotIndex, itemId) {
+  const current = cookingSlotPicks[slotIndex] || { itemId: "", count: 1 };
+  cookingSlotPicks[slotIndex] = { itemId, count: current.count || 1 };
+  cookingMaterialPickerSlotIndex = null;
   renderCookingTab();
 }
 
@@ -210,6 +234,7 @@ function handleCookingKeyDown(event) {
   if (event.repeat) return;
   if (cookingGaugeActive) return; // ★ゲージが溜まっている間は操作させない
   if (isCookingBlocked()) return; // ★戦闘中・シナリオ再生中はここでも操作させない
+  if (cookingMaterialPickerSlotIndex !== null) return; // ★要望対応：材料ピッカー（インベントリ風グリッド）表示中は、crafting.jsの装備選択ピッカーと同じくマウス操作のみで選んでもらう
   
   const focusList = getCookingFocusList();
   if (focusList.length === 0) return;
@@ -312,6 +337,12 @@ function renderCookingTab() {
     return;
   }
   
+  // ★要望対応：材料選択中は、インベントリ風グリッドの画面に切り替える
+  if (cookingMaterialPickerSlotIndex !== null) {
+    renderCookingMaterialPicker(root, cookingMaterialPickerSlotIndex);
+    return;
+  }
+  
   const focusList = getCookingFocusList();
   if (cookingCursorIndex >= focusList.length) cookingCursorIndex = Math.max(0, focusList.length - 1);
   const currentFocus = focusList[cookingCursorIndex];
@@ -369,7 +400,6 @@ function renderCookingTab() {
   const tool = getSelectedCookingTool();
   if (!tool) return;
   
-  const materialOptions = getCookableMaterialOptions();
   const materialSection = document.createElement("div");
   materialSection.className = "cooking-section";
   const materialTitle = document.createElement("h4");
@@ -390,7 +420,7 @@ function renderCookingTab() {
     const isEditingCount = cookingSlotCountEditIndex === slotIndex;
     row.className = "cooking-slot-row" + (isCursorHere ? " cooking-cursor" : "") + (isEditingCount ? " cooking-slot-row-editing" : "");
     
-    // ★上段：材料番号＋どれを置くか選ぶプルダウン
+    // ★上段：材料番号＋どれを置くか選ぶボタン（要望対応：鍛冶屋・素材合成屋と同じインベントリ風グリッドを開く）
     const topLine = document.createElement("div");
     topLine.className = "cooking-slot-top-line";
     
@@ -399,23 +429,16 @@ function renderCookingTab() {
     slotBadge.textContent = slotIndex + 1;
     topLine.appendChild(slotBadge);
     
-    const select = document.createElement("select");
-    const emptyOpt = document.createElement("option");
-    emptyOpt.value = "";
-    emptyOpt.textContent = "（材料を選ぶ）";
-    select.appendChild(emptyOpt);
-    materialOptions.forEach(opt => {
-      const optionEl = document.createElement("option");
-      optionEl.value = opt.itemId;
-      optionEl.textContent = `${opt.name}（所持${opt.count}）`;
-      select.appendChild(optionEl);
-    });
-    select.value = pick.itemId || "";
-    select.onchange = () => {
-      cookingSlotPicks[slotIndex] = { itemId: select.value, count: pick.count || 1 };
-      renderCookingTab();
+    const pickBtn = document.createElement("button");
+    pickBtn.type = "button";
+    pickBtn.className = "cooking-slot-pick-btn";
+    const pickedMaster = pick.itemId ? ITEM_MASTER[pick.itemId] : null;
+    pickBtn.textContent = pickedMaster ? pickedMaster.name : "（材料を選ぶ）";
+    pickBtn.onclick = (event) => {
+      event.stopPropagation();
+      openCookingMaterialPicker(slotIndex);
     };
-    topLine.appendChild(select);
+    topLine.appendChild(pickBtn);
     row.appendChild(topLine);
     
     // ★下段：個数のステッパー（−／数字／＋）と、枠を空にするボタン
@@ -576,4 +599,59 @@ function renderCookingTab() {
   }
   bookSection.appendChild(bookEl);
   root.appendChild(bookSection);
+}
+
+// ★要望対応：材料選択を、鍛冶屋・素材合成屋の素材選択（crafting.jsのpickEquipmentInstances）と同じ、
+//   インベントリ風のグリッド（.inventory-grid / .inventory-slot）から選ぶ画面にする（マウス操作専用）
+function renderCookingMaterialPicker(root, slotIndex) {
+  const header = document.createElement("div");
+  header.className = "cooking-section";
+  const backBtn = document.createElement("button");
+  backBtn.type = "button";
+  backBtn.className = "cooking-slot-clear-btn";
+  backBtn.textContent = "← 戻る";
+  backBtn.onclick = () => closeCookingMaterialPicker();
+  header.appendChild(backBtn);
+  const title = document.createElement("h4");
+  title.className = "cooking-section-title";
+  title.textContent = `材料${slotIndex + 1}を選ぶ`;
+  header.appendChild(title);
+  root.appendChild(header);
+  
+  const options = getCookableMaterialOptions();
+  if (options.length === 0) {
+    const note = document.createElement("p");
+    note.className = "cooking-empty-note";
+    note.textContent = "材料になりそうな物を持っていないようだ。";
+    root.appendChild(note);
+    return;
+  }
+  
+  const gridEl = document.createElement("div");
+  gridEl.className = "inventory-grid";
+  options.forEach(opt => {
+    const master = ITEM_MASTER[opt.itemId];
+    const cell = document.createElement("div");
+    cell.className = "inventory-slot";
+    
+    const nameSpan = document.createElement("span");
+    // ★要望対応：インベントリグリッドと同じ、種類ごとの文字色を合わせる
+    const categoryColorClass = master && master.category === "weapon" ? "item-name-weapon"
+      : master && master.category === "armor" ? "item-name-armor"
+      : master && master.category === "fish" ? "item-name-fish"
+      : master && ["herb", "potion", "material", "tool"].includes(master.category) ? "item-name-tool"
+      : "item-name-misc";
+    nameSpan.className = "item-name " + categoryColorClass;
+    nameSpan.textContent = opt.name;
+    cell.appendChild(nameSpan);
+    
+    const qtySpan = document.createElement("span");
+    qtySpan.className = "item-qty";
+    qtySpan.textContent = opt.count;
+    cell.appendChild(qtySpan);
+    
+    cell.onclick = () => pickCookingMaterial(slotIndex, opt.itemId);
+    gridEl.appendChild(cell);
+  });
+  root.appendChild(gridEl);
 }
