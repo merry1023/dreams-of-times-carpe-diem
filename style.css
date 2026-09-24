@@ -5066,7 +5066,8 @@ html, body {
   font-weight: bold;
 }
 
-.cooking-slot-top-line select {
+/* ★要望対応：材料選択を、プルダウン（select）ではなく、インベントリ風グリッドを開くボタンに変更 */
+.cooking-slot-top-line .cooking-slot-pick-btn {
   flex: 1;
   min-width: 0;
   background-color: #111;
@@ -5075,6 +5076,12 @@ html, body {
   border-radius: 4px;
   padding: 6px 8px;
   font-size: 0.95em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cooking-slot-top-line .cooking-slot-pick-btn:hover {
+  border-color: #ffc107;
 }
 
 .cooking-slot-bottom-line {
