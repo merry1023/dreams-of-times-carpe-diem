@@ -80,6 +80,70 @@ function isFurniturePlacementFree(room, x, y, w, h, excludeInstanceId) {
   });
 }
 
+// ★家具1つを、画像があれば画像、無ければ縁取り付きの指定サイズのブロックとして描く
+//   （グリッド上でwidth×heightマスぶんをまとめて1つのブロックとして占有させる。
+//   room-view-panelとfurniture-placement-gridの両方から共通で使う）
+function buildFurnitureBlockEl(def, x, y, extraClass) {
+  const fw = def.width || 1, fh = def.height || 1;
+  const block = document.createElement("div");
+  block.className = "furniture-placement-block " + extraClass;
+  block.style.gridColumn = `${x + 1} / span ${fw}`;
+  block.style.gridRow = `${y + 1} / span ${fh}`;
+  block.title = def.name || "";
+  if (def.imagePath) {
+    const img = document.createElement("img");
+    img.src = def.imagePath;
+    img.alt = def.name || "";
+    img.className = "furniture-placement-block-img";
+    img.onerror = () => { img.remove(); block.classList.add("furniture-placement-block-outline"); }; // ★画像パスが不正な時も縁取りブロックにフォールバック
+    block.appendChild(img);
+  } else {
+    block.classList.add("furniture-placement-block-outline");
+    const label = document.createElement("span");
+    label.className = "furniture-placement-block-label";
+    label.textContent = def.name || "";
+    block.appendChild(label);
+  }
+  return block;
+}
+
+// ★要望対応：部屋にいる間、メイン画面（背景の手前）に部屋の間取りを視覚的に表示する。
+//   部屋の「指定した幅」（room.width）に合わせて、画面に収まるようマス目1つぶんのpxサイズを自動調整する
+function renderRoomView(room) {
+  const panel = document.getElementById("room-view-panel");
+  if (!panel) return;
+  panel.innerHTML = "";
+  
+  const roomW = room.width || 1, roomH = room.height || 1;
+  const maxPanelWidthPx = Math.min(window.innerWidth * 0.7, 480);
+  const cellPx = Math.max(14, Math.min(32, Math.floor(maxPanelWidthPx / roomW)));
+  
+  const grid = document.createElement("div");
+  grid.className = "room-view-grid";
+  grid.style.gridTemplateColumns = `repeat(${roomW}, ${cellPx}px)`;
+  grid.style.gridTemplateRows = `repeat(${roomH}, ${cellPx}px)`;
+  
+  for (let i = 0; i < roomW * roomH; i++) {
+    const cell = document.createElement("div");
+    cell.className = "room-view-cell";
+    grid.appendChild(cell);
+  }
+  
+  getRoomPlacedFurniture(room.id).forEach(inst => {
+    const def = findFurnitureDef(inst.furnitureId);
+    if (!def) return;
+    grid.appendChild(buildFurnitureBlockEl(def, inst.placement.x, inst.placement.y, "furniture-placement-block-occupied"));
+  });
+  
+  panel.appendChild(grid);
+  panel.classList.remove("hidden");
+}
+
+function hideRoomView() {
+  const panel = document.getElementById("room-view-panel");
+  if (panel) panel.classList.add("hidden");
+}
+
 // ★部屋への家具配置を、矢印キー／ボタンで視覚的に選べるミニ画面（quantity-pickerと同じ作りのオーバーレイ）。
 //   Promiseで { x, y }（決定時）または null（キャンセル時）を返す
 function pickFurniturePlacement(room, furnitureDef, excludeInstanceId, labelText) {
@@ -120,23 +184,22 @@ function pickFurniturePlacement(room, furnitureDef, excludeInstanceId, labelText
       gridEl.innerHTML = "";
       const validNow = isValidHere();
       confirmBtn.disabled = !validNow;
+      
       for (let y = 0; y < roomH; y++) {
         for (let x = 0; x < roomW; x++) {
           const cell = document.createElement("div");
-          const inCursorFootprint = x >= cursor.x && x < cursor.x + w && y >= cursor.y && y < cursor.y + h;
-          const isOccupied = others.some(inst => {
-            const def = findFurnitureDef(inst.furnitureId);
-            if (!def) return false;
-            const pw = def.width || 1, ph = def.height || 1;
-            return x >= inst.placement.x && x < inst.placement.x + pw && y >= inst.placement.y && y < inst.placement.y + ph;
-          });
-          let cls = "furniture-placement-cell";
-          if (inCursorFootprint) cls += validNow ? " furniture-placement-cell-cursor-ok" : " furniture-placement-cell-cursor-bad";
-          else if (isOccupied) cls += " furniture-placement-cell-occupied";
-          cell.className = cls;
+          cell.className = "furniture-placement-cell";
           gridEl.appendChild(cell);
         }
       }
+      
+      others.forEach(inst => {
+        const otherDef = findFurnitureDef(inst.furnitureId);
+        if (!otherDef) return;
+        gridEl.appendChild(buildFurnitureBlockEl(otherDef, inst.placement.x, inst.placement.y, "furniture-placement-block-occupied"));
+      });
+      
+      gridEl.appendChild(buildFurnitureBlockEl(furnitureDef, cursor.x, cursor.y, validNow ? "furniture-placement-block-cursor-ok" : "furniture-placement-block-cursor-bad"));
     }
     
     function move(dx, dy) {
