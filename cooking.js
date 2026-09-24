@@ -2,7 +2,8 @@
 // ★要望対応：料理タブ。サブ画面のどこからでも開ける（施設は不要）。
 //   流れ：所持している「料理道具」（cookingToolカテゴリ）を選ぶ → その道具のスロット数ぶん、材料を自由に置く
 //   → 作る個数を指定 → 「作る」。材料が対象の道具向けのレシピ（scenarioProject.recipes、shopType:"cooking"）と
-//   個数までぴったり一致すれば成功（完成品＝foodカテゴリのアイテムを獲得）、一致しなければ材料は消えてなくなる。
+//   個数までぴったり一致すれば成功（完成品＝foodカテゴリのアイテムを獲得）、一致しなければ
+//   「ゲロ以下のにおいがプンプンする料理」（food_cooking_fail）が出来上がる（要望対応）。
 //   道具は使うたびに耐久度が減り（今回使った材料の個数ぶん×作る個数）、0になると壊れてインベントリから消える。
 //   レシピは「使う」と登録される専用アイテム（items.js/scenariobuild.jsのisRecipeItem）で発見できるが、
 //   未発見でも材料さえ合っていれば作成できる（player.knownCookingRecipeIdsはレシピ帳の表示にだけ使う）。
@@ -23,6 +24,8 @@ let cookingGaugeActive = false;
 //   今どのスロット向けに選んでいるか（nullなら非表示）。crafting.jsの装備選択ピッカーと同じく、
 //   開いている間はマウス操作のみで選んでもらう（キーボードのカーソル移動とは独立）
 let cookingMaterialPickerSlotIndex = null;
+// ★要望対応：材料ピッカー（インベントリ風グリッド）のキーボード操作用カーソル（何番目の候補を選んでいるか）
+let cookingMaterialPickerCursorIndex = 0;
 
 // ★戦闘中・話（シナリオ）再生中は料理できない（要望対応）
 function isCookingBlocked() {
@@ -70,6 +73,7 @@ function selectCookingTool(instanceId) {
 // ★要望対応：材料選択（鍛冶屋・素材合成屋の素材選択と同じ、インベントリ風グリッドから選ぶ形式）
 function openCookingMaterialPicker(slotIndex) {
   cookingMaterialPickerSlotIndex = slotIndex;
+  cookingMaterialPickerCursorIndex = 0;
   renderCookingTab();
 }
 
@@ -200,17 +204,16 @@ async function attemptCook() {
   const durabilityResult = reduceCookingToolDurability(tool.slot.instanceId, totalMaterialCount); // inventory.js
   
   changeSpeaker("");
-  if (matchedRecipe) {
-    const resultCount = (matchedRecipe.resultCount || 1) * batchCount;
-    const addOk = addItem(matchedRecipe.resultItemId, resultCount);
-    const resultMaster = ITEM_MASTER[matchedRecipe.resultItemId];
-    if (addOk) {
-      await displayMessage(`「${resultMaster ? resultMaster.name : matchedRecipe.resultItemId}」が${resultCount}個出来上がった！`, { allowSubFocus: true });
-    } else {
-      await displayMessage("……持ち物がいっぱいで、出来上がった料理を持てなかった。もったいないことをした……", { allowSubFocus: true });
-    }
+  // ★要望対応：出来上がった時は必ず「〜が出来上がった！」で統一する。
+  //   どのレシピにも一致しなかった場合は、材料をただ失うのではなく「ゲロ以下のにおいがプンプンする料理」が出来上がる
+  const resultItemId = matchedRecipe ? matchedRecipe.resultItemId : "food_cooking_fail";
+  const resultCount = matchedRecipe ? (matchedRecipe.resultCount || 1) * batchCount : batchCount;
+  const addOk = addItem(resultItemId, resultCount);
+  const resultMaster = ITEM_MASTER[resultItemId];
+  if (addOk) {
+    await displayMessage(`「${resultMaster ? resultMaster.name : resultItemId}」が${resultCount}個出来上がった！`, { allowSubFocus: true });
   } else {
-    await displayMessage("うまく組み合わさらなかったようだ……材料は失敗作になってしまった。", { allowSubFocus: true });
+    await displayMessage("……持ち物がいっぱいで、出来上がった料理を持てなかった。もったいないことをした……", { allowSubFocus: true });
   }
   if (durabilityResult.broke) {
     await displayMessage(`「${tool.master.name}」は、ついに使い物にならなくなってしまった……`, { allowSubFocus: true });
@@ -234,7 +237,44 @@ function handleCookingKeyDown(event) {
   if (event.repeat) return;
   if (cookingGaugeActive) return; // ★ゲージが溜まっている間は操作させない
   if (isCookingBlocked()) return; // ★戦闘中・シナリオ再生中はここでも操作させない
-  if (cookingMaterialPickerSlotIndex !== null) return; // ★要望対応：材料ピッカー（インベントリ風グリッド）表示中は、crafting.jsの装備選択ピッカーと同じくマウス操作のみで選んでもらう
+  
+  // ★要望対応：材料ピッカー（インベントリ風グリッド）表示中も、鍵盤（↑↓←→で移動・決定・キャンセル）で選べるようにする
+  if (cookingMaterialPickerSlotIndex !== null) {
+    const options = getCookableMaterialOptions();
+    const columns = 4; // ★.inventory-gridのgrid-template-columns: repeat(4, 1fr)と合わせる
+    if (options.length === 0) {
+      if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        closeCookingMaterialPicker();
+      }
+      return;
+    }
+    if (cookingMaterialPickerCursorIndex >= options.length) cookingMaterialPickerCursorIndex = options.length - 1;
+    if (cookingMaterialPickerCursorIndex < 0) cookingMaterialPickerCursorIndex = 0;
+    
+    if (event.key === "ArrowUp" || event.key === "ArrowDown" || event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const dir = event.key === "ArrowUp" ? -columns : event.key === "ArrowDown" ? columns : event.key === "ArrowLeft" ? -1 : 1;
+      const next = cookingMaterialPickerCursorIndex + dir;
+      if (next >= 0 && next < options.length) cookingMaterialPickerCursorIndex = next;
+      renderCookingTab();
+      return;
+    }
+    if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(event.key)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      pickCookingMaterial(cookingMaterialPickerSlotIndex, options[cookingMaterialPickerCursorIndex].itemId);
+      return;
+    }
+    if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closeCookingMaterialPicker();
+    }
+    return;
+  }
   
   const focusList = getCookingFocusList();
   if (focusList.length === 0) return;
@@ -505,7 +545,7 @@ function renderCookingTab() {
     const resultMaster = ITEM_MASTER[previewRecipe.resultItemId];
     previewEl.textContent = `✓ 「${resultMaster ? resultMaster.name : previewRecipe.resultItemId}」が出来上がりそう！`;
   } else if (hasAnyFilledSlotForPreview) {
-    previewEl.textContent = "……この組み合わせでは、まだ何も出来なさそうだ。";
+    previewEl.textContent = "……この組み合わせでは、「ゲロ以下のにおいがプンプンする料理」が出来上がってしまいそうだ。";
   } else {
     previewEl.textContent = "材料を置くと、ここに完成予想が表示されます。";
   }
@@ -618,6 +658,11 @@ function renderCookingMaterialPicker(root, slotIndex) {
   header.appendChild(title);
   root.appendChild(header);
   
+  const hint = document.createElement("p");
+  hint.className = "cooking-hint";
+  hint.textContent = "↑↓←→で移動、Zで決定、Xで戻る";
+  root.appendChild(hint);
+  
   const options = getCookableMaterialOptions();
   if (options.length === 0) {
     const note = document.createElement("p");
@@ -626,13 +671,16 @@ function renderCookingMaterialPicker(root, slotIndex) {
     root.appendChild(note);
     return;
   }
+  if (cookingMaterialPickerCursorIndex >= options.length) cookingMaterialPickerCursorIndex = options.length - 1;
+  if (cookingMaterialPickerCursorIndex < 0) cookingMaterialPickerCursorIndex = 0;
   
   const gridEl = document.createElement("div");
   gridEl.className = "inventory-grid";
-  options.forEach(opt => {
+  options.forEach((opt, optIndex) => {
     const master = ITEM_MASTER[opt.itemId];
     const cell = document.createElement("div");
-    cell.className = "inventory-slot";
+    const isCursorHere = optIndex === cookingMaterialPickerCursorIndex;
+    cell.className = "inventory-slot" + (isCursorHere ? " cooking-picker-cursor" : "");
     
     const nameSpan = document.createElement("span");
     // ★要望対応：インベントリグリッドと同じ、種類ごとの文字色を合わせる
