@@ -157,6 +157,10 @@ function waitForCookingGauge(durationSeconds) {
 
 async function attemptCook() {
   if (cookingGaugeActive) return; // ★ゲージが溜まっている間の二重実行を防ぐ
+  // ★バグ修正：完成メッセージ（「〜が出来上がった！」）表示中に「作る」を押す／Zキーを押すと、
+  //   メッセージを読み進めるのと同時にここが二重実行され、ゲージやメッセージが表示される前に
+  //   次の調理が始まってしまい、結果としてゲージやメッセージがまともに見えなくなっていた
+  if (typeof isTextDisplaying !== "undefined" && isTextDisplaying) return;
   
   const blockedReason = isCookingBlocked();
   if (blockedReason) {
@@ -235,6 +239,9 @@ function handleCookingKeyDown(event) {
   if (!activeTab || activeTab.id !== "tab-cooking") return;
   if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return; // ★確認ダイアログ表示中は反応しない
   if (event.repeat) return;
+  // ★バグ修正：完成メッセージ表示中（結果の「〜が出来上がった！」等を読んでいる間）は、
+  //   他のサブタブと同様にここでの操作を止める（他のキー操作が入り乱れてメッセージ表示と競合しないようにする）
+  if (typeof isTextDisplaying !== "undefined" && isTextDisplaying) return;
   if (cookingGaugeActive) return; // ★ゲージが溜まっている間は操作させない
   if (isCookingBlocked()) return; // ★戦闘中・シナリオ再生中はここでも操作させない
   
