@@ -156,11 +156,7 @@ function waitForCookingGauge(durationSeconds) {
 }
 
 async function attemptCook() {
-  if (cookingGaugeActive) return; // ★ゲージが溜まっている間の二重実行を防ぐ
-  // ★バグ修正：完成メッセージ（「〜が出来上がった！」）表示中に「作る」を押す／Zキーを押すと、
-  //   メッセージを読み進めるのと同時にここが二重実行され、ゲージやメッセージが表示される前に
-  //   次の調理が始まってしまい、結果としてゲージやメッセージがまともに見えなくなっていた
-  if (typeof isTextDisplaying !== "undefined" && isTextDisplaying) return;
+  if (cookingGaugeActive) return; // ★ゲージが溜まっている間・結果メッセージ表示中の二重実行を防ぐ
   
   const blockedReason = isCookingBlocked();
   if (blockedReason) {
@@ -198,7 +194,6 @@ async function attemptCook() {
   const waitSeconds = matchedRecipe && matchedRecipe.cookTimeSeconds != null ? Number(matchedRecipe.cookTimeSeconds) : (matchedRecipe ? 3 : 2);
   cookingGaugeActive = true;
   await waitForCookingGauge(waitSeconds);
-  cookingGaugeActive = false;
   
   // ★材料を消費する（成功・失敗問わず、置いた分は無くなる）
   filled.forEach(pick => removeItem(pick.itemId, pick.count * batchCount));
@@ -226,6 +221,13 @@ async function attemptCook() {
     cookingCursorIndex = 0;
   }
   
+  // ★バグ修正：以前はゲージが溜まった直後にここをfalseへ戻していたため、その後に表示する
+  //   完成メッセージ（「〜が出来上がった！」等）を読み進めようとZキーを押すと、カーソルがまだ
+  //   「作る」に乗ったままの状態でここの二重実行防止が効かず、attemptCook()が再度呼ばれてしまい、
+  //   ゲージや完成メッセージが最後まで表示される前に次の調理が始まってしまっていた。
+  //   完成メッセージの表示まで含めて、ここで初めてfalseに戻すようにした
+  cookingGaugeActive = false;
+  
   renderStatusHUD();
   renderCookingTab();
 }
@@ -239,10 +241,7 @@ function handleCookingKeyDown(event) {
   if (!activeTab || activeTab.id !== "tab-cooking") return;
   if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return; // ★確認ダイアログ表示中は反応しない
   if (event.repeat) return;
-  // ★バグ修正：完成メッセージ表示中（結果の「〜が出来上がった！」等を読んでいる間）は、
-  //   他のサブタブと同様にここでの操作を止める（他のキー操作が入り乱れてメッセージ表示と競合しないようにする）
-  if (typeof isTextDisplaying !== "undefined" && isTextDisplaying) return;
-  if (cookingGaugeActive) return; // ★ゲージが溜まっている間は操作させない
+  if (cookingGaugeActive) return; // ★ゲージが溜まっている間・結果メッセージ表示中は操作させない
   if (isCookingBlocked()) return; // ★戦闘中・シナリオ再生中はここでも操作させない
   
   // ★要望対応：材料ピッカー（インベントリ風グリッド）表示中も、鍵盤（↑↓←→で移動・決定・キャンセル）で選べるようにする
