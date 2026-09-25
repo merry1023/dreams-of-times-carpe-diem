@@ -122,114 +122,129 @@ function getCookingFocusList() {
 function waitForCookingGauge(durationSeconds) {
   return new Promise(resolve => {
     const root = document.getElementById("cooking-root");
+    if (!root) { resolve(); return; }
     const durationMs = Math.max(150, (Number(durationSeconds) || 0) * 1000);
     const start = Date.now();
     
-    function paint(fraction) {
-      if (!root) return;
-      root.innerHTML = "";
-      const wrap = document.createElement("div");
-      wrap.className = "cooking-gauge-wrap";
-      const label = document.createElement("p");
-      label.textContent = "調理中……";
-      wrap.appendChild(label);
-      const outer = document.createElement("div");
-      outer.className = "gauge-bar cooking-gauge-outer";
-      const inner = document.createElement("div");
-      inner.className = "gauge-fill cooking-gauge-fill";
-      inner.style.width = `${Math.min(100, Math.max(0, fraction * 100))}%`;
-      outer.appendChild(inner);
-      wrap.appendChild(outer);
-      root.appendChild(wrap);
-    }
+    // ★バグ修正：以前は毎フレームroot.innerHTMLを丸ごと作り直していたため、CSSのtransitionが
+    //   効かず（同じ要素の値が変化する時にしか働かない）、ゲージが滑らかに溜まっていくように
+    //   見えなかった。要素は最初に一度だけ作り、以降はfillの幅（style.width）だけを更新する
+    root.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "cooking-gauge-wrap";
+    const label = document.createElement("p");
+    label.textContent = "調理中……";
+    wrap.appendChild(label);
+    const outer = document.createElement("div");
+    outer.className = "gauge-bar cooking-gauge-outer";
+    const inner = document.createElement("div");
+    inner.className = "gauge-fill cooking-gauge-fill";
+    inner.style.width = "0%";
+    outer.appendChild(inner);
+    wrap.appendChild(outer);
+    root.appendChild(wrap);
     
-    paint(0);
-    const intervalId = setInterval(() => {
-      const fraction = Math.min(1, (Date.now() - start) / durationMs);
-      paint(fraction);
-      if (fraction >= 1) {
-        clearInterval(intervalId);
+    function tick() {
+      // ★調理中に別の描画（タブ切り替えで戻ってきた時のrenderCookingTab()等）でroot自体や
+      //   このゲージ要素が入れ替わっていたら、以降は無駄に動かし続けずそのまま終わらせる
+      if (!document.body.contains(inner)) {
         resolve();
+        return;
       }
-    }, 80);
+      const fraction = Math.min(1, (Date.now() - start) / durationMs);
+      inner.style.width = `${Math.min(100, Math.max(0, fraction * 100))}%`;
+      if (fraction >= 1) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
   });
 }
 
 async function attemptCook() {
   if (cookingGaugeActive) return; // ★ゲージが溜まっている間・結果メッセージ表示中の二重実行を防ぐ
   
-  const blockedReason = isCookingBlocked();
-  if (blockedReason) {
-    changeSpeaker("");
-    await displayMessage(blockedReason, { allowSubFocus: true });
-    return;
-  }
-  
-  const tool = getSelectedCookingTool();
-  if (!tool) return;
-  
-  const filled = cookingSlotPicks.filter(p => p.itemId && p.count > 0);
-  if (filled.length === 0) {
-    changeSpeaker("");
-    await displayMessage("材料を何も置いていないようだ。", { allowSubFocus: true });
-    return;
-  }
-  
-  const batchCount = Math.max(1, Math.floor(Number(cookingBatchCount) || 1));
-  
-  // ★必要な個数（1回分×作る個数）が、実際に足りているか確認する
-  for (const pick of filled) {
-    const needed = pick.count * batchCount;
-    if (getItemCount(pick.itemId) < needed) { // crafting.js
+  // ★バグ修正：拠点の行き先メニュー（location-menu）が表示されている間はメッセージウィンドウが
+  //   隠されているため（mainfunc.jsのshowLocationMenu仕様）、そのままdisplayMessageを呼んでも
+  //   画面上どこにも見えず、「ゲージや完成メッセージがまともに表示されない」ように見えていた。
+  //   スキル・装備・インベントリタブと同じrunWithLocationMenuHidden()で包み、必要な間だけ
+  //   行き先メニューを一時的に隠してメッセージを見せるようにする
+  await runWithLocationMenuHidden(async () => {
+    const blockedReason = isCookingBlocked();
+    if (blockedReason) {
       changeSpeaker("");
-      await displayMessage(`「${ITEM_MASTER[pick.itemId].name}」が足りないようだ（必要：${needed}個）。`, { allowSubFocus: true });
+      await displayMessage(blockedReason, { allowSubFocus: true });
       return;
     }
-  }
-  
-  // ★対象の道具向けレシピの中から、個数までぴったり一致するものを探す（ゲージの待ち時間はここで先に決める）
-  const matchedRecipe = getMatchedCookingRecipe(tool, cookingSlotPicks);
-  
-  // ★要望対応：レシピ管理タブで指定した秒数ぶん、ゲージが溜まるまで待たせる（一致しなかった時は既定の短い待ち時間）
-  const waitSeconds = matchedRecipe && matchedRecipe.cookTimeSeconds != null ? Number(matchedRecipe.cookTimeSeconds) : (matchedRecipe ? 3 : 2);
-  cookingGaugeActive = true;
-  await waitForCookingGauge(waitSeconds);
-  
-  // ★材料を消費する（成功・失敗問わず、置いた分は無くなる）
-  filled.forEach(pick => removeItem(pick.itemId, pick.count * batchCount));
-  
-  // ★道具の耐久度を、今回使った材料の総数×作る個数ぶん減らす
-  const totalMaterialCount = filled.reduce((sum, p) => sum + p.count, 0) * batchCount;
-  const durabilityResult = reduceCookingToolDurability(tool.slot.instanceId, totalMaterialCount); // inventory.js
-  
-  changeSpeaker("");
-  // ★要望対応：出来上がった時は必ず「〜が出来上がった！」で統一する。
-  //   どのレシピにも一致しなかった場合は、材料をただ失うのではなく「ゲロ以下のにおいがプンプンする料理」が出来上がる
-  const resultItemId = matchedRecipe ? matchedRecipe.resultItemId : "food_cooking_fail";
-  const resultCount = matchedRecipe ? (matchedRecipe.resultCount || 1) * batchCount : batchCount;
-  const addOk = addItem(resultItemId, resultCount);
-  const resultMaster = ITEM_MASTER[resultItemId];
-  if (addOk) {
-    await displayMessage(`「${resultMaster ? resultMaster.name : resultItemId}」が${resultCount}個出来上がった！`, { allowSubFocus: true });
-  } else {
-    await displayMessage("……持ち物がいっぱいで、出来上がった料理を持てなかった。もったいないことをした……", { allowSubFocus: true });
-  }
-  if (durabilityResult.broke) {
-    await displayMessage(`「${tool.master.name}」は、ついに使い物にならなくなってしまった……`, { allowSubFocus: true });
-    cookingSelectedToolInstanceId = null;
-    cookingSlotPicks = [];
-    cookingCursorIndex = 0;
-  }
-  
-  // ★バグ修正：以前はゲージが溜まった直後にここをfalseへ戻していたため、その後に表示する
-  //   完成メッセージ（「〜が出来上がった！」等）を読み進めようとZキーを押すと、カーソルがまだ
-  //   「作る」に乗ったままの状態でここの二重実行防止が効かず、attemptCook()が再度呼ばれてしまい、
-  //   ゲージや完成メッセージが最後まで表示される前に次の調理が始まってしまっていた。
-  //   完成メッセージの表示まで含めて、ここで初めてfalseに戻すようにした
-  cookingGaugeActive = false;
-  
-  renderStatusHUD();
-  renderCookingTab();
+    
+    const tool = getSelectedCookingTool();
+    if (!tool) return;
+    
+    const filled = cookingSlotPicks.filter(p => p.itemId && p.count > 0);
+    if (filled.length === 0) {
+      changeSpeaker("");
+      await displayMessage("材料を何も置いていないようだ。", { allowSubFocus: true });
+      return;
+    }
+    
+    const batchCount = Math.max(1, Math.floor(Number(cookingBatchCount) || 1));
+    
+    // ★必要な個数（1回分×作る個数）が、実際に足りているか確認する
+    for (const pick of filled) {
+      const needed = pick.count * batchCount;
+      if (getItemCount(pick.itemId) < needed) { // crafting.js
+        changeSpeaker("");
+        await displayMessage(`「${ITEM_MASTER[pick.itemId].name}」が足りないようだ（必要：${needed}個）。`, { allowSubFocus: true });
+        return;
+      }
+    }
+    
+    // ★対象の道具向けレシピの中から、個数までぴったり一致するものを探す（ゲージの待ち時間はここで先に決める）
+    const matchedRecipe = getMatchedCookingRecipe(tool, cookingSlotPicks);
+    
+    // ★要望対応：レシピ管理タブで指定した秒数ぶん、ゲージが溜まるまで待たせる（一致しなかった時は既定の短い待ち時間）
+    const waitSeconds = matchedRecipe && matchedRecipe.cookTimeSeconds != null ? Number(matchedRecipe.cookTimeSeconds) : (matchedRecipe ? 3 : 2);
+    cookingGaugeActive = true;
+    await waitForCookingGauge(waitSeconds);
+    
+    // ★材料を消費する（成功・失敗問わず、置いた分は無くなる）
+    filled.forEach(pick => removeItem(pick.itemId, pick.count * batchCount));
+    
+    // ★道具の耐久度を、今回使った材料の総数×作る個数ぶん減らす
+    const totalMaterialCount = filled.reduce((sum, p) => sum + p.count, 0) * batchCount;
+    const durabilityResult = reduceCookingToolDurability(tool.slot.instanceId, totalMaterialCount); // inventory.js
+    
+    changeSpeaker("");
+    // ★要望対応：出来上がった時は必ず「〜が出来上がった！」で統一する。
+    //   どのレシピにも一致しなかった場合は、材料をただ失うのではなく「ゲロ以下のにおいがプンプンする料理」が出来上がる
+    const resultItemId = matchedRecipe ? matchedRecipe.resultItemId : "food_cooking_fail";
+    const resultCount = matchedRecipe ? (matchedRecipe.resultCount || 1) * batchCount : batchCount;
+    const addOk = addItem(resultItemId, resultCount);
+    const resultMaster = ITEM_MASTER[resultItemId];
+    if (addOk) {
+      await displayMessage(`「${resultMaster ? resultMaster.name : resultItemId}」が${resultCount}個出来上がった！`, { allowSubFocus: true });
+    } else {
+      await displayMessage("……持ち物がいっぱいで、出来上がった料理を持てなかった。もったいないことをした……", { allowSubFocus: true });
+    }
+    if (durabilityResult.broke) {
+      await displayMessage(`「${tool.master.name}」は、ついに使い物にならなくなってしまった……`, { allowSubFocus: true });
+      cookingSelectedToolInstanceId = null;
+      cookingSlotPicks = [];
+      cookingCursorIndex = 0;
+    }
+    
+    // ★バグ修正：以前はゲージが溜まった直後にここをfalseへ戻していたため、その後に表示する
+    //   完成メッセージ（「〜が出来上がった！」等）を読み進めようとZキーを押すと、カーソルがまだ
+    //   「作る」に乗ったままの状態でここの二重実行防止が効かず、attemptCook()が再度呼ばれてしまい、
+    //   ゲージや完成メッセージが最後まで表示される前に次の調理が始まってしまっていた。
+    //   完成メッセージの表示まで含めて、ここで初めてfalseに戻すようにした
+    cookingGaugeActive = false;
+    
+    renderStatusHUD();
+    renderCookingTab();
+  });
 }
 
 // ★要望対応：料理タブのキーボード操作。↑↓でカーソル移動、←→で選択中の項目の値を変える、
@@ -348,8 +363,14 @@ function handleCookingKeyDown(event) {
       selectCookingTool(current.entry.slot.instanceId);
       cookingCursorIndex = 0; // ★道具を選び直したら、新しいスロット構成の先頭（＝道具一覧の同じ位置）からになるので0に戻す
     } else if (current.type === "slot") {
-      if (cookingSlotPicks[current.index].itemId) cookingSlotCountEditIndex = current.index;
-      renderCookingTab();
+      // ★要望対応：材料が未選択のスロットでZを押すと、鍛冶屋・素材合成屋と同じインベントリ風グリッドを開く。
+      //   既に材料が選ばれている場合は、これまで通りZで個数調整モードに入る
+      if (!cookingSlotPicks[current.index].itemId) {
+        openCookingMaterialPicker(current.index);
+      } else {
+        cookingSlotCountEditIndex = current.index;
+        renderCookingTab();
+      }
     } else if (current.type === "cook") {
       attemptCook();
     }
@@ -370,9 +391,8 @@ window.addEventListener("keydown", handleCookingKeyDown);
 function renderCookingTab() {
   const root = document.getElementById("cooking-root");
   if (!root) return;
+  if (cookingGaugeActive) return; // ★ゲージ表示中はwaitForCookingGaugeが直接描画するので、ここでは何もしない（root.innerHTMLも触らない）
   root.innerHTML = "";
-  
-  if (cookingGaugeActive) return; // ★ゲージ表示中はwaitForCookingGaugeが直接描画するので、ここでは何もしない
   
   const blockedReason = isCookingBlocked();
   if (blockedReason) {
@@ -687,6 +707,10 @@ function renderCookingMaterialPicker(root, slotIndex) {
     const cell = document.createElement("div");
     const isCursorHere = optIndex === cookingMaterialPickerCursorIndex;
     cell.className = "inventory-slot" + (isCursorHere ? " cooking-picker-cursor" : "");
+    if (isCursorHere) {
+      // ★要望対応：キーボードでカーソルが画面外に出た時、自動でスクロール追従させる
+      requestAnimationFrame(() => cell.scrollIntoView({ block: "nearest" }));
+    }
     
     const nameSpan = document.createElement("span");
     // ★要望対応：インベントリグリッドと同じ、種類ごとの文字色を合わせる

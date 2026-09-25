@@ -4941,41 +4941,42 @@ html, body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   padding: 4px 2px;
+  font-size: 0.9em;
 }
 
 .cooking-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
 }
 
 .cooking-section-title {
   margin: 0;
-  font-size: 1em;
+  font-size: 0.95em;
   color: #ffc107;
   border-left: 3px solid #ffc107;
-  padding-left: 8px;
+  padding-left: 6px;
 }
 
 .cooking-hint {
-  margin: -4px 0 0;
+  margin: -2px 0 0;
   color: #888;
-  font-size: 0.78em;
+  font-size: 0.75em;
 }
 
 .cooking-tool-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
 }
 
 .cooking-tool-card {
   background-color: #222;
   border: 1px solid #444;
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 7px;
+  padding: 6px 9px;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
@@ -5036,26 +5037,26 @@ html, body {
 .cooking-slot-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
   background-color: #1c1c1c;
   border: 1px solid #333;
-  border-radius: 8px;
-  padding: 10px;
+  border-radius: 7px;
+  padding: 7px;
 }
 
 .cooking-slot-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 6px;
-  border-radius: 6px;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 5px;
   border: 1px solid transparent;
 }
 
 .cooking-slot-top-line {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .cooking-slot-badge {
@@ -5063,12 +5064,12 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.6em;
-  height: 1.6em;
+  width: 1.4em;
+  height: 1.4em;
   border-radius: 50%;
   background-color: #333;
   color: #ccc;
-  font-size: 0.8em;
+  font-size: 0.78em;
   font-weight: bold;
 }
 
@@ -5080,8 +5081,8 @@ html, body {
   color: #eee;
   border: 1px solid #555;
   border-radius: 4px;
-  padding: 6px 8px;
-  font-size: 0.95em;
+  padding: 4px 6px;
+  font-size: 0.88em;
   text-align: left;
   cursor: pointer;
 }
@@ -5093,9 +5094,9 @@ html, body {
 .cooking-slot-bottom-line {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
-  padding-left: calc(1.6em + 8px);
+  padding-left: calc(1.4em + 6px);
 }
 
 .cooking-stepper {
@@ -5116,9 +5117,9 @@ html, body {
   background-color: #333;
   color: #ffc107;
   border: none;
-  width: 2em;
-  height: 2em;
-  font-size: 0.95em;
+  width: 1.6em;
+  height: 1.6em;
+  font-size: 0.88em;
   font-weight: bold;
   cursor: pointer;
   line-height: 1;
@@ -5131,14 +5132,14 @@ html, body {
 
 .cooking-stepper-value {
   display: inline-block;
-  min-width: 2.2em;
+  min-width: 1.8em;
   text-align: center;
   background-color: #111;
   color: #eee;
-  font-size: 0.95em;
+  font-size: 0.88em;
   padding: 0 4px;
   align-self: stretch;
-  line-height: 2em;
+  line-height: 1.6em;
 }
 
 .cooking-slot-clear-btn {
@@ -5146,8 +5147,8 @@ html, body {
   color: #ccc;
   border: 1px solid #555;
   border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 0.85em;
+  padding: 4px 8px;
+  font-size: 0.8em;
   cursor: pointer;
 }
 
@@ -5158,16 +5159,16 @@ html, body {
 
 .cooking-slot-edit-hint {
   color: #ffc107;
-  font-size: 0.8em;
+  font-size: 0.76em;
   font-weight: bold;
 }
 
 .cooking-match-preview {
   border: 1px dashed #555;
-  border-radius: 8px;
-  padding: 8px 12px;
+  border-radius: 7px;
+  padding: 6px 10px;
   color: #999;
-  font-size: 0.9em;
+  font-size: 0.86em;
   text-align: center;
 }
 
@@ -5181,21 +5182,21 @@ html, body {
 .cooking-batch-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .cooking-batch-label {
   color: #ccc;
-  font-size: 0.9em;
+  font-size: 0.86em;
 }
 
 .cooking-cook-btn {
   background-color: #4a3220;
   color: #ffc107;
   border: 1px solid #ffc107;
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 1.1em;
+  border-radius: 7px;
+  padding: 8px 14px;
+  font-size: 1em;
   font-weight: bold;
   cursor: pointer;
   align-self: stretch;
@@ -5209,18 +5210,18 @@ html, body {
 .cooking-recipe-book {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
 }
 
 .cooking-recipe-card {
   background-color: #1c1c1c;
   border: 1px solid #333;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 0.9em;
+  border-radius: 7px;
+  padding: 6px 8px;
+  font-size: 0.86em;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .cooking-recipe-card-hit {
@@ -5235,12 +5236,12 @@ html, body {
 
 .cooking-recipe-card-detail {
   color: #ccc;
-  font-size: 0.92em;
+  font-size: 0.9em;
 }
 
 .cooking-empty-note {
   color: #999;
-  font-size: 0.9em;
+  font-size: 0.86em;
 }
 
 /* ★要望対応：キーボード操作中のカーソル位置を示すハイライト */
@@ -5259,8 +5260,8 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 24px 12px;
+  gap: 8px;
+  padding: 14px 10px;
 }
 
 .cooking-gauge-outer {
