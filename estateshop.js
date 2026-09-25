@@ -21,11 +21,16 @@ function ensureShopState(key) {
   return rec.shop;
 }
 
-// ★バイト代（1日あたりの賃金）＝物件価格 ×（2% ＋ グレード%÷2）（仕様書の補足の式）
+// ★バイト代（1日あたりの賃金）＝物件価格 ×（2% ＋ グレード%÷2）が仕様書の式だが、
+//   そのまま適用すると物件価格が高いほど日給が桁違いに跳ね上がり（例：230万の店で日給30万〜100万）、
+//   商品の売上（真価は数百陳程度）では到底まかなえず、売っても手元に陳が残らなくなってしまっていた。
+//   宿代(200陳)やサビ取り代(500陳)など他の物価と釣り合うよう、同じ式のまま100分の1のスケールに調整した
+//   （調整前の式に戻したい場合は、下のSCALEを1に戻せばよい）
+const ESTATE_SHOP_WAGE_SCALE = 0.01;
 function calcEmployeeWage(area, grade) {
   const price = area.estatePrice || 0;
   const percent = 2 + grade / 2; // ★グレードは1〜100のランダム値
-  return Math.round(price * percent / 100);
+  return Math.max(1, Math.round(price * percent / 100 * ESTATE_SHOP_WAGE_SCALE));
 }
 
 // ===================================================================
@@ -38,13 +43,17 @@ function processEstateShopDailyTick() {
     const rec = player.ownedProperties[key];
     if (!rec || rec.overdue || !rec.shop) return; // ★滞納中の店は営業できない
     if (rec.shop.mode !== "open" || rec.shop.employees.length === 0) return; // ★開店モード＋バイトがいる時だけ放置収入が発生する
-    runEstateShopSalesForOneDay(rec.shop);
+    const area = findEstateAreaByKey(key); // realestate.js
+    if (!area) return;
+    runEstateShopSalesForOneDay(rec.shop, area);
   });
 }
 
-// ★1日分の販売シミュレーション（棚の商品ごとに、値付けとバイトの平均グレードから売れ行きを決める簡易モデル）
-function runEstateShopSalesForOneDay(shop) {
+// ★1日分の販売シミュレーション（棚の商品ごとに、値付け・バイトの平均グレード・エリアの「客の来やすさ」から売れ行きを決める簡易モデル）
+function runEstateShopSalesForOneDay(shop, area) {
   const avgGrade = shop.employees.reduce((sum, e) => sum + (e.grade || 0), 0) / shop.employees.length;
+  const customerRate = (area && area.estateCustomerRate != null) ? area.estateCustomerRate : 500; // ★要望対応：1〜1000（基準500＝等倍）
+  const customerFactor = customerRate / 500;
   let gross = 0;
   
   shop.shelves.forEach(slot => {
@@ -55,7 +64,7 @@ function runEstateShopSalesForOneDay(shop) {
     // ★真価+15%以内なら普通の客がよく買う。それを超えると、稀に来る富裕層の客だけが買う
     const baseChance = isOverpriced ? 0.08 : 0.5;
     const employeeBonus = (avgGrade / 100) * 0.2; // ★バイトのグレードが高いほど少し売れやすくなる
-    const chance = Math.min(0.9, baseChance + employeeBonus);
+    const chance = Math.min(0.95, (baseChance + employeeBonus) * customerFactor);
     
     let soldToday = 0;
     const maxTries = Math.min(slot.quantity, ESTATE_SHOP_MAX_SALES_PER_SLOT_PER_DAY);

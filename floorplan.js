@@ -234,6 +234,17 @@ function buildFloorPlanRoomDetail(area, floorPlan, room, persist) {
   sizeRow.appendChild(widthInput);
   infoEl.appendChild(sizeRow);
   
+  // ★要望対応：床の色を部屋ごとに設定できる（メイン画面の部屋表示に反映。デフォルトはベージュ）
+  const floorColorRow = document.createElement("div");
+  floorColorRow.className = "scenariobuild-condition-row";
+  floorColorRow.appendChild(labelSpan("床の色："));
+  const floorColorInput = document.createElement("input");
+  floorColorInput.type = "color";
+  floorColorInput.value = room.floorColor || "#e8d5b0";
+  floorColorInput.onchange = () => { room.floorColor = floorColorInput.value; persist(); };
+  floorColorRow.appendChild(floorColorInput);
+  infoEl.appendChild(floorColorRow);
+  
   const doorNote = document.createElement("p");
   doorNote.className = "devmode-note scenariobuild-condition";
   doorNote.textContent = "ドア（隣に部屋がある方向にだけ設置できます。設置した方向にのみ、隣の部屋へ移動できるようになります）：";

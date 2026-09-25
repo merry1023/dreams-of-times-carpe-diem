@@ -83,8 +83,11 @@ function isFurniturePlacementFree(room, x, y, w, h, excludeInstanceId) {
 // ★家具1つを、画像があれば画像、無ければ縁取り付きの指定サイズのブロックとして描く
 //   （グリッド上でwidth×heightマスぶんをまとめて1つのブロックとして占有させる。
 //   room-view-panelとfurniture-placement-gridの両方から共通で使う）
-function buildFurnitureBlockEl(def, x, y, extraClass) {
+// cellPx: このグリッドの1マスの実際のpxサイズ（省略時は配置ミニ画面の26px相当）。
+//   1×1のような小さいブロックでも名前がはみ出さないよう、ブロックの実サイズからフォントサイズを逆算する
+function buildFurnitureBlockEl(def, x, y, extraClass, cellPx) {
   const fw = def.width || 1, fh = def.height || 1;
+  const px = cellPx || 26;
   const block = document.createElement("div");
   block.className = "furniture-placement-block " + extraClass;
   block.style.gridColumn = `${x + 1} / span ${fw}`;
@@ -95,13 +98,17 @@ function buildFurnitureBlockEl(def, x, y, extraClass) {
     img.src = def.imagePath;
     img.alt = def.name || "";
     img.className = "furniture-placement-block-img";
-    img.onerror = () => { img.remove(); block.classList.add("furniture-placement-block-outline"); }; // ★画像パスが不正な時も縁取りブロックにフォールバック
+    img.onerror = () => { img.remove(); block.classList.add("furniture-placement-block-outline"); block.style.backgroundColor = def.color || ""; }; // ★画像パスが不正な時も縁取りブロックにフォールバック
     block.appendChild(img);
   } else {
     block.classList.add("furniture-placement-block-outline");
+    if (def.color) block.style.backgroundColor = def.color; // ★要望対応：家具管理タブで色を指定できる（未指定ならCSS既定色）
     const label = document.createElement("span");
     label.className = "furniture-placement-block-label";
     label.textContent = def.name || "";
+    // ★ブロックの実サイズ（小さい方の辺）に応じてフォントサイズを自動で縮め、1×1マスでも必ず枠内に収める
+    const shortSidePx = Math.min(fw, fh) * px;
+    label.style.fontSize = Math.max(6, Math.min(11, Math.floor(shortSidePx / 3.2))) + "px";
     block.appendChild(label);
   }
   return block;
@@ -123,16 +130,18 @@ function renderRoomView(room) {
   grid.style.gridTemplateColumns = `repeat(${roomW}, ${cellPx}px)`;
   grid.style.gridTemplateRows = `repeat(${roomH}, ${cellPx}px)`;
   
+  const floorColor = room.floorColor || "#e8d5b0"; // ★要望対応：部屋ごとの床の色（間取り編集で設定。デフォルトはベージュ）
   for (let i = 0; i < roomW * roomH; i++) {
     const cell = document.createElement("div");
     cell.className = "room-view-cell";
+    cell.style.backgroundColor = floorColor;
     grid.appendChild(cell);
   }
   
   getRoomPlacedFurniture(room.id).forEach(inst => {
     const def = findFurnitureDef(inst.furnitureId);
     if (!def) return;
-    grid.appendChild(buildFurnitureBlockEl(def, inst.placement.x, inst.placement.y, "furniture-placement-block-occupied"));
+    grid.appendChild(buildFurnitureBlockEl(def, inst.placement.x, inst.placement.y, "furniture-placement-block-occupied", cellPx));
   });
   
   panel.appendChild(grid);
