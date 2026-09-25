@@ -1514,6 +1514,14 @@ function setScenarioPlayTabEnabled(tabId, enabled) {
     scenarioProject.scenarioBuildTabVisibility = {};
   }
   scenarioProject.scenarioBuildTabVisibility[tabId] = enabled;
+  // ★バグ修正：プレイヤー側の個人設定（gameSettings.playTabVisibility）は、一度でも値が決まると
+  //   （タブごとの既定値やcompanionchatの特別判定込みで）そのままキャッシュされ続けてしまい、
+  //   ここで後から新しくタブをONにしても、キャッシュされた古い値のせいで表示されないバグがあった。
+  //   ここでON/OFFを変更した時は、そのタブのプレイヤー側キャッシュを削除して、次回参照時に
+  //   （今の設定を踏まえて）既定値を再計算させる
+  if (typeof gameSettings !== "undefined" && gameSettings && gameSettings.playTabVisibility && typeof gameSettings.playTabVisibility === "object") {
+    delete gameSettings.playTabVisibility[tabId];
+  }
 }
 
 function renderScenarioBuildPanel() {
@@ -1672,6 +1680,7 @@ function renderScenarioBuildTabManager(container) {
     checkbox.onchange = () => {
       setScenarioPlayTabEnabled(tab.id, checkbox.checked);
       if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
+      if (typeof applyPlayTabVisibility === "function") applyPlayTabVisibility(); // ★バグ修正：ONにしてもタブバーの表示がその場で更新されていなかった
       renderScenarioBuildPanel();
     };
     row.appendChild(checkbox);
