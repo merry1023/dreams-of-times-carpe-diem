@@ -232,7 +232,7 @@ async function addItemToShopShelf(area, key, goBack) {
     step: 1,
     stepOptions: [1, 10, 100],
     formatValue: v => `${v}陳`,
-    formatLabel: max => `値段を決める（真価の目安：${trueValue}陳。${ESTATE_SHOP_OVERPRICE_RATIO * 100}%＝${Math.round(trueValue * ESTATE_SHOP_OVERPRICE_RATIO)}陳を超えると売れにくくなる）`
+    formatLabel: max => `値段を決める（真価の目安：${trueValue}陳）` // ★要望対応：値付けの売れ行きへの影響はプレイヤーに探らせたいので、しきい値は文言で明かさない
   });
   if (!price || price <= 0) { await manageShopShelves(area, key, goBack); return; }
   
