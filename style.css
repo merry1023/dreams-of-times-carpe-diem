@@ -1470,11 +1470,16 @@ html, body {
     color: #ccc;
     font-size: 13px;
     font-weight: bold;
+    min-width: 0; /* ★バグ修正：flexアイテムの既定min-width:autoのままだと長いラベルが折り返さず、アスペクト比によっては行からはみ出していた */
+    overflow-wrap: break-word;
 }
 
 .setting-row .setting-value {
     color: #fff;
     font-size: 13px;
+    min-width: 0;
+    text-align: right;
+    overflow-wrap: break-word;
 }
 
 /* ★要望対応：BGM音量を「┃」20本の色分けバーで表示する行 */
@@ -1486,6 +1491,7 @@ html, body {
 
 .setting-volume-bar {
     display: inline-flex;
+    flex-wrap: wrap; /* ★バグ修正：横幅が狭いアスペクト比で20本ぶんが収まらない時、はみ出さず折り返す */
     gap: 1px;
     line-height: 1;
 }
@@ -1787,13 +1793,16 @@ html, body {
 
 .convenience-icon-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr); /* ★6列 */
-    grid-template-rows: repeat(7, 1fr); /* ★7行 */
+    grid-template-columns: repeat(6, minmax(0, 1fr)); /* ★6列（minmax(0,…)でバグ修正：暗黙のmin-width:autoのままだと長いラベルで列が押し広げられていた） */
+    grid-auto-rows: min-content; /* ★バグ修正：以前は「repeat(7, 1fr)」で高さを7等分に固定していたため、
+        アスペクト比によっては各アイコン（正方形固定）がその1/7の高さに収まらず、画面からはみ出していた。
+        行の高さをアイコン本来のサイズ（正方形）に任せ、収まらない分は下のoverflow-yで縦スクロールにする */
     gap: 2px;
     padding: 10px 12px 4px 4px; /* ★バグ修正：バッジが上・右にはみ出す分の余白を確保（見切れ対策） */
     flex: 1;
     min-height: 0;
-    overflow: visible; /* ★バッジが枠の外に描画されても隠れないようにする */
+    overflow-x: visible; /* ★バッジが右にはみ出しても隠れないようにする */
+    overflow-y: auto; /* ★バグ修正：全アイコンぶんの高さが収まらないアスペクト比では、画面外へはみ出す代わりに縦スクロールする */
 }
 
 .convenience-icon {
@@ -1810,6 +1819,7 @@ html, body {
     color: #eee;
     outline: none;
     overflow: visible; /* ★同上：バッジ見切れ対策 */
+    min-width: 0; /* ★バグ修正：既定のmin-width:autoのままだと「セーブ/ロード」等の長いラベルが列幅を押し広げ、グリッド全体が横にはみ出していた */
 }
 
 .convenience-icon:hover .convenience-icon-glyph {
