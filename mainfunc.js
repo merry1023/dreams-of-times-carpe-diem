@@ -222,6 +222,57 @@ const KEY_CONFIG = {
   hideChoicesKey: ["v", "V"] // 選択肢の一時非表示ON/OFF切り替え用
 };
 
+// ★要望対応：矢印キーをどの画面でも0.7秒以上押しっぱなしにしたら「長押し」判定にする（＝繰り返し入力が始まる）。
+//   OSやブラウザ標準のキーリピートは間隔がバラバラで信頼できないため、こちらで独自に管理する。
+//   仕組み：各画面の矢印キー処理は今まで通りwindowの"keydown"を直接見ているので、ここでは新しい仕組みを
+//   個別に追加させるのではなく、0.7秒経過後にこちらから「本物そっくりのkeydownイベント」を一定間隔で
+//   window に向けて発火し続けることで、既存のどの矢印キー処理もコードを変えずにそのまま「連続入力」として
+//   反応するようにしている（各処理はevent.repeat===trueのOS標準リピートだけを無視する作りになっているが、
+//   ここで発火するイベントはOS標準のリピートではなく毎回新規のイベントなのでrepeatはfalseのままで届く）
+const ARROW_HOLD_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+const ARROW_HOLD_THRESHOLD_MS = 700; // ★長押し判定までの時間
+const ARROW_HOLD_REPEAT_INTERVAL_MS = 120; // ★長押し判定後、繰り返し入力を送る間隔
+const arrowHoldTimers = {}; // { [key]: { holdTimeoutId, repeatIntervalId } }
+
+function clearArrowHoldTimer(key) {
+  const timer = arrowHoldTimers[key];
+  if (!timer) return;
+  clearTimeout(timer.holdTimeoutId);
+  clearInterval(timer.repeatIntervalId);
+  delete arrowHoldTimers[key];
+}
+
+function dispatchSyntheticArrowKeydown(key) {
+  const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+  event.__isArrowHoldSynthetic = true; // ★このイベント自身をきっかけに新しい長押し判定を始めないようにする目印
+  window.dispatchEvent(event);
+}
+
+window.addEventListener("keydown", (event) => {
+  if (event.__isArrowHoldSynthetic) return; // ★自分が発火した合成イベントでは、長押し判定をやり直さない
+  if (!ARROW_HOLD_KEYS.includes(event.key)) return;
+  if (event.repeat) return; // ★OS標準のキーリピートは無視し、本当に押された最初の1回だけを見る
+  if (arrowHoldTimers[event.key]) return; // ★既にこのキーの長押し判定が進行中なら何もしない
+  
+  const holdTimeoutId = setTimeout(() => {
+    dispatchSyntheticArrowKeydown(event.key); // ★0.7秒経過＝長押し判定。まず1回繰り返し入力を送る
+    const repeatIntervalId = setInterval(() => dispatchSyntheticArrowKeydown(event.key), ARROW_HOLD_REPEAT_INTERVAL_MS);
+    if (arrowHoldTimers[event.key]) arrowHoldTimers[event.key].repeatIntervalId = repeatIntervalId;
+  }, ARROW_HOLD_THRESHOLD_MS);
+  
+  arrowHoldTimers[event.key] = { holdTimeoutId, repeatIntervalId: null };
+}, true); // ★捕捉フェーズで拾う。preventDefaultやstopPropagationはせず、あくまで裏で監視するだけ
+
+window.addEventListener("keyup", (event) => {
+  if (ARROW_HOLD_KEYS.includes(event.key)) clearArrowHoldTimer(event.key);
+}, true);
+
+// ★ウィンドウが非アクティブになった時（他アプリに切り替えた等）にキーが押しっぱなし扱いのまま
+//   残り続けないよう、念のため全部クリアしておく
+window.addEventListener("blur", () => {
+  ARROW_HOLD_KEYS.forEach(clearArrowHoldTimer);
+});
+
 // タイピング中にクリック・決定キーが押されたら、残りの文章を一気に表示させる
 function requestSkipTyping() {
   if (isTyping) {
