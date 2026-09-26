@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1790007408968,
+  "version": 1790421212255,
   "enemies": [
     {
       "id": "goblin",
@@ -2130,7 +2130,432 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "B": "item_1788351958488_36",
         "A": "item_1788351958488_36",
         "AA": "item_1789443087577_12"
+      },
+      "baitFishTypes": []
+    },
+    {
+      "id": "fishrod_001",
+      "name": "木の釣竿",
+      "category": "tool",
+      "description": "どこにでもありそうな、素朴な木の釣竿。駆け出しの釣り人向け。",
+      "rank": "F",
+      "listedPrice": 600,
+      "trueValue": 600,
+      "builtin": true,
+      "params": {
+        "希少度": 1
+      },
+      "isFishingRod": true,
+      "rodDurability": 45,
+      "rodPower": 3,
+      "stackable": false,
+      "baitFishTypes": []
+    },
+    {
+      "id": "fishrod_002",
+      "name": "鋼の釣竿",
+      "category": "tool",
+      "description": "しなりが良く、大物相手でも粘れる上質な釣竿。",
+      "rank": "D",
+      "listedPrice": 1000,
+      "trueValue": 1000,
+      "builtin": true,
+      "params": {
+        "希少度": 2
+      },
+      "isFishingRod": true,
+      "rodDurability": 75,
+      "rodPower": 4.5,
+      "stackable": false,
+      "baitFishTypes": []
+    },
+    {
+      "id": "fishbait_001",
+      "name": "ミミズ",
+      "category": "tool",
+      "description": "川辺で掘れば見つかる、ごく普通の釣り餌。小物がよく食いつく。",
+      "rank": "F",
+      "listedPrice": 15,
+      "trueValue": 15,
+      "builtin": true,
+      "params": {
+        "希少度": 1
+      },
+      "isFishingBait": true,
+      "baitFishType": "ハゲウオ科",
+      "baitBiteRate": 5,
+      "baitFishTypes": [
+        "ハゲウオ科"
+      ]
+    },
+    {
+      "id": "fishbait_002",
+      "name": "アナルアー",
+      "category": "tool",
+      "description": "職人が作った本物そっくりの疑似餌。シワの数はそれぞれ違う。",
+      "rank": "D",
+      "listedPrice": 200,
+      "trueValue": 200,
+      "builtin": true,
+      "params": {
+        "希少度": 1
+      },
+      "isFishingBait": true,
+      "baitFishType": "ハゲウオ科",
+      "baitBiteRate": 8,
+      "baitFishTypes": [
+        "ハゲウオ科"
+      ]
+    },
+    {
+      "id": "item_1790066410104_5",
+      "name": "肉棒",
+      "category": "tool",
+      "description": "特定の魚を釣りたい時につける餌。かなりのビッグサイズ。",
+      "rank": "F",
+      "listedPrice": 600,
+      "trueValue": 600,
+      "unsellable": false,
+      "params": {
+        "希少度": 1
+      },
+      "isFishingBait": true,
+      "baitFishType": "マンフィッシュ科",
+      "baitBiteRate": 10,
+      "baitFishTypes": [
+        "マンフィッシュ科"
+      ]
+    },
+    {
+      "id": "fish_1790065692573_1",
+      "name": "ハゲウオ",
+      "category": "fish",
+      "description": "頭頂部を触るとスベスベした触り心地が特徴の魚",
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30,
+      "builtin": true
+    },
+    {
+      "id": "fish_1790065795719_2",
+      "name": "チョビヒゲウオ",
+      "category": "fish",
+      "description": "唇の上付近にちょび髭のような感覚器官がある小魚",
+      "rank": "F",
+      "listedPrice": 10,
+      "trueValue": 10,
+      "builtin": true
+    },
+    {
+      "id": "fish_1790065872945_3",
+      "name": "キツマンフィッシュ",
+      "category": "fish",
+      "description": "全体的に締まりの良い歯ごたえのある魚",
+      "rank": "F",
+      "listedPrice": 100,
+      "trueValue": 100,
+      "builtin": true
+    },
+    {
+      "id": "item_1790077826222_2",
+      "name": "青コイン",
+      "category": "misc",
+      "description": "コロシアムの報酬にもらえるコイン。景品と交換できる。",
+      "rank": "F",
+      "listedPrice": 1000,
+      "trueValue": 1000,
+      "unsellable": false,
+      "params": {
+        "希少度": 1
+      },
+      "stackable": true
+    },
+    {
+      "id": "item_1790077885839_3",
+      "name": "黃コイン",
+      "category": "misc",
+      "description": "コロシアムの報酬にもらえるコイン。景品と交換できる。",
+      "rank": "F",
+      "listedPrice": 5000,
+      "trueValue": 5000,
+      "unsellable": false,
+      "params": {
+        "希少度": 1
       }
+    },
+    {
+      "id": "item_1790077989026_4",
+      "name": "赤コイン",
+      "category": "misc",
+      "description": "コロシアムの報酬にもらえるコイン。景品と交換できる。",
+      "rank": "F",
+      "listedPrice": 20000,
+      "trueValue": 20000,
+      "unsellable": false,
+      "params": {
+        "希少度": 1
+      }
+    },
+    {
+      "id": "item_1790078389257_7",
+      "name": "スペル=マ・スタジオのコロシアム参加券",
+      "category": "misc",
+      "description": "魔導王国スペル=マ・ギアのコロシアムに参加できる券",
+      "rank": "E",
+      "listedPrice": 1000,
+      "trueValue": 1000,
+      "unsellable": false,
+      "params": {
+        "希少度": 1,
+        "用途": "チケット"
+      },
+      "stackable": true
+    },
+    {
+      "id": "item_1790126275174_1",
+      "name": "フライパン",
+      "category": "cookingTool",
+      "description": "よくあるフライパン。ただのフライパン。",
+      "rank": "F",
+      "listedPrice": 8000,
+      "trueValue": 8000,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "toolDurability": 270,
+      "toolSlotCount": 5
+    },
+    {
+      "id": "item_1790126427439_3",
+      "name": "伯方の潮",
+      "category": "misc",
+      "description": "料理をもっと美味しくする魔法のなんちゃら。",
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "疲労回復量": 20,
+        "眠気軽減割合": 0.05
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1790126573706_4",
+      "name": "ハゲウオの塩焼き",
+      "category": "food",
+      "description": "ハゲウオを塩で焼いただけだが、なかなか美味い。",
+      "rank": "F",
+      "listedPrice": 0,
+      "trueValue": 0,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "foodBuffDuration": 3,
+      "foodBuffPower": 40,
+      "isRecipeItem": true,
+      "unlockRecipeId": "recipe_1790126374740_2"
+    },
+    {
+      "id": "item_1790156642902_1",
+      "name": "魔剣ブリリール",
+      "category": "weapon",
+      "description": "魔物の念が込められた魔剣。全員のSPを40犠牲にして凄まじい威力の技を繰り出すとされている。",
+      "rank": "S",
+      "listedPrice": 130000,
+      "trueValue": 1500000,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "武器種類": "剣",
+        "攻撃力": 80,
+        "魔力": 80,
+        "SP自動回復": 35,
+        "装備部位": "武器"
+      },
+      "statBonusRange": {
+        "min": -15,
+        "max": 5
+      },
+      "blocks": [
+        {
+          "id": "skillblock_1790157206637_8",
+          "type": "heal",
+          "target": "self",
+          "gauge": "fatigue",
+          "amount": "40",
+          "amountIsPercent": true
+        },
+        {
+          "id": "skillblock_1790157229459_9",
+          "type": "adjustGauge",
+          "target": "all",
+          "gauge": "sp",
+          "amount": "40"
+        },
+        {
+          "id": "skillblock_1790157053427_2",
+          "type": "message",
+          "speaker": "",
+          "text": "ブリブリブリブリブリブリィィィィブチブチブチィィッッッツツツ"
+        },
+        {
+          "id": "skillblock_1790157086983_3",
+          "type": "applyStatus",
+          "targetSide": "enemy",
+          "target": "all",
+          "statusId": "poison",
+          "duration": "3",
+          "power": "50",
+          "chance": "0.5"
+        },
+        {
+          "id": "skillblock_1790157111737_4",
+          "type": "damage",
+          "target": "all",
+          "powerMultiplier": "30",
+          "atkType": "magical"
+        },
+        {
+          "id": "skillblock_1790157140676_5",
+          "type": "adjustGauge",
+          "target": "all",
+          "gauge": "hp",
+          "amount": "50"
+        },
+        {
+          "id": "skillblock_1790157168201_6",
+          "type": "applyStatus",
+          "targetSide": "allies",
+          "target": "single",
+          "statusId": "hate",
+          "duration": "3",
+          "power": "0",
+          "chance": "1"
+        },
+        {
+          "id": "skillblock_1790157194066_7",
+          "type": "message",
+          "speaker": "",
+          "text": "スッキリした。"
+        }
+      ],
+      "variables": {},
+      "skillName": "秘技・ブリブレイド",
+      "isRustySeries": false,
+      "rustyRankOutcomes": {}
+    },
+    {
+      "id": "item_1790157307210_10",
+      "name": "錆びた剣",
+      "category": "weapon",
+      "description": "長年放置されていたのか、刃はぼろぼろに錆びついている。",
+      "rank": "S",
+      "listedPrice": 3000,
+      "trueValue": 100000,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 7,
+        "武器種類": "剣",
+        "装備部位": "武器",
+        "攻撃力": 2,
+        "グレード": 5
+      },
+      "statBonusRange": {
+        "min": 0,
+        "max": 0
+      },
+      "blocks": [],
+      "variables": {},
+      "isRustySeries": true,
+      "rustyRankOutcomes": {
+        "C": "item_1789443087577_12",
+        "B": "item_1789345576131_1",
+        "S": "item_1790156642902_1",
+        "A": "excalibur"
+      }
+    },
+    {
+      "id": "food_cooking_fail",
+      "name": "ゲロ以下のにおいがプンプンする料理",
+      "category": "food",
+      "description": "材料の組み合わせが噛み合わなかったのか、見た目も匂いもひどいことになってしまった一品。とても食べる気にはなれない。",
+      "rank": "F",
+      "listedPrice": 1,
+      "trueValue": 1,
+      "builtin": true
+    }
+  ],
+  "furniture": [
+    {
+      "id": "furniture_1790162502818_8",
+      "name": "コッシー",
+      "imagePath": "",
+      "price": 0,
+      "width": 1,
+      "height": 1,
+      "isStorage": false,
+      "storageSlots": 10,
+      "color": "#8a6c00"
+    },
+    {
+      "id": "furniture_1790162524441_9",
+      "name": "たんすッ",
+      "imagePath": "",
+      "price": 0,
+      "width": 2,
+      "height": 1,
+      "isStorage": true,
+      "storageSlots": 10,
+      "color": "#805100"
+    }
+  ],
+  "fishItems": [
+    {
+      "id": "fish_1790065692573_1",
+      "name": "ハゲウオ",
+      "description": "頭頂部を触るとスベスベした触り心地が特徴の魚",
+      "fishType": "ハゲウオ科",
+      "power": 6,
+      "hp": 30,
+      "size": 10,
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30
+    },
+    {
+      "id": "fish_1790065795719_2",
+      "name": "チョビヒゲウオ",
+      "description": "唇の上付近にちょび髭のような感覚器官がある小魚",
+      "fishType": "ハゲウオ科",
+      "power": 3,
+      "hp": 15,
+      "size": 5,
+      "rank": "F",
+      "listedPrice": 10,
+      "trueValue": 10
+    },
+    {
+      "id": "fish_1790065872945_3",
+      "name": "キツマンフィッシュ",
+      "description": "全体的に締まりの良い歯ごたえのある魚",
+      "fishType": "マンフィッシュ科",
+      "power": 7,
+      "hp": 30,
+      "size": 12,
+      "rank": "F",
+      "listedPrice": 100,
+      "trueValue": 100
     }
   ],
   "skills": [
@@ -2174,7 +2599,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "剛腕一閃",
       "description": "全身の筋力を一点に集中させて叩き込む重厚な剣撃。敵単体に物理ダメージを与え、低確率でスタンを付与する。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 4,
       "unlockLevel": 2,
       "power": 4,
@@ -2207,7 +2632,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "弧月斬（こげつざん）",
       "description": "素早く円を描くように得物を振り抜き、敵全体に物理ダメージを与える。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 4,
       "unlockLevel": 4,
       "power": 2,
@@ -2240,7 +2665,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "爆炎の舞(ディオニス・ディウム)",
       "description": "刀身に高熱の炎を纏わせて敵を焼き払う範囲攻撃。敵全体に炎属性ダメージを与え、火傷を負わせる。",
       "type": "attack",
-      "element": "炎",
+      "element": "element_1790419127202_5",
       "spCost": 12,
       "unlockLevel": 6,
       "power": 7,
@@ -2273,7 +2698,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "金城鉄壁の構え",
       "description": "盾や得物を構えて防御姿勢を取り、一定ターンの間、自身の被ダメージを軽減する。",
       "type": "buff",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 13,
       "unlockLevel": 7,
       "power": 0,
@@ -2306,7 +2731,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "疾風迅雷突き",
       "description": "電流を纏った鋭い突きを繰り出し、敵単体に雷属性ダメージを与える。低確率で麻痺を付与する。",
       "type": "attack",
-      "element": "雷",
+      "element": "element_1790419127202_6",
       "spCost": 9,
       "unlockLevel": 9,
       "power": 12,
@@ -2339,7 +2764,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "猪武者の豪突（いのししむしゃのごうとつ）",
       "description": "全力で敵陣に突撃し、敵全体に物理ダメージを与える。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 15,
       "unlockLevel": 11,
       "power": 9,
@@ -2372,7 +2797,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "月光、夕刻の終わり。",
       "description": "敵に鈍い一撃をはなつ。敵を鈍痛状態にし、継続ダメージを与える。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 11,
       "unlockLevel": 13,
       "power": 16,
@@ -2405,7 +2830,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "甲殻穿孔（こうかくせんこう）",
       "description": "敵の防御力の一部を無視する強打を放ち、敵単体に確実なダメージを与える。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 14,
       "unlockLevel": 17,
       "power": 17,
@@ -2438,7 +2863,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "獣王無尽(レックス・ブレイク)",
       "description": "自身に獣の心を宿し、極めて高いダメージを敵全体に与える。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 17,
       "unlockLevel": 19,
       "power": 20,
@@ -2471,7 +2896,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "破軍双刃（はぐんそうじん）",
       "description": "得物を両手で操り、敵単体へ5回の連続斬撃を浴びせる。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 21,
       "unlockLevel": 24,
       "power": 5,
@@ -2504,7 +2929,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "唐竹割り（からたけわり）",
       "description": "得物を頭上から真っ二つに振り下ろし、敵単体に大きな物理ダメージを与える。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 20,
       "unlockLevel": 28,
       "power": 27,
@@ -2537,7 +2962,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "大地一擘（だいちいっぱく）",
       "description": "地面を叩き割って衝撃波を発生させ、敵全体に自然属性ダメージを与える。",
       "type": "attack",
-      "element": "自然",
+      "element": "element_1789993499387_1",
       "spCost": 35,
       "unlockLevel": 34,
       "power": 17,
@@ -2570,7 +2995,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "不屈の闘志",
       "description": "一定ターンの間、致命的なダメージを受けてもHP1で耐え抜く。",
       "type": "buff",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 20,
       "unlockLevel": 40,
       "power": 0,
@@ -2603,7 +3028,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "修羅への渇望（しゅらへのかつぼう）",
       "description": "自身のHPが瀕死に近いほど攻撃回数が増える連続攻撃を敵単体に行う。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 26,
       "unlockLevel": 47,
       "power": 48,
@@ -2639,7 +3064,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "雷鳴一閃（らいめいいっせん）",
       "description": "雷鳴を纏った一閃を放ち、敵単体に雷属性の大ダメージを与える。低確率で麻痺を付与する。",
       "type": "attack",
-      "element": "雷",
+      "element": "element_1790419127202_6",
       "spCost": 30,
       "unlockLevel": 65,
       "power": 40,
@@ -2672,7 +3097,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "万鈞の穿（ばんきんのうがち）",
       "description": "得物を槍のように連続で突き出し、敵単体に4回の貫通ダメージを与える。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 35,
       "unlockLevel": 70,
       "power": 9.5,
@@ -2705,7 +3130,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "幻想の贈り物（イマジン・ベネディクション）",
       "description": "一定ターンの間、使用するスキルの効果が強化される（攻撃は威力上昇、回復は回復量増加）。",
       "type": "buff",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 10,
       "unlockLevel": 1,
       "power": 0,
@@ -2738,7 +3163,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "マッスル・アタック",
       "description": "筋肉によるゴリ押しで2回殴る。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 4,
       "unlockLevel": 2,
       "power": 2,
@@ -2804,7 +3229,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "阿吽の一閃（あうんのいっせん）",
       "description": "味方と息を合わせて連携攻撃を行い、敵単体に追加ダメージを与える。生きている仲間の数（自分を含む）だけ連続で攻撃する。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 5,
       "unlockLevel": 6,
       "power": 11,
@@ -2840,7 +3265,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "ロー・ディスシプリナ",
       "description": "温かい聖なる光で包み込む回復魔法。HPを少し回復する。",
       "type": "heal",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 5,
       "unlockLevel": 7,
       "power": 0,
@@ -2873,7 +3298,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "気付け薬",
       "description": "カンフル剤を打ち、SPを少量回復させる。",
       "type": "heal",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 0,
       "unlockLevel": 9,
       "power": 7,
@@ -2906,7 +3331,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "明鏡止水（めいきょうしすい）",
       "description": "敵の隙を見抜き、次に自身が行う攻撃のクリティカル率を上昇させる。",
       "type": "buff",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 10,
       "unlockLevel": 11,
       "power": 0,
@@ -2939,7 +3364,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "千変万化の一撃（せんぺんばんかのいちげき）",
       "description": "敵単体にランダムな属性で中程度のダメージを与える。",
       "type": "attack",
-      "element": "自然",
+      "element": "element_1789993499387_1",
       "spCost": 11,
       "unlockLevel": 13,
       "power": 16,
@@ -2972,7 +3397,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "インター・ディスシプリナ",
       "description": "大きな光が体を包み、中程度の傷を癒やし状態異常を治癒する。",
       "type": "heal",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 18,
       "unlockLevel": 17,
       "power": 20,
@@ -3005,7 +3430,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "斬打両断（ざんだりょうだん）",
       "description": "得物の刃と柄を巧みに使い分け、敵単体に物理ダメージを与える。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 16,
       "unlockLevel": 19,
       "power": 9,
@@ -3038,7 +3463,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "変幻自在の采配（へんげんじざいのさいはい）",
       "description": "次に使用するスキルの効果を強化する。",
       "type": "buff",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 14,
       "unlockLevel": 24,
       "power": 0,
@@ -3104,7 +3529,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "ハイ・ディスシプリナ",
       "description": "大いなる光芒が周りを囲み、大回復し状態異常を回復する。5ターンの間、あらゆる状態異常を無効化する「大いなる光芒状態」を付与する。",
       "type": "heal",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 65,
       "unlockLevel": 65,
       "power": 55,
@@ -3174,7 +3599,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "八面六臂（はちめんろっぴ）",
       "description": "八方に得物を薙ぎ払い、敵全体に物理ダメージを与える。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 35,
       "unlockLevel": 70,
       "power": 24,
@@ -3207,7 +3632,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "血華の演舞（ブラッド・ダンス）",
       "description": "自身の血を力に変え、一定ターンの間、攻撃力を強化する。攻撃時に自身も少しダメージを受ける。",
       "type": "buff",
-      "element": "裂",
+      "element": "element_1789993538636_5",
       "spCost": 6,
       "unlockLevel": 1,
       "power": 0,
@@ -3240,7 +3665,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "獅子吼（ししく）",
       "description": "雄叫びを上げて自身を鼓舞し、一定ターンの間、攻撃力を上昇させる。",
       "type": "buff",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 5,
       "unlockLevel": 6,
       "power": 0,
@@ -3273,7 +3698,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "怒濤乱撃（どとうらんげき）",
       "description": "怒涛の勢いで斬りつける3連撃。命中するたびに敵の防御力を低下させる。",
       "type": "attack",
-      "element": "裂",
+      "element": "element_1789993538636_5",
       "spCost": 16,
       "unlockLevel": 9,
       "power": 5,
@@ -3306,7 +3731,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "捨身乱撃（しゃしんらんげき）",
       "description": "防御を顧みず得物を振り回し、自身の防御力を一定ターン低下させる代わりに、敵全体へ大ダメージを与える。",
       "type": "attack",
-      "element": "裂",
+      "element": "element_1789993538636_5",
       "spCost": 30,
       "unlockLevel": 40,
       "power": 30,
@@ -3339,7 +3764,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "怨嗟の号哭（えんさのごうこく）",
       "description": "断末魔じみた咆哮を上げ、敵全体を一定の確率で混乱状態にする。",
       "type": "attack",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 40,
       "unlockLevel": 54,
       "power": 20,
@@ -3372,7 +3797,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "血臭の宴（けっしゅうのうたげ）",
       "description": "敵全体を巻き込む乱舞を行い、与えたダメージの一部を自身のHPに変換する。",
       "type": "attack",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 34,
       "unlockLevel": 70,
       "power": 25,
@@ -3405,7 +3830,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "ケアリー☆キューティー♡マジカル変身",
       "description": "魔法少女へ変身する。変身中のみ魔法が使え、威力が大きく上昇し、毎ターンSPが少しずつ回復する。SPが3割を切ると強制的に解除される。",
       "type": "special",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 0,
       "unlockLevel": 1,
       "power": 0,
@@ -3438,7 +3863,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "プリティー♡ダービー・ショット",
       "description": "ありあまる可愛さを一発に込めて放つ攻撃。",
       "type": "attack",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 10,
       "unlockLevel": 2,
       "power": 5,
@@ -3471,7 +3896,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "プチ・ブロッサム",
       "description": "敵単体に自然属性の小ダメージを与え、命中率を低下させる。",
       "type": "attack",
-      "element": "自然",
+      "element": "element_1789993499387_1",
       "spCost": 13,
       "unlockLevel": 4,
       "power": 4,
@@ -3504,7 +3929,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "シャイニングアロー",
       "description": "光の矢を放ち、敵単体に光属性ダメージを与える。",
       "type": "attack",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 15,
       "unlockLevel": 6,
       "power": 8,
@@ -3537,7 +3962,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "キューティクル・マシンガン☆",
       "description": "小さな魔法弾を連続で撃ち込む連撃。ひとつひとつのダメージは少ないがすべて当たると強い。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 15,
       "unlockLevel": 7,
       "power": 1,
@@ -3572,7 +3997,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "スパークルフレイム",
       "description": "敵単体に炎属性ダメージを与え、軽度の火傷状態を付与する。",
       "type": "attack",
-      "element": "炎",
+      "element": "element_1790419127202_5",
       "spCost": 20,
       "unlockLevel": 9,
       "power": 9,
@@ -3605,7 +4030,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "マジカル・キュア・ラブ・ショット",
       "description": "愛の力を込めた高純度の熱光線を敵全体に浴びせる。火傷状態にする。",
       "type": "attack",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 25,
       "unlockLevel": 11,
       "power": 13,
@@ -3638,7 +4063,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "ツインクルサンダー",
       "description": "敵単体に雷属性ダメージを与え、低確率で行動封じを付与する。",
       "type": "attack",
-      "element": "雷",
+      "element": "element_1790419127202_6",
       "spCost": 20,
       "unlockLevel": 13,
       "power": 18,
@@ -3671,7 +4096,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "影縛りの呪(シャドウバインド)",
       "description": "敵単体を闇の力で拘束し、高確率で一定ターンの間、行動を制限する。",
       "type": "attack",
-      "element": "闇",
+      "element": "element_1789993533981_3",
       "spCost": 35,
       "unlockLevel": 17,
       "power": 0,
@@ -3704,7 +4129,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "ラブリーレイ",
       "description": "愛らしい光線を放ち、敵単体に光属性ダメージを与える。",
       "type": "attack",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 27,
       "unlockLevel": 19,
       "power": 23,
@@ -3737,7 +4162,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "スターダストシャワー",
       "description": "降り注ぐ光の粒で敵全体に光属性の範囲ダメージを与える。",
       "type": "attack",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 42,
       "unlockLevel": 24,
       "power": 24,
@@ -3770,7 +4195,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "ギャラクシーボルト",
       "description": "星屑を纏った雷撃を放ち、敵全体に雷属性ダメージを与える。",
       "type": "attack",
-      "element": "雷",
+      "element": "element_1790419127202_6",
       "spCost": 53,
       "unlockLevel": 28,
       "power": 28,
@@ -3803,7 +4228,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "混沌の渦(カオスヴォルテックス)",
       "description": "敵全体にランダムな属性のダメージを連続して与える。",
       "type": "attack",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 57,
       "unlockLevel": 34,
       "power": 3,
@@ -3836,7 +4261,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "エターナル・ブリザード",
       "description": "敵の周りに永遠なる氷河を創造し大ダメージを与え、大いなる氷結状態にする。3ターンの間行動不能にし、継続ダメージを与える。ちなみに超次元サッカーでも使える。",
       "type": "attack",
-      "element": "自然",
+      "element": "element_1789993499387_1",
       "spCost": 230,
       "unlockLevel": 84,
       "power": 55,
@@ -3869,7 +4294,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "フェアリーブレッシング",
       "description": "味方全体を回復させつつ、一定ターンの間、攻撃力を上昇させる。",
       "type": "heal",
-      "element": "自然",
+      "element": "element_1789993499387_1",
       "spCost": 73,
       "unlockLevel": 35,
       "power": 46,
@@ -3902,7 +4327,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "フレイムサンダーストーム",
       "description": "敵全体に強力な炎属性ダメージを与え、火傷状態を付与する。",
       "type": "attack",
-      "element": "炎",
+      "element": "element_1790419127202_5",
       "spCost": 71,
       "unlockLevel": 47,
       "power": 34,
@@ -3935,7 +4360,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "深淵の一撃(アビスストライク)",
       "description": "敵単体に闇属性の大ダメージを与え、防御力を低下させる。",
       "type": "attack",
-      "element": "闇",
+      "element": "element_1789993533981_3",
       "spCost": 84,
       "unlockLevel": 54,
       "power": 44,
@@ -3968,7 +4393,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "ジェノサイド・レッド・バースト",
       "description": "敵全体にすさまじいダメージを与え、ダメージが入りやすい状態にする。",
       "type": "attack",
-      "element": "闇",
+      "element": "element_1789993533981_3",
       "spCost": 97,
       "unlockLevel": 65,
       "power": 35,
@@ -4001,7 +4426,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "ホーリーサンクチュアリ",
       "description": "味方全体のHPを大きく回復し、戦闘不能や状態異常を全て解除する。",
       "type": "heal",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 84,
       "unlockLevel": 78,
       "power": 90,
@@ -4036,7 +4461,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "絶倫",
       "description": "SPが2割を下回った時、自動的にSPが8割まで回復する（1戦闘につき3回まで）。",
       "type": "buff",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 6,
       "unlockLevel": 1,
       "power": 0,
@@ -4069,7 +4494,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "フェロモン・オーバードライブ",
       "description": "敵単体を見つめて魅了し、低確率で行動を封じる。",
       "type": "attack",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 7,
       "unlockLevel": 2,
       "power": 8,
@@ -4102,7 +4527,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "ハートブレイク・パンチ",
       "description": "情熱を込めた拳を叩き込み、敵単体にダメージを与える。",
       "type": "attack",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 4,
       "unlockLevel": 4,
       "power": 10,
@@ -4135,7 +4560,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "情熱注入",
       "description": "味方単体の士気を高め、一定ターンの間、攻撃力を上昇させる。",
       "type": "buff",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 5,
       "unlockLevel": 6,
       "power": 0,
@@ -4168,7 +4593,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "チャームレーザー",
       "description": "謎の魅惑光線を放ち、敵単体にダメージを与える。低確率で魅了を付与する。",
       "type": "attack",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 5,
       "unlockLevel": 7,
       "power": 12,
@@ -4201,7 +4626,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "禁断のシュガートラップ",
       "description": "敵単体を誘惑し、一定ターンの間、防御力を低下させる。",
       "type": "attack",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 9,
       "unlockLevel": 9,
       "power": 14,
@@ -4234,7 +4659,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "幻惑ミラージュ",
       "description": "妖艶な舞を披露し、敵全体の命中率を低下させる。",
       "type": "attack",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 12,
       "unlockLevel": 17,
       "power": 21,
@@ -4267,7 +4692,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "魅惑のハーレムフィールド",
       "description": "敵全体を魅了し、一定確率で行動を封じる。",
       "type": "attack",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 17,
       "unlockLevel": 19,
       "power": 23,
@@ -4300,7 +4725,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "大爆発射(スペルマティック・シンドローム)",
       "description": "かなりのSPを消費する代わりに中程度のダメージを与え、行動不能+火傷を負わせる。",
       "type": "attack",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 40,
       "unlockLevel": 34,
       "power": 37,
@@ -4333,7 +4758,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "ラブエナジー献上",
       "description": "自身のHPを消費し、その分を強化に還元する。",
       "type": "buff",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 24,
       "unlockLevel": 40,
       "power": 0,
@@ -4414,7 +4839,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "快楽のスパイラル",
       "description": "敵単体に連続ダメージを与えるたびに、自身のHPがわずかに回復する。",
       "type": "attack",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 29,
       "unlockLevel": 54,
       "power": 8,
@@ -4468,7 +4893,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "背徳のドミネーション",
       "description": "敵単体を支配下に置き、一定ターンの間、攻撃力と防御力を低下させる。",
       "type": "attack",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 34,
       "unlockLevel": 70,
       "power": 15,
@@ -4501,7 +4926,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "元気モリモリ♡フルコース",
       "description": "自分の多くのSPを犠牲に、味方全体のHPとSPを大きく回復させる。",
       "type": "heal",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 40,
       "unlockLevel": 84,
       "power": 60,
@@ -4624,7 +5049,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "闇討ち（やみうち）",
       "description": "敵の不意を突いて斬りつけ、物理ダメージを与える。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 5,
       "unlockLevel": 6,
       "power": 11,
@@ -4690,7 +5115,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "峰打ち（みねうち）",
       "description": "得物の峰で打ち据え、敵単体に物理ダメージを与える。低確率でスタンを付与する。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 7,
       "unlockLevel": 11,
       "power": 16,
@@ -4723,7 +5148,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "真贋看破（しんがんかんぱ）",
       "description": "敵の使用する技を見切り、次に受けるダメージを軽減する。",
       "type": "buff",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 11,
       "unlockLevel": 13,
       "power": 0,
@@ -4789,7 +5214,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "山猫の一閃（やまねこのいっせん）",
       "description": "隙を突いた素早い一閃で、敵単体に物理ダメージを与える。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 13,
       "unlockLevel": 19,
       "power": 15,
@@ -4888,7 +5313,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "眼光紙背の鑑定（がんこうしはいのかんてい）",
       "description": "敵単体の全ステータスと弱点を完全に見抜き、一定ターンの間、その敵への与ダメージを上昇させる。",
       "type": "attack",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 35,
       "unlockLevel": 47,
       "power": 33,
@@ -4987,7 +5412,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "後でやろう（ばかやろう）",
       "description": "自身を「やる気なし状態」にし、一定時間経過後、能力が大幅強化される「本気状態」になる。",
       "type": "buff",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 0,
       "unlockLevel": 1,
       "power": 0,
@@ -5057,7 +5482,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "二度寝",
       "description": "少しだけHPを回復する。",
       "type": "heal",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 10,
       "unlockLevel": 2,
       "power": 9,
@@ -5142,7 +5567,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "八つ当たり",
       "description": "苛立ちに任せて得物を振り回し、敵単体にダメージを与える。",
       "type": "attack",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 4,
       "unlockLevel": 4,
       "power": 10,
@@ -5175,7 +5600,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "無為徒食（むいとしょく）",
       "description": "自身の防御力を上げる代わりに、5ターンの間敵の攻撃対象を自分に集中させる。",
       "type": "buff",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 0,
       "unlockLevel": 6,
       "power": 0,
@@ -5229,7 +5654,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "生半可な一撃（なまはんかないちげき）",
       "description": "気の抜けた様子で得物を振るうが、思わぬ形で敵単体にダメージを与える。低確率で麻痺を付与する。",
       "type": "attack",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 6,
       "unlockLevel": 9,
       "power": 14,
@@ -5270,7 +5695,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "三十六計（さんじゅうろっけい）",
       "description": "一定確率で敵の攻撃を回避しつつ、その場から距離を取る。",
       "type": "buff",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 8,
       "unlockLevel": 13,
       "power": 0,
@@ -5303,7 +5728,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "籠城の策（ろうじょうのさく）",
       "description": "一定ターンの間、受けるダメージを大幅に軽減する代わりに反撃できなくなる。",
       "type": "buff",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 12,
       "unlockLevel": 17,
       "power": 0,
@@ -5357,7 +5782,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "捨て鉢",
       "description": "やけくそになって暴れ回り、敵全体にダメージを与える。",
       "type": "attack",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 13,
       "unlockLevel": 19,
       "power": 23,
@@ -5390,7 +5815,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "五里霧中",
       "description": "敵単体のやる気を削ぎ、一定ターンの間、攻撃力を低下させる。",
       "type": "attack",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 14,
       "unlockLevel": 24,
       "power": 28,
@@ -5423,7 +5848,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "課金召喚",
       "description": "回復・攻撃・状態異常のいずれかがランダムに発動する。",
       "type": "attack",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 15,
       "unlockLevel": 34,
       "power": 37,
@@ -5644,7 +6069,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "惰眠からの覚醒",
       "description": "長い眠りから覚め、一定ターンの間、全ステータスが大幅に上昇する。",
       "type": "buff",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 24,
       "unlockLevel": 40,
       "power": 0,
@@ -5706,7 +6131,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "一か八か",
       "description": "ランダムな敵単体に中〜大ダメージを与える、当たり外れの大きい一撃。",
       "type": "attack",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 45,
       "unlockLevel": 54,
       "power": 55,
@@ -5742,7 +6167,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "混沌なるカオス",
       "description": "世界に矛盾を発生させ、敵を混乱させる。",
       "type": "attack",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 70,
       "unlockLevel": 65,
       "power": 45,
@@ -5775,7 +6200,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "難攻不落（なんこうふらく）",
       "description": "一定ターンの間、自身への被ダメージを完全に無効化する。",
       "type": "buff",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 55,
       "unlockLevel": 70,
       "power": 0,
@@ -5808,7 +6233,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "豹変",
       "description": "低確率で全ステータスが極端に上昇する「本気モード」に突入する。",
       "type": "buff",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 39,
       "unlockLevel": 84,
       "power": 0,
@@ -5844,7 +6269,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "キュアラクル・ホーリーライト",
       "description": "祈りを込めた光の一撃を放ち、敵単体に光属性ダメージを与える。",
       "type": "attack",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 8,
       "unlockLevel": 1,
       "power": 7,
@@ -6026,7 +6451,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "賊害の連鎖(アナザー・ワン・バイツ・ザ・ダスト)",
       "description": "10ターンの間、自分のあらゆる攻撃が別の敵にも連鎖するようになる。",
       "type": "buff",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 12,
       "unlockLevel": 17,
       "power": 0,
@@ -6062,7 +6487,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "血闘の刻印（けっとうのこくいん）",
       "description": "戦闘中に自身が繰り出した攻撃の回数に応じて威力が増加する一撃を放つ（上昇量には上限がある）。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 18,
       "unlockLevel": 24,
       "power": 28,
@@ -6098,7 +6523,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "一期一振（いちごいちふり）",
       "description": "己の限界を超えた渾身の一撃を放ち、敵単体に大ダメージを与える。使用後、自身も反動ダメージを受ける。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 29,
       "unlockLevel": 54,
       "power": 55,
@@ -6154,7 +6579,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "青天の霹靂剣（せいてんのへきれきけん）",
       "description": "己の得物に天より雷を呼び込み、敵全体に強力な雷属性ダメージを与える。",
       "type": "attack",
-      "element": "雷",
+      "element": "element_1790419127202_6",
       "spCost": 39,
       "unlockLevel": 84,
       "power": 82,
@@ -6197,7 +6622,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "呉越同舟の号令（ごえつどうしゅうのごうれい）",
       "description": "一定ターンの間、自身のステータスを強化する。",
       "type": "buff",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 22,
       "unlockLevel": 34,
       "power": 0,
@@ -6240,7 +6665,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "二天一流（にてんいちりゅう）",
       "description": "二つの得物を巧みに使い分け、敵単体に4連続攻撃を行う。",
       "type": "attack",
-      "element": "物理",
+      "element": "element_1790419127202_4",
       "spCost": 24,
       "unlockLevel": 40,
       "power": 42,
@@ -6283,7 +6708,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "業火一閃（ごうかいっせん）",
       "description": "得物に炎を纏わせて斬りつけ、敵単体に炎属性ダメージを与える。低確率で火傷を付与する。",
       "type": "attack",
-      "element": "炎",
+      "element": "element_1790419127202_5",
       "spCost": 22,
       "unlockLevel": 47,
       "power": 48,
@@ -6326,7 +6751,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "痛快の一太刀（つうかいのひとたち）",
       "description": "自らの体を軽く傷つけて怒りを高め、次に繰り出す攻撃の威力を上昇させる。",
       "type": "buff",
-      "element": "裂",
+      "element": "element_1789993538636_5",
       "spCost": 4,
       "unlockLevel": 2,
       "power": 0,
@@ -6411,7 +6836,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "血振るい（ちぶるい）",
       "description": "血に濡れた得物を振るい、敵単体に裂属性ダメージを与える。",
       "type": "attack",
-      "element": "裂",
+      "element": "element_1789993538636_5",
       "spCost": 5,
       "unlockLevel": 7,
       "power": 12,
@@ -6454,7 +6879,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "紅蓮の代価（ぐれんのだいか）",
       "description": "自身のHPを大きく消費する代わりに、敵単体へ甚大なダメージを与える。",
       "type": "attack",
-      "element": "裂",
+      "element": "element_1789993538636_5",
       "spCost": 7,
       "unlockLevel": 11,
       "power": 16,
@@ -6497,7 +6922,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "狂騒曲（きょうそうきょく）",
       "description": "一定ターンの間、攻撃力が大幅に上昇する狂乱状態になる。",
       "type": "buff",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 11,
       "unlockLevel": 13,
       "power": 0,
@@ -6540,7 +6965,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "阿鼻叫喚（あびきょうかん）",
       "description": "阿鼻地獄の如き絶叫を撒き散らし、敵全体に混沌属性ダメージを与える。低確率で混乱を付与する。",
       "type": "attack",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 20,
       "unlockLevel": 28,
       "power": 31,
@@ -6583,7 +7008,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "業苦の悦（ごうくのえつ）",
       "description": "自らに鈍痛を刻み、その代償として一定ターンの間、攻撃力を大きく上昇させる。",
       "type": "buff",
-      "element": "混沌",
+      "element": "element_1789993514120_2",
       "spCost": 22,
       "unlockLevel": 34,
       "power": 0,
@@ -6653,7 +7078,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "終焉の血華（しゅうえんのけっか）",
       "description": "自身のHPを大きく犠牲にして、敵単体へ致命的なダメージを与える。",
       "type": "attack",
-      "element": "裂",
+      "element": "element_1789993538636_5",
       "spCost": 35,
       "unlockLevel": 84,
       "power": 82,
@@ -6727,7 +7152,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "快感シェアリング",
       "description": "味方全体のHPとSPを少量ずつ回復する。",
       "type": "heal",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 8,
       "unlockLevel": 13,
       "power": 19,
@@ -6770,7 +7195,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "絶頂なるクライマックス",
       "description": "敵単体に大ダメージを与え、その反動で自身のSPを一部回復する。",
       "type": "attack",
-      "element": "性",
+      "element": "element_1789993543337_6",
       "spCost": 18,
       "unlockLevel": 24,
       "power": 28,
@@ -6856,7 +7281,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "のど自慢大会(ワイルド・シンガー)",
       "description": "歌の上手さを全国へアピール！選択によってSP消費量は変わる。",
       "type": "attack",
-      "element": "無",
+      "element": "element_1789993514120_2",
       "spCost": 0,
       "unlockLevel": 1,
       "power": 10,
@@ -7291,7 +7716,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {
         "song": 0,
         "damage": 0
-      }
+      },
+      "useBlocks": true
     },
     {
       "id": "skill_1788388854944_2",
@@ -7300,7 +7726,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "陰葬流・死殺術",
       "description": "敵にいかに効率よくダメージを与えるかを研究してつくられた暗殺術。ターン数によって二つある型のうちの一つが発動する。",
       "type": "attack",
-      "element": "無",
+      "element": "element_1789993538636_5",
       "spCost": 70,
       "unlockLevel": 1,
       "power": 10,
@@ -7447,7 +7873,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "variables": {
         "turn": 0
-      }
+      },
+      "useBlocks": true
     },
     {
       "id": "skill_1788389920141_24",
@@ -7456,7 +7883,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "影起(ダーク・フロンティア)",
       "description": "HPを回復しつつ攻撃する基本の暗殺術",
       "type": "attack",
-      "element": "無",
+      "element": "element_1789993533981_3",
       "spCost": 15,
       "unlockLevel": 7,
       "power": 10,
@@ -7499,7 +7926,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "amount": "35"
         }
       ],
-      "variables": {}
+      "variables": {},
+      "useBlocks": true
     },
     {
       "id": "skill_1788390219256_27",
@@ -7508,7 +7936,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "暗陰",
       "description": "2ターンの間陰に隠れ、攻撃を受けない。",
       "type": "buff",
-      "element": "無",
+      "element": "element_1789993533981_3",
       "spCost": 50,
       "unlockLevel": 13,
       "power": 0,
@@ -7553,7 +7981,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "chance": "1"
         }
       ],
-      "variables": {}
+      "variables": {},
+      "useBlocks": true
     },
     {
       "id": "全能士_完全支援",
@@ -7562,7 +7991,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "完全支援",
       "description": "戦闘不能になった味方を蘇生させ、同時に自身も回復する。",
       "type": "heal",
-      "element": "光",
+      "element": "element_1789993536302_4",
       "spCost": 39,
       "unlockLevel": 84,
       "power": 90,
@@ -7605,7 +8034,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "陰炎(かげろう)",
       "description": "ぼんやりと浮かぶ陰のような存在感で敵の裏から斬る。また、確実に攻撃力低下を与える。",
       "type": "attack",
-      "element": "闇",
+      "element": "element_1789993533981_3",
       "spCost": 10,
       "unlockLevel": 4,
       "power": 10,
@@ -7642,7 +8071,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "陰贄の対価(かげにえのたいか)",
       "description": "自身を戦闘不能にする代わりに仲間全員を万全の状態まで回復させる。",
       "type": "heal",
-      "element": "闇",
+      "element": "element_1789993533981_3",
       "spCost": 75,
       "unlockLevel": 65,
       "power": 10,
@@ -7684,7 +8113,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "陰癒術(シェイド・ヒーリング)",
       "description": "傷口を陰で覆い軽く治癒する。",
       "type": "heal",
-      "element": "闇",
+      "element": "element_1789993533981_3",
       "spCost": 35,
       "unlockLevel": 7,
       "power": 45,
@@ -7721,7 +8150,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "陰憑き",
       "description": "陰と同化することで自由に動き回れる。また、陰の中にいると姿が見えないので攻撃が当たりにくくなる。",
       "type": "buff",
-      "element": "闇",
+      "element": "element_1789993533981_3",
       "spCost": 30,
       "unlockLevel": 13,
       "power": 0,
@@ -7758,7 +8187,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "曠劫の瞬打(こうごうのしゅんだ)",
       "description": "受けた痛みをかなり長い時間引き延ばす攻撃で叩き斬る。",
       "type": "attack",
-      "element": "無",
+      "element": "element_1789993538636_5",
       "spCost": 35,
       "unlockLevel": 19,
       "power": 17,
@@ -7795,7 +8224,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "name": "陰操獣・廻獄",
       "description": "陰から出でし陰操獣を操り複数の敵を屠る技。",
       "type": "attack",
-      "element": "無",
+      "element": "element_1789993533981_3",
       "spCost": 75,
       "unlockLevel": 84,
       "power": 67,
@@ -7850,7 +8279,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           ]
         }
       ],
-      "variables": {}
+      "variables": {},
+      "useBlocks": true
     }
   ],
   "statusAilments": [
@@ -9722,6 +10152,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         {
           "itemId": "tool_001",
           "price": 40
+        },
+        {
+          "itemId": "item_1790126427439_3",
+          "price": 30
         }
       ],
       "shopOffers": []
@@ -10242,6 +10676,14 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         {
           "itemId": "item_1788350425965_30",
           "weight": 5
+        },
+        {
+          "itemId": "item_1790078389257_7",
+          "weight": 8
+        },
+        {
+          "itemId": "item_1790157307210_10",
+          "weight": 1
         }
       ],
       "auctionIntervalDays": 5,
@@ -10264,9 +10706,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "enterBlocks": []
     },
     {
-      "id": "facility_1789842669507_3",
-      "type": "townhall",
-      "name": "新しい施設",
+      "id": "facility_1790066593024_6",
+      "type": "fishing",
+      "name": "ガマジルの池釣り場",
       "bgTrack": "",
       "bgImage": "",
       "ownerDialogue": "",
@@ -10277,8 +10719,336 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "minBet": 10,
       "maxBet": 1000,
       "slotImages": {},
+      "slotWeights": {},
       "enterBlocks": [],
-      "allowedClassNames": []
+      "fishingSpots": [
+        {
+          "fishId": "fish_1790065692573_1",
+          "weight": 1,
+          "timeOfDay": "any",
+          "weather": "any"
+        },
+        {
+          "fishId": "fish_1790065795719_2",
+          "weight": 1,
+          "timeOfDay": "any",
+          "weather": "any"
+        },
+        {
+          "fishId": "fish_1790065872945_3",
+          "weight": 1,
+          "timeOfDay": "any",
+          "weather": "any"
+        }
+      ]
+    },
+    {
+      "id": "facility_1790066599554_7",
+      "type": "shop",
+      "name": "釣り道具屋",
+      "bgTrack": "",
+      "bgImage": "",
+      "ownerDialogue": "釣り道具売ってるよ。",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "minBet": 10,
+      "maxBet": 1000,
+      "slotImages": {},
+      "slotWeights": {},
+      "enterBlocks": [],
+      "shopItems": [
+        {
+          "itemId": "fishrod_001",
+          "price": 600
+        },
+        {
+          "itemId": "fishrod_002",
+          "price": 1000
+        },
+        {
+          "itemId": "fishbait_001",
+          "price": 15
+        },
+        {
+          "itemId": "fishbait_002",
+          "price": 200
+        },
+        {
+          "itemId": "item_1790066410104_5",
+          "price": 600
+        }
+      ],
+      "shopOffers": []
+    },
+    {
+      "id": "facility_1790077753643_1",
+      "type": "colosseum",
+      "name": "スペル=マ・スタジアム",
+      "bgTrack": "",
+      "bgImage": "img/コロシアム.jpg",
+      "ownerDialogue": "ここはコロシアムだ。見ていくかい？",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "minBet": 10,
+      "maxBet": 1000,
+      "slotImages": {},
+      "slotWeights": {},
+      "entryItemId": "item_1790078389257_7",
+      "entryItemQty": 1,
+      "floors": [],
+      "coinItemIdBlue": "item_1790077826222_2",
+      "coinItemIdYellow": "item_1790077885839_3",
+      "coinItemIdRed": "item_1790077989026_4",
+      "milestone10CoinQty": 5,
+      "milestone20CoinQty": 5,
+      "milestone50CoinQty": 5,
+      "finalClearBlueCoinQty": 100,
+      "finalClearYellowCoinQty": 70,
+      "finalClearRedCoinQty": 50,
+      "finalClearGoldReward": 400000,
+      "finalClearExpReward": 100000,
+      "exchangeOffers": [
+        {
+          "coinColor": "blue",
+          "coinQty": 3,
+          "itemId": "item_1789443834281_17",
+          "itemQty": 1
+        },
+        {
+          "coinColor": "blue",
+          "coinQty": 5,
+          "itemId": "harpy_water",
+          "itemQty": 3
+        }
+      ],
+      "enterBlocks": [],
+      "regularEnemyPool": [
+        "skeleton",
+        "slime",
+        "slime",
+        "slime",
+        "goblin",
+        "wolf",
+        "wolf",
+        "orc",
+        "succubus",
+        "harpy",
+        "poison_zombie",
+        "enemy_1788388357072_1",
+        "enemy_1788388357072_1",
+        "enemy_1788595339691_6",
+        "hobgoblin_pack",
+        "enemy_1788879028805_3"
+      ],
+      "bossRoundConfig": {
+        "10": {
+          "enemyMonsterKeys": [
+            "enemy_1789443926000_18",
+            "enemy_1789443926000_18",
+            "enemy_1789443926000_18"
+          ],
+          "level": 25
+        },
+        "20": {
+          "enemyMonsterKeys": [
+            "giant_rat",
+            "giant_rat",
+            "giant_rat",
+            "giant_rat",
+            "giant_rat"
+          ],
+          "level": 35
+        },
+        "30": {
+          "enemyMonsterKeys": [
+            "poison_zombie",
+            "grassland_miniboss",
+            "poison_zombie"
+          ],
+          "level": 50
+        },
+        "40": {
+          "enemyMonsterKeys": [
+            "boss_1788135349004_3",
+            "giant_rat",
+            "boss_1788135349004_3"
+          ],
+          "level": 65
+        },
+        "50": {
+          "enemyMonsterKeys": [
+            "hobgoblin_pack",
+            "cave_boss",
+            "hobgoblin_pack"
+          ],
+          "level": 75
+        },
+        "60": {
+          "enemyMonsterKeys": [
+            "boss_1788595810642_7"
+          ],
+          "level": 80
+        },
+        "70": {
+          "enemyMonsterKeys": [
+            "slime"
+          ],
+          "level": 120
+        },
+        "80": {
+          "enemyMonsterKeys": [
+            "succubus",
+            "succubus",
+            "succubus"
+          ],
+          "level": 100
+        },
+        "90": {
+          "enemyMonsterKeys": [
+            "enemy_1788595339691_6",
+            "boss_1788595810642_7",
+            "enemy_1788595339691_6"
+          ],
+          "level": 110
+        },
+        "99": {
+          "enemyMonsterKeys": [],
+          "level": 0
+        }
+      }
+    },
+    {
+      "id": "facility_1790126744988_5",
+      "type": "shop",
+      "name": "にゃんだふるキッチン",
+      "bgTrack": "",
+      "bgImage": "",
+      "ownerDialogue": "",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "minBet": 10,
+      "maxBet": 1000,
+      "slotImages": {},
+      "slotWeights": {},
+      "entryItemId": "",
+      "entryItemQty": 1,
+      "floors": [],
+      "regularEnemyPool": [],
+      "bossRoundConfig": {},
+      "coinItemIdBlue": "",
+      "coinItemIdYellow": "",
+      "coinItemIdRed": "",
+      "milestone10CoinQty": 1,
+      "milestone20CoinQty": 1,
+      "milestone50CoinQty": 1,
+      "finalClearBlueCoinQty": 0,
+      "finalClearYellowCoinQty": 0,
+      "finalClearRedCoinQty": 0,
+      "finalClearGoldReward": 0,
+      "finalClearExpReward": 0,
+      "exchangeOffers": [],
+      "enterBlocks": [
+        {
+          "type": "dialogue",
+          "speaker": "ゴツいおっちゃん",
+          "text": "ここでは料理道具を売ってるよ！"
+        }
+      ],
+      "shopItems": [
+        {
+          "itemId": "item_1790126275174_1",
+          "price": 8000
+        }
+      ],
+      "shopOffers": []
+    },
+    {
+      "id": "facility_1790162305310_6",
+      "type": "realEstate",
+      "name": "明智不動産",
+      "bgTrack": "",
+      "bgImage": "",
+      "ownerDialogue": "",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "minBet": 10,
+      "maxBet": 1000,
+      "slotImages": {},
+      "slotWeights": {},
+      "entryItemId": "",
+      "entryItemQty": 1,
+      "floors": [],
+      "regularEnemyPool": [],
+      "bossRoundConfig": {},
+      "coinItemIdBlue": "",
+      "coinItemIdYellow": "",
+      "coinItemIdRed": "",
+      "milestone10CoinQty": 1,
+      "milestone20CoinQty": 1,
+      "milestone50CoinQty": 1,
+      "finalClearBlueCoinQty": 0,
+      "finalClearYellowCoinQty": 0,
+      "finalClearRedCoinQty": 0,
+      "finalClearGoldReward": 0,
+      "finalClearExpReward": 0,
+      "exchangeOffers": [],
+      "enterBlocks": [
+        {
+          "type": "dialogue",
+          "speaker": "案内係",
+          "text": "いらっしゃいませ。こんな物件がありますよ。"
+        }
+      ],
+      "propertyAreaIds": [
+        "custom_area_1790162062422_1",
+        "custom_area_1790328824383_1"
+      ]
+    },
+    {
+      "id": "facility_1790162454135_7",
+      "type": "furnitureShop",
+      "name": "超！家具屋",
+      "bgTrack": "",
+      "bgImage": "",
+      "ownerDialogue": "",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "minBet": 10,
+      "maxBet": 1000,
+      "slotImages": {},
+      "slotWeights": {},
+      "entryItemId": "",
+      "entryItemQty": 1,
+      "floors": [],
+      "regularEnemyPool": [],
+      "bossRoundConfig": {},
+      "coinItemIdBlue": "",
+      "coinItemIdYellow": "",
+      "coinItemIdRed": "",
+      "milestone10CoinQty": 1,
+      "milestone20CoinQty": 1,
+      "milestone50CoinQty": 1,
+      "finalClearBlueCoinQty": 0,
+      "finalClearYellowCoinQty": 0,
+      "finalClearRedCoinQty": 0,
+      "finalClearGoldReward": 0,
+      "finalClearExpReward": 0,
+      "exchangeOffers": [],
+      "enterBlocks": [],
+      "furnitureIds": [
+        "furniture_1790162502818_8",
+        "furniture_1790162524441_9"
+      ]
     }
   ],
   "portraitCharacters": [],
@@ -10429,6 +11199,29 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "cost": 2000,
       "description": "継続回復、全体回復が可能で魔力、攻撃力ともに頼れる片手剣",
       "facilityId": "facility_1789442044424_3"
+    },
+    {
+      "id": "recipe_1790126374740_2",
+      "name": "ハゲウオの塩焼き",
+      "shopType": "cooking",
+      "mode": "create",
+      "materials": [
+        {
+          "itemId": "fish_1790065692573_1",
+          "count": 1
+        },
+        {
+          "itemId": "item_1790126427439_3",
+          "count": 3
+        }
+      ],
+      "baseItemId": "",
+      "resultItemId": "item_1790126573706_4",
+      "resultCount": 1,
+      "cost": 0,
+      "description": "",
+      "toolItemId": "item_1790126275174_1",
+      "cookTimeSeconds": 4
     }
   ],
   "randomNamePool": [
@@ -10472,6 +11265,18 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     {
       "id": "element_1789993572395_7",
       "name": "無"
+    },
+    {
+      "id": "element_1790419127202_4",
+      "name": "物理"
+    },
+    {
+      "id": "element_1790419127202_5",
+      "name": "炎"
+    },
+    {
+      "id": "element_1790419127202_6",
+      "name": "雷"
     }
   ],
   "elementMatchups": {
@@ -10770,7 +11575,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "builtin": true,
       "unimplemented": true,
       "name": "？",
-      "type": "unknown",
+      "type": "placeholder",
       "x": 13.881435435648326,
       "y": 2,
       "bgTrack": "",
@@ -10788,7 +11593,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "step"
       ],
       "goldRewards": [],
-      "facilitySpawns": []
+      "facilitySpawns": [],
+      "estatePrice": 7500000
     },
     {
       "id": "builtinarea_1786777141727_82",
@@ -11223,7 +12029,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "facility_1786899214110_5",
         "facility_1788247863308_16",
         "facility_1788244866711_1",
-        "facility_1788134408511_1"
+        "facility_1788134408511_1",
+        "facility_1790066599554_7",
+        "facility_1790162305310_6",
+        "facility_1790162454135_7"
       ],
       "mapNodeSize": 7,
       "upTarget": "custom_area_1788854418149_4",
@@ -11271,7 +12080,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "facility_1788134408511_1",
         "facility_1789601498255_1",
         "facility_1789442530326_5",
-        "facility_1789648540174_1"
+        "facility_1789648540174_1",
+        "facility_1790077753643_1",
+        "facility_1790126744988_5"
       ],
       "mapNodeSize": 20,
       "leftTarget": "custom_area_1788853853599_1",
@@ -11426,6 +12237,159 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "facilityIds": [],
       "rightTarget": "custom_area_1788854113373_2",
       "downTarget": "custom_area_1788854113373_2"
+    },
+    {
+      "id": "area_1790066843334_8",
+      "name": "ガマジルの池",
+      "type": "village",
+      "x": 43.80296907662101,
+      "y": 32.581535023562736,
+      "bgTrack": "",
+      "bgImage": "img/池.png",
+      "bossId": "",
+      "bossTriggerTypes": [
+        "step"
+      ],
+      "bossStepChance": 0.08,
+      "bossExamineChance": 0.15,
+      "enemyIds": [],
+      "items": [],
+      "goldRewards": [],
+      "facilitySpawns": [],
+      "examineMessage": "",
+      "examineMessages": [],
+      "battleVariations": [],
+      "enemyLevel": null,
+      "unlockConditions": [],
+      "facilityIds": [
+        "facility_1790066593024_6"
+      ],
+      "mapNodeSize": 5
+    },
+    {
+      "id": "area_1790162062422_1",
+      "name": "幻魔の森の別荘",
+      "type": "estateHouse",
+      "x": 30.045340796979687,
+      "y": 14.628719238209818,
+      "bgTrack": "",
+      "bgImage": "",
+      "bossId": "",
+      "bossTriggerTypes": [
+        "step"
+      ],
+      "bossStepChance": 0.08,
+      "bossExamineChance": 0.15,
+      "enemyIds": [],
+      "items": [],
+      "goldRewards": [],
+      "facilitySpawns": [],
+      "examineMessage": "",
+      "examineMessages": [],
+      "battleVariations": [],
+      "enemyLevel": null,
+      "unlockConditions": [
+        {
+          "type": "propertyOwned"
+        }
+      ],
+      "facilityIds": [],
+      "mapNodeSize": 3,
+      "estatePrice": 750000,
+      "floorPlan": {
+        "rooms": [
+          {
+            "id": "room_1790162141937_2",
+            "x": 0,
+            "y": 0,
+            "width": 4,
+            "height": 4,
+            "name": "玄関",
+            "doors": {
+              "north": true,
+              "south": false,
+              "east": false,
+              "west": false
+            }
+          },
+          {
+            "id": "room_1790162154157_3",
+            "x": 0,
+            "y": -1,
+            "width": 2,
+            "height": 20,
+            "name": "渡り廊下",
+            "doors": {
+              "north": true,
+              "south": true,
+              "east": false,
+              "west": false
+            }
+          },
+          {
+            "id": "room_1790162185741_4",
+            "x": 0,
+            "y": -2,
+            "width": 30,
+            "height": 25,
+            "name": "リビング",
+            "doors": {
+              "north": false,
+              "south": true,
+              "east": true,
+              "west": false
+            }
+          },
+          {
+            "id": "room_1790162249419_5",
+            "x": 1,
+            "y": -2,
+            "width": 15,
+            "height": 15,
+            "name": "寝室",
+            "doors": {
+              "north": false,
+              "south": false,
+              "east": false,
+              "west": true
+            }
+          }
+        ],
+        "startRoomId": "room_1790162141937_2"
+      }
+    },
+    {
+      "id": "area_1790328824383_1",
+      "name": "よろづ屋・スペル=マ・ギア店",
+      "type": "estateShop",
+      "x": 232.06799677225175,
+      "y": -37.500807569284106,
+      "bgTrack": "",
+      "bgImage": "",
+      "bossId": "",
+      "bossTriggerTypes": [
+        "step"
+      ],
+      "bossStepChance": 0.08,
+      "bossExamineChance": 0.15,
+      "enemyIds": [],
+      "items": [],
+      "goldRewards": [],
+      "facilitySpawns": [],
+      "examineMessage": "",
+      "examineMessages": [],
+      "battleVariations": [],
+      "enemyLevel": null,
+      "unlockConditions": [
+        {
+          "type": "propertyOwned"
+        }
+      ],
+      "facilityIds": [],
+      "mapNodeSize": 3,
+      "estatePrice": 2300000,
+      "estateShelfCapacity": 40,
+      "estateMaxEmployees": 10
     }
   ],
   "mapEdges": [
@@ -11554,6 +12518,21 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       0.5,
       null,
       0
+    ],
+    [
+      "custom_area_1790066843334_8",
+      "grassland",
+      5
+    ],
+    [
+      "custom_area_1790162062422_1",
+      "forest",
+      5
+    ],
+    [
+      "custom_area_1790328824383_1",
+      "custom_area_1788854113373_2",
+      5
     ]
   ],
   "trialGuardianOverrides": {
@@ -11787,28 +12766,62 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
   "companionChatSettings": {
     "partyName": "鉄塊",
     "protagonistEpithet": "一文無しの放浪者",
-    "protagonistPersonality": "本名は治郎、イカれ野郎だが変なところで真面目、根は優しい。",
+    "protagonistPersonality": "本名は治郎、イカれ野郎だが変なところで真面目、根は優しい。\nロリルの主",
     "companions": {
       "ketsuna": {
         "epithet": "竜殺し",
-        "personality": "かなり刺さる言葉遣い、毒舌だがツンデレ。"
+        "personality": "かなり刺さる言葉遣い、毒舌だがツンデレ。\nパーティーのツッコミ役であり根は優しい。"
       },
       "companion_1788390422466_28": {
         "epithet": "砕けないダイヤモンド",
-        "personality": "普段は淡々と話すが知らない人に対しては敬語。\nパーティメンバーは知っている人なのでタメ語。\n「〜じゃん。」や「〜だよね。」などではなく、「〜。」や「...ありがとう...」のような端的？で淡々とした口調。"
+        "personality": "普段は淡々と話す。\nパーティメンバーなど知っている人にはタメ語で話す。\n「〜じゃん。」や「〜だよね。」などではなく、「〜。」や「...ありがとう...」のような端的？で淡々とした口調。治郎には絶対にタメ口で話す。治郎のことは自分を救ってくれた神様のような存在だと思っているため、治郎に対してだけはものすごく献身的で、自分の身体はどういう扱いをされても構わないと思っている。"
       },
       "companion_1789144270926_76": {
         "epithet": "疾風のバン旦那",
-        "personality": "元王国騎士部隊隊長で、陰に潜ったり支援したり攻撃したりとかなりの万能職業。\nしかし40過ぎてまでDTを拗らせてしまったせいで自己嫌悪に陥り隊長を辞任した。\nタメ口で優しいイケオジ。治郎に対しては下ネタを話せる仲。\nしかし自己肯定感だけ以上に低い。"
+        "personality": "元王国騎士部隊隊長で、陰に潜ったり支援したり攻撃したりとかなりの万能職業。\nしかし40過ぎてまでDTを拗らせてしまったせいで自己嫌悪に陥り隊長を辞任した。\nタメ口で優しいイケオジ。治郎に対しては下ネタを話せる仲。\nしかし自己肯定感だけ以上に低い。\n5話(1章第5話)で奴隷のお姉さんである「トクシュ」がコリスギウスに真名を明かしコリスギウスの奴隷となる。しかし、自己肯定感が低いせいでトクシュの好意に気づいていない。"
       }
     }
+  },
+  "scenarioBuildTabVisibility": {
+    "characters": true,
+    "enemies": true,
+    "bosses": true,
+    "items": true,
+    "quests": true,
+    "achievements": true,
+    "tutorials": true,
+    "skills": true,
+    "statuses": true,
+    "flags": true,
+    "gamevars": true,
+    "recipes": true,
+    "loginbonus": true,
+    "companionchat": true,
+    "companions": true,
+    "classes": true,
+    "bgm": true,
+    "maps": true,
+    "facilities": true,
+    "portraits": true,
+    "endings": true,
+    "variables": true,
+    "data": true,
+    "randomnames": true,
+    "elements": true,
+    "fishmgmt": true,
+    "tab-companionchat": true
   },
   "creditsText": "敵などのデザインは僕が描いたものです。まだ下手ですが上手くなれるよう精進します...\nその他「フリー素材/コンポーザー様の楽曲等」を使用させていただいています\n\n背景\n<ゲームまてりあるず>様\n<AIPICT>様\n\n使用させていただいたBGM\n\n<クリエイター【オト】（https://creatoroto-blog.com/）>様\n「Oak-Village」\n\n<かずち>様\n「宵露洞窟」\n\n<ハルト>様\n「月明かりの草原」\n\n<松浦洋介>様\n「The Murmuring Forest」\n\n<Masuo>様\n「森へ」\n\n<dingerbox>様\n「haptime」\n「vacsina」\n「lirva」\n「burglar」\n\n<蒲鉾さちこ>様\n「哀愁と憂いの春に」\n「闇夜にたゆたう海」\n\n<しゃぐま>様\n「穢れ無き水面」\n\n<EBIMAYO>様\n「GOODRUSH」\n\n<アキラの音楽空間 https://www.akira-m.net/index.php>様\n「メヌエット」(ルイージ・ボッケリーニ作曲)\n\n<おみー>様\n「Alfredia」\n\n<ああああ>様、<daph>様\n「C'est la Vie」\n\n<CYLTIE>様\n「Life music,Life work」\n\n<maroyu>様\n「Existenz」",
   "introText": "これから始める方へ。\nこのゲームはクソゲーです。\n開発者がノリで作ったしょうもないシナリオで、\n場が凍りつく会話や一部下ネタがふくまれます。立ち絵管理\n\nキャラクターのイラストは開発者が描いたものですが、\nあまり上手とは言えませんので我慢してください。\n苦手な方はこの場でブラウザバックすることを\nおすすめしマスカット。",
   "deletedBuiltinIds": {
     "enemies": [],
     "bosses": [],
-    "items": [],
+    "items": [
+      "fish_003",
+      "fish_002",
+      "fish_001",
+      "item_1790066083822_4"
+    ],
     "bgmTracks": [],
     "mapAreas": [],
     "skills": [

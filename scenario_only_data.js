@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1790007407917,
+  "version": 1790421210286,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -8133,7 +8133,8 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
       "requiredProgress": 120,
       "requiredDays": 20,
       "startTriggerTavernKey": "facility_facility_1789441959626_2",
-      "objectiveText": "ランクをCにし、進行度を120にして20日生き延びたら城下町の酒場の店主に話しかけよう・"
+      "objectiveText": "ランクをCにし、進行度を120にして20日生き延びたら城下町の酒場の店主に話しかけよう・",
+      "requiredFlag": null
     }
   ],
   "chapterArcs": [
