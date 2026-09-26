@@ -5118,11 +5118,6 @@ html, body {
   overflow: hidden;
 }
 
-.cooking-stepper-editing {
-  border-color: #ffc107;
-  box-shadow: 0 0 6px rgba(255, 193, 7, 0.5);
-}
-
 .cooking-stepper-btn {
   background-color: #333;
   color: #ffc107;
@@ -5165,12 +5160,6 @@ html, body {
 .cooking-slot-clear-btn:disabled {
   opacity: 0.3;
   cursor: default;
-}
-
-.cooking-slot-edit-hint {
-  color: #ffc107;
-  font-size: 0.76em;
-  font-weight: bold;
 }
 
 .cooking-match-preview {
@@ -5260,11 +5249,6 @@ html, body {
   outline-offset: 1px;
 }
 
-.cooking-slot-row-editing {
-  background-color: rgba(255, 193, 7, 0.12);
-  border-color: rgba(255, 193, 7, 0.4);
-}
-
 /* ★要望対応：「作る」を押してから完成するまでのゲージ */
 .cooking-gauge-wrap {
   display: flex;
@@ -5281,6 +5265,11 @@ html, body {
 
 .cooking-gauge-fill {
   background-color: #ffc107;
+  /* ★バグ修正：.gauge-fillの transition: width 0.3s ease; と、JS側の毎フレーム更新がぶつかって
+     常に「追いつこうとして少ししか動かない」状態になり、ゲージが滑らかに溜まっていくように
+     見えていなかった（casino.jsのスロット演出と同じ理由・同じ対策）。ここではtransitionを切り、
+     JS側の更新をそのまま反映させる */
+  transition: none;
 }
 
 .crafting-recipe-row {

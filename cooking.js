@@ -15,8 +15,6 @@ let cookingSlotPicks = [];
 let cookingBatchCount = 1;
 // ★要望対応：キーボード操作用のカーソル。tool→slot→batch→cook の順に並んだ「操作対象一覧」の何番目にいるか
 let cookingCursorIndex = 0;
-// ★カーソルが今どの材料スロットの「個数調整モード」に入っているか（nullなら通常のカーソル移動モード）
-let cookingSlotCountEditIndex = null;
 // ★「作る」を押してからゲージが溜まるまでの間、trueにして他の操作を受け付けないようにする
 let cookingGaugeActive = false;
 // ★要望対応：材料をプルダウン（select）ではなく、鍛冶屋・素材合成屋の素材選択（crafting.jsの
@@ -65,7 +63,6 @@ function selectCookingTool(instanceId) {
   // ★要望対応：スロット数を設定し忘れていても材料が1つしか選べなくならないよう、未設定時は既定値3を使う（アイテム編集欄のプレースホルダーと合わせる）
   const slotCount = tool ? Math.max(1, Number(tool.master.toolSlotCount) || 3) : 0;
   cookingSlotPicks = new Array(slotCount).fill(null).map(() => ({ itemId: "", count: 1 }));
-  cookingSlotCountEditIndex = null;
   cookingMaterialPickerSlotIndex = null;
   renderCookingTab();
 }
@@ -248,7 +245,7 @@ async function attemptCook() {
 }
 
 // ★要望対応：料理タブのキーボード操作。↑↓でカーソル移動、←→で選択中の項目の値を変える、
-//   Z（決定）でその項目を実行、X（キャンセル）で材料枠を空にする／個数調整モードを抜ける
+//   Z（決定）でその項目を実行、X（キャンセル）で材料枠を空にする
 function handleCookingKeyDown(event) {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★シナリオエディタ表示中は本編を操作させない
   if (typeof controlFocus !== "undefined" && controlFocus !== "sub") return; // ★サブ画面操作中のみ有効
@@ -303,28 +300,6 @@ function handleCookingKeyDown(event) {
   if (cookingCursorIndex < 0) cookingCursorIndex = 0;
   const current = focusList[cookingCursorIndex];
   
-  // ★材料スロットの「個数調整モード」中は、←→で個数のみを変え、Z/Xで通常モードへ戻る
-  if (cookingSlotCountEditIndex !== null) {
-    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const pick = cookingSlotPicks[cookingSlotCountEditIndex];
-      if (pick) {
-        const dir = event.key === "ArrowRight" ? 1 : -1;
-        pick.count = Math.max(1, (Number(pick.count) || 1) + dir);
-        renderCookingTab();
-      }
-      return;
-    }
-    if (typeof KEY_CONFIG !== "undefined" && (KEY_CONFIG.decideKeys.includes(event.key) || KEY_CONFIG.cancelKeys.includes(event.key))) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      cookingSlotCountEditIndex = null;
-      renderCookingTab();
-    }
-    return;
-  }
-  
   if (event.key === "ArrowUp" || event.key === "ArrowDown") {
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -335,17 +310,17 @@ function handleCookingKeyDown(event) {
   }
   
   if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+    // ★要望対応：材料スロットでの←→は、材料の種類ではなく個数を変える
+    //   （材料そのものを選ぶ／変えるのはZキーで開くインベントリ風ピッカーの役目）
     if (current.type === "slot") {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const materialOptions = getCookableMaterialOptions();
-      const choices = ["", ...materialOptions.map(o => o.itemId)];
       const pick = cookingSlotPicks[current.index];
-      const currentPos = Math.max(0, choices.indexOf(pick.itemId || ""));
-      const dir = event.key === "ArrowRight" ? 1 : -1;
-      const nextPos = (currentPos + dir + choices.length) % choices.length;
-      cookingSlotPicks[current.index] = { itemId: choices[nextPos], count: 1 };
-      renderCookingTab();
+      if (pick.itemId) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const dir = event.key === "ArrowRight" ? 1 : -1;
+        pick.count = Math.max(1, (Number(pick.count) || 1) + dir);
+        renderCookingTab();
+      }
     } else if (current.type === "batch") {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -363,14 +338,8 @@ function handleCookingKeyDown(event) {
       selectCookingTool(current.entry.slot.instanceId);
       cookingCursorIndex = 0; // ★道具を選び直したら、新しいスロット構成の先頭（＝道具一覧の同じ位置）からになるので0に戻す
     } else if (current.type === "slot") {
-      // ★要望対応：材料が未選択のスロットでZを押すと、鍛冶屋・素材合成屋と同じインベントリ風グリッドを開く。
-      //   既に材料が選ばれている場合は、これまで通りZで個数調整モードに入る
-      if (!cookingSlotPicks[current.index].itemId) {
-        openCookingMaterialPicker(current.index);
-      } else {
-        cookingSlotCountEditIndex = current.index;
-        renderCookingTab();
-      }
+      // ★要望対応：Zキーで、鍛冶屋・素材合成屋と同じインベントリ風ピッカーを開く（材料の選び直しにも使う）
+      openCookingMaterialPicker(current.index);
     } else if (current.type === "cook") {
       attemptCook();
     }
@@ -464,7 +433,10 @@ function renderCookingTab() {
   root.appendChild(toolSection);
   
   const tool = getSelectedCookingTool();
-  if (!tool) return;
+  if (!tool) {
+    scrollCookingCursorIntoView(root);
+    return;
+  }
   
   const materialSection = document.createElement("div");
   materialSection.className = "cooking-section";
@@ -474,7 +446,7 @@ function renderCookingTab() {
   materialSection.appendChild(materialTitle);
   const materialHint = document.createElement("p");
   materialHint.className = "cooking-hint";
-  materialHint.textContent = "↑↓で移動、←→で材料や個数を変更、Zで個数調整モード（もう一度Zで確定）";
+  materialHint.textContent = "↑↓で移動、←→で個数を変更、Zで材料を選ぶ、Xで枠を空にする";
   materialSection.appendChild(materialHint);
   
   const slotListEl = document.createElement("div");
@@ -483,8 +455,7 @@ function renderCookingTab() {
   cookingSlotPicks.forEach((pick, slotIndex) => {
     const row = document.createElement("div");
     const isCursorHere = currentFocus && currentFocus.type === "slot" && currentFocus.index === slotIndex;
-    const isEditingCount = cookingSlotCountEditIndex === slotIndex;
-    row.className = "cooking-slot-row" + (isCursorHere ? " cooking-cursor" : "") + (isEditingCount ? " cooking-slot-row-editing" : "");
+    row.className = "cooking-slot-row" + (isCursorHere ? " cooking-cursor" : "");
     
     // ★上段：材料番号＋どれを置くか選ぶボタン（要望対応：鍛冶屋・素材合成屋と同じインベントリ風グリッドを開く）
     const topLine = document.createElement("div");
@@ -507,12 +478,12 @@ function renderCookingTab() {
     topLine.appendChild(pickBtn);
     row.appendChild(topLine);
     
-    // ★下段：個数のステッパー（−／数字／＋）と、枠を空にするボタン
+    // ★下段：個数のステッパー（−／数字／＋。要望対応：カーソルがこのスロットにある時は←→でも変えられる）と、枠を空にするボタン
     const bottomLine = document.createElement("div");
     bottomLine.className = "cooking-slot-bottom-line";
     
     const stepper = document.createElement("div");
-    stepper.className = "cooking-stepper" + (isEditingCount ? " cooking-stepper-editing" : "");
+    stepper.className = "cooking-stepper";
     const minusBtn = document.createElement("button");
     minusBtn.type = "button";
     minusBtn.className = "cooking-stepper-btn";
@@ -549,13 +520,6 @@ function renderCookingTab() {
       renderCookingTab();
     };
     bottomLine.appendChild(clearBtn);
-    
-    if (isEditingCount) {
-      const editHint = document.createElement("span");
-      editHint.className = "cooking-slot-edit-hint";
-      editHint.textContent = "個数調整中";
-      bottomLine.appendChild(editHint);
-    }
     
     row.appendChild(bottomLine);
     slotListEl.appendChild(row);
@@ -665,6 +629,14 @@ function renderCookingTab() {
   }
   bookSection.appendChild(bookEl);
   root.appendChild(bookSection);
+  
+  scrollCookingCursorIntoView(root);
+}
+
+// ★要望対応：料理タブ全体でも、キーボードのカーソル（.cooking-cursor）が画面外に出た時に自動スクロールする
+function scrollCookingCursorIntoView(root) {
+  const cursorEl = root.querySelector(".cooking-cursor");
+  if (cursorEl) requestAnimationFrame(() => cursorEl.scrollIntoView({ block: "nearest" }));
 }
 
 // ★要望対応：材料選択を、鍛冶屋・素材合成屋の素材選択（crafting.jsのpickEquipmentInstances）と同じ、
