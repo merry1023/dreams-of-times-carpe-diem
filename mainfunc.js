@@ -429,7 +429,7 @@ function setZoomEffect(active) {
 
 // ★要望対応：「天候」演出。雨・雪・桜吹雪を画面に降らせる（DOMで粒を降らせるだけの簡易実装）。
 //   同時に降らせられるのは1種類のみ。weatherOffでやめるか、他の種類に切り替えると自動的に前の物は消える
-const WEATHER_PARTICLE_COUNTS = { rain: 60, snow: 40, sakura: 26 };
+const WEATHER_PARTICLE_COUNTS = { rain: 60, snow: 40, sakura: 26, thunderstorm: 70, hail: 50 };
 let weatherOverlayEl = null;
 let currentWeatherType = null;
 // ★バグ修正：話の「天候」演出ブロック（weatherRainOn等）で明示的に指定した天候は、
@@ -450,14 +450,21 @@ function setWeatherEffect(type) {
   weatherOverlayEl.id = "screen-weather-overlay";
   weatherOverlayEl.className = `screen-weather-overlay screen-weather-${currentWeatherType}`;
   const count = WEATHER_PARTICLE_COUNTS[currentWeatherType] || 40;
+  const isFastFalling = currentWeatherType === "rain" || currentWeatherType === "thunderstorm" || currentWeatherType === "hail"; // ★要望対応：雷雨・雹も雨のように速く降らせる
   for (let i = 0; i < count; i++) {
     const particle = document.createElement("span");
     particle.className = "screen-weather-particle";
     particle.style.left = `${Math.random() * 100}%`;
-    particle.style.animationDuration = `${(currentWeatherType === "rain" ? 0.6 : 4) + Math.random() * (currentWeatherType === "rain" ? 0.5 : 4)}s`;
+    particle.style.animationDuration = `${(isFastFalling ? 0.6 : 4) + Math.random() * (isFastFalling ? 0.5 : 4)}s`;
     particle.style.animationDelay = `-${Math.random() * 5}s`;
     if (currentWeatherType === "sakura") particle.textContent = "🌸";
     weatherOverlayEl.appendChild(particle);
+  }
+  // ★要望対応：雷雨の時だけ、画面全体がたまに白く光る「雷」の演出を追加で重ねる
+  if (currentWeatherType === "thunderstorm") {
+    const flash = document.createElement("div");
+    flash.className = "screen-weather-lightning-flash";
+    weatherOverlayEl.appendChild(flash);
   }
   document.body.appendChild(weatherOverlayEl);
 }
@@ -1703,7 +1710,7 @@ function renderStatusHUD() {
 }
 
 // ★要望対応：天候システム（player.weather、player.js）の「現在」「次」をメインタブの時計の上に表示する
-const WEATHER_TYPE_EMOJI = { clear: "☀️", cloudy: "☁️", rain: "☔", snow: "❄️", sakura: "🌸" };
+const WEATHER_TYPE_EMOJI = { clear: "☀️", cloudy: "☁️", rain: "☔", snow: "❄️", sakura: "🌸", thunderstorm: "⛈️", hail: "🧊" };
 function renderMainTabWeather() {
   if (!player) return;
   if (typeof ensurePlayerWeatherState === "function") ensurePlayerWeatherState(); // player.js（旧セーブ互換）

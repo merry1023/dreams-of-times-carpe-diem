@@ -359,9 +359,12 @@ function sanitizeLoadedPlayer(loadedPlayer) {
   if (!Array.isArray(loadedPlayer.clearedTrialRanks)) loadedPlayer.clearedTrialRanks = []; // ★ランクC以上への昇格試練のクリア記録
   if (!Array.isArray(loadedPlayer.notifiedTrialRanks)) loadedPlayer.notifiedTrialRanks = []; // ★「試練に挑めます」ポップアップを既に見せたランクの記録
   if (typeof loadedPlayer.daysSinceTransfer !== "number") loadedPlayer.daysSinceTransfer = 0;
-  // ★要望対応：天候システム。旧セーブには無いので、無ければ現在・次の天候をランダムに初期化する
+  // ★要望対応：天候システム。旧セーブには無いので、無ければ現在・次の天候・切り替わりまでの時間をランダムに初期化する
   if (!loadedPlayer.weather || typeof loadedPlayer.weather !== "object") {
-    loadedPlayer.weather = { current: pickRandomWeatherType(), next: pickRandomWeatherType() };
+    loadedPlayer.weather = { current: pickRandomWeatherType(), next: pickRandomWeatherType(), hoursUntilNextChange: pickWeatherChangeInterval() };
+  }
+  if (typeof loadedPlayer.weather.hoursUntilNextChange !== "number") {
+    loadedPlayer.weather.hoursUntilNextChange = pickWeatherChangeInterval(); // ★旧セーブ互換（1日1回切り替え時代のセーブ用）
   }
   if (typeof loadedPlayer.progressPoints !== "number") loadedPlayer.progressPoints = 0;
   if (!loadedPlayer.equipment) loadedPlayer.equipment = { 武器: null, 胴: null, 盾: null };
@@ -467,7 +470,7 @@ function initPlayer(className) {
     ownedProperties: {}, // ★不動産システム：購入した家・店の記録（キー＝エリアのlocationKey）。realestate.js参照
     ownedFurniture: [], // ★不動産システム：購入した家具の個体一覧（furniture.js参照）
     furnitureStorage: {}, // ★不動産システム：倉庫家具ごとの収納中身（キー＝家具のinstanceId）。furniture.js参照
-    weather: { current: pickRandomWeatherType(), next: pickRandomWeatherType() }, // ★要望対応：天候システム（現在の天候・次に来る天候）
+    weather: { current: pickRandomWeatherType(), next: pickRandomWeatherType(), hoursUntilNextChange: pickWeatherChangeInterval() }, // ★要望対応：天候システム（現在の天候・次に来る天候・2〜8時間でランダムに切り替わる）
     fishing: { rodItemId: null, baitItemId: null }, // ★要望対応：釣り場で選んでいる釣竿・釣り餌（fishing.js）
     fame: 0, // ★隠しステータス「名声度」。クエストをクリアすると増え、一定量たまるとランクが上がる
     rank: "F", // 冒険者ランク（クエスト受注の条件に使う想定）
@@ -1179,11 +1182,11 @@ function getHealTargetDisplayName(unit, caster) {
 
 /**
  * ★要望対応：天候システム。
- * 晴れ・曇り・雨・雪・桜吹雪の5種類から重み付き抽選する（晴れが一番出やすく、雪・桜吹雪は珍しい）。
+ * 晴れ・曇り・雨・雪・桜吹雪・雷雨・雹の7種類から重み付き抽選する（晴れが一番出やすく、雪・桜吹雪・雹は珍しい）。
  * 釣り場の「天候」指定（fishing.js）や、メインタブの天候表示（mainfunc.js）から参照する
  */
-const WEATHER_TYPE_LABELS_JA = { clear: "晴れ", cloudy: "曇り", rain: "雨", snow: "雪", sakura: "桜吹雪" };
-const WEATHER_TYPE_WEIGHTS = { clear: 6, cloudy: 4, rain: 3, snow: 1, sakura: 1 };
+const WEATHER_TYPE_LABELS_JA = { clear: "晴れ", cloudy: "曇り", rain: "雨", snow: "雪", sakura: "桜吹雪", thunderstorm: "雷雨", hail: "雹" };
+const WEATHER_TYPE_WEIGHTS = { clear: 6, cloudy: 4, rain: 3, snow: 1, sakura: 1, thunderstorm: 2, hail: 1 };
 function pickRandomWeatherType() {
   const entries = Object.entries(WEATHER_TYPE_WEIGHTS);
   const total = entries.reduce((sum, [, w]) => sum + w, 0);
@@ -1194,11 +1197,42 @@ function pickRandomWeatherType() {
   }
   return entries[entries.length - 1][0];
 }
-// ★旧セーブ等でplayer.weatherが無い場合の保険（現在・次の天候をランダムに初期化）
+// ★要望対応：次に天候が切り替わるまでの時間（2〜8時間でランダム）
+function pickWeatherChangeInterval() {
+  return 2 + Math.random() * 6;
+}
+// ★旧セーブ等でplayer.weatherが無い場合の保険（現在・次の天候、切り替わりまでの時間をランダムに初期化）
 function ensurePlayerWeatherState() {
   if (!player) return;
   if (!player.weather || typeof player.weather !== "object") {
-    player.weather = { current: pickRandomWeatherType(), next: pickRandomWeatherType() };
+    player.weather = { current: pickRandomWeatherType(), next: pickRandomWeatherType(), hoursUntilNextChange: pickWeatherChangeInterval() };
+  }
+  if (typeof player.weather.hoursUntilNextChange !== "number") {
+    player.weather.hoursUntilNextChange = pickWeatherChangeInterval(); // ★旧セーブ互換（1日1回切り替え時代のセーブ用）
+  }
+}
+
+/**
+ * ★要望対応：天候を経過時間ぶん進める。2〜8時間に1回、「次の天候」が「今の天候」になり、
+ * 新しい「次の天候」を抽選する（advanceGameTimeから、経過した時間ぶんそのまま渡される）
+ * @param {number} hours - 経過した時間
+ */
+function advanceWeatherByHours(hours) {
+  if (!player || !hours || hours <= 0) return;
+  ensurePlayerWeatherState();
+  player.weather.hoursUntilNextChange -= hours;
+  let changed = false;
+  while (player.weather.hoursUntilNextChange <= 0) {
+    player.weather.current = player.weather.next;
+    player.weather.next = pickRandomWeatherType();
+    player.weather.hoursUntilNextChange += pickWeatherChangeInterval();
+    changed = true;
+  }
+  if (changed) {
+    // ★バグ修正：天候が切り替わったタイミングで、話の演出ブロックによる手動天候指定をリセットし、
+    //   新しい天候を実際の画面演出にも反映する（mainfunc.js）
+    if (typeof weatherManualOverride !== "undefined") weatherManualOverride = false;
+    if (typeof applyAmbientWeatherEffect === "function") applyAmbientWeatherEffect();
   }
 }
 
@@ -1209,16 +1243,6 @@ function ensurePlayerWeatherState() {
 function advanceDay(days = 1) {
   if (!player) return;
   player.daysSinceTransfer += days;
-  // ★要望対応：天候システム。1日進むたびに「次の天候」が「今日の天候」になり、新しい「次の天候」を抽選する
-  ensurePlayerWeatherState();
-  for (let i = 0; i < days; i++) {
-    player.weather.current = player.weather.next;
-    player.weather.next = pickRandomWeatherType();
-  }
-  // ★バグ修正：日付が変わったタイミングで、話の演出ブロックによる手動天候指定をリセットし、
-  //   新しい「今日の天候」を実際の画面演出にも反映する（mainfunc.js）
-  if (typeof weatherManualOverride !== "undefined") weatherManualOverride = false;
-  if (typeof applyAmbientWeatherEffect === "function") applyAmbientWeatherEffect();
 }
 
 /**
@@ -1231,6 +1255,8 @@ function advanceGameTime(hours) {
   if (typeof player.gameHour !== "number") player.gameHour = 8;
   
   player.gameHour += hours;
+  // ★要望対応：天候は日付をまたぐかどうかに関係なく、2〜8時間に1回切り替わる
+  advanceWeatherByHours(hours);
   while (player.gameHour >= 24) {
     player.gameHour -= 24;
     advanceDay(1);
