@@ -693,6 +693,9 @@ function renderProgressSummary(container) {
   
   // ★「進行度」（player.progressPoints）：クエスト達成・ランクアップ・魔物討伐等で増える隠しステータス。第2話解放条件にも使われる
   container.appendChild(buildProgressRow("進行度", `${player.progressPoints || 0}`));
+  
+  // ★要望対応：シナリオ全体（実装済みの全話）の文字数を合計して表示
+  container.appendChild(buildProgressRow("シナリオ全体の文字数", `${getScenarioTotalCharCount().toLocaleString()}文字`));
 }
 
 // ★要望対応：話（scenario2.js等）の中の全ブロックから、セリフ・ナレーション・テロップ・選択肢の
@@ -720,6 +723,19 @@ function getProgressChapterDisplayTitle(chapter) {
   return chapter.isInterlude ? `閑話：${chapter.title}` : chapter.title;
 }
 
+// ★要望対応：章（chapterArcのグループ）も、その章に属する話が1つもクリアされていなければ
+//   章名で内容が分かってしまわないよう「？？？」に伏せる
+function getProgressGroupDisplayName(group) {
+  const clearedInGroup = group.chapters.filter(c => c.cleared).length;
+  if (clearedInGroup === 0) return "？？？";
+  return group.name;
+}
+
+// ★要望対応：登録されている（実装済みの）話すべての文字数を合計した、シナリオ全体の文字数
+function getScenarioTotalCharCount() {
+  return getProgressChapterList().reduce((sum, chapter) => sum + getChapterTotalCharCount(chapter), 0);
+}
+
 // ★要望対応：章一覧（scenarioProject.chapterArcsごとに、その章のクリア済み数／全話数も添えて出す）
 function renderProgressGroupList(container) {
   container.innerHTML = "";
@@ -742,13 +758,15 @@ function renderProgressGroupList(container) {
     
     const titleEl = document.createElement("span");
     titleEl.className = "progress-panel-chapter-title";
-    titleEl.textContent = group.name;
+    titleEl.textContent = getProgressGroupDisplayName(group); // ★要望対応：話が1つもクリアされていない章は「？？？」に伏せる
     row.appendChild(titleEl);
     
     const clearedInGroup = group.chapters.filter(c => c.cleared).length;
+    // ★要望対応：章全体（この章に属する全話）の文字数も合計して表示
+    const groupCharTotal = group.chapters.reduce((sum, c) => sum + getChapterTotalCharCount(c), 0);
     const countEl = document.createElement("span");
     countEl.className = "progress-panel-chapter-charcount";
-    countEl.textContent = `クリア済み ${clearedInGroup}／${group.chapters.length}話`;
+    countEl.textContent = `クリア済み ${clearedInGroup}／${group.chapters.length}話　${groupCharTotal.toLocaleString()}文字`;
     row.appendChild(countEl);
     
     row.onclick = (event) => {
@@ -880,7 +898,7 @@ function renderProgressPanel() {
     // ★章を選んだ後：その章の話一覧だけを表示する
     const groups = getProgressChapterGroups();
     const selectedGroup = groups.find(g => g.id === progressSelectedArcId);
-    title.textContent = selectedGroup ? selectedGroup.name : "進行度";
+    title.textContent = selectedGroup ? getProgressGroupDisplayName(selectedGroup) : "進行度";
     panel.appendChild(title);
     
     const listEl = document.createElement("div");
