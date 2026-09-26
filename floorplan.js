@@ -331,25 +331,28 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         const valid = isFurniturePlacementFree(room, cursor.x, cursor.y, size.w, size.h, placing.instance.instanceId); // furniture.js
         return {
           mode: "placing",
-          modeLabel: "移動・回転中：矢印キーで移動／Rキーで回転／Zキーで確定／Xキーでやめる",
+          modeLabel: "移動・回転中の家具：「" + placing.def.name + "」",
+          legend: ["↑↓←→：移動", "R：90度回転", "Z：ここに確定", "X：やめる（元に戻す）"],
           cursor,
           placing: { def: placing.def, rotation: placing.rotation, excludeInstanceId: placing.instance.instanceId, valid },
-          hint: `「${placing.def.name}」（横${size.w}×縦${size.h}マス）`
+          hint: `横${size.w}×縦${size.h}マス${valid ? "" : "（この位置には置けません）"}`
         };
       }
       if (mode === "cursor") {
         return {
           mode: "cursor",
-          modeLabel: "カーソルモード：矢印キーで移動／Zキーで選択／Gキーで部屋移動モードへ",
+          modeLabel: "カーソルモード",
+          legend: ["↑↓←→：カーソル移動", "Z：家具を選ぶ／空きマスなら新しく置く", "G：部屋移動モードに切替", "X：家を出る"],
           cursor,
           onToggleMode: toggleMode,
           onLeave: leaveHouse,
-          hint: `${room.name || "部屋"}にいる。家具にカーソルを合わせてZキー、何も無いマスでZキーを押すと家具を選んで置けます。`
+          hint: `${room.name || "部屋"}にいる。`
         };
       }
       return {
         mode: "move",
-        modeLabel: "部屋移動モード：矢印キーでドアの方向へ移動／Gキーでカーソルモードへ",
+        modeLabel: "部屋移動モード",
+        legend: ["↑↓←→：ドアの方向へ移動", "G：カーソルモードに切替（家具を操作）", "X：家を出る"],
         onToggleMode: toggleMode,
         onLeave: leaveHouse,
         hint: `${room.name || "部屋"}にいる。${describeDoorHint()}`
@@ -357,6 +360,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     }
     
     function render() {
+      if (typeof hideMessageWindow === "function") hideMessageWindow(); // ★要望対応：カーソル操作中はメッセージウィンドウが邪魔なので隠す
       if (typeof renderRoomView === "function") renderRoomView(room, currentUiState()); // furniture.js
     }
     
@@ -414,6 +418,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       placing = null;
       render();
       pauseKeys();
+      if (typeof showMessageWindow === "function") showMessageWindow(); // ★確定メッセージを出す間だけメッセージウィンドウを戻す
       changeSpeaker("");
       await displayMessage(wasNew ? `「${placedDef.name}」を置いた。` : `「${placedDef.name}」を移動した。`);
       resumeKeys();
@@ -433,6 +438,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     function leaveHouse() {
       pauseKeys();
       if (typeof hideRoomView === "function") hideRoomView(); // furniture.js
+      if (typeof showMessageWindow === "function") showMessageWindow(); // ★家を出た後は通常のシナリオ表示に戻すので、隠していたメッセージウィンドウを戻す
       resolve();
       goBack();
     }
@@ -440,6 +446,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     async function openFurnitureActionMenu(inst) {
       pauseKeys();
       const def = findFurnitureDef(inst.furnitureId); // furniture.js
+      if (typeof showMessageWindow === "function") showMessageWindow(); // ★選択肢を出す間だけメッセージウィンドウを戻す
       changeSpeaker("");
       const options = [];
       if (isFurnitureStorageType(def)) options.push({ text: "収納を開ける", next: "storage" }); // scenariobuild.js
@@ -477,6 +484,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     async function openUnplacedFurniturePicker() {
       const unplaced = player.ownedFurniture.filter(inst => !inst.placement);
       pauseKeys();
+      if (typeof showMessageWindow === "function") showMessageWindow();
       changeSpeaker("");
       if (unplaced.length === 0) {
         await displayMessage("持っている未設置の家具が無いようだ。（家具屋で購入できます）");

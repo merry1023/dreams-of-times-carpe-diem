@@ -172,6 +172,18 @@ function renderRoomView(room, uiState) {
       toolbar.appendChild(leaveBtn);
     }
     panel.appendChild(toolbar);
+    
+    // ★要望対応：一目で操作方法が分かるよう、今のモードで使えるキーを常に一覧表示する（1行のヒントだけでは分かりにくいとの声のため）
+    if (Array.isArray(uiState.legend) && uiState.legend.length > 0) {
+      const legendEl = document.createElement("ul");
+      legendEl.className = "room-view-legend";
+      uiState.legend.forEach(line => {
+        const li = document.createElement("li");
+        li.textContent = line;
+        legendEl.appendChild(li);
+      });
+      panel.appendChild(legendEl);
+    }
   }
   
   const roomW = room.width || 1, roomH = room.height || 1;
@@ -269,6 +281,11 @@ function computeGridMove(index, key, cols, count) {
 //   サブ画面のインベントリタブと同じ見た目（inventory-slot等）の2つのグリッドを左右に並べ、
 //   q/eキーで操作するペインを切り替え、矢印キーでカーソル移動、zキーで選択→個数の小メニュー、
 //   Fキーでそれぞれのペインの並び替えを切り替えられる（右側は本編インベントリと共通のinventorySortMode）
+// ★要望対応：倉庫の中身とインベントリの間でアイテムをやり取りする画面。
+//   サブ画面のインベントリタブと同じ見た目（inventory-slot等）の2つのグリッドを左右に並べ、
+//   q/eキーで操作するペインを切り替え、矢印キーでカーソル移動（画面外に出たら自動スクロール）、
+//   zキーで選択するとアイテムの隣に小さいメニューを出し（displayChoicesは全画面オーバーレイの裏に
+//   隠れてしまうため使わない）、個数を選ぶ。Fキーでそれぞれのペインの並び替えを切り替えられる
 function manageFurnitureStorage(instance) {
   return new Promise(resolve => {
     ensurePlayerFurniture();
@@ -278,6 +295,7 @@ function manageFurnitureStorage(instance) {
     
     const overlay = document.getElementById("furniture-storage-overlay");
     const titleEl = document.getElementById("furniture-storage-title");
+    const legendEl = document.getElementById("furniture-storage-legend");
     const leftGridEl = document.getElementById("furniture-storage-left-grid");
     const rightGridEl = document.getElementById("furniture-storage-right-grid");
     const leftLabelEl = document.getElementById("furniture-storage-left-label");
@@ -291,6 +309,8 @@ function manageFurnitureStorage(instance) {
     let leftIndex = 0, rightIndex = 0;
     let storageSortMode = "added"; // "added"（預けた順）｜"name"（名前順）
     let listenerActive = false;
+    let menu = null; // ★アイテム選択時の小メニュー： { pane, entry, options:[{label,value}], index }
+    let menuEl = null;
     
     function getLeftEntries() {
       const entries = storage.map(s => ({ itemId: s.itemId, quantity: s.quantity, master: (typeof ITEM_MASTER !== "undefined" ? ITEM_MASTER[s.itemId] : null) }));
@@ -314,6 +334,11 @@ function manageFurnitureStorage(instance) {
       return entries;
     }
     
+    function getPaneEntries(pane) { return pane === "left" ? getLeftEntries() : getRightEntries(); }
+    function getPaneGridEl(pane) { return pane === "left" ? leftGridEl : rightGridEl; }
+    function getPaneIndex(pane) { return pane === "left" ? leftIndex : rightIndex; }
+    function setPaneIndex(pane, i) { if (pane === "left") leftIndex = i; else rightIndex = i; }
+    
     // ★見た目はサブ画面インベントリタブのスロット（inventory-slot／item-name／item-qty）をそのまま流用する
     function buildSlotEl(entry, isSelected) {
       const slotDiv = document.createElement("div");
@@ -331,7 +356,10 @@ function manageFurnitureStorage(instance) {
       return slotDiv;
     }
     
-    function renderPane(gridEl, entries, selectedIndex, isActive, emptyText) {
+    function renderPane(pane, emptyText) {
+      const gridEl = getPaneGridEl(pane);
+      const entries = getPaneEntries(pane);
+      const isActive = activePane === pane;
       gridEl.innerHTML = "";
       gridEl.classList.toggle("furniture-storage-grid-active", isActive);
       if (entries.length === 0) {
@@ -341,7 +369,16 @@ function manageFurnitureStorage(instance) {
         gridEl.appendChild(empty);
         return;
       }
+      const selectedIndex = getPaneIndex(pane);
       entries.forEach((entry, i) => gridEl.appendChild(buildSlotEl(entry, isActive && i === selectedIndex)));
+    }
+    
+    // ★要望対応：カーソルが今の表示範囲からはみ出たら、そのマスが見えるところまで自動でスクロールする
+    function scrollActivePaneIntoView() {
+      const gridEl = getPaneGridEl(activePane);
+      const idx = getPaneIndex(activePane);
+      const el = gridEl.children[idx];
+      if (el && typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "nearest", inline: "nearest" });
     }
     
     function render() {
@@ -350,28 +387,31 @@ function manageFurnitureStorage(instance) {
       if (leftIndex >= leftEntries.length) leftIndex = Math.max(0, leftEntries.length - 1);
       if (rightIndex >= rightEntries.length) rightIndex = Math.max(0, rightEntries.length - 1);
       
-      if (titleEl) titleEl.textContent = `「${def ? def.name : "倉庫"}」の中身を整理する（Q/Eで操作するインベントリを切替）`;
-      if (leftLabelEl) leftLabelEl.textContent = `倉庫${activePane === "left" ? "【操作中】" : ""}　並び替え：${storageSortMode === "name" ? "名前順" : "預けた順"}（Fキー）`;
-      if (rightLabelEl) rightLabelEl.textContent = `インベントリ${activePane === "right" ? "【操作中】" : ""}　並び替え：${INVENTORY_SORT_MODE_LABELS[inventorySortMode]}（Fキー）`;
+      if (titleEl) titleEl.textContent = `「${def ? def.name : "倉庫"}」の中身を整理する`;
+      if (leftLabelEl) leftLabelEl.textContent = `① 倉庫${activePane === "left" ? "【操作中】" : ""}　並び替え：${storageSortMode === "name" ? "名前順" : "預けた順"}`;
+      if (rightLabelEl) rightLabelEl.textContent = `② インベントリ${activePane === "right" ? "【操作中】" : ""}　並び替え：${INVENTORY_SORT_MODE_LABELS[inventorySortMode]}`;
       
-      renderPane(leftGridEl, leftEntries, leftIndex, activePane === "left", "（空っぽ）");
-      renderPane(rightGridEl, rightEntries, rightIndex, activePane === "right", "（預けられる物が無いようだ）");
+      renderPane("left", "（空っぽ）");
+      renderPane("right", "（預けられる物が無いようだ）");
+      scrollActivePaneIntoView();
+      renderMenuPopup();
     }
     
     function switchPane() {
+      if (menu) return; // ★メニュー表示中はペイン切替を無視（先にメニューを閉じてもらう）
       activePane = activePane === "left" ? "right" : "left";
       render();
     }
     
     function moveCursor(key) {
-      const entries = activePane === "left" ? getLeftEntries() : getRightEntries();
-      const index = activePane === "left" ? leftIndex : rightIndex;
-      const newIndex = computeGridMove(index, key, COLS, entries.length);
-      if (activePane === "left") leftIndex = newIndex; else rightIndex = newIndex;
+      const entries = getPaneEntries(activePane);
+      const newIndex = computeGridMove(getPaneIndex(activePane), key, COLS, entries.length);
+      setPaneIndex(activePane, newIndex);
       render();
     }
     
     function cycleSort() {
+      if (menu) return;
       if (activePane === "left") storageSortMode = storageSortMode === "added" ? "name" : "added";
       else if (typeof cycleInventorySortMode === "function") cycleInventorySortMode(); // mainfunc.js（本編インベントリと共通）
       render();
@@ -380,8 +420,14 @@ function manageFurnitureStorage(instance) {
     function pauseKeys() { if (listenerActive) { window.removeEventListener("keydown", handleKeyDown); listenerActive = false; } }
     function resumeKeys() { if (!listenerActive) { window.addEventListener("keydown", handleKeyDown); listenerActive = true; } }
     
+    function removeMenuPopupEl() {
+      if (menuEl && menuEl.parentElement) menuEl.parentElement.removeChild(menuEl);
+      menuEl = null;
+    }
+    
     function cleanupAndResolve() {
       pauseKeys();
+      removeMenuPopupEl();
       overlay.classList.add("hidden");
       closeBtn.onclick = null;
       resolve();
@@ -405,48 +451,123 @@ function manageFurnitureStorage(instance) {
       if (typeof renderStatusHUD === "function") renderStatusHUD();
     }
     
-    // ★要望対応：選んだアイテムに「全部／半分／個数を選択して／ひとつだけ／やめる」の小さい選択肢を出す。
-    //   倉庫→インベントリ方向の時は、動詞を「収納する」ではなく「戻す」系に言い換える
-    async function openTransferMenu(direction, itemId, master, totalQty) {
-      pauseKeys();
-      changeSpeaker("");
-      const toStorage = direction === "toStorage";
-      const choices = totalQty > 1 ? [
-        { text: toStorage ? "全部収納する" : "全部戻す", next: "all" },
-        { text: toStorage ? "半分収納する" : "半分戻す", next: "half" },
-        { text: toStorage ? "個数を選択して収納する" : "個数を選択して戻す", next: "pick" },
-        { text: toStorage ? "ひとつだけ収納する" : "ひとつだけ戻す", next: "one" },
-        { text: "やめる", next: "cancel", isBack: true }
+    // ★要望対応：選んだアイテムの「隣」に小さいメニューを出す（全画面の displayChoices はこのオーバーレイの
+    //   裏に隠れてしまうため使わない）。倉庫→インベントリ方向の時は動詞を「収納する」ではなく「戻す」系にする
+    function openTransferMenu(pane) {
+      const entries = getPaneEntries(pane);
+      const idx = getPaneIndex(pane);
+      const entry = entries[idx];
+      if (!entry) return;
+      const toStorage = pane === "right"; // 右（インベントリ）で選んだ物は倉庫へ、左（倉庫）で選んだ物はインベントリへ
+      const direction = toStorage ? "toStorage" : "toInventory";
+      const totalQty = entry.quantity;
+      const options = totalQty > 1 ? [
+        { label: toStorage ? "全部収納する" : "全部戻す", value: "all" },
+        { label: toStorage ? "半分収納する" : "半分戻す", value: "half" },
+        { label: toStorage ? "個数を選択して収納する" : "個数を選択して戻す", value: "pick" },
+        { label: toStorage ? "ひとつだけ収納する" : "ひとつだけ戻す", value: "one" },
+        { label: "やめる", value: "cancel" }
       ] : [
-        { text: toStorage ? "収納する" : "インベントリに戻す", next: "all" },
-        { text: "やめる", next: "cancel", isBack: true }
+        { label: toStorage ? "収納する" : "インベントリに戻す", value: "all" },
+        { label: "やめる", value: "cancel" }
       ];
-      await displayMessage(`${master ? master.name : itemId} ×${totalQty}`);
-      const picked = await displayChoices(choices);
-      if (picked.next !== "cancel") {
-        let qty = 0;
-        if (picked.next === "all") qty = totalQty;
-        else if (picked.next === "half") qty = Math.max(1, Math.ceil(totalQty / 2));
-        else if (picked.next === "one") qty = 1;
-        else if (picked.next === "pick") qty = await pickQuantity(totalQty, master ? master.name : itemId); // town.js
-        if (qty > 0) transfer(direction, itemId, qty);
-      }
-      resumeKeys();
+      menu = { pane, idx, entry, direction, totalQty, options, index: 0 };
       render();
     }
     
-    function selectCurrent() {
-      if (activePane === "left") {
-        const entry = getLeftEntries()[leftIndex];
-        if (entry) openTransferMenu("toInventory", entry.itemId, entry.master, entry.quantity);
-      } else {
-        const entry = getRightEntries()[rightIndex];
-        if (entry) openTransferMenu("toStorage", entry.itemId, entry.master, entry.quantity);
+    function moveMenu(dy) {
+      if (!menu) return;
+      menu.index = Math.max(0, Math.min(menu.options.length - 1, menu.index + dy));
+      renderMenuPopup();
+    }
+    
+    async function confirmMenu() {
+      if (!menu) return;
+      const { direction, entry, totalQty, options } = menu;
+      const value = options[menu.index].value;
+      menu = null;
+      removeMenuPopupEl();
+      if (value === "cancel") { render(); return; }
+      let qty = 0;
+      if (value === "all") qty = totalQty;
+      else if (value === "half") qty = Math.max(1, Math.ceil(totalQty / 2));
+      else if (value === "one") qty = 1;
+      else if (value === "pick") {
+        pauseKeys(); // ★個数選択の専用ミニ画面（town.js pickQuantity）が自前のキー操作を持つので、こちらは一旦止める
+        qty = await pickQuantity(totalQty, entry.master ? entry.master.name : entry.itemId); // town.js
+        resumeKeys();
       }
+      if (qty > 0) transfer(direction, entry.itemId, qty);
+      render();
+    }
+    
+    function cancelMenu() {
+      menu = null;
+      removeMenuPopupEl();
+      render();
+    }
+    
+    // ★選んだアイテムのスロット要素の右隣（入らなければ左隣）に、メニューを浮かせて表示する
+    function renderMenuPopup() {
+      removeMenuPopupEl();
+      if (!menu) return;
+      const gridEl = getPaneGridEl(menu.pane);
+      const slotEl = gridEl.children[menu.idx];
+      
+      const popup = document.createElement("div");
+      popup.className = "furniture-storage-menu-popup";
+      const header = document.createElement("p");
+      header.className = "furniture-storage-menu-popup-header";
+      header.textContent = `${menu.entry.master ? menu.entry.master.name : menu.entry.itemId} ×${menu.totalQty}`;
+      popup.appendChild(header);
+      menu.options.forEach((opt, i) => {
+        const row = document.createElement("div");
+        row.className = "furniture-storage-menu-popup-option" + (i === menu.index ? " selected" : "");
+        row.textContent = opt.label;
+        row.onclick = (event) => { event.stopPropagation(); menu.index = i; confirmMenu(); };
+        popup.appendChild(row);
+      });
+      const footer = document.createElement("p");
+      footer.className = "furniture-storage-menu-popup-footer";
+      footer.textContent = "↑↓：選択　Z：決定　X：やめる";
+      popup.appendChild(footer);
+      
+      overlay.appendChild(popup);
+      menuEl = popup;
+      
+      const popupWidth = 190; // ★CSSのwidthと合わせておく（配置計算に必要）
+      const estimatedHeight = 40 + menu.options.length * 26 + 20;
+      let left, top;
+      if (slotEl) {
+        const rect = slotEl.getBoundingClientRect();
+        left = rect.right + 8;
+        if (left + popupWidth > window.innerWidth - 8) left = rect.left - popupWidth - 8; // ★右にはみ出るなら左隣に出す
+        if (left < 8) left = Math.max(8, Math.min(window.innerWidth - popupWidth - 8, rect.left));
+        top = rect.top;
+        if (top + estimatedHeight > window.innerHeight - 8) top = Math.max(8, window.innerHeight - estimatedHeight - 8);
+      } else {
+        left = window.innerWidth / 2 - popupWidth / 2;
+        top = window.innerHeight / 2 - estimatedHeight / 2;
+      }
+      popup.style.left = left + "px";
+      popup.style.top = top + "px";
+    }
+    
+    function selectCurrent() {
+      openTransferMenu(activePane);
     }
     
     function handleKeyDown(event) {
       if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
+      
+      if (menu) {
+        if (event.key === "ArrowUp") { event.preventDefault(); moveMenu(-1); }
+        else if (event.key === "ArrowDown") { event.preventDefault(); moveMenu(1); }
+        else if (event.key === "z" || event.key === "Z" || event.key === " ") { event.preventDefault(); confirmMenu(); }
+        else if (event.key === "x" || event.key === "X" || event.key === "Escape") { event.preventDefault(); cancelMenu(); }
+        return;
+      }
+      
       if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) { event.preventDefault(); moveCursor(event.key); }
       else if (event.key === "q" || event.key === "Q" || event.key === "e" || event.key === "E") { event.preventDefault(); switchPane(); }
       else if (event.key === "f" || event.key === "F") { event.preventDefault(); cycleSort(); }
@@ -454,6 +575,7 @@ function manageFurnitureStorage(instance) {
       else if (event.key === "x" || event.key === "X" || event.key === "Escape") { event.preventDefault(); cleanupAndResolve(); }
     }
     
+    if (legendEl) legendEl.textContent = "↑↓←→：カーソル移動／Z：選ぶ／Q・E：倉庫とインベントリを切替／F：並び替え／X：閉じる";
     closeBtn.onclick = (event) => { event.stopPropagation(); cleanupAndResolve(); };
     resumeKeys();
     overlay.classList.remove("hidden");
