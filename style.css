@@ -6134,6 +6134,36 @@ html, body {
   animation: screen-weather-fall-sakura linear infinite;
 }
 
+/* ★要望対応：雷雨（雨より濃い色味の粒＋たまに画面が白く光る） */
+.screen-weather-thunderstorm .screen-weather-particle {
+  position: absolute;
+  top: -10%;
+  width: 2px;
+  height: 70px;
+  background: linear-gradient(to bottom, transparent, rgba(180, 190, 220, 0.85));
+  animation: screen-weather-fall-rain linear infinite;
+}
+
+.screen-weather-lightning-flash {
+  position: absolute;
+  inset: 0;
+  background-color: #fff;
+  opacity: 0;
+  animation: screen-weather-lightning 7s ease-out infinite;
+}
+
+/* ★要望対応：雹（雨や雪より粒が大きく、白っぽい丸） */
+.screen-weather-hail .screen-weather-particle {
+  position: absolute;
+  top: -5%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(235, 245, 255, 0.9);
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.6);
+  animation: screen-weather-fall-rain linear infinite;
+}
+
 @keyframes screen-weather-fall-rain {
   from { transform: translateY(-10vh); }
   to { transform: translateY(110vh); }
@@ -6149,6 +6179,14 @@ html, body {
   0% { transform: translate(0, -10vh) rotate(0deg); }
   50% { transform: translate(40px, 55vh) rotate(180deg); }
   100% { transform: translate(-20px, 110vh) rotate(360deg); }
+}
+
+@keyframes screen-weather-lightning {
+  0%, 92%, 96% { opacity: 0; }
+  93% { opacity: 0.85; }
+  94% { opacity: 0.1; }
+  95% { opacity: 0.6; }
+  100% { opacity: 0; }
 }
 
 /* ===== エンディングブロック：簡易エンドロール ===== */

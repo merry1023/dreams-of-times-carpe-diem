@@ -3090,6 +3090,8 @@ function blockPreviewText(block) {
       weatherRainOn: "雨を降らせる",
       weatherSnowOn: "雪を降らせる",
       weatherSakuraOn: "桜吹雪を降らせる",
+      weatherThunderstormOn: "雷雨を降らせる",
+      weatherHailOn: "雹を降らせる",
       weatherOff: "天候演出終了"
     };
     return labels[block.effectType] || "カメラシェイク";
@@ -4371,6 +4373,8 @@ function buildBlockFormFields(chapter, block) {
         ["weatherRainOn", "雨を降らせる"],
         ["weatherSnowOn", "雪を降らせる"],
         ["weatherSakuraOn", "桜吹雪を降らせる"],
+        ["weatherThunderstormOn", "雷雨を降らせる"],
+        ["weatherHailOn", "雹を降らせる"],
         ["weatherOff", "天候演出をやめる"]
       ]]
     ];
@@ -8683,7 +8687,7 @@ function buildFacilityRow(facility) {
       spotRow.appendChild(labelSpan("天候："));
       const weatherSelect = document.createElement("select");
       weatherSelect.className = "scenariobuild-jump-select";
-      [["any", "指定なし"], ["clear", "晴れ"], ["cloudy", "曇り"], ["rain", "雨"], ["snow", "雪"], ["sakura", "桜吹雪"]].forEach(([v, label]) => {
+      [["any", "指定なし"], ["clear", "晴れ"], ["cloudy", "曇り"], ["rain", "雨"], ["snow", "雪"], ["sakura", "桜吹雪"], ["thunderstorm", "雷雨"], ["hail", "雹"]].forEach(([v, label]) => {
         const opt = document.createElement("option");
         opt.value = v; opt.textContent = label;
         weatherSelect.appendChild(opt);
@@ -12752,6 +12756,12 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     } else if (block.effectType === "weatherSakuraOn" && typeof setWeatherEffect === "function") {
       if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true;
       setWeatherEffect("sakura"); // mainfunc.js
+    } else if (block.effectType === "weatherThunderstormOn" && typeof setWeatherEffect === "function") {
+      if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true;
+      setWeatherEffect("thunderstorm"); // mainfunc.js（要望対応：天候システムに雷雨・雹を追加）
+    } else if (block.effectType === "weatherHailOn" && typeof setWeatherEffect === "function") {
+      if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true;
+      setWeatherEffect("hail"); // mainfunc.js
     } else if (block.effectType === "weatherOff" && typeof setWeatherEffect === "function") {
       if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true; // ★明示的に「天候OFF」にした状態も、次の日になるまでは維持する
       setWeatherEffect(null); // mainfunc.js
