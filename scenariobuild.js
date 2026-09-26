@@ -59,6 +59,7 @@ let scenarioBuildMainView = "list"; // "list" | "editor" | "maps" | "mapEditor" 
 let scenarioBuildSubView = "characters"; // ★右（サブ）側。常時表示なので独立して切り替わる
 let scenarioBuildEditingChapterId = null;
 let scenarioBuildEditingMapAreaId = null; // ★マップ設定の専用全画面エディタで、今どのエリアを編集中か
+let scenarioBuildSelectedRoomId = null; // ★間取りエディタで、今どの部屋を選択中か（realestate floorplan）
 let scenarioBuildEditingOptionRef = null; // ★選択肢の専用全画面エディタで、今どの選択肢を編集中か（{ chapterId, blockId, optionId }）
 let scenarioBuildEditingIfRef = null; // ★ifブロックの専用全画面エディタで、今どのブロックを編集中か（{ chapterId, blockId }）
 let scenarioBuildEditingSkillIfBlockId = null; // ★特殊技のifブロック専用全画面エディタで、今編集中のブロックid（対象の技はscenarioBuildEditingSkillIdから分かる）
@@ -218,6 +219,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.enemies = data.enemies || [];
   scenarioProject.bosses = data.bosses || [];
   scenarioProject.items = data.items || [];
+  scenarioProject.furniture = data.furniture || []; // ★要望対応：不動産システムの家具管理タブ（家具屋系施設で販売する家具の登録）
   scenarioProject.fishItems = data.fishItems || []; // ★要望対応：魚管理タブ
   scenarioProject.skills = data.skills || [];
   dedupeBuiltinSkillEntries(); // ★取り込んだファイル自体が、過去のバージョンの不具合で重複を含んでいる場合があるので、取り込み直後にも掃除しておく
@@ -244,6 +246,10 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.fameThresholds = data.fameThresholds || {};
   if (Array.isArray(data.loginBonusDays)) scenarioProject.loginBonusDays = data.loginBonusDays; // ★要望対応：ログインボーナス
   if (data.companionChatSettings && typeof data.companionChatSettings === "object") scenarioProject.companionChatSettings = data.companionChatSettings; // ★要望対応：会話AI設定
+  // ★重大バグ修正：タブ管理（プレイ画面のどのタブを出すか）の設定が、保存データから一切読み込まれておらず、
+  //   ページ再読み込みやテストプレイのやり直しのたびに空({})へ戻ってしまい、ONにしたはずのタブ（特に会話）が
+  //   毎回既定値（会話はfalse）に巻き戻っていた
+  if (data.scenarioBuildTabVisibility && typeof data.scenarioBuildTabVisibility === "object") scenarioProject.scenarioBuildTabVisibility = data.scenarioBuildTabVisibility;
   if (typeof data.creditsText === "string") scenarioProject.creditsText = data.creditsText; // ★書き出し側に合わせてクレジットの文面も取り込む
   if (typeof data.introText === "string") scenarioProject.introText = data.introText; // ★オープニングの注意書きも同様に取り込む
   if (!scenarioProject.deletedBuiltinIds) scenarioProject.deletedBuiltinIds = {};
@@ -413,6 +419,7 @@ function normalizeScenarioProject() {
   if (!Array.isArray(scenarioProject.enemies)) scenarioProject.enemies = [];
   if (!Array.isArray(scenarioProject.bosses)) scenarioProject.bosses = [];
   if (!Array.isArray(scenarioProject.items)) scenarioProject.items = [];
+  if (!Array.isArray(scenarioProject.furniture)) scenarioProject.furniture = [];
   // ★要望対応：魚管理タブ用のデータ。中身自体はアイテムと同じ扱いでITEM_MASTERへ反映される（fishing.js／ensureCustomFishRegistered）
   if (!Array.isArray(scenarioProject.fishItems)) scenarioProject.fishItems = [];
   if (!Array.isArray(scenarioProject.skills)) scenarioProject.skills = [];
@@ -438,6 +445,34 @@ function normalizeScenarioProject() {
   //   未設定は通常扱い）
   if (!Array.isArray(scenarioProject.elementDefs)) scenarioProject.elementDefs = []; // [{ id, name }, ...]
   if (!scenarioProject.elementMatchups || typeof scenarioProject.elementMatchups !== "object") scenarioProject.elementMatchups = {};
+  // ★バグ修正：以前スキルの「属性」は直接入力（自由記述の文字列）だったが、属性管理タブ＋
+  //   リスト選択方式に変わった際、既存データの生の値（例：「火」）が新しい属性一覧（{id, name}）の
+  //   idと一致しなくなり、選択欄に反映されず属性が消えてしまったように見えていた。
+  //   どの属性idにも一致しない生の値を持つ技を探し、その値を「名前」とする属性を属性管理タブに
+  //   新規登録した上で、その技のelementを新しい属性idに繋ぎ直す（同じ生の値の技は属性を共有する。
+  //   一度繋ぎ直せば以後は正常なidになるため、この処理は安全に何度呼んでも良い）
+  (function migrateLegacySkillElements() {
+    const knownElementIds = new Set(scenarioProject.elementDefs.map(el => el.id));
+    const migratedElementIdByRawValue = new Map();
+    scenarioProject.skills.forEach(skill => {
+      const rawValue = skill.element;
+      if (rawValue == null || rawValue === "" || rawValue === "無" || knownElementIds.has(rawValue)) return;
+      const rawKey = String(rawValue);
+      let newElementId = migratedElementIdByRawValue.get(rawKey);
+      if (!newElementId) {
+        const existingByName = scenarioProject.elementDefs.find(el => el.name === rawKey);
+        if (existingByName) {
+          newElementId = existingByName.id;
+        } else {
+          newElementId = generateId("element");
+          scenarioProject.elementDefs.push({ id: newElementId, name: rawKey });
+          knownElementIds.add(newElementId);
+        }
+        migratedElementIdByRawValue.set(rawKey, newElementId);
+      }
+      skill.element = newElementId;
+    });
+  })();
   // ★要望対応：ログインボーナス。常に必ず7日分（1〜7日目）が揃った状態にしておく
   if (!Array.isArray(scenarioProject.loginBonusDays)) scenarioProject.loginBonusDays = [];
   for (let day = 0; day < 7; day++) {
@@ -1146,10 +1181,39 @@ function ensureCustomItemsRegistered() {
       rodDurability: item.isFishingRod ? (Number(item.rodDurability) || existing.rodDurability || 20) : existing.rodDurability,
       rodPower: item.isFishingRod ? (Number(item.rodPower) || existing.rodPower || 3) : existing.rodPower,
       isFishingBait: (typeof item.isFishingBait === "boolean") ? item.isFishingBait : !!existing.isFishingBait,
-      baitFishType: item.isFishingBait ? (item.baitFishType || existing.baitFishType || "") : existing.baitFishType,
-      baitBiteRate: item.isFishingBait ? (Number(item.baitBiteRate) || existing.baitBiteRate || 5) : existing.baitBiteRate
+      // ★baitFishType（旧・単一文字列）からbaitFishTypes（複数選択の配列）へ移行。
+      //   古いセーブ・古いアイテムデータにbaitFishTypeしか無い場合はそれを配列化して引き継ぐ
+      baitFishTypes: item.isFishingBait ? normalizeBaitFishTypes(item.baitFishTypes, item.baitFishType, existing.baitFishTypes) : existing.baitFishTypes,
+      baitBiteRate: item.isFishingBait ? (Number(item.baitBiteRate) || existing.baitBiteRate || 5) : existing.baitBiteRate,
+      // ★バグ修正：料理タブ用のフィールドがここで一切ITEM_MASTERへコピーされておらず、
+      //   アイテム管理タブで耐久度・スロット数・バフ等を設定しても実際のゲームには反映されていなかった
+      toolDurability: item.category === "cookingTool" ? (Number(item.toolDurability) || existing.toolDurability || 30) : existing.toolDurability,
+      toolSlotCount: item.category === "cookingTool" ? (Number(item.toolSlotCount) || existing.toolSlotCount || 3) : existing.toolSlotCount,
+      foodBuffKind: item.category === "food" ? (item.foodBuffKind || existing.foodBuffKind || "") : existing.foodBuffKind,
+      foodBuffDuration: item.category === "food" ? (Number(item.foodBuffDuration) || existing.foodBuffDuration || 3) : existing.foodBuffDuration,
+      foodBuffPower: item.category === "food" ? (Number(item.foodBuffPower) || existing.foodBuffPower || 0) : existing.foodBuffPower,
+      isRecipeItem: (typeof item.isRecipeItem === "boolean") ? item.isRecipeItem : !!existing.isRecipeItem,
+      unlockRecipeId: item.isRecipeItem ? (item.unlockRecipeId || existing.unlockRecipeId || "") : existing.unlockRecipeId
     };
   });
+}
+
+// ★釣り餌の「釣れる魚の種類」チェックボックスの選択肢を、登録済みの魚（ITEM_MASTER内のcategory:"fish"）
+//   の「種類」から重複無しで集める。組み込みの魚（items.js）・魚管理タブで追加したカスタムの魚の両方が対象
+function getRegisteredFishTypeOptions() {
+  if (typeof ITEM_MASTER === "undefined") return [];
+  const types = new Set();
+  Object.values(ITEM_MASTER).forEach(master => {
+    if (master && master.category === "fish" && master.fishType) types.add(master.fishType);
+  });
+  return Array.from(types).sort().map(type => ({ value: type, label: type }));
+}
+
+// ★baitFishTypes（配列・新形式）／baitFishType（文字列・旧形式）／既存値のどれから採用するかをまとめる
+function normalizeBaitFishTypes(newArrayValue, legacyStringValue, fallbackArrayValue) {
+  if (Array.isArray(newArrayValue)) return newArrayValue.filter(Boolean); // ★UI側は常に配列を渡してくるので、空配列（未選択＝全種類対象）もそのまま採用する
+  if (typeof legacyStringValue === "string" && legacyStringValue) return [legacyStringValue];
+  return Array.isArray(fallbackArrayValue) ? fallbackArrayValue : [];
 }
 
 // ★要望対応：魚管理タブ（scenarioProject.fishItems）で追加・編集した魚を ITEM_MASTER に反映する。
@@ -1438,13 +1502,15 @@ window.addEventListener("beforeunload", (event) => {
 });
 
 // ★左（メイン）＝話一覧／ブロックエディタ、右（サブ）＝キャラ・敵・ボス・アイテム・BGM・データ管理。
-//   ゲームの画面構成（メイン画面／サブ画面）と同じ考え方で、常に両方が見えている状態にする
-//   タブ管理を追加し、会話AI設定は安定するまで非表示にする（デフォルトOFF）
+//   ゲームの画面構成（メイン画面／サブ画面）と同じ考え方で、常に両方が見えている状態にする。
+//   これらエディタ自身のタブは常に全部表示される（非表示切替は無い）。「タブ管理」はこのエディタの
+//   タブではなく、プレイヤーがこのシナリオを遊ぶ時の画面タブの方を管理する（バグ修正で変更）
 const SCENARIOBUILD_SUB_TABS = [
   { view: "characters", label: "キャラ管理" },
   { view: "enemies", label: "敵設定" },
   { view: "bosses", label: "ボス設定" },
   { view: "items", label: "アイテム設定" },
+  { view: "furniture", label: "家具管理" }, // ★不動産システム：家具屋系施設で販売する家具の登録（名前・画像・価格・縦横サイズ・倉庫かどうか）
   { view: "fishmgmt", label: "魚管理" }, // ★要望対応：釣り場で釣れる魚の追加・編集
   { view: "quests", label: "クエスト管理" },
   { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
@@ -1457,7 +1523,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "randomnames", label: "ランダム名前管理" }, // ★要望対応：オークションNPC等のランダム名前バリエーション管理
   { view: "elements", label: "属性管理" }, // ★要望対応：属性一覧と属性相性表
   { view: "loginbonus", label: "ログボ報酬" }, // ★要望対応：ログインボーナス（7日分の報酬編集）
-  { view: "companionchat", label: "会話AI設定", enabledByDefault: false }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集。安定するまで非表示
+  { view: "companionchat", label: "会話AI設定" }, // ★要望対応：仲間との会話（Gemini API連携）の二つ名・パーティ名・性格編集
   { view: "companions", label: "仲間編集" },
   { view: "classes", label: "職業編集" },
   { view: "bgm", label: "BGM設定" },
@@ -1467,34 +1533,27 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "endings", label: "エンディング一覧" },
   { view: "variables", label: "変数一覧" }, // ★要望対応：式の中で使えるシステム変数の名前が分かるよう、サブ画面に一覧を出す
   { view: "data", label: "データ管理" },
-  { view: "tabmanager", label: "タブ管理" }
+  { view: "tabmanager", label: "タブ管理" } // ★バグ修正：中身はプレイ画面タブ（メイン/インベントリ/スキル…）の管理に変更した
 ];
 
-function getScenarioBuildTabVisibilityMap() {
-  if (!scenarioProject || !scenarioProject.scenarioBuildTabVisibility || typeof scenarioProject.scenarioBuildTabVisibility !== "object") {
+// ★要望対応：以前はここでシナリオエディタ自身の右側タブ（キャラ管理・敵設定…）の表示/非表示を
+//   管理していたが、本来やりたかったのは「このシナリオをプレイする時の画面タブ（メイン/インベントリ/
+//   スキル…）」の方の管理だったため、PLAY_SCREEN_TAB_DEFS（settings.js）を対象にするよう修正した。
+//   判定自体はisScenarioPlayTabEnabled()（settings.js）に一本化してあるので、ここでは編集用の
+//   書き込みヘルパーだけ持つ
+function setScenarioPlayTabEnabled(tabId, enabled) {
+  if (!scenarioProject.scenarioBuildTabVisibility || typeof scenarioProject.scenarioBuildTabVisibility !== "object") {
     scenarioProject.scenarioBuildTabVisibility = {};
   }
-  SCENARIOBUILD_SUB_TABS.forEach(tab => {
-    if (tab.view === "tabmanager") return;
-    const hasExplicitValue = typeof scenarioProject.scenarioBuildTabVisibility[tab.view] === "boolean";
-    if (!hasExplicitValue) {
-      scenarioProject.scenarioBuildTabVisibility[tab.view] = tab.enabledByDefault !== false;
-    }
-  });
-  if (typeof scenarioProject.scenarioBuildTabVisibility.companionchat !== "boolean") {
-    scenarioProject.scenarioBuildTabVisibility.companionchat = false;
+  scenarioProject.scenarioBuildTabVisibility[tabId] = enabled;
+  // ★バグ修正：プレイヤー側の個人設定（gameSettings.playTabVisibility）は、一度でも値が決まると
+  //   （タブごとの既定値やcompanionchatの特別判定込みで）そのままキャッシュされ続けてしまい、
+  //   ここで後から新しくタブをONにしても、キャッシュされた古い値のせいで表示されないバグがあった。
+  //   ここでON/OFFを変更した時は、そのタブのプレイヤー側キャッシュを削除して、次回参照時に
+  //   （今の設定を踏まえて）既定値を再計算させる
+  if (typeof gameSettings !== "undefined" && gameSettings && gameSettings.playTabVisibility && typeof gameSettings.playTabVisibility === "object") {
+    delete gameSettings.playTabVisibility[tabId];
   }
-  return scenarioProject.scenarioBuildTabVisibility;
-}
-
-function isScenarioBuildTabEnabled(view) {
-  if (view === "tabmanager") return true;
-  const visibility = getScenarioBuildTabVisibilityMap();
-  return visibility[view] !== false;
-}
-
-function getScenarioBuildVisibleTabs() {
-  return SCENARIOBUILD_SUB_TABS.filter(tab => tab.view === "tabmanager" || isScenarioBuildTabEnabled(tab.view));
 }
 
 function renderScenarioBuildPanel() {
@@ -1528,6 +1587,8 @@ function renderScenarioBuildMain() {
     renderMapAreaFullList(container);
   } else if (scenarioBuildMainView === "mapEditor") {
     renderMapAreaEditor(container);
+  } else if (scenarioBuildMainView === "floorPlanEditor") {
+    renderFloorPlanEditor(container);
   } else if (scenarioBuildMainView === "optionEditor") {
     renderChoiceOptionEditor(container);
   } else if (scenarioBuildMainView === "ifEditor") {
@@ -1561,7 +1622,7 @@ function renderScenarioBuildSub() {
   const tabsEl = document.getElementById("scenariobuild-sub-tabs");
   const bodyEl = document.getElementById("scenariobuild-sub-content");
   if (!tabsEl || !bodyEl) return;
-  const visibleTabs = getScenarioBuildVisibleTabs();
+  const visibleTabs = SCENARIOBUILD_SUB_TABS; // ★エディタ自身のタブは常に全て表示する（非表示切替は廃止。「タブ管理」はプレイ画面タブの方を管理する）
   if (!visibleTabs.some(tab => tab.view === scenarioBuildSubView)) {
     scenarioBuildSubView = visibleTabs[0] ? visibleTabs[0].view : "characters";
   }
@@ -1593,6 +1654,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "enemies") renderEntityManager(bodyEl, getEnemyManagerConfig());
   else if (scenarioBuildSubView === "bosses") { renderTrialGuardianConfig(bodyEl); renderFameThresholdConfig(bodyEl); renderEntityManager(bodyEl, getBossManagerConfig()); }
   else if (scenarioBuildSubView === "items") renderEntityManager(bodyEl, getItemManagerConfig());
+  else if (scenarioBuildSubView === "furniture") renderEntityManager(bodyEl, getFurnitureManagerConfig());
   else if (scenarioBuildSubView === "fishmgmt") renderEntityManager(bodyEl, getFishManagerConfig());
   else if (scenarioBuildSubView === "quests") renderEntityManager(bodyEl, getQuestManagerConfig());
   else if (scenarioBuildSubView === "loginbonus") renderLoginBonusManager(bodyEl); // ★要望対応：ログインボーナス
@@ -1621,17 +1683,20 @@ function renderScenarioBuildSub() {
 // ===================================================================
 // ===== 変数一覧（要望対応：式の中で使えるシステム変数の名前が分からないので一覧を出してほしい） =====
 // ===================================================================
+// ★要望対応：このシナリオをプレイする時の画面タブ（メイン/インベントリ/スキル/仲間/会話/強さ/装備/
+//   便利/ログ/設定）を、タブごとに有効／無効にできる。ここでOFFにしたタブは、プレイヤー自身の
+//   個人設定（設定タブの「プレイ画面のタブ管理」）でONにしていても表示されない（settings.js側で判定）
 function renderScenarioBuildTabManager(container) {
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
-  introEl.textContent = "シナリオエディタの右側タブを有効／無効に切り替えられます。会話AI設定はまだ安定していないため、デフォルトでは非表示です。";
+  introEl.textContent = "このシナリオをプレイする時に、下部の「サブ画面」に出すタブを選べます（シナリオエディタ自身の右側タブとは無関係です）。ここでOFFにしたタブは、プレイヤーが自分の設定でONにしていても表示されません。「会話」タブは、会話AI設定でキャラクターを用意していない場合は意味が無いため、デフォルトではOFFにしています。";
   container.appendChild(introEl);
   
   const rows = document.createElement("div");
   rows.className = "scenariobuild-list";
   container.appendChild(rows);
   
-  SCENARIOBUILD_SUB_TABS.filter(tab => tab.view !== "tabmanager").forEach(tab => {
+  PLAY_SCREEN_TAB_DEFS.forEach(tab => {
     const row = document.createElement("label");
     row.className = "scenariobuild-condition-row";
     row.style.justifyContent = "space-between";
@@ -1643,14 +1708,11 @@ function renderScenarioBuildTabManager(container) {
     
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.checked = isScenarioBuildTabEnabled(tab.view);
+    checkbox.checked = isScenarioPlayTabEnabled(tab.id);
     checkbox.onchange = () => {
-      getScenarioBuildTabVisibilityMap();
-      scenarioProject.scenarioBuildTabVisibility[tab.view] = checkbox.checked;
+      setScenarioPlayTabEnabled(tab.id, checkbox.checked);
       if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
-      if (!isScenarioBuildTabEnabled(scenarioBuildSubView)) {
-        scenarioBuildSubView = getScenarioBuildVisibleTabs()[0].view;
-      }
+      if (typeof applyPlayTabVisibility === "function") applyPlayTabVisibility(); // ★バグ修正：ONにしてもタブバーの表示がその場で更新されていなかった
       renderScenarioBuildPanel();
     };
     row.appendChild(checkbox);
@@ -2432,7 +2494,8 @@ const SCENARIO_BLOCK_TYPES = {
   portrait_expression: "立ち絵：表情変更",
   portrait_move: "立ち絵：移動",
   portrait_motion: "立ち絵：動き",
-  increment_area_visit: "エリア来訪回数を増やす"
+  increment_area_visit: "エリア来訪回数を増やす",
+  levelcap: "レベル上限" // ★要望対応：ここから先、指定レベルを超えて成長しないようにする
 };
 
 function getEditingChapter() {
@@ -2979,6 +3042,7 @@ function createBlock(type) {
   if (type === "portrait_motion") return { ...base, instanceId: "", motionType: "jump" }; // motionType: "jump" | "shake"
   if (type === "increment_area_visit") return { ...base, areaKey: "" };
   if (type === "jump") return { ...base, targetBlockId: null }; // ★要望対応：ifの中/外を問わず、話の中のどのブロックへも直接ジャンプできる
+  if (type === "levelcap") return { ...base, level: 1 }; // ★要望対応：レベル上限ブロック
   return base;
 }
 
@@ -3056,6 +3120,8 @@ function blockPreviewText(block) {
       weatherRainOn: "雨を降らせる",
       weatherSnowOn: "雪を降らせる",
       weatherSakuraOn: "桜吹雪を降らせる",
+      weatherThunderstormOn: "雷雨を降らせる",
+      weatherHailOn: "雹を降らせる",
       weatherOff: "天候演出終了"
     };
     return labels[block.effectType] || "カメラシェイク";
@@ -3067,6 +3133,7 @@ function blockPreviewText(block) {
   if (block.type === "ending") return block.title;
   if (block.type === "clearchapter") return "タイトルには戻らない";
   if (block.type === "if") return `条件${(block.conditions || []).length}個（${block.combineMode === "OR" ? "Ⅱ" : "&"}）`;
+  if (block.type === "levelcap") return `Lv${block.level || 1}を超えられなくする`;
   if (block.type === "jump") return block.targetBlockId ? "→ 指定ブロックへ" : "（未設定）";
   if (block.type === "addcompanion") {
     const c = (scenarioProject.companions || []).find(c => c.id === block.companionId);
@@ -3819,6 +3886,25 @@ function buildBlockFormFields(chapter, block) {
     return wrap;
   }
   
+  if (block.type === "levelcap") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note scenariobuild-condition";
+    noteEl.textContent = "ここから先、指定したレベルを超えて成長できなくなります（経験値は普通に貯まりますが、レベルアップだけ止まります。パーティー全員が対象です）。既にこのレベルを超えている場合、レベル自体は下がりません。ロード後は、クリア済みの話・今進んでいる話の中で一番新しいレベル上限ブロックが自動的に適用されます。";
+    wrap.appendChild(noteEl);
+    const levelRow = document.createElement("div");
+    levelRow.className = "scenariobuild-condition-row";
+    levelRow.appendChild(labelSpan("上限レベル："));
+    const levelInput = document.createElement("input");
+    levelInput.type = "number";
+    levelInput.min = "1";
+    levelInput.className = "scenariobuild-condition-input";
+    levelInput.value = block.level != null ? block.level : 1;
+    levelInput.onchange = () => { block.level = Math.max(1, Number(levelInput.value) || 1); persist(); };
+    levelRow.appendChild(levelInput);
+    wrap.appendChild(levelRow);
+    return wrap;
+  }
+  
   
   if (block.type === "addcompanion") {
     const noteEl = document.createElement("p");
@@ -4337,6 +4423,8 @@ function buildBlockFormFields(chapter, block) {
         ["weatherRainOn", "雨を降らせる"],
         ["weatherSnowOn", "雪を降らせる"],
         ["weatherSakuraOn", "桜吹雪を降らせる"],
+        ["weatherThunderstormOn", "雷雨を降らせる"],
+        ["weatherHailOn", "雹を降らせる"],
         ["weatherOff", "天候演出をやめる"]
       ]]
     ];
@@ -5123,7 +5211,9 @@ function getItemManagerConfig() {
   const categoryOptions = [
     { value: "herb", label: "薬草" }, { value: "potion", label: "ポーション" },
     { value: "material", label: "魔物素材" }, { value: "weapon", label: "武器" },
-    { value: "armor", label: "防具" }, { value: "tool", label: "道具" }, { value: "misc", label: "その他" }
+    { value: "armor", label: "防具" }, { value: "tool", label: "道具" },
+    { value: "cookingTool", label: "料理道具" }, { value: "food", label: "料理" },
+    { value: "misc", label: "その他" }
   ];
   return {
     note: "既にあるアイテム（items.js）も一覧に出ており、直接編集・削除できます（実際のゲームデータそのものが変わります）。ギヴ（アイテム付与）ブロックのアイテムIDにこのIDを入れれば付与できます。「編集」を押すと、回復量や薬効などの効果パラメータも含めて詳しく設定できます。武器・防具は個体差の範囲も設定できます。",
@@ -5134,7 +5224,8 @@ function getItemManagerConfig() {
     filterDefault: "misc",
     filterOptions: [
       { key: "equipment", label: "装備", values: ["weapon", "armor"] },
-      { key: "tools", label: "道具", values: ["herb", "potion", "material", "tool", "misc"] }
+      { key: "tools", label: "道具", values: ["herb", "potion", "material", "tool", "misc"] },
+      { key: "cooking", label: "料理関連", values: ["cookingTool", "food"] }
     ],
     fields: [
       { key: "name", label: "名前", type: "text", placeholder: "アイテム名" },
@@ -5149,8 +5240,22 @@ function getItemManagerConfig() {
       { key: "rodDurability", label: "（釣竿）耐久度", type: "number", placeholder: "20" },
       { key: "rodPower", label: "（釣竿）攻撃力", type: "number", placeholder: "3" },
       { key: "isFishingBait", label: "釣り餌として扱う", type: "checkbox" },
-      { key: "baitFishType", label: "（餌）釣れる魚の種類", type: "text", placeholder: "魚管理タブの「種類」と同じ文字列を入れてください" },
-      { key: "baitBiteRate", label: "（餌）食いつき度（高いほど早く食いつく／目安1〜10）", type: "number", placeholder: "5" }
+      // ★バグ修正：以前はフリーテキストで「魚管理タブの『種類』と同じ文字列」を手打ちする方式だったため、
+      //   全角半角やスペース、ちょっとした表記ゆれで一致せず、魚が登録されているのに
+      //   「今はこの餌に反応する魚がいないようだ……」になってしまうバグがあった。
+      //   → 魚管理タブに登録済みの「種類」から選ぶチェックボックス方式（複数選択可）に変更（fishing.js参照）
+      { key: "baitFishTypes", label: "（餌）釣れる魚の種類（複数選択可／未選択ならどの魚にも反応）", type: "multiselect", emptyText: "先に「魚管理」タブで魚を登録すると、ここに種類が選べるようになります", optionsFn: () => getRegisteredFishTypeOptions() },
+      { key: "baitBiteRate", label: "（餌）食いつき度（高いほど早く食いつく／目安1〜10）", type: "number", placeholder: "5" },
+      // ★要望対応：料理タブ用。種類を「料理道具」にした時だけ意味を持つ
+      { key: "toolDurability", label: "（料理道具）耐久度", type: "number", placeholder: "30" },
+      { key: "toolSlotCount", label: "（料理道具）材料スロット数", type: "number", placeholder: "3" },
+      // ★要望対応：種類を「料理」にした時だけ意味を持つ、戦闘中だけの自己バフ（技の自己強化と同じ仕組みを流用）
+      { key: "foodBuffKind", label: "（料理）戦闘中バフの種類", type: "select", options: getSkillSelfBuffKindOptions() },
+      { key: "foodBuffDuration", label: "（料理）バフの持続ターン数", type: "number", placeholder: "3" },
+      { key: "foodBuffPower", label: "（料理）バフの効果量", type: "number", placeholder: "5" },
+      // ★要望対応：このアイテムを「使う」と、指定した料理レシピがレシピ帳に登録される（レシピ発見アイテム）
+      { key: "isRecipeItem", label: "料理レシピとして扱う（使うとレシピ帳に登録）", type: "checkbox" },
+      { key: "unlockRecipeId", label: "（レシピ）登録される料理レシピのID", type: "text", placeholder: "レシピ管理タブで確認できるID" }
     ],
     newEntity: () => ({ id: generateId("item"), name: "", category: "material", description: "", rank: "F", listedPrice: 0, trueValue: 0, unsellable: false }),
     quickAddOptions: categoryOptions.map(opt => ({
@@ -5207,6 +5312,31 @@ function getFishManagerConfig() {
         rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue
       };
     }
+  };
+}
+
+// ★不動産システム：家具管理タブ。「家具屋系」施設で販売する家具を、アイテムと同じ感覚で登録する
+//   （名前・画像・価格・縦横サイズ。倉庫チェックを付けると、部屋に置いた時に専用の収納として使える）
+function getFurnitureManagerConfig() {
+  return {
+    note: "「家具屋系」施設で販売する家具を登録します。縦・横のサイズは、家の部屋に配置する時のマス目の大きさです（部屋の広さは、マップ設定タブの「間取り編集」で設定）。「倉庫として使える」を付けた家具は、部屋に置くと専用の収納になります（インベントリとは別枠。倉庫家具1つ1つが別々の収納です）。",
+    category: "furniture",
+    useDetailEditor: true,
+    getList: () => scenarioProject.furniture,
+    fields: [
+      { key: "name", label: "名前", type: "text", placeholder: "例：木の椅子" },
+      { key: "imagePath", label: "画像パス（任意）", type: "text", placeholder: "例：img/furniture/chair.png" },
+      { key: "color", label: "画像が無い時の色", type: "color" },
+      { key: "price", label: "価格（陳）", type: "number", placeholder: "0" },
+      { key: "width", label: "横（マス）", type: "number", placeholder: "1" },
+      { key: "height", label: "縦（マス）", type: "number", placeholder: "1" },
+      { key: "isStorage", label: "倉庫として使える", type: "checkbox" },
+      { key: "storageSlots", label: "収納数（倉庫の場合のみ使用）", type: "number", placeholder: "10" }
+    ],
+    newEntity: () => ({
+      id: generateId("furniture"), name: "新しい家具", imagePath: "", color: "#4a4a4a", price: 0,
+      width: 1, height: 1, isStorage: false, storageSlots: 10
+    })
   };
 }
 
@@ -5527,7 +5657,8 @@ function renderRecipeManager(container) {
   // ★要望対応：種類ごとにタブ分けして見やすくする
   const RECIPE_FILTER_OPTIONS = [
     { key: "blacksmith", label: "鍛冶屋" },
-    { key: "synthesis", label: "素材合成屋" }
+    { key: "synthesis", label: "素材合成屋" },
+    { key: "cooking", label: "料理" }
   ];
   const filterRow = document.createElement("div");
   filterRow.className = "scenariobuild-filter-row";
@@ -5561,7 +5692,8 @@ function renderRecipeManager(container) {
     { label: "鍛冶屋の作成レシピ", shopType: "blacksmith", mode: "create" },
     { label: "鍛冶屋の強化レシピ", shopType: "blacksmith", mode: "upgrade" },
     { label: "素材合成屋の作成レシピ", shopType: "synthesis", mode: "create" },
-    { label: "素材合成屋の強化レシピ", shopType: "synthesis", mode: "upgrade" }
+    { label: "素材合成屋の強化レシピ", shopType: "synthesis", mode: "upgrade" },
+    { label: "料理のレシピ", shopType: "cooking", mode: "create" }
   ].forEach(opt => {
     const btn = document.createElement("button");
     btn.className = "devmode-btn";
@@ -5604,7 +5736,7 @@ function buildRecipeRow(recipe) {
   typeRow.appendChild(labelSpan("扱う店："));
   const shopSelect = document.createElement("select");
   shopSelect.className = "scenariobuild-jump-select";
-  [{ value: "blacksmith", label: "鍛冶屋" }, { value: "synthesis", label: "素材合成屋" }].forEach(opt => {
+  [{ value: "blacksmith", label: "鍛冶屋" }, { value: "synthesis", label: "素材合成屋" }, { value: "cooking", label: "料理" }].forEach(opt => {
     const optionEl = document.createElement("option");
     optionEl.value = opt.value;
     optionEl.textContent = opt.label;
@@ -5614,37 +5746,81 @@ function buildRecipeRow(recipe) {
   shopSelect.onchange = () => { recipe.shopType = shopSelect.value; markScenarioBuildDirty(); renderScenarioBuildPanel(); };
   typeRow.appendChild(shopSelect);
   
-  // ★要望対応：鍛冶屋・素材合成屋が複数ある時、このレシピをどの店で使えるようにするか指定できる
-  typeRow.appendChild(labelSpan("対象の店："));
-  const facilitySelect = document.createElement("select");
-  facilitySelect.className = "scenariobuild-jump-select";
-  const anyFacilityOpt = document.createElement("option");
-  anyFacilityOpt.value = "";
-  anyFacilityOpt.textContent = "（指定なし：この種類の店なら全部で使える）";
-  facilitySelect.appendChild(anyFacilityOpt);
-  scenarioProject.facilities.filter(f => f.type === (recipe.shopType || "blacksmith")).forEach(f => {
-    const opt = document.createElement("option");
-    opt.value = f.id;
-    opt.textContent = f.name || "（名称未設定の店）";
-    facilitySelect.appendChild(opt);
-  });
-  facilitySelect.value = recipe.facilityId || "";
-  facilitySelect.onchange = () => { recipe.facilityId = facilitySelect.value || null; markScenarioBuildDirty(); };
-  typeRow.appendChild(facilitySelect);
-  
-  typeRow.appendChild(labelSpan("種別："));
-  const modeSelect = document.createElement("select");
-  modeSelect.className = "scenariobuild-jump-select";
-  [{ value: "create", label: "作成（材料だけを消費）" }, { value: "upgrade", label: "強化（材料＋指定した装備1個を消費）" }].forEach(opt => {
-    const optionEl = document.createElement("option");
-    optionEl.value = opt.value;
-    optionEl.textContent = opt.label;
-    modeSelect.appendChild(optionEl);
-  });
-  modeSelect.value = recipe.mode || "create";
-  modeSelect.onchange = () => { recipe.mode = modeSelect.value; markScenarioBuildDirty(); renderScenarioBuildPanel(); };
-  typeRow.appendChild(modeSelect);
+  // ★要望対応：鍛冶屋・素材合成屋が複数ある時、このレシピをどの店で使えるようにするか指定できる。
+  //   料理レシピの場合は「店」ではなく「どの料理道具（アイテム）を使うレシピか」を指定する
+  if (recipe.shopType === "cooking") {
+    typeRow.appendChild(labelSpan("対象の料理道具："));
+    const toolSelect = document.createElement("select");
+    toolSelect.className = "scenariobuild-jump-select";
+    const noToolOpt = document.createElement("option");
+    noToolOpt.value = "";
+    noToolOpt.textContent = "（未選択：料理道具を選んでください）";
+    toolSelect.appendChild(noToolOpt);
+    scenarioProject.items.filter(it => it.category === "cookingTool").forEach(it => {
+      const opt = document.createElement("option");
+      opt.value = it.id;
+      opt.textContent = it.name || "（名称未設定の料理道具）";
+      toolSelect.appendChild(opt);
+    });
+    toolSelect.value = recipe.toolItemId || "";
+    toolSelect.onchange = () => { recipe.toolItemId = toolSelect.value || ""; markScenarioBuildDirty(); };
+    typeRow.appendChild(toolSelect);
+    recipe.mode = "create"; // ★料理に強化モードは無いので、常に「作成」扱いで固定する
+    
+    // ★要望対応：「作る」を押してから完成するまで、ゲージが溜まるのを待たせる秒数
+    typeRow.appendChild(labelSpan("完成までの待ち時間（秒）："));
+    const cookTimeInput = document.createElement("input");
+    cookTimeInput.type = "number";
+    cookTimeInput.min = "0";
+    cookTimeInput.step = "0.5";
+    cookTimeInput.className = "scenariobuild-condition-input";
+    cookTimeInput.placeholder = "3";
+    cookTimeInput.value = recipe.cookTimeSeconds != null ? recipe.cookTimeSeconds : "";
+    cookTimeInput.onchange = () => {
+      const value = Number(cookTimeInput.value);
+      recipe.cookTimeSeconds = (cookTimeInput.value !== "" && value >= 0) ? value : null;
+      markScenarioBuildDirty();
+    };
+    typeRow.appendChild(cookTimeInput);
+  } else {
+    typeRow.appendChild(labelSpan("対象の店："));
+    const facilitySelect = document.createElement("select");
+    facilitySelect.className = "scenariobuild-jump-select";
+    const anyFacilityOpt = document.createElement("option");
+    anyFacilityOpt.value = "";
+    anyFacilityOpt.textContent = "（指定なし：この種類の店なら全部で使える）";
+    facilitySelect.appendChild(anyFacilityOpt);
+    scenarioProject.facilities.filter(f => f.type === (recipe.shopType || "blacksmith")).forEach(f => {
+      const opt = document.createElement("option");
+      opt.value = f.id;
+      opt.textContent = f.name || "（名称未設定の店）";
+      facilitySelect.appendChild(opt);
+    });
+    facilitySelect.value = recipe.facilityId || "";
+    facilitySelect.onchange = () => { recipe.facilityId = facilitySelect.value || null; markScenarioBuildDirty(); };
+    typeRow.appendChild(facilitySelect);
+    
+    typeRow.appendChild(labelSpan("種別："));
+    const modeSelect = document.createElement("select");
+    modeSelect.className = "scenariobuild-jump-select";
+    [{ value: "create", label: "作成（材料だけを消費）" }, { value: "upgrade", label: "強化（材料＋指定した装備1個を消費）" }].forEach(opt => {
+      const optionEl = document.createElement("option");
+      optionEl.value = opt.value;
+      optionEl.textContent = opt.label;
+      modeSelect.appendChild(optionEl);
+    });
+    modeSelect.value = recipe.mode || "create";
+    modeSelect.onchange = () => { recipe.mode = modeSelect.value; markScenarioBuildDirty(); renderScenarioBuildPanel(); };
+    typeRow.appendChild(modeSelect);
+  }
   infoEl.appendChild(typeRow);
+  
+  if (recipe.shopType === "cooking") {
+    const cookingNoteEl = document.createElement("p");
+    cookingNoteEl.className = "devmode-note";
+    cookingNoteEl.textContent = "料理タブでは、下の「必要な材料」と個数まで完全に一致する材料を置いた時だけ成立します（多い分・少ない分・種類違いはすべて失敗＝材料ロスになります）。このレシピのIDは、種類「料理」のレシピ発見アイテム（アイテム管理タブの「（レシピ）登録される料理レシピのID」）に設定すると、そのアイテムを使った時にレシピ帳へ登録されます。IDはこの行の右下に表示されます。";
+    infoEl.appendChild(cookingNoteEl);
+  }
   
   if (recipe.mode === "upgrade") {
     const baseRow = document.createElement("div");
@@ -5755,6 +5931,12 @@ function buildRecipeRow(recipe) {
   infoEl.appendChild(descRow);
   
   row.appendChild(infoEl);
+  
+  const idEl = document.createElement("p");
+  idEl.className = "devmode-note";
+  idEl.style.margin = "0 0 4px";
+  idEl.textContent = `ID：${recipe.id}`;
+  row.appendChild(idEl);
   
   const deleteBtn = document.createElement("button");
   deleteBtn.className = "devmode-btn devmode-btn-danger";
@@ -8051,7 +8233,7 @@ function buildClassStatsRow(className) {
 // ===================================================================
 // ===== サブ画面：施設編集（村に追加できる「酒場/宿屋/店/冒険する」以外の施設） =====
 // ===================================================================
-const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", flavor: "その他（セリフのみ）" };
+const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", realEstate: "不動産屋系（家・店の売買・賃貸）", furnitureShop: "家具屋系（家具・倉庫の販売）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", memoryHall: "追憶の館系（クリア済みの話を再体験できる）", flavor: "その他（セリフのみ）" };
 
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
@@ -8510,7 +8692,7 @@ function buildFacilityRow(facility) {
     refreshSlotProbabilityDisplay();
   } else if (facility.type === "fishing") {
     // ★要望対応：釣り場施設。出現する魚を「時間帯」「天候」ごとに重み付きで登録する。
-    //   時間帯はplayer.gameHour（player.js）、天候はcurrentWeatherType（mainfunc.js）を実際の釣りで参照する
+    //   時間帯はplayer.gameHour（player.js）、天候はplayer.weather.current（player.js・天候システム）を実際の釣りで参照する
     const fishingNote = document.createElement("p");
     fishingNote.className = "devmode-note";
     fishingNote.textContent = "この釣り場で釣れる魚を登録してください（魚IDは「魚管理」タブで作った魚から選べます）。時間帯・天候を「指定なし」にすると、いつでもその条件を満たします。重みが大きいほど釣れやすくなります。釣竿・釣り餌はここではなく、それらを扱う「店」タイプの施設で売ってください（アイテム設定で釣竿・釣り餌チェックを付けたアイテムです）。";
@@ -8555,7 +8737,7 @@ function buildFacilityRow(facility) {
       spotRow.appendChild(labelSpan("天候："));
       const weatherSelect = document.createElement("select");
       weatherSelect.className = "scenariobuild-jump-select";
-      [["any", "指定なし"], ["clear", "晴れ（演出無し）"], ["rain", "雨"], ["snow", "雪"], ["sakura", "桜吹雪"]].forEach(([v, label]) => {
+      [["any", "指定なし"], ["clear", "晴れ"], ["cloudy", "曇り"], ["rain", "雨"], ["snow", "雪"], ["sakura", "桜吹雪"], ["thunderstorm", "雷雨"], ["hail", "雹"]].forEach(([v, label]) => {
         const opt = document.createElement("option");
         opt.value = v; opt.textContent = label;
         weatherSelect.appendChild(opt);
@@ -8869,13 +9051,94 @@ function buildFacilityRow(facility) {
       renderScenarioBuildPanel();
     };
     infoEl.appendChild(addPoolBtn);
+  } else if (facility.type === "realEstate") {
+    // ★新規：不動産屋系施設。取り扱う物件（マップ設定タブで「不動産：家／店」にしたエリア）を選ぶだけで、
+    //   価格・賃貸か購入かはエリア編集側の設定を使う。実際の購入・ローン・請求処理はrealestate.jsにまとめてある
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note";
+    noteEl.textContent = "この施設で取り扱う物件を選んでください（価格・賃貸／購入の別は、マップ設定タブのエリア編集側で設定します）。";
+    infoEl.appendChild(noteEl);
     
+    if (!Array.isArray(facility.propertyAreaIds)) facility.propertyAreaIds = [];
+    const estateAreas = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.mapAreas))
+      ? scenarioProject.mapAreas.filter(a => a.type === "estateHouse" || a.type === "estateShop")
+      : [];
+    
+    if (estateAreas.length === 0) {
+      const emptyEl = document.createElement("p");
+      emptyEl.className = "devmode-note scenariobuild-condition";
+      emptyEl.textContent = "まだ「不動産：家」「不動産：店」タイプのエリアがありません（マップ設定タブで作成してください）。";
+      infoEl.appendChild(emptyEl);
+    }
+    
+    estateAreas.forEach(estateArea => {
+      const estateKey = estateArea.builtin ? estateArea.locationKey : ("custom_" + estateArea.id);
+      const optionRow = document.createElement("label");
+      optionRow.className = "scenariobuild-condition-row";
+      optionRow.style.cursor = "pointer";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = facility.propertyAreaIds.includes(estateKey);
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          if (!facility.propertyAreaIds.includes(estateKey)) facility.propertyAreaIds.push(estateKey);
+        } else {
+          facility.propertyAreaIds = facility.propertyAreaIds.filter(id => id !== estateKey);
+        }
+        markScenarioBuildDirty();
+      };
+      optionRow.appendChild(checkbox);
+      const typeLabel = estateArea.type === "estateShop" ? "店" : "家";
+      const priceLabel = estateArea.type === "estateShop" && estateArea.estateMode === "rent"
+        ? `賃貸・家賃${estateArea.estateRentAmount || 0}陳/7日`
+        : `${estateArea.estatePrice || 0}陳`;
+      optionRow.appendChild(document.createTextNode(` ${estateArea.name || "（名前未設定）"}（${typeLabel}・${priceLabel}）`));
+      infoEl.appendChild(optionRow);
+    });
+  } else if (facility.type === "furnitureShop") {
+    // ★新規：家具屋系施設。取り扱う家具（家具管理タブで登録したもの）をチェックボックスで選ぶ。
+    //   購入・部屋への配置処理はfurniture.jsにまとめてある
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note";
+    noteEl.textContent = "この施設で取り扱う家具を選んでください（家具そのものの登録は「家具管理」タブで行います）。";
+    infoEl.appendChild(noteEl);
+    
+    if (!Array.isArray(facility.furnitureIds)) facility.furnitureIds = [];
+    const furnitureList = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.furniture)) ? scenarioProject.furniture : [];
+    
+    if (furnitureList.length === 0) {
+      const emptyEl = document.createElement("p");
+      emptyEl.className = "devmode-note scenariobuild-condition";
+      emptyEl.textContent = "まだ家具が登録されていません（「家具管理」タブで登録してください）。";
+      infoEl.appendChild(emptyEl);
+    }
+    
+    furnitureList.forEach(furniture => {
+      const optionRow = document.createElement("label");
+      optionRow.className = "scenariobuild-condition-row";
+      optionRow.style.cursor = "pointer";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = facility.furnitureIds.includes(furniture.id);
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          if (!facility.furnitureIds.includes(furniture.id)) facility.furnitureIds.push(furniture.id);
+        } else {
+          facility.furnitureIds = facility.furnitureIds.filter(id => id !== furniture.id);
+        }
+        markScenarioBuildDirty();
+      };
+      optionRow.appendChild(checkbox);
+      const storageLabel = furniture.isStorage ? "・倉庫" : "";
+      optionRow.appendChild(document.createTextNode(` ${furniture.name || "（名前未設定）"}（${furniture.price || 0}陳・${furniture.width || 1}×${furniture.height || 1}${storageLabel}）`));
+      infoEl.appendChild(optionRow);
+    });
   } else if (facility.type === "colosseum") {
     // ★要望対応：コロシアム施設。アイテム使用禁止の連戦タワー（実際はn回戦形式）。
     //   参加費・各回戦の敵編成（追加/削除可）・コインの種類と獲得数・99回戦クリア報酬・コインの引き換え屋を設定できる
     const entryNote = document.createElement("p");
     entryNote.className = "devmode-note";
-    entryNote.textContent = "参加すると、指定したアイテムを指定した数だけ消費します（無ければ挑戦できません）。挑戦中はアイテムが一切使えません。1回でも負けたら1回戦目からやり直しになります。10の倍数の回戦をクリアすると全回復、5の倍数（10の倍数を除く）の回戦をクリアするとHP・SPが1/3回復します。";
+    entryNote.textContent = "参加すると、指定したアイテムを指定した数だけ消費します（無ければ挑戦できません）。挑戦中はアイテムが一切使えません。1回でも負けたら1回戦目からやり直しになります。10の倍数の回戦をクリアすると全回復、5の倍数（10の倍数を除く）の回戦をクリアするとHP・SPが1/3回復します。各回戦に勝利するたびに、次の回戦へ進むかここでやめる（リタイア）かを選べます（リタイアしてもそこまでの自己ベスト・獲得済みコインはそのまま持ち帰れます）。";
     infoEl.appendChild(entryNote);
     
     const entryRow = document.createElement("div");
@@ -8918,7 +9181,7 @@ function buildFacilityRow(facility) {
     const bossRoundsNote = document.createElement("p");
     bossRoundsNote.className = "devmode-note";
     bossRoundsNote.style.margin = "10px 0 2px";
-    bossRoundsNote.textContent = "10の倍数の回戦と、100回戦が無いため最後の節目となる99回戦目は、ここで指定した「ボス的な」敵編成で固定されます（プールからのランダム抽選の対象外）。レベルを指定すると、その回戦の敵はそのレベルで固定されます（0のままなら、通常通り主人公のレベル±1で決まります）。";
+    bossRoundsNote.textContent = "10の倍数の回戦と、100回戦が無いため最後の節目となる99回戦目は、ここで指定した「ボス的な」敵編成で固定されます（プールからのランダム抽選の対象外）。レベルを指定すると、その回戦の敵はそのレベルで固定されます（0のままなら、通常通り主人公のレベル±1で決まります）。また、10の倍数の回戦（99回戦目を除く）にレベルを指定しておくと、それ以外の回戦でランダムに出る雑魚敵のレベルが「一番近くて強い10の倍数回戦のレベル×0.6」になります。";
     infoEl.appendChild(bossRoundsNote);
     
     if (!facility.bossRoundConfig || typeof facility.bossRoundConfig !== "object") facility.bossRoundConfig = {};
@@ -8949,7 +9212,7 @@ function buildFacilityRow(facility) {
       
       const levelRow = document.createElement("div");
       levelRow.className = "scenariobuild-condition-row";
-      levelRow.appendChild(labelSpan("レベル指定（0＝指定なし）："));
+    levelRow.appendChild(labelSpan("レベル指定（0＝指定なし。この回戦以外でランダムに出る雑魚敵のレベル計算にも使われます）："));
       const levelInput = document.createElement("input");
       levelInput.type = "number";
       levelInput.min = "0";
@@ -9416,6 +9679,45 @@ function appendEntityFieldInputs(config, entity, containerEl) {
         if (config.onChange) config.onChange();
       };
       fieldRow.appendChild(input);
+      containerEl.appendChild(fieldRow);
+      return;
+    }
+    // ★要望対応：複数選択可能なチェックボックスリスト（釣り餌の「釣れる魚の種類」など、
+    //   フリーテキストの表記ゆれで一致しなくなるのを防ぐため、選択肢から選ぶ形式にする）
+    if (field.type === "multiselect") {
+      const wrap = document.createElement("div");
+      wrap.className = "scenariobuild-multiselect";
+      if (!Array.isArray(entity[field.key])) entity[field.key] = [];
+      const options = typeof field.optionsFn === "function" ? field.optionsFn() : (field.options || []);
+      if (options.length === 0) {
+        const emptyNote = document.createElement("span");
+        emptyNote.className = "devmode-note";
+        emptyNote.textContent = field.emptyText || "（選択肢がありません）";
+        wrap.appendChild(emptyNote);
+      }
+      options.forEach(opt => {
+        const optLabel = document.createElement("label");
+        optLabel.className = "scenariobuild-multiselect-option";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = entity[field.key].includes(opt.value);
+        cb.onchange = () => {
+          const list = Array.isArray(entity[field.key]) ? entity[field.key].slice() : [];
+          const idx = list.indexOf(opt.value);
+          if (cb.checked) {
+            if (idx === -1) list.push(opt.value);
+          } else if (idx !== -1) {
+            list.splice(idx, 1);
+          }
+          entity[field.key] = list;
+          markScenarioBuildDirty();
+          if (config.onChange) config.onChange();
+        };
+        optLabel.appendChild(cb);
+        optLabel.appendChild(document.createTextNode(opt.label));
+        wrap.appendChild(optLabel);
+      });
+      fieldRow.appendChild(wrap);
       containerEl.appendChild(fieldRow);
       return;
     }
@@ -10896,6 +11198,7 @@ function getEntityManagerConfigByCategory(category) {
   if (category === "enemies") return getEnemyManagerConfig();
   if (category === "bosses") return getBossManagerConfig();
   if (category === "items") return getItemManagerConfig();
+  if (category === "furniture") return getFurnitureManagerConfig();
   if (category === "fish") return getFishManagerConfig();
   if (category === "bgmTracks") return getBgmManagerConfig();
   return null;
@@ -11680,6 +11983,7 @@ function exportGameSettingsAsJsFile() {
     enemies: scenarioProject.enemies,
     bosses: scenarioProject.bosses,
     items: scenarioProject.items,
+    furniture: scenarioProject.furniture,
     fishItems: scenarioProject.fishItems, // ★要望対応：魚管理タブ
     skills: scenarioProject.skills,
     statusAilments: scenarioProject.statusAilments,
@@ -11702,6 +12006,7 @@ function exportGameSettingsAsJsFile() {
     fameThresholds: scenarioProject.fameThresholds,
     loginBonusDays: scenarioProject.loginBonusDays, // ★要望対応：ログインボーナス
     companionChatSettings: scenarioProject.companionChatSettings, // ★要望対応：会話AI設定
+    scenarioBuildTabVisibility: scenarioProject.scenarioBuildTabVisibility || {}, // ★重大バグ修正：タブ管理の設定も保存対象に含める
     creditsText: scenarioProject.creditsText || "", // ★以前はここに無く、JSファイル出力するとクレジットの文面だけ引き継がれない不具合があった
     introText: scenarioProject.introText || "", // ★オープニングの注意書き（titlescreen.jsのDEFAULT_INTRO_SPLASH_TEXT）
     deletedBuiltinIds: {
@@ -11987,6 +12292,9 @@ async function tryRunBuiltinChapterOverride(chapterId) {
 }
 
 async function runScenarioChapterBlocksForReal(chapter, startBlockId) {
+  // ★要望対応：料理タブ等、「シナリオ再生中は使えない」機能の判定用フラグ。
+  //   話の実行が始まってから終わるまでの間、ずっとtrueにしておく
+  window.isScenarioChapterPlaying = true;
   // ★目標（タスク）表示は「クリア前」だけでなく「まだ始まっていない」間だけ出すためのフラグ。
   //   以前はclearedだけを見ていたため、この話を実際にプレイし始めた後もクリアするまでずっと
   //   目標表示が出続け（そのくせ「一回消えてもまた出てくる」ように見える不具合の原因になっていた）
@@ -12039,6 +12347,7 @@ async function runScenarioChapterBlocksForReal(chapter, startBlockId) {
       openTownMenu(); // town.js
     }
   }
+  window.isScenarioChapterPlaying = false; // ★話の実行がここで終わるので、料理タブ等を再び使えるようにする
 }
 
 // ★選択肢を選ぶと、その選択肢自身が持つ内容（option.blocks。専用の編集画面で書く）をその場で実行する。
@@ -12334,6 +12643,12 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     return block.targetBlockId ? ("JUMP:" + block.targetBlockId) : nextDefaultId;
   }
   
+  if (block.type === "levelcap") {
+    // ★要望対応：レベル上限ブロック。ここから先、指定レベルを超えて成長できなくする（player.jsのaddExpが参照する）
+    if (typeof player !== "undefined" && player) player.levelCap = Math.max(1, Number(block.level) || 1);
+    return nextDefaultId;
+  }
+  
   if (block.type === "addcompanion") {
     if (block.companionId) {
       if (typeof ensureCustomCompanionsRegistered === "function") ensureCustomCompanionsRegistered();
@@ -12489,12 +12804,22 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     } else if (block.effectType === "zoomOut" && typeof setZoomEffect === "function") {
       setZoomEffect(false); // mainfunc.js
     } else if (block.effectType === "weatherRainOn" && typeof setWeatherEffect === "function") {
+      if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true; // ★バグ修正：アンビエント天候による自動上書きを止める
       setWeatherEffect("rain"); // mainfunc.js（要望対応：天候演出）
     } else if (block.effectType === "weatherSnowOn" && typeof setWeatherEffect === "function") {
+      if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true;
       setWeatherEffect("snow"); // mainfunc.js
     } else if (block.effectType === "weatherSakuraOn" && typeof setWeatherEffect === "function") {
+      if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true;
       setWeatherEffect("sakura"); // mainfunc.js
+    } else if (block.effectType === "weatherThunderstormOn" && typeof setWeatherEffect === "function") {
+      if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true;
+      setWeatherEffect("thunderstorm"); // mainfunc.js（要望対応：天候システムに雷雨・雹を追加）
+    } else if (block.effectType === "weatherHailOn" && typeof setWeatherEffect === "function") {
+      if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true;
+      setWeatherEffect("hail"); // mainfunc.js
     } else if (block.effectType === "weatherOff" && typeof setWeatherEffect === "function") {
+      if (typeof weatherManualOverride !== "undefined") weatherManualOverride = true; // ★明示的に「天候OFF」にした状態も、次の日になるまでは維持する
       setWeatherEffect(null); // mainfunc.js
     }
     return nextDefaultId;

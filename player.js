@@ -348,11 +348,24 @@ function sanitizeLoadedPlayer(loadedPlayer) {
     }
   });
   
+  // ★不動産システム：古いセーブデータには無い欄なので、無ければ補っておく（realestate.js参照）
+  if (!loadedPlayer.ownedProperties || typeof loadedPlayer.ownedProperties !== "object") loadedPlayer.ownedProperties = {};
+  if (!Array.isArray(loadedPlayer.pendingRealEstateNotices)) loadedPlayer.pendingRealEstateNotices = [];
+  if (!Array.isArray(loadedPlayer.ownedFurniture)) loadedPlayer.ownedFurniture = [];
+  if (!loadedPlayer.furnitureStorage || typeof loadedPlayer.furnitureStorage !== "object") loadedPlayer.furnitureStorage = {};
+  
   if (typeof loadedPlayer.fame !== "number") loadedPlayer.fame = 0;
   if (typeof loadedPlayer.rank !== "string") loadedPlayer.rank = "F";
   if (!Array.isArray(loadedPlayer.clearedTrialRanks)) loadedPlayer.clearedTrialRanks = []; // ★ランクC以上への昇格試練のクリア記録
   if (!Array.isArray(loadedPlayer.notifiedTrialRanks)) loadedPlayer.notifiedTrialRanks = []; // ★「試練に挑めます」ポップアップを既に見せたランクの記録
   if (typeof loadedPlayer.daysSinceTransfer !== "number") loadedPlayer.daysSinceTransfer = 0;
+  // ★要望対応：天候システム。旧セーブには無いので、無ければ現在・次の天候・切り替わりまでの時間をランダムに初期化する
+  if (!loadedPlayer.weather || typeof loadedPlayer.weather !== "object") {
+    loadedPlayer.weather = { current: pickRandomWeatherType(), next: pickRandomWeatherType(), hoursUntilNextChange: pickWeatherChangeInterval() };
+  }
+  if (typeof loadedPlayer.weather.hoursUntilNextChange !== "number") {
+    loadedPlayer.weather.hoursUntilNextChange = pickWeatherChangeInterval(); // ★旧セーブ互換（1日1回切り替え時代のセーブ用）
+  }
   if (typeof loadedPlayer.progressPoints !== "number") loadedPlayer.progressPoints = 0;
   if (!loadedPlayer.equipment) loadedPlayer.equipment = { 武器: null, 胴: null, 盾: null };
   if (typeof loadedPlayer.magicalGirlTransformed !== "boolean") loadedPlayer.magicalGirlTransformed = false; // ★旧セーブ（属性変更システム時代）との互換用
@@ -454,7 +467,12 @@ function initPlayer(className) {
     lastVisitedBaseKey: "town", // ★要望対応：敗北時に「直前に立ち寄った拠点」へ戻すための記録
     daysSinceTransfer: 0, // 転移してからの経過日数
     gameHour: 8, // ★現在時刻（0〜23時）。転移した日の朝8時からスタート
+    ownedProperties: {}, // ★不動産システム：購入した家・店の記録（キー＝エリアのlocationKey）。realestate.js参照
+    ownedFurniture: [], // ★不動産システム：購入した家具の個体一覧（furniture.js参照）
+    furnitureStorage: {}, // ★不動産システム：倉庫家具ごとの収納中身（キー＝家具のinstanceId）。furniture.js参照
+    weather: { current: pickRandomWeatherType(), next: pickRandomWeatherType(), hoursUntilNextChange: pickWeatherChangeInterval() }, // ★要望対応：天候システム（現在の天候・次に来る天候・2〜8時間でランダムに切り替わる）
     fishing: { rodItemId: null, baitItemId: null }, // ★要望対応：釣り場で選んでいる釣竿・釣り餌（fishing.js）
+    levelCap: null, // ★要望対応：レベル上限ブロックで設定される、今の時点で超えられない上限レベル（null＝上限無し）
     fame: 0, // ★隠しステータス「名声度」。クエストをクリアすると増え、一定量たまるとランクが上がる
     rank: "F", // 冒険者ランク（クエスト受注の条件に使う想定）
     clearedTrialRanks: [], // ★ランクC以上への昇格試練のクリア記録（questboard.js参照）
@@ -475,6 +493,7 @@ function initPlayer(className) {
     totalHealingDone: 0, // 累計回復量（HP）
     totalDamageTaken: 0, // 累計被ダメージ量
     unlockedAchievementIds: [], // 達成済みの実績ID一覧
+    knownCookingRecipeIds: [], // ★要望対応：レシピ発見アイテムを使って判明した料理レシピのID一覧（料理タブ参照）
     // ★話の始まるきっかけ（「エリアに来た時」）やシナリオ専用エリアのn回目判定に使う、拠点ごとの来訪回数
     areaVisitCounts: {}, // { locationKey: 来訪回数 }
     // ★マップのエリア解放条件（「特定のクエストをクリアした」）の判定用の記録
@@ -1163,6 +1182,62 @@ function getHealTargetDisplayName(unit, caster) {
 }
 
 /**
+ * ★要望対応：天候システム。
+ * 晴れ・曇り・雨・雪・桜吹雪・雷雨・雹の7種類から重み付き抽選する（晴れが一番出やすく、雪・桜吹雪・雹は珍しい）。
+ * 釣り場の「天候」指定（fishing.js）や、メインタブの天候表示（mainfunc.js）から参照する
+ */
+const WEATHER_TYPE_LABELS_JA = { clear: "晴れ", cloudy: "曇り", rain: "雨", snow: "雪", sakura: "桜吹雪", thunderstorm: "雷雨", hail: "雹" };
+const WEATHER_TYPE_WEIGHTS = { clear: 6, cloudy: 4, rain: 3, snow: 1, sakura: 1, thunderstorm: 2, hail: 1 };
+function pickRandomWeatherType() {
+  const entries = Object.entries(WEATHER_TYPE_WEIGHTS);
+  const total = entries.reduce((sum, [, w]) => sum + w, 0);
+  let roll = Math.random() * total;
+  for (const [type, w] of entries) {
+    roll -= w;
+    if (roll <= 0) return type;
+  }
+  return entries[entries.length - 1][0];
+}
+// ★要望対応：次に天候が切り替わるまでの時間（2〜8時間でランダム）
+function pickWeatherChangeInterval() {
+  return 2 + Math.random() * 6;
+}
+// ★旧セーブ等でplayer.weatherが無い場合の保険（現在・次の天候、切り替わりまでの時間をランダムに初期化）
+function ensurePlayerWeatherState() {
+  if (!player) return;
+  if (!player.weather || typeof player.weather !== "object") {
+    player.weather = { current: pickRandomWeatherType(), next: pickRandomWeatherType(), hoursUntilNextChange: pickWeatherChangeInterval() };
+  }
+  if (typeof player.weather.hoursUntilNextChange !== "number") {
+    player.weather.hoursUntilNextChange = pickWeatherChangeInterval(); // ★旧セーブ互換（1日1回切り替え時代のセーブ用）
+  }
+}
+
+/**
+ * ★要望対応：天候を経過時間ぶん進める。2〜8時間に1回、「次の天候」が「今の天候」になり、
+ * 新しい「次の天候」を抽選する（advanceGameTimeから、経過した時間ぶんそのまま渡される）
+ * @param {number} hours - 経過した時間
+ */
+function advanceWeatherByHours(hours) {
+  if (!player || !hours || hours <= 0) return;
+  ensurePlayerWeatherState();
+  player.weather.hoursUntilNextChange -= hours;
+  let changed = false;
+  while (player.weather.hoursUntilNextChange <= 0) {
+    player.weather.current = player.weather.next;
+    player.weather.next = pickRandomWeatherType();
+    player.weather.hoursUntilNextChange += pickWeatherChangeInterval();
+    changed = true;
+  }
+  if (changed) {
+    // ★バグ修正：天候が切り替わったタイミングで、話の演出ブロックによる手動天候指定をリセットし、
+    //   新しい天候を実際の画面演出にも反映する（mainfunc.js）
+    if (typeof weatherManualOverride !== "undefined") weatherManualOverride = false;
+    if (typeof applyAmbientWeatherEffect === "function") applyAmbientWeatherEffect();
+  }
+}
+
+/**
  * 経過日数を進める
  * @param {number} days - 進める日数（デフォルト1日）
  */
@@ -1181,11 +1256,16 @@ function advanceGameTime(hours) {
   if (typeof player.gameHour !== "number") player.gameHour = 8;
   
   player.gameHour += hours;
+  // ★要望対応：天候は日付をまたぐかどうかに関係なく、2〜8時間に1回切り替わる
+  advanceWeatherByHours(hours);
   while (player.gameHour >= 24) {
     player.gameHour -= 24;
     advanceDay(1);
     // ★日付が変わった瞬間に、クエスト掲示板を毎日0時でリセットする（questboard.js）
     if (typeof resetDailyQuestBoard === "function") resetDailyQuestBoard();
+    // ★日付が変わった瞬間に、不動産のローン・家賃の請求（7日ごと）を判定する（realestate.js）
+    if (typeof processRealEstateDailyTick === "function") processRealEstateDailyTick();
+    if (typeof processEstateShopDailyTick === "function") processEstateShopDailyTick(); // ★不動産:店の放置販売収入（estateshop.js）
   }
 }
 
@@ -1402,6 +1482,35 @@ function addProgressPoints(amount) {
   player.progressPoints += amount;
 }
 
+// ★要望対応：レベル上限ブロックの捜索（if/選択肢の中も再帰的に見る）
+function collectLevelCapBlocksInOrder(blocks, out) {
+  (blocks || []).forEach(block => {
+    if (!block) return;
+    if (block.type === "levelcap" && Number(block.level) > 0) out.push(Number(block.level));
+    if (block.type === "if") {
+      collectLevelCapBlocksInOrder(block.trueBlocks, out);
+      collectLevelCapBlocksInOrder(block.falseBlocks, out);
+    }
+    if (block.type === "choice") {
+      (block.options || []).forEach(opt => collectLevelCapBlocksInOrder(opt.blocks, out));
+    }
+  });
+}
+
+// ★要望対応：ロード直後に呼ぶ。保存されているレベル上限をそのまま信じるのではなく、
+//   「クリア済みの話」＋「今進んでいる話（chapter.started）」の中にあるレベル上限ブロックを
+//   話の並び順に探し、一番新しい（最後に見つかった）ものを今の上限として設定し直す。
+//   話の追加・修正があっても、進み具合から毎回正しく組み立て直せるようにするため
+function recalculateLevelCapFromProgress() {
+  if (typeof scenarioProject === "undefined" || !scenarioProject || !Array.isArray(scenarioProject.chapters)) return;
+  const found = [];
+  scenarioProject.chapters.forEach(chapter => {
+    if (!chapter.cleared && !chapter.started) return; // ★クリア済み、または今進んでいる話だけを対象にする
+    collectLevelCapBlocksInOrder(chapter.blocks, found);
+  });
+  if (player) player.levelCap = found.length > 0 ? found[found.length - 1] : null;
+}
+
 function addExp(amount) {
   if (!player) return { leveledUp: false, previousLevel: 0, newLevel: 0, newSkills: [] };
   
@@ -1414,7 +1523,8 @@ function addExp(amount) {
   player.classTotalExp[player.class] = (player.classTotalExp[player.class] || 0) + amount;
   
   let expToNextLevel = expNeededForLevel(player.level);
-  while (player.exp >= expToNextLevel) {
+  // ★要望対応：レベル上限ブロックで設定した上限に達したら、経験値は貯まってもレベルは上がらなくする
+  while (player.exp >= expToNextLevel && (!player.levelCap || player.level < player.levelCap)) {
     player.exp -= expToNextLevel;
     player.level += 1;
     expToNextLevel = expNeededForLevel(player.level);
@@ -1435,7 +1545,8 @@ function addExp(amount) {
     companion.exp += amount;
     companion.totalExp = (typeof companion.totalExp === "number" ? companion.totalExp : 0) + amount; // ★累計獲得経験値も併せて記録する
     let companionExpToNext = expNeededForLevel(companion.level);
-    while (companion.exp >= companionExpToNext) {
+    // ★要望対応：レベル上限はパーティー全員（仲間も）が対象
+    while (companion.exp >= companionExpToNext && (!player.levelCap || companion.level < player.levelCap)) {
       companion.exp -= companionExpToNext;
       companion.level += 1;
       companionExpToNext = expNeededForLevel(companion.level);

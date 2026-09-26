@@ -608,6 +608,10 @@ function handleTutorialKeyDown(event) {
 let progressChapterCursorIndex = 0;
 // ★詳細表示中かどうか。trueの間は、決定キー/キャンセルキーで一覧に戻る動きに切り替わる
 let progressDetailOpen = false;
+// ★要望対応：まず章（scenarioProject.chapterArcs）を選んでから話一覧を見る流れにするための状態。
+//   nullの間は章一覧を表示中、章のidが入っていればその章の話一覧を表示中
+let progressSelectedArcId = null;
+let progressGroupCursorIndex = 0;
 
 function openProgressPanel() {
   const grid = document.getElementById("convenience-icon-grid");
@@ -623,6 +627,8 @@ function openProgressPanel() {
   if (tutorialPanel) tutorialPanel.classList.add("hidden");
   if (achievementsPanel) achievementsPanel.classList.add("hidden");
   progressChapterCursorIndex = 0;
+  progressGroupCursorIndex = 0;
+  progressSelectedArcId = null; // ★要望対応：開いた時は必ず章一覧から
   progressDetailOpen = false;
   renderProgressPanel();
   window.removeEventListener("keydown", handleProgressKeyDown); // 二重登録防止
@@ -638,6 +644,26 @@ function closeProgressPanel() {
 function getProgressChapterList() {
   return ((typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.chapters)) ? scenarioProject.chapters : [])
     .filter(c => c.enabled !== false);
+}
+
+// ★要望対応：話を「章」（scenarioProject.chapterArcs、話管理タブで設定する既存の章分け）ごとにまとめる。
+//   どの章にも属していない話は「未分類」としてひとまとめにする（1話も無い章・未分類は出さない）
+function getProgressChapterGroups() {
+  const chapters = getProgressChapterList();
+  const groups = [];
+  ((typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.chapterArcs)) ? scenarioProject.chapterArcs : []).forEach(arc => {
+    const arcChapters = chapters.filter(c => c.arcId === arc.id);
+    if (arcChapters.length > 0) groups.push({ id: arc.id, name: arc.name || "（名称未設定）", chapters: arcChapters });
+  });
+  const noneChapters = chapters.filter(c => !c.arcId);
+  if (noneChapters.length > 0) groups.push({ id: "__none__", name: "未分類", chapters: noneChapters });
+  return groups;
+}
+
+// ★今選んでいる章に属する話だけの一覧（章をまだ選んでいなければ空）
+function getSelectedGroupChapterList() {
+  const group = getProgressChapterGroups().find(g => g.id === progressSelectedArcId);
+  return group ? group.chapters : [];
 }
 
 // ★上部30%：話の進行、ランク、名声度、次のランクまでの名声度、進行度（player.progressPoints）
@@ -667,6 +693,9 @@ function renderProgressSummary(container) {
   
   // ★「進行度」（player.progressPoints）：クエスト達成・ランクアップ・魔物討伐等で増える隠しステータス。第2話解放条件にも使われる
   container.appendChild(buildProgressRow("進行度", `${player.progressPoints || 0}`));
+  
+  // ★要望対応：シナリオ全体（実装済みの全話）の文字数を合計して表示
+  container.appendChild(buildProgressRow("シナリオ全体の文字数", `${getScenarioTotalCharCount().toLocaleString()}文字`));
 }
 
 // ★要望対応：話（scenario2.js等）の中の全ブロックから、セリフ・ナレーション・テロップ・選択肢の
@@ -694,12 +723,71 @@ function getProgressChapterDisplayTitle(chapter) {
   return chapter.isInterlude ? `閑話：${chapter.title}` : chapter.title;
 }
 
+// ★要望対応：章（chapterArcのグループ）も、その章に属する話が1つもクリアされていなければ
+//   章名で内容が分かってしまわないよう「？？？」に伏せる
+function getProgressGroupDisplayName(group) {
+  const clearedInGroup = group.chapters.filter(c => c.cleared).length;
+  if (clearedInGroup === 0) return "？？？";
+  return group.name;
+}
+
+// ★要望対応：登録されている（実装済みの）話すべての文字数を合計した、シナリオ全体の文字数
+function getScenarioTotalCharCount() {
+  return getProgressChapterList().reduce((sum, chapter) => sum + getChapterTotalCharCount(chapter), 0);
+}
+
+// ★要望対応：章一覧（scenarioProject.chapterArcsごとに、その章のクリア済み数／全話数も添えて出す）
+function renderProgressGroupList(container) {
+  container.innerHTML = "";
+  container.className = "progress-panel-list progress-panel-chapter-list";
+  
+  const groups = getProgressChapterGroups();
+  if (progressGroupCursorIndex >= groups.length) progressGroupCursorIndex = Math.max(0, groups.length - 1);
+  
+  if (groups.length === 0) {
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "devmode-note";
+    emptyEl.textContent = "まだ話が登録されていません。";
+    container.appendChild(emptyEl);
+    return;
+  }
+  
+  groups.forEach((group, index) => {
+    const row = document.createElement("div");
+    row.className = "progress-panel-chapter-row" + (index === progressGroupCursorIndex ? " cursor" : "");
+    
+    const titleEl = document.createElement("span");
+    titleEl.className = "progress-panel-chapter-title";
+    titleEl.textContent = getProgressGroupDisplayName(group); // ★要望対応：話が1つもクリアされていない章は「？？？」に伏せる
+    row.appendChild(titleEl);
+    
+    const clearedInGroup = group.chapters.filter(c => c.cleared).length;
+    // ★要望対応：章全体（この章に属する全話）の文字数も合計して表示
+    const groupCharTotal = group.chapters.reduce((sum, c) => sum + getChapterTotalCharCount(c), 0);
+    const countEl = document.createElement("span");
+    countEl.className = "progress-panel-chapter-charcount";
+    countEl.textContent = `クリア済み ${clearedInGroup}／${group.chapters.length}話　${groupCharTotal.toLocaleString()}文字`;
+    row.appendChild(countEl);
+    
+    row.onclick = (event) => {
+      event.stopPropagation();
+      progressGroupCursorIndex = index;
+      progressSelectedArcId = group.id;
+      progressChapterCursorIndex = 0;
+      renderProgressPanel();
+    };
+    
+    container.appendChild(row);
+    if (index === progressGroupCursorIndex) row.scrollIntoView({ block: "nearest" });
+  });
+}
+
 // ★下部70%：話のリスト。矢印キーでカーソルを動かし、Zキーで選んでいる話のあらすじを全画面表示する
 function renderProgressChapterList(container) {
   container.innerHTML = "";
   container.className = "progress-panel-list progress-panel-chapter-list";
   
-  const chapters = getProgressChapterList();
+  const chapters = getSelectedGroupChapterList(); // ★要望対応：全話ではなく、選んでいる章の話だけを出す
   if (progressChapterCursorIndex >= chapters.length) progressChapterCursorIndex = Math.max(0, chapters.length - 1);
   
   if (chapters.length === 0) {
@@ -745,7 +833,7 @@ function renderProgressChapterList(container) {
 // ★話の詳細（あらすじ）を、サブ画面いっぱいに表示する
 function renderProgressChapterDetail(panel) {
   panel.innerHTML = "";
-  const chapters = getProgressChapterList();
+  const chapters = getSelectedGroupChapterList(); // ★要望対応：選んでいる章の話一覧から参照する
   const chapter = chapters[progressChapterCursorIndex];
   if (!chapter) { progressDetailOpen = false; renderProgressPanel(); return; }
   
@@ -787,23 +875,40 @@ function renderProgressPanel() {
   
   const title = document.createElement("h3");
   title.className = "monster-codex-title";
-  title.textContent = "進行度";
-  panel.appendChild(title);
-  
-  // ★上部30%：サマリー
-  const summaryEl = document.createElement("div");
-  renderProgressSummary(summaryEl);
-  panel.appendChild(summaryEl);
-  
-  // ★下部70%：話のリスト（矢印キーでカーソル、Zキーで詳細）
-  const listEl = document.createElement("div");
-  renderProgressChapterList(listEl);
-  panel.appendChild(listEl);
   
   const backBtn = document.createElement("button");
   backBtn.className = "monster-codex-back-btn";
-  backBtn.textContent = "◀ 戻る";
-  backBtn.onclick = (event) => { event.stopPropagation(); closeProgressPanel(); };
+  
+  if (progressSelectedArcId === null) {
+    // ★要望対応：まず章を選ぶ画面（サマリー＋章一覧）
+    title.textContent = "進行度";
+    panel.appendChild(title);
+    
+    const summaryEl = document.createElement("div");
+    renderProgressSummary(summaryEl);
+    panel.appendChild(summaryEl);
+    
+    const groupListEl = document.createElement("div");
+    renderProgressGroupList(groupListEl);
+    panel.appendChild(groupListEl);
+    
+    backBtn.textContent = "◀ 戻る";
+    backBtn.onclick = (event) => { event.stopPropagation(); closeProgressPanel(); };
+  } else {
+    // ★章を選んだ後：その章の話一覧だけを表示する
+    const groups = getProgressChapterGroups();
+    const selectedGroup = groups.find(g => g.id === progressSelectedArcId);
+    title.textContent = selectedGroup ? getProgressGroupDisplayName(selectedGroup) : "進行度";
+    panel.appendChild(title);
+    
+    const listEl = document.createElement("div");
+    renderProgressChapterList(listEl);
+    panel.appendChild(listEl);
+    
+    backBtn.textContent = "◀ 章一覧へ戻る";
+    backBtn.onclick = (event) => { event.stopPropagation(); progressSelectedArcId = null; renderProgressPanel(); };
+  }
+  
   panel.appendChild(backBtn);
 }
 
@@ -838,13 +943,43 @@ function handleProgressKeyDown(event) {
     return;
   }
   
-  if (KEY_CONFIG.cancelKeys.includes(event.key)) {
-    event.preventDefault();
-    closeProgressPanel();
+  // ★要望対応：章をまだ選んでいない（章一覧を見ている）間の操作
+  if (progressSelectedArcId === null) {
+    if (KEY_CONFIG.cancelKeys.includes(event.key)) {
+      event.preventDefault();
+      closeProgressPanel();
+      return;
+    }
+    const groups = getProgressChapterGroups();
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (groups.length === 0) return;
+      progressGroupCursorIndex = Math.min(groups.length - 1, progressGroupCursorIndex + 1);
+      renderProgressGroupList(document.querySelector("#progress-panel .progress-panel-chapter-list"));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (groups.length === 0) return;
+      progressGroupCursorIndex = Math.max(0, progressGroupCursorIndex - 1);
+      renderProgressGroupList(document.querySelector("#progress-panel .progress-panel-chapter-list"));
+    } else if (KEY_CONFIG.decideKeys.includes(event.key)) {
+      event.preventDefault();
+      if (groups.length === 0) return;
+      progressSelectedArcId = groups[progressGroupCursorIndex].id;
+      progressChapterCursorIndex = 0;
+      renderProgressPanel();
+    }
     return;
   }
   
-  const chapters = getProgressChapterList();
+  // ★章を選んだ後（その章の話一覧を見ている）間の操作。キャンセルキーは章一覧へ戻る
+  if (KEY_CONFIG.cancelKeys.includes(event.key)) {
+    event.preventDefault();
+    progressSelectedArcId = null;
+    renderProgressPanel();
+    return;
+  }
+  
+  const chapters = getSelectedGroupChapterList();
   if (event.key === "ArrowDown") {
     event.preventDefault();
     if (chapters.length === 0) return;
@@ -1825,6 +1960,7 @@ async function restoreGameFromSaveData(data, persistLoadedDataFn) {
   if (!chapter1Finished && typeof data.scenarioStep === "number" && data.messageLog) {
     // ★第一話の途中のセーブ：シナリオを最初から再実行し、セーブ地点まで一気に再生する
     player = sanitizeLoadedPlayer(deepClone(data.player)); // player.js（古いセーブの互換性維持）
+    if (typeof recalculateLevelCapFromProgress === "function") recalculateLevelCapFromProgress(); // player.js（要望対応：レベル上限ブロック）
     inventorySlots = deepClone(data.inventorySlots);
     sanitizeInventoryInstanceIds(); // inventory.js（古いセーブ互換：instanceIdが無いマスに振り直す）
     migrateLegacyEquipmentReferences(); // player.js（古いセーブ互換：装備欄のitemId参照をinstanceIdに変換）
@@ -1848,6 +1984,7 @@ async function restoreGameFromSaveData(data, persistLoadedDataFn) {
   } else {
     // ★自由行動パートに入ってからのセーブ：記録されていた場所を直接開き直す
     player = sanitizeLoadedPlayer(deepClone(data.player)); // player.js（古いセーブの互換性維持）
+    if (typeof recalculateLevelCapFromProgress === "function") recalculateLevelCapFromProgress(); // player.js（要望対応：レベル上限ブロック）
     inventorySlots = deepClone(data.inventorySlots);
     sanitizeInventoryInstanceIds(); // inventory.js（古いセーブ互換：instanceIdが無いマスに振り直す）
     migrateLegacyEquipmentReferences(); // player.js（古いセーブ互換：装備欄のitemId参照をinstanceIdに変換）

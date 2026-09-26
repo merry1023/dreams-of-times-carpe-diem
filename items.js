@@ -6,6 +6,7 @@
   ITEM_MASTER の共通フィールド:
   - name        : アイテム名
   - category    : "herb"(薬草) / "potion"(ポーション) / "material"(魔物素材) / "weapon"(武器) / "armor"(防具) / "tool"(回復以外の特殊効果を持つ道具)
+                  / "cookingTool"(料理道具。料理タブで使う。耐久度・材料スロット数を持つ) / "food"(料理。料理タブの完成品。回復系params＋戦闘中だけの自己バフを持てる)
   - description : アイテムの説明文
   - rank        : お宝ランク（鑑定結果に使う目安。F〜S等）
   - listedPrice : 定価。町の買取屋が普通につける価格。プレイヤーは鑑定しなくてもこの額は見える想定
@@ -456,6 +457,17 @@ const ITEM_MASTER = {
     fishHp: 70,
     fishSize: 180,
     params: { 種類: "大物", 強さ: 10, 大きさ: 180, レア度: "B", 体力: 70 }
+  },
+  
+  // ===== 料理関連（要望対応：どのレシピにも一致しなかった時にできる失敗作） =====
+  "food_cooking_fail": {
+    name: "ゲロ以下のにおいがプンプンする料理",
+    category: "food",
+    description: "材料の組み合わせが噛み合わなかったのか、見た目も匂いもひどいことになってしまった一品。とても食べる気にはなれない。",
+    rank: "F",
+    listedPrice: 1,
+    trueValue: 1,
+    params: {}
   }
   
 };

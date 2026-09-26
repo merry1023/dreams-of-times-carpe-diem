@@ -31,6 +31,12 @@ function renderCompanionChatRoot() {
 }
 
 function renderCompanionChatPicker(container) {
+  // ★要望対応：見出しが無く、ログイン前やパーティー未編成の時と見分けが付きにくかったので、常に見出しを出す
+  const heading = document.createElement("h4");
+  heading.className = "companionchat-heading";
+  heading.textContent = "だれと話す？";
+  container.appendChild(heading);
+  
   if (typeof currentUser === "undefined" || !currentUser) {
     const notice = document.createElement("div");
     notice.className = "companionchat-login-notice";
@@ -54,10 +60,21 @@ function renderCompanionChatPicker(container) {
     return;
   }
   
-  const listEl = document.createElement("div");
-  listEl.className = "companionchat-picker-list";
   // ★キーボードのカーソルは「戦闘不能で会話できない仲間」を除いた、実際に表示される並びに合わせる
   const chattableCompanions = player.companions.filter(c => c.alive);
+  
+  // ★バグ修正：パーティーはいるが全員戦闘不能の時、以前はここで何も表示されず、
+  //   一見「タブが壊れている」ように見えてしまっていた（メッセージも見出しも無い空欄になっていた）
+  if (chattableCompanions.length === 0) {
+    const downEl = document.createElement("p");
+    downEl.className = "skill-empty";
+    downEl.textContent = "パーティーの仲間は今、全員戦闘不能のようだ……。回復してから話しかけよう。";
+    container.appendChild(downEl);
+    return;
+  }
+  
+  const listEl = document.createElement("div");
+  listEl.className = "companionchat-picker-list";
   if (companionChatCursorIndex >= chattableCompanions.length) companionChatCursorIndex = Math.max(0, chattableCompanions.length - 1);
   if (companionChatCursorIndex < 0) companionChatCursorIndex = 0;
   

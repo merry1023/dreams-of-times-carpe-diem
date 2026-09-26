@@ -10,7 +10,7 @@ const GRID_SIZE = GRID_COLS * GRID_ROWS; // 240マス
 
 // スタック（積み重ね）できるカテゴリ。ここに無いカテゴリ（武器・防具など）は
 // 装備・貴重品扱いで、1マスに1個しか置けない。
-const STACKABLE_CATEGORIES = ["herb", "potion", "material", "tool", "fish"]; // ★要望対応：釣った魚もスタック可能
+const STACKABLE_CATEGORIES = ["herb", "potion", "material", "tool", "fish", "food"]; // ★要望対応：釣った魚・料理タブで作った料理もスタック可能
 const MAX_STACK = 100;
 
 // inventorySlots[i] は null（空きマス）か { itemId, quantity, appraised } のオブジェクト
@@ -60,6 +60,10 @@ function sanitizeInventoryInstanceIds() {
     // ★要望対応：古いセーブデータ（acquiredSeq導入前）には、今並んでいる順番のまま連番を振っておく
     if (slot && typeof slot.acquiredSeq !== "number") {
       slot.acquiredSeq = nextInventoryAcquiredSeq++;
+    }
+    // ★要望対応：料理道具導入前のセーブデータには耐久度が無いので、アイテムマスターの初期値で補う（未設定なら既定値30）
+    if (slot && slot.durability === undefined && ITEM_MASTER[slot.itemId] && ITEM_MASTER[slot.itemId].category === "cookingTool") {
+      slot.durability = Math.max(1, Number(ITEM_MASTER[slot.itemId].toolDurability) || 30);
     }
   });
 }
@@ -122,7 +126,10 @@ function addItem(itemId, quantity = 1, options = {}) {
         acquiredSeq: nextInventoryAcquiredSeq++, // ★要望対応：入手順並び替え用
         // ★店で「買った」装備は、個体差の当たり外れが無いよう±0にする（options.noStatBonus）。
         //   冒険で拾った・敵が落とした装備だけ、掘り出し物のランダムな個体差がつく
-        statBonus: options.noStatBonus ? null : rollEquipmentStatBonus(master)
+        statBonus: options.noStatBonus ? null : rollEquipmentStatBonus(master),
+        // ★要望対応：料理道具は個体ごとに耐久度を持ち、使うたびに減っていき、0になると壊れて消える。
+        //   耐久度を設定し忘れていても一瞬で壊れてしまわないよう、未設定時は既定値30を使う（アイテム編集欄のプレースホルダーと合わせる）
+        durability: master.category === "cookingTool" ? Math.max(1, Number(master.toolDurability) || 30) : undefined
       };
     }
     return true;
@@ -213,6 +220,26 @@ function findSlotsByItemId(itemId) {
 function markSlotAsAppraised(index) {
   const slot = inventorySlots[index];
   if (slot) slot.appraised = true;
+}
+
+/**
+ * ★要望対応：料理道具の耐久度を指定した分だけ減らす（cooking.js から呼ぶ）。
+ *   0以下になったら、その道具（個体）は壊れてインベントリから消える
+ * @param {number} instanceId
+ * @param {number} amount - 減らす量（0以下なら何もしない）
+ * @returns {{ broke: boolean, remaining: number }} 壊れたかどうかと、壊れなかった場合の残り耐久度
+ */
+function reduceCookingToolDurability(instanceId, amount) {
+  const index = inventorySlots.findIndex(s => s && s.instanceId === instanceId);
+  if (index === -1 || amount <= 0) return { broke: false, remaining: 0 };
+  const slot = inventorySlots[index];
+  const remaining = Math.max(0, (Number(slot.durability) || 0) - amount);
+  if (remaining <= 0) {
+    inventorySlots[index] = null; // ★壊れて消える
+    return { broke: true, remaining: 0 };
+  }
+  slot.durability = remaining;
+  return { broke: false, remaining };
 }
 
 /**

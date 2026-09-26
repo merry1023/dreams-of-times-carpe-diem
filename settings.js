@@ -32,6 +32,7 @@ const PLAY_SCREEN_TAB_DEFS = [
   { id: "tab-companionchat", label: "会話", enabledByDefault: false },
   { id: "tab-strength", label: "強さ", enabledByDefault: true },
   { id: "tab-equipment", label: "装備", enabledByDefault: true },
+  { id: "tab-cooking", label: "料理", enabledByDefault: true },
   { id: "tab-convenience", label: "便利", enabledByDefault: true },
   { id: "tab-log", label: "ログ", enabledByDefault: true },
   { id: "tab-setting", label: "設定", enabledByDefault: true }
@@ -50,104 +51,36 @@ let gameSettings = {
   focusMainSwitchesToMainTab: false, // ★ONの時、Aキーでメイン画面に移行すると、サブ画面もメインタブに戻る（要望対応）
   showMainTabParams: false, // ★ONにすると主人公・仲間のパラメータをメインタブ内に表示する。OFF（デフォルト）だと
                             //   メインタブには表示せず、常時左上に表示する（要望対応）
-  playTabVisibility: {}
+  weatherEffectEnabled: true // ★要望対応：話の「天候演出」ブロック（雨・雪・桜吹雪を画面に降らせる視覚効果）のON/OFF。OFFなら演出は一切表示しない
 };
 
-function getPlayTabVisibilityMap() {
-  if (!gameSettings || typeof gameSettings !== "object") return {};
-  if (!gameSettings.playTabVisibility || typeof gameSettings.playTabVisibility !== "object") {
-    gameSettings.playTabVisibility = {};
+// ★要望対応：シナリオエディタの「タブ管理」で、このシナリオのプレイ画面タブ（PLAY_SCREEN_TAB_DEFS）を
+//   タブごとに有効／無効にできる。scenarioProject.scenarioBuildTabVisibility を、
+//   （以前のようにシナリオエディタ自身のタブではなく）PLAY_SCREEN_TAB_DEFSのidをキーに見る
+//   （未読み込み等で参照できない場合や、明示的な設定が無い場合は、そのタブのenabledByDefaultに従う）
+function isScenarioPlayTabEnabled(tabId) {
+  if (typeof scenarioProject !== "undefined" && scenarioProject && scenarioProject.scenarioBuildTabVisibility
+    && typeof scenarioProject.scenarioBuildTabVisibility[tabId] === "boolean") {
+    return scenarioProject.scenarioBuildTabVisibility[tabId];
   }
-  PLAY_SCREEN_TAB_DEFS.forEach(tab => {
-    if (typeof gameSettings.playTabVisibility[tab.id] !== "boolean") {
-      // ★要望対応：「会話」タブは、シナリオエディタの「タブ管理」で会話AI設定が有効になっている
-      //   シナリオでは、プレイヤー側も最初から表示された状態にする（無効なシナリオでは今まで通り非表示スタート）
-      if (tab.id === "tab-companionchat" && isScenarioCompanionChatEnabled()) {
-        gameSettings.playTabVisibility[tab.id] = true;
-      } else {
-        gameSettings.playTabVisibility[tab.id] = tab.enabledByDefault !== false;
-      }
-    }
-  });
-  return gameSettings.playTabVisibility;
+  const def = PLAY_SCREEN_TAB_DEFS.find(t => t.id === tabId);
+  return def ? def.enabledByDefault !== false : true;
 }
 
-// ★要望対応：シナリオエディタの「タブ管理」で会話AI設定（companionchat）を有効にしているかどうか。
-//   scenariobuild.jsのscenarioProjectを参照する（未読み込み等で参照できない場合はfalse扱い）
+// ★互換用：以前は「会話」タブ専用の判定関数だったが、中身は上記の汎用判定に統一した
 function isScenarioCompanionChatEnabled() {
-  return typeof scenarioProject !== "undefined" && !!scenarioProject
-    && !!scenarioProject.scenarioBuildTabVisibility
-    && scenarioProject.scenarioBuildTabVisibility.companionchat === true;
+  return isScenarioPlayTabEnabled("tab-companionchat");
 }
 
+// ★要望対応：プレイ画面タブの表示/非表示は、プレイヤー自身の個人設定（設定タブ）ではなく、
+//   シナリオエディタの「タブ管理」で開発者だけが決められるようにした（プレイヤー側の個人設定は廃止）
 function isPlayTabEnabled(tabId) {
   if (!tabId) return false;
-  // ★バグ修正：シナリオエディタのタブ管理で会話AI設定をONにしても、以前はプレイヤー側の「会話」タブが
-  //   出てこなかった（プレイヤー自身の設定は、シナリオ側の有効/無効と一切連動していなかったため）。
-  //   シナリオ側で無効なままの時は、プレイヤーが自分の設定でONにしていても表示しない
-  //   （機能自体がこのシナリオに用意されていないため）
-  if (tabId === "tab-companionchat" && !isScenarioCompanionChatEnabled()) return false;
-  const map = getPlayTabVisibilityMap();
-  return map[tabId] !== false;
+  return isScenarioPlayTabEnabled(tabId);
 }
 
 function getVisiblePlayTabIds() {
   return PLAY_SCREEN_TAB_DEFS.filter(tab => isPlayTabEnabled(tab.id)).map(tab => tab.id);
-}
-
-function renderPlayTabVisibilityManagerPanel() {
-  const container = document.getElementById("settings-list-container");
-  if (!container) return;
-
-  const panel = document.createElement("div");
-  panel.className = "setting-list";
-  panel.style.marginTop = "16px";
-  panel.style.borderTop = "1px solid rgba(255,255,255,0.2)";
-  panel.style.paddingTop = "12px";
-
-  const title = document.createElement("div");
-  title.className = "setting-label";
-  title.style.marginBottom = "8px";
-  title.textContent = "プレイ画面タブ管理";
-  panel.appendChild(title);
-
-  PLAY_SCREEN_TAB_DEFS.forEach(tab => {
-    const row = document.createElement("label");
-    row.style.display = "flex";
-    row.style.justifyContent = "space-between";
-    row.style.alignItems = "center";
-    row.style.padding = "6px 0";
-    row.style.color = "#fff";
-    
-    // ★要望対応：「会話」タブは、シナリオ側で会話AI設定が有効になっていないと表示できない機能なので、
-    //   その場合はチェックを入れても意味が無いことが分かるよう、行自体を無効化して案内を添える
-    const isCompanionChatLocked = tab.id === "tab-companionchat" && typeof isScenarioCompanionChatEnabled === "function" && !isScenarioCompanionChatEnabled();
-    if (isCompanionChatLocked) row.style.opacity = "0.5";
-
-    const label = document.createElement("span");
-    label.textContent = isCompanionChatLocked ? `${tab.label}（このシナリオでは未対応）` : tab.label;
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = isPlayTabEnabled(tab.id);
-    checkbox.disabled = isCompanionChatLocked;
-    checkbox.onchange = () => {
-      const map = getPlayTabVisibilityMap();
-      map[tab.id] = checkbox.checked;
-      saveSettings();
-      if (typeof applyPlayTabVisibility === "function") applyPlayTabVisibility();
-      if (document.querySelector('.tab-content.active') && !isPlayTabEnabled(document.querySelector('.tab-content.active').id)) {
-        const fallbackTab = getVisiblePlayTabIds()[0] || "tab-main";
-        if (typeof switchTab === "function") switchTab(fallbackTab);
-      }
-    };
-
-    row.appendChild(label);
-    row.appendChild(checkbox);
-    panel.appendChild(row);
-  });
-
-  container.appendChild(panel);
 }
 
 // ★ページ読み込み時に一度だけ呼ぶ（script.js）。保存済みの設定があれば読み込み、無ければ初期値のまま
@@ -161,7 +94,6 @@ function loadSettings() {
   } catch (e) {
     console.error("設定の読み込みに失敗しました", e);
   }
-  getPlayTabVisibilityMap();
   applySettings();
   if (typeof applyPlayTabVisibility === "function") applyPlayTabVisibility();
   if (typeof showDevModeToggleButton === "function") showDevModeToggleButton(); // devmode.js
@@ -260,10 +192,9 @@ window.addEventListener("beforeunload", () => autoSaveToSlot("onclose"));
 // ===== 設定タブの描画・操作 =====
 
 let settingsCursorIndex = 0;
-let isPlayTabVisibilityPanelOpen = false;
 const SETTINGS_ROW_COUNT = 13; // 0:文字送り速度 1:ログ記憶数 2:BGM音量 3:オートセーブON/OFF 4:オートセーブから再開する
-                               // 5:正解の選択肢を表示 6:Aキーでメインタブに戻す 7:メインタブのパラメータ表示
-                               // 8:全画面表示 9:開発者ボタン 10:Googleアカウント（auth.js） 11:プレイ画面のタブ管理 12:メインメニューに戻る
+                               // 5:正解の選択肢を表示 6:Aキーでメインタブに戻す 7:メインタブのパラメータ表示 8:天候演出
+                               // 9:全画面表示 10:開発者ボタン 11:Googleアカウント（auth.js） 12:メインメニューに戻る
 
 // ★要望対応：BGM音量を「┃」を20本並べたバーで表示する。現在の音量までを塗り、それ以降は薄い色のままにする
 function renderVolumeBarSegments(container, level, max) {
@@ -309,10 +240,10 @@ function renderSettingsTab() {
     { label: "正解の選択肢を表示", value: gameSettings.showCorrectChoice ? "ON" : "OFF", hint: "◀／▶／決定で切替（選択肢のうち話が進む方に★が付く）" },
     { label: "メイン画面に移行する時、メインタブに切り替える", value: gameSettings.focusMainSwitchesToMainTab ? "ON" : "OFF", hint: "◀／▶／決定で切替（Aキーでメイン画面に移行した時だけ有効。タップでの切り替えは対象外）" },
     { label: "メインタブのパラメータ表示", value: gameSettings.showMainTabParams ? "ON" : "OFF", hint: "◀／▶／決定で切替（OFFだと、主人公・仲間のパラメータは常時左上に表示されます）" },
+    { label: "天候演出", value: gameSettings.weatherEffectEnabled ? "ON" : "OFF", hint: "◀／▶／決定で切替（OFFにすると、話の「天候演出」ブロックによる雨・雪・桜吹雪の視覚効果を表示しません）" },
     { label: "全画面表示", value: isFullscreenActive() ? "ON" : "OFF", hint: "決定／タップで切替（対応していない端末・ブラウザでは反応しません）" },
     { label: "開発者ボタン", value: gameSettings.developerModeUnlocked ? "解除済み" : "未解除", hint: gameSettings.developerModeUnlocked ? "画面左端のタブから開発者モードを開けます" : "決定でパスワードを入力" },
     (typeof getGoogleAccountSettingsRow === "function") ? getGoogleAccountSettingsRow() : { label: "Googleアカウント", value: "未ログイン", hint: "決定でログイン" }, // auth.js（要望対応）
-    { label: "プレイ画面のタブ管理", value: "開く", hint: "決定で表示／非表示を切り替える" },
     { label: "メインメニューに戻る", value: "", hint: "決定で実行（セーブしていない進行状況は失われます）" }
   ];
   
@@ -385,10 +316,6 @@ function renderSettingsTab() {
   });
   
   container.appendChild(list);
-
-  if (isPlayTabVisibilityPanelOpen) {
-    renderPlayTabVisibilityManagerPanel();
-  }
   
   const hintEl = document.createElement("p");
   hintEl.className = "setting-hint";
@@ -450,6 +377,19 @@ function adjustCurrentSetting(direction) {
     saveSettings();
     if (typeof applyMainTabParamsDisplayMode === "function") applyMainTabParamsDisplayMode(); // mainfunc.js
     renderSettingsTab();
+    
+  } else if (settingsCursorIndex === 8) {
+    // 天候演出 ON/OFF（左右どちらでもトグルする）
+    gameSettings.weatherEffectEnabled = !gameSettings.weatherEffectEnabled;
+    saveSettings();
+    if (!gameSettings.weatherEffectEnabled && typeof setWeatherEffect === "function") {
+      // ★OFFにした瞬間、既に降っている演出があればすぐ消す（mainfunc.js）
+      setWeatherEffect(null);
+    } else if (gameSettings.weatherEffectEnabled && typeof applyAmbientWeatherEffect === "function") {
+      // ★バグ修正：ONに戻した瞬間、今日のアンビエント天候をすぐ反映する（mainfunc.js）
+      applyAmbientWeatherEffect();
+    }
+    renderSettingsTab();
   }
 }
 
@@ -499,14 +439,13 @@ function executeSettingsDecideAction(index) {
   } else if (index === 7) {
     adjustCurrentSetting(1); // ★メインタブのパラメータ表示 行も決定でトグルできるようにする
   } else if (index === 8) {
-    toggleFullscreen().then(() => renderSettingsTab()); // mainfunc.js（要望対応：設定から全画面表示）
+    adjustCurrentSetting(1); // ★天候演出 行も決定でトグルできるようにする
   } else if (index === 9) {
-    handleDevModeButtonDecide(); // ★未解除ならパスワード入力を開く。解除済みなら特に何もしない（左端タブから操作する）
+    toggleFullscreen().then(() => renderSettingsTab()); // mainfunc.js（要望対応：設定から全画面表示）
   } else if (index === 10) {
-    if (typeof handleGoogleAccountSettingsDecide === "function") handleGoogleAccountSettingsDecide(); // auth.js（要望対応：Googleアカウントログイン/ログアウト）
+    handleDevModeButtonDecide(); // ★未解除ならパスワード入力を開く。解除済みなら特に何もしない（左端タブから操作する）
   } else if (index === 11) {
-    isPlayTabVisibilityPanelOpen = !isPlayTabVisibilityPanelOpen;
-    renderSettingsTab();
+    if (typeof handleGoogleAccountSettingsDecide === "function") handleGoogleAccountSettingsDecide(); // auth.js（要望対応：Googleアカウントログイン/ログアウト）
   } else if (index === 12) {
     handleReturnToMainMenuFromSettings();
   }

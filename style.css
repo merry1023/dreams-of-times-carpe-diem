@@ -510,6 +510,29 @@ html, body {
     color: #eee;
 }
 
+/* ★要望対応：天候システム。時計のすぐ上に「現在の天候」「次に来る天候」を表示する */
+.main-tab-weather-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #cfe8ff;
+    margin-top: 2px;
+}
+
+.main-tab-weather-current {
+    font-weight: bold;
+}
+
+.main-tab-weather-arrow {
+    color: #888;
+}
+
+.main-tab-weather-next {
+    color: #aaa;
+}
+
 /* ★メインタブの中央：アナログ時計（40%くらいの大きさ）＋その下にデジタル時計（要望対応） */
 .main-tab-clock-area {
     display: flex;
@@ -1122,7 +1145,8 @@ html, body {
 
 #tab-skill.active,
 #tab-strength.active,
-#tab-companions.active {
+#tab-companions.active,
+#tab-cooking.active {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -1446,11 +1470,16 @@ html, body {
     color: #ccc;
     font-size: 13px;
     font-weight: bold;
+    min-width: 0; /* ★バグ修正：flexアイテムの既定min-width:autoのままだと長いラベルが折り返さず、アスペクト比によっては行からはみ出していた */
+    overflow-wrap: break-word;
 }
 
 .setting-row .setting-value {
     color: #fff;
     font-size: 13px;
+    min-width: 0;
+    text-align: right;
+    overflow-wrap: break-word;
 }
 
 /* ★要望対応：BGM音量を「┃」20本の色分けバーで表示する行 */
@@ -1462,6 +1491,7 @@ html, body {
 
 .setting-volume-bar {
     display: inline-flex;
+    flex-wrap: wrap; /* ★バグ修正：横幅が狭いアスペクト比で20本ぶんが収まらない時、はみ出さず折り返す */
     gap: 1px;
     line-height: 1;
 }
@@ -1763,13 +1793,16 @@ html, body {
 
 .convenience-icon-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr); /* ★6列 */
-    grid-template-rows: repeat(7, 1fr); /* ★7行 */
+    grid-template-columns: repeat(6, minmax(0, 1fr)); /* ★6列（minmax(0,…)でバグ修正：暗黙のmin-width:autoのままだと長いラベルで列が押し広げられていた） */
+    grid-auto-rows: min-content; /* ★バグ修正：以前は「repeat(7, 1fr)」で高さを7等分に固定していたため、
+        アスペクト比によっては各アイコン（正方形固定）がその1/7の高さに収まらず、画面からはみ出していた。
+        行の高さをアイコン本来のサイズ（正方形）に任せ、収まらない分は下のoverflow-yで縦スクロールにする */
     gap: 2px;
     padding: 10px 12px 4px 4px; /* ★バグ修正：バッジが上・右にはみ出す分の余白を確保（見切れ対策） */
     flex: 1;
     min-height: 0;
-    overflow: visible; /* ★バッジが枠の外に描画されても隠れないようにする */
+    overflow-x: visible; /* ★バッジが右にはみ出しても隠れないようにする */
+    overflow-y: auto; /* ★バグ修正：全アイコンぶんの高さが収まらないアスペクト比では、画面外へはみ出す代わりに縦スクロールする */
 }
 
 .convenience-icon {
@@ -1786,6 +1819,7 @@ html, body {
     color: #eee;
     outline: none;
     overflow: visible; /* ★同上：バッジ見切れ対策 */
+    min-width: 0; /* ★バグ修正：既定のmin-width:autoのままだと「セーブ/ロード」等の長いラベルが列幅を押し広げ、グリッド全体が横にはみ出していた */
 }
 
 .convenience-icon:hover .convenience-icon-glyph {
@@ -3904,6 +3938,14 @@ html, body {
 }
 
 /* ===== 仲間との会話タブ（Gemini API連携） ===== */
+.companionchat-heading {
+  margin: 4px 0 10px;
+  font-size: 0.95em;
+  color: #ffc107;
+  border-left: 3px solid #ffc107;
+  padding-left: 6px;
+}
+
 .companionchat-login-notice {
   display: flex;
   flex-direction: column;
@@ -4891,6 +4933,14 @@ html, body {
   background-color: rgba(255, 193, 7, 0.2);
 }
 
+/* ★要望対応：料理タブの材料ピッカー（インベントリ風グリッド）のキーボードカーソル */
+.inventory-slot.cooking-picker-cursor {
+  border-color: #ffc107;
+  background-color: rgba(255, 193, 7, 0.2);
+}
+
+/* ★鍛冶屋・素材合成屋・買取屋（素材屋）共通：品一覧のスクロール欄。
+   料理タブ追加時に誤って丸ごと消してしまっていたのを復元（バグ修正） */
 .crafting-recipe-list {
   flex: 1;
   min-width: 0;
@@ -4899,6 +4949,335 @@ html, body {
   flex-direction: column;
   gap: 6px;
   padding-right: 4px;
+}
+
+
+/* ★要望対応：料理タブ */
+.cooking-root {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 2px;
+  font-size: 0.9em;
+}
+
+.cooking-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cooking-section-title {
+  margin: 0;
+  font-size: 0.95em;
+  color: #ffc107;
+  border-left: 3px solid #ffc107;
+  padding-left: 6px;
+}
+
+.cooking-hint {
+  margin: -2px 0 0;
+  color: #888;
+  font-size: 0.75em;
+}
+
+.cooking-tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cooking-tool-card {
+  background-color: #222;
+  border: 1px solid #444;
+  border-radius: 7px;
+  padding: 6px 9px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  color: #eee;
+  font: inherit;
+  width: 100%;
+  text-align: left;
+}
+
+.cooking-tool-card:focus-visible {
+  outline: 2px solid #ffc107;
+  outline-offset: 1px;
+}
+
+.cooking-tool-card.selected {
+  border-color: #ffc107;
+  box-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+  background-color: #2a2205;
+}
+
+.cooking-tool-name-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cooking-tool-selected-badge {
+  flex: none;
+  background-color: #ffc107;
+  color: #241a00;
+  font-size: 0.72em;
+  font-weight: bold;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.cooking-tool-name {
+  font-weight: bold;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cooking-tool-durability {
+  flex: none;
+  font-size: 0.85em;
+  color: #bbb;
+}
+
+.cooking-tool-durability-low {
+  color: #ff8a65;
+  font-weight: bold;
+}
+
+.cooking-slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background-color: #1c1c1c;
+  border: 1px solid #333;
+  border-radius: 7px;
+  padding: 7px;
+}
+
+.cooking-slot-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+}
+
+.cooking-slot-top-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cooking-slot-badge {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4em;
+  height: 1.4em;
+  border-radius: 50%;
+  background-color: #333;
+  color: #ccc;
+  font-size: 0.78em;
+  font-weight: bold;
+}
+
+/* ★要望対応：材料選択を、プルダウン（select）ではなく、インベントリ風グリッドを開くボタンに変更 */
+.cooking-slot-top-line .cooking-slot-pick-btn {
+  flex: 1;
+  min-width: 0;
+  background-color: #111;
+  color: #eee;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.88em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cooking-slot-top-line .cooking-slot-pick-btn:hover {
+  border-color: #ffc107;
+}
+
+.cooking-slot-bottom-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-left: calc(1.4em + 6px);
+}
+
+.cooking-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid #555;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cooking-stepper-btn {
+  background-color: #333;
+  color: #ffc107;
+  border: none;
+  width: 1.6em;
+  height: 1.6em;
+  font-size: 0.88em;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.cooking-stepper-btn:disabled {
+  color: #666;
+  cursor: default;
+}
+
+.cooking-stepper-value {
+  display: inline-block;
+  min-width: 1.8em;
+  text-align: center;
+  background-color: #111;
+  color: #eee;
+  font-size: 0.88em;
+  padding: 0 4px;
+  align-self: stretch;
+  line-height: 1.6em;
+}
+
+.cooking-slot-clear-btn {
+  background-color: #333;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.8em;
+  cursor: pointer;
+}
+
+.cooking-slot-clear-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.cooking-match-preview {
+  border: 1px dashed #555;
+  border-radius: 7px;
+  padding: 6px 10px;
+  color: #999;
+  font-size: 0.86em;
+  text-align: center;
+}
+
+.cooking-match-preview-hit {
+  border: 1px solid #7ed957;
+  color: #7ed957;
+  font-weight: bold;
+  background-color: rgba(126, 217, 87, 0.08);
+}
+
+.cooking-batch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cooking-batch-label {
+  color: #ccc;
+  font-size: 0.86em;
+}
+
+.cooking-cook-btn {
+  background-color: #4a3220;
+  color: #ffc107;
+  border: 1px solid #ffc107;
+  border-radius: 7px;
+  padding: 8px 14px;
+  font-size: 1em;
+  font-weight: bold;
+  cursor: pointer;
+  align-self: stretch;
+}
+
+.cooking-cook-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.cooking-recipe-book {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cooking-recipe-card {
+  background-color: #1c1c1c;
+  border: 1px solid #333;
+  border-radius: 7px;
+  padding: 6px 8px;
+  font-size: 0.86em;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cooking-recipe-card-hit {
+  border-color: #7ed957;
+  background-color: rgba(126, 217, 87, 0.08);
+}
+
+.cooking-recipe-card-name {
+  font-weight: bold;
+  color: #ffc107;
+}
+
+.cooking-recipe-card-detail {
+  color: #ccc;
+  font-size: 0.9em;
+}
+
+.cooking-empty-note {
+  color: #999;
+  font-size: 0.86em;
+}
+
+/* ★要望対応：キーボード操作中のカーソル位置を示すハイライト */
+.cooking-cursor {
+  outline: 2px solid #ffc107;
+  outline-offset: 1px;
+}
+
+/* ★要望対応：「作る」を押してから完成するまでのゲージ */
+.cooking-gauge-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 10px;
+}
+
+.cooking-gauge-outer {
+  width: 100%;
+  max-width: 320px;
+}
+
+.cooking-gauge-fill {
+  background-color: #ffc107;
+  /* ★バグ修正：.gauge-fillの transition: width 0.3s ease; と、JS側の毎フレーム更新がぶつかって
+     常に「追いつこうとして少ししか動かない」状態になり、ゲージが滑らかに溜まっていくように
+     見えていなかった（casino.jsのスロット演出と同じ理由・同じ対策）。ここではtransitionを切り、
+     JS側の更新をそのまま反映させる */
+  transition: none;
 }
 
 .crafting-recipe-row {
@@ -5426,6 +5805,22 @@ html, body {
   font-size: 12px;
 }
 
+/* ★複数選択可のチェックボックスリスト（釣り餌の「釣れる魚の種類」など） */
+.scenariobuild-multiselect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.scenariobuild-multiselect-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 /* ★スキル管理タブ：1つの項目（ラベル＋入力欄）をまとめる小さな単位。paramsRowの中で折り返しつつ並ぶ */
 .scenariobuild-inline-field {
   display: inline-flex;
@@ -5728,6 +6123,36 @@ html, body {
   animation: screen-weather-fall-sakura linear infinite;
 }
 
+/* ★要望対応：雷雨（雨より濃い色味の粒＋たまに画面が白く光る） */
+.screen-weather-thunderstorm .screen-weather-particle {
+  position: absolute;
+  top: -10%;
+  width: 2px;
+  height: 70px;
+  background: linear-gradient(to bottom, transparent, rgba(180, 190, 220, 0.85));
+  animation: screen-weather-fall-rain linear infinite;
+}
+
+.screen-weather-lightning-flash {
+  position: absolute;
+  inset: 0;
+  background-color: #fff;
+  opacity: 0;
+  animation: screen-weather-lightning 7s ease-out infinite;
+}
+
+/* ★要望対応：雹（雨や雪より粒が大きく、白っぽい丸） */
+.screen-weather-hail .screen-weather-particle {
+  position: absolute;
+  top: -5%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(235, 245, 255, 0.9);
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.6);
+  animation: screen-weather-fall-rain linear infinite;
+}
+
 @keyframes screen-weather-fall-rain {
   from { transform: translateY(-10vh); }
   to { transform: translateY(110vh); }
@@ -5743,6 +6168,14 @@ html, body {
   0% { transform: translate(0, -10vh) rotate(0deg); }
   50% { transform: translate(40px, 55vh) rotate(180deg); }
   100% { transform: translate(-20px, 110vh) rotate(360deg); }
+}
+
+@keyframes screen-weather-lightning {
+  0%, 92%, 96% { opacity: 0; }
+  93% { opacity: 0.85; }
+  94% { opacity: 0.1; }
+  95% { opacity: 0.6; }
+  100% { opacity: 0; }
 }
 
 /* ===== エンディングブロック：簡易エンドロール ===== */
@@ -6389,6 +6822,67 @@ html, body {
   margin-top: 4px;
 }
 
+/* ★不動産システム：間取りエディタ（floorplan.js）の部屋グリッド表示 */
+.floorplan-grid-wrap {
+  overflow-x: auto;
+  margin: 10px 0;
+  padding: 8px;
+  background-color: #222;
+  border: 1px solid #555;
+  border-radius: 6px;
+}
+
+.floorplan-grid {
+  display: grid;
+  gap: 6px;
+}
+
+.floorplan-cell {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.floorplan-room-btn {
+  width: 100%;
+  height: 100%;
+  background-color: #3a4a5a;
+  color: #fff;
+  border: 2px solid #6a8aaa;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px;
+  word-break: break-all;
+}
+
+.floorplan-room-btn:hover {
+  background-color: #4a5a6a;
+}
+
+.floorplan-room-btn-selected {
+  border-color: #ffd54f;
+  background-color: #5a5030;
+}
+
+.floorplan-add-btn {
+  width: 100%;
+  height: 100%;
+  background-color: transparent;
+  color: #888;
+  border: 2px dashed #555;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.floorplan-add-btn:hover {
+  color: #ffd54f;
+  border-color: #ffd54f;
+}
+
 /* ===================================================================
    ===== 釣りミニゲーム（要望対応：釣り場・fishing.js） =====
    =================================================================== */
@@ -6499,4 +6993,208 @@ html, body {
   font-size: 14px;
   user-select: none;
   touch-action: none;
+}
+
+/* ★不動産システム：部屋への家具配置ミニ画面（furniture.js pickFurniturePlacement） */
+.furniture-placement-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 201000;
+}
+
+.furniture-placement-overlay.hidden {
+  display: none !important;
+  pointer-events: none;
+}
+
+.furniture-placement-box {
+  width: 420px;
+  max-width: 92vw;
+  background-color: #1a1a1a;
+  border: 3px solid #ffc107;
+  border-radius: 10px;
+  padding: 18px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.furniture-placement-label {
+  color: #eee;
+  font-size: 13px;
+  margin: 0 0 12px 0;
+  white-space: pre-line;
+}
+
+.furniture-placement-grid {
+  display: grid;
+  gap: 2px;
+  justify-content: center;
+  margin: 0 auto 14px auto;
+  overflow: auto;
+  max-width: 100%;
+  max-height: 44vh;
+  padding: 4px;
+  background-color: #111;
+  border: 1px solid #444;
+  border-radius: 6px;
+}
+
+.furniture-placement-cell {
+  width: 26px;
+  height: 26px;
+  background-color: #2a2a2a;
+  border-radius: 3px;
+}
+
+/* ★家具1つぶんのブロック（furniture.js buildFurnitureBlockEl）。画像 or 縁取り＋名前ラベルの土台 */
+.furniture-placement-block {
+  position: relative;
+  box-sizing: border-box;
+  border-radius: 3px;
+  overflow: hidden; /* ★1×1マスなど小さいブロックでも、名前がはみ出さず必ず内側に収まるようにする */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.furniture-placement-block-outline {
+  border: 2px dashed #999;
+  background-color: #4a4a4a; /* ★家具管理タブで色指定が無い時のデフォルト。指定があればJS側でこの背景色を上書きする */
+}
+
+.furniture-placement-block-occupied {
+  border-color: #8a6a3a;
+  box-shadow: inset 0 0 0 2px #8a6a3a;
+}
+
+.furniture-placement-block-cursor-ok {
+  border-color: #6adb6a;
+  box-shadow: inset 0 0 0 2px #6adb6a, 0 0 4px #6adb6a;
+}
+
+.furniture-placement-block-cursor-bad {
+  border-color: #db6a6a;
+  box-shadow: inset 0 0 0 2px #db6a6a, 0 0 4px #db6a6a;
+}
+
+.furniture-placement-block-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ★名前ラベル：ブロックからはみ出さないよう、小さめのフォント・行間・折り返しで必ず内側に収める */
+.furniture-placement-block-label {
+  font-size: 8px;
+  line-height: 1.05;
+  color: #fff;
+  text-align: center;
+  padding: 1px;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  word-break: break-all;
+  text-shadow: 0 0 2px #000, 0 0 2px #000;
+}
+
+.furniture-placement-dpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.furniture-placement-dpad-row {
+  display: flex;
+  gap: 24px;
+}
+
+.furniture-placement-dpad-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: none;
+  background-color: #444;
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.furniture-placement-dpad-btn:hover {
+  background-color: #666;
+}
+
+.furniture-placement-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.furniture-placement-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background-color: #444;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.furniture-placement-btn:hover {
+  background-color: #666;
+}
+
+.furniture-placement-confirm-btn {
+  background-color: #2a6a2a;
+}
+
+.furniture-placement-confirm-btn:hover {
+  background-color: #368a36;
+}
+
+.furniture-placement-confirm-btn:disabled {
+  background-color: #333;
+  color: #888;
+  cursor: not-allowed;
+}
+
+/* ★不動産システム：家の部屋にいる間、メイン画面に間取りと家具を表示するパネル（furniture.js renderRoomView） */
+.room-view-panel {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2; /* ★立ち絵(1)より手前、メッセージウィンドウ(10)より奥 */
+  pointer-events: none; /* ★演出表示なので、下の背景やボタン操作をブロックしない */
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+}
+
+.room-view-panel.hidden {
+  display: none !important;
+}
+
+.room-view-grid {
+  display: grid;
+  gap: 2px;
+}
+
+.room-view-cell {
+  background-color: #e8d5b0; /* ★デフォルトはベージュ。部屋ごとの色はfurniture.js側でstyle.backgroundColorに直接設定する */
+  border-radius: 2px;
 }

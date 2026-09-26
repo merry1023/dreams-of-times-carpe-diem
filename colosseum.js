@@ -52,6 +52,8 @@ function isColosseumBossRound(floorNumber) {
   return COLOSSEUM_BOSS_ROUND_NUMBERS.includes(floorNumber);
 }
 
+const COLOSSEUM_TEN_MULTIPLE_ROUND_NUMBERS = [10, 20, 30, 40, 50, 60, 70, 80, 90]; // ★「10の倍数回戦」＝節目の回戦のうち、99回戦目（最終回）を除いたもの
+
 // ★n回戦目に出す敵編成と、指定されていればそのレベル（節目の回戦のみ指定可能）を返す
 function getColosseumFloorEncounter(facility, floorNumber) {
   if (isColosseumBossRound(floorNumber)) {
@@ -63,7 +65,8 @@ function getColosseumFloorEncounter(facility, floorNumber) {
     const fixedLevel = (Number(config.level) > 0) ? Number(config.level) : null;
     return { enemyMonsterKeys, fixedLevel };
   }
-  // ★それ以外の回戦：施設編集で登録した「様々な敵」のプールから、重複ありで5体ランダムに選ぶ
+  // ★それ以外の回戦（雑魚敵＝10の倍数回戦以外でランダムに出る敵）：
+  //   施設編集で登録した「様々な敵」のプールから、重複ありで5体ランダムに選ぶ
   const pool = Array.isArray(facility.regularEnemyPool)
     ? facility.regularEnemyPool.filter(id => id && MONSTER_MASTER[id])
     : [];
@@ -72,7 +75,23 @@ function getColosseumFloorEncounter(facility, floorNumber) {
   for (let i = 0; i < 5; i++) {
     enemyMonsterKeys.push(pool[Math.floor(Math.random() * pool.length)]);
   }
-  return { enemyMonsterKeys, fixedLevel: null };
+  // ★要望対応：雑魚敵（10の倍数回戦以外でランダムに出る敵）のレベルは、
+  //   一番回戦が近くて強い10の倍数回戦目（＝直後に控えている10の倍数回戦。無ければ直前のもの）に
+  //   指定してあるレベル×0.6にする（ステータスを直接0.6倍にするのではなく、レベルを0.6倍にした値を
+  //   新しいレベルとして扱い、通常のレベル別ステータス計算式にそのまま乗せる）
+  const nearestTenMultipleLevel = getColosseumNearestTenMultipleLevel(facility, floorNumber);
+  const fixedLevel = nearestTenMultipleLevel != null ? Math.max(1, Math.round(nearestTenMultipleLevel * 0.6)) : null;
+  return { enemyMonsterKeys, fixedLevel };
+}
+
+// ★floorNumberから見て、一番近くて強い（＝この先すぐに迫ってくる）10の倍数回戦のレベルを返す。
+//   90回戦より後（91〜98回戦）など、この先に10の倍数回戦が無い場合は、直前の10の倍数回戦にフォールバックする。
+//   該当するレベルが指定されていない（0のまま）場合はnull＝今まで通り自動決定
+function getColosseumNearestTenMultipleLevel(facility, floorNumber) {
+  const upcoming = COLOSSEUM_TEN_MULTIPLE_ROUND_NUMBERS.find(n => n >= floorNumber);
+  const candidate = upcoming != null ? upcoming : COLOSSEUM_TEN_MULTIPLE_ROUND_NUMBERS[COLOSSEUM_TEN_MULTIPLE_ROUND_NUMBERS.length - 1];
+  const config = facility.bossRoundConfig && facility.bossRoundConfig[candidate];
+  return (config && Number(config.level) > 0) ? Number(config.level) : null;
 }
 
 function showColosseumLobbyMenu() {
@@ -143,7 +162,7 @@ async function runColosseumFloor() {
   changeSpeaker("");
   await displayMessage(`${colosseumCurrentFloor}回戦目！` + (isColosseumBossRound(colosseumCurrentFloor) ? "\n強大な気配を感じる……！" : ""));
   const battleOptions = { isColosseum: true };
-  if (encounter.fixedLevel != null) battleOptions.fixedLevel = encounter.fixedLevel; // ★節目の回戦で指定されていれば、そのレベルで固定する
+  if (encounter.fixedLevel != null) battleOptions.fixedLevel = encounter.fixedLevel; // ★節目の回戦の指定レベル、または雑魚敵回戦なら直近の節目回戦レベル×0.6で固定する
   await startBattle(encounter.enemyMonsterKeys, battleOptions); // battle.js
 }
 
@@ -200,8 +219,29 @@ async function handleColosseumVictory() {
     return;
   }
   
-  colosseumCurrentFloor = floor + 1;
-  await runColosseumFloor();
+  // ★要望対応：1回戦ごとに、次の回戦へ進むか、ここでやめる（リタイア）か選べるようにする。
+  //   ここまでの自己ベスト・獲得済みのコインは、リタイアしてもそのまま持ち帰れる
+  changeSpeaker(colosseumFacility.name || "コロシアム");
+  showLocationMenu([
+    { label: `次（${floor + 1}回戦目）に挑む`, action: () => advanceColosseumRun(floor) },
+    { label: "ここでやめておく（リタイア）", action: () => retireColosseumRun(floor) }
+  ], colosseumFacility.name || "コロシアム");
+}
+
+function advanceColosseumRun(clearedFloor) {
+  hideLocationMenu();
+  colosseumCurrentFloor = clearedFloor + 1;
+  runColosseumFloor();
+}
+
+// ★battle.jsのhandleBattleDefeatとは違い、負けたわけではないので1回戦目に戻すだけで
+//   ペナルティは無い（自己ベスト・コインなどの報酬はhandleColosseumVictory側で既に確定済み）
+async function retireColosseumRun(clearedFloor) {
+  hideLocationMenu();
+  changeSpeaker(colosseumFacility.name || "コロシアム");
+  await displayMessage(`${clearedFloor}回戦でリタイアした。ここまでの記録と報酬はそのまま持ち帰れる。`);
+  colosseumCurrentFloor = 1;
+  showColosseumLobbyMenu();
 }
 
 // ★要望対応：99回戦をクリアした時の特別報酬（コロシアムコイン各色・陳・経験値をそれぞれ指定数ずつ）
@@ -251,32 +291,37 @@ async function handleColosseumDefeat() {
 }
 
 // ===== コインの引き換え屋 =====
-function showColosseumExchangeMenu() {
+// ★要望対応：店（showCustomShopMenu）と同じ、セリフの選択肢（displayChoices）で選ぶ形式にした
+async function showColosseumExchangeMenu() {
   const offers = Array.isArray(colosseumFacility.exchangeOffers) ? colosseumFacility.exchangeOffers : [];
   changeSpeaker(colosseumFacility.name || "コロシアム");
   if (offers.length === 0) {
-    displayMessage("（まだ何も並んでいないようだ）").then(() => showColosseumLobbyMenu());
+    await displayMessage("（まだ何も並んでいないようだ）");
+    showColosseumLobbyMenu();
     return;
   }
   
-  const options = offers.map(offer => {
+  const choices = offers.map((offer, index) => {
     const coinItemId = colosseumCoinItemId(offer.coinColor);
     const coinLabel = coinItemId ? itemNameOfColosseum(coinItemId) : `${colosseumCoinLabel(offer.coinColor)}コイン（未設定）`;
     const itemLabel = itemNameOfColosseum(offer.itemId);
-    return {
-      label: `${coinLabel}×${offer.coinQty || 1} → ${itemLabel}×${offer.itemQty || 1}`,
-      action: () => tryColosseumExchange(offer)
-    };
+    return { text: `${coinLabel}×${offer.coinQty || 1} → ${itemLabel}×${offer.itemQty || 1}`, next: String(index) };
   });
-  options.push({ label: "戻る", action: () => showColosseumLobbyMenu() });
-  showLocationMenu(options, colosseumFacility.name || "コロシアム");
+  choices.push({ text: "やめる", next: "cancel", isBack: true });
+  await displayMessage("何と交換する？");
+  const picked = await displayChoices(choices);
+  if (picked.next === "cancel") {
+    showColosseumLobbyMenu();
+    return;
+  }
+  
+  await tryColosseumExchange(offers[Number(picked.next)]);
 }
 
 async function tryColosseumExchange(offer) {
   const coinItemId = colosseumCoinItemId(offer.coinColor);
   const coinQty = Math.max(1, offer.coinQty || 1);
   if (!coinItemId || !offer.itemId) {
-    hideLocationMenu();
     changeSpeaker(colosseumFacility.name || "コロシアム");
     await displayMessage("（この交換の設定がまだ揃っていないようだ）");
     showColosseumExchangeMenu();
@@ -286,7 +331,6 @@ async function tryColosseumExchange(offer) {
   const have = getTotalItemCount(coinItemId);
   const maxTimes = Math.floor(have / coinQty);
   if (maxTimes <= 0) {
-    hideLocationMenu();
     changeSpeaker(colosseumFacility.name || "コロシアム");
     await displayMessage(`「${itemNameOfColosseum(coinItemId)}」が足りないようだ。`);
     showColosseumExchangeMenu();
@@ -305,10 +349,23 @@ async function tryColosseumExchange(offer) {
     return;
   }
   
+  // ★要望対応：店と同じように、実際に交換する前に確認ダイアログを挟む
+  const confirmed = await showGameConfirm(`「${itemNameOfColosseum(coinItemId)}」×${coinQty * times}を「${itemNameOfColosseum(offer.itemId)}」×${itemQtyEach * times}と交換しますか？`); // mainfunc.js
+  if (!confirmed) {
+    showColosseumExchangeMenu();
+    return;
+  }
+  
   removeItem(coinItemId, coinQty * times);
-  addItem(offer.itemId, itemQtyEach * times);
+  const added = addItem(offer.itemId, itemQtyEach * times);
   renderStatusHUD();
   changeSpeaker(colosseumFacility.name || "コロシアム");
-  await displayMessage(`「${itemNameOfColosseum(offer.itemId)}」を${itemQtyEach * times}個手に入れた！`);
+  if (added) {
+    await displayMessage(`「${itemNameOfColosseum(offer.itemId)}」を${itemQtyEach * times}個手に入れた！`);
+  } else {
+    await displayMessage("持ち物がいっぱいで、受け取れなかったようだ……");
+    addItem(coinItemId, coinQty * times); // ★受け取れなかった分はコインを返す
+    renderStatusHUD();
+  }
   showColosseumExchangeMenu();
 }

@@ -222,6 +222,57 @@ const KEY_CONFIG = {
   hideChoicesKey: ["v", "V"] // 選択肢の一時非表示ON/OFF切り替え用
 };
 
+// ★要望対応：矢印キーをどの画面でも0.7秒以上押しっぱなしにしたら「長押し」判定にする（＝繰り返し入力が始まる）。
+//   OSやブラウザ標準のキーリピートは間隔がバラバラで信頼できないため、こちらで独自に管理する。
+//   仕組み：各画面の矢印キー処理は今まで通りwindowの"keydown"を直接見ているので、ここでは新しい仕組みを
+//   個別に追加させるのではなく、0.7秒経過後にこちらから「本物そっくりのkeydownイベント」を一定間隔で
+//   window に向けて発火し続けることで、既存のどの矢印キー処理もコードを変えずにそのまま「連続入力」として
+//   反応するようにしている（各処理はevent.repeat===trueのOS標準リピートだけを無視する作りになっているが、
+//   ここで発火するイベントはOS標準のリピートではなく毎回新規のイベントなのでrepeatはfalseのままで届く）
+const ARROW_HOLD_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+const ARROW_HOLD_THRESHOLD_MS = 700; // ★長押し判定までの時間
+const ARROW_HOLD_REPEAT_INTERVAL_MS = 120; // ★長押し判定後、繰り返し入力を送る間隔
+const arrowHoldTimers = {}; // { [key]: { holdTimeoutId, repeatIntervalId } }
+
+function clearArrowHoldTimer(key) {
+  const timer = arrowHoldTimers[key];
+  if (!timer) return;
+  clearTimeout(timer.holdTimeoutId);
+  clearInterval(timer.repeatIntervalId);
+  delete arrowHoldTimers[key];
+}
+
+function dispatchSyntheticArrowKeydown(key) {
+  const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+  event.__isArrowHoldSynthetic = true; // ★このイベント自身をきっかけに新しい長押し判定を始めないようにする目印
+  window.dispatchEvent(event);
+}
+
+window.addEventListener("keydown", (event) => {
+  if (event.__isArrowHoldSynthetic) return; // ★自分が発火した合成イベントでは、長押し判定をやり直さない
+  if (!ARROW_HOLD_KEYS.includes(event.key)) return;
+  if (event.repeat) return; // ★OS標準のキーリピートは無視し、本当に押された最初の1回だけを見る
+  if (arrowHoldTimers[event.key]) return; // ★既にこのキーの長押し判定が進行中なら何もしない
+  
+  const holdTimeoutId = setTimeout(() => {
+    dispatchSyntheticArrowKeydown(event.key); // ★0.7秒経過＝長押し判定。まず1回繰り返し入力を送る
+    const repeatIntervalId = setInterval(() => dispatchSyntheticArrowKeydown(event.key), ARROW_HOLD_REPEAT_INTERVAL_MS);
+    if (arrowHoldTimers[event.key]) arrowHoldTimers[event.key].repeatIntervalId = repeatIntervalId;
+  }, ARROW_HOLD_THRESHOLD_MS);
+  
+  arrowHoldTimers[event.key] = { holdTimeoutId, repeatIntervalId: null };
+}, true); // ★捕捉フェーズで拾う。preventDefaultやstopPropagationはせず、あくまで裏で監視するだけ
+
+window.addEventListener("keyup", (event) => {
+  if (ARROW_HOLD_KEYS.includes(event.key)) clearArrowHoldTimer(event.key);
+}, true);
+
+// ★ウィンドウが非アクティブになった時（他アプリに切り替えた等）にキーが押しっぱなし扱いのまま
+//   残り続けないよう、念のため全部クリアしておく
+window.addEventListener("blur", () => {
+  ARROW_HOLD_KEYS.forEach(clearArrowHoldTimer);
+});
+
 // タイピング中にクリック・決定キーが押されたら、残りの文章を一気に表示させる
 function requestSkipTyping() {
   if (isTyping) {
@@ -378,9 +429,13 @@ function setZoomEffect(active) {
 
 // ★要望対応：「天候」演出。雨・雪・桜吹雪を画面に降らせる（DOMで粒を降らせるだけの簡易実装）。
 //   同時に降らせられるのは1種類のみ。weatherOffでやめるか、他の種類に切り替えると自動的に前の物は消える
-const WEATHER_PARTICLE_COUNTS = { rain: 60, snow: 40, sakura: 26 };
+const WEATHER_PARTICLE_COUNTS = { rain: 60, snow: 40, sakura: 26, thunderstorm: 70, hail: 50 };
 let weatherOverlayEl = null;
 let currentWeatherType = null;
+// ★バグ修正：話の「天候」演出ブロック（weatherRainOn等）で明示的に指定した天候は、
+//   このフラグが立っている間はアンビエント天候（下記）で勝手に上書きされないようにする。
+//   1日進む（advanceDay、player.js）たびにfalseへ戻し、アンビエント天候を再適用する
+let weatherManualOverride = false;
 function setWeatherEffect(type) {
   if (weatherOverlayEl) {
     weatherOverlayEl.remove();
@@ -388,21 +443,42 @@ function setWeatherEffect(type) {
   }
   currentWeatherType = type || null;
   if (!currentWeatherType) return;
+  // ★要望対応：設定「天候演出」がOFFなら、話の演出ブロックから呼ばれても何も表示しない
+  if (typeof gameSettings !== "undefined" && gameSettings && gameSettings.weatherEffectEnabled === false) return;
   
   weatherOverlayEl = document.createElement("div");
   weatherOverlayEl.id = "screen-weather-overlay";
   weatherOverlayEl.className = `screen-weather-overlay screen-weather-${currentWeatherType}`;
   const count = WEATHER_PARTICLE_COUNTS[currentWeatherType] || 40;
+  const isFastFalling = currentWeatherType === "rain" || currentWeatherType === "thunderstorm" || currentWeatherType === "hail"; // ★要望対応：雷雨・雹も雨のように速く降らせる
   for (let i = 0; i < count; i++) {
     const particle = document.createElement("span");
     particle.className = "screen-weather-particle";
     particle.style.left = `${Math.random() * 100}%`;
-    particle.style.animationDuration = `${(currentWeatherType === "rain" ? 0.6 : 4) + Math.random() * (currentWeatherType === "rain" ? 0.5 : 4)}s`;
+    particle.style.animationDuration = `${(isFastFalling ? 0.6 : 4) + Math.random() * (isFastFalling ? 0.5 : 4)}s`;
     particle.style.animationDelay = `-${Math.random() * 5}s`;
     if (currentWeatherType === "sakura") particle.textContent = "🌸";
     weatherOverlayEl.appendChild(particle);
   }
+  // ★要望対応：雷雨の時だけ、画面全体がたまに白く光る「雷」の演出を追加で重ねる
+  if (currentWeatherType === "thunderstorm") {
+    const flash = document.createElement("div");
+    flash.className = "screen-weather-lightning-flash";
+    weatherOverlayEl.appendChild(flash);
+  }
   document.body.appendChild(weatherOverlayEl);
+}
+
+// ★バグ修正：天候システム（player.weather、player.js）で決まっている「今日の天候」は、
+//   これまでメインタブの時計上にテキスト表示されるだけで、実際の画面演出（setWeatherEffect）には
+//   一切反映されていなかった。renderMainTabWeather()（かなり頻繁に呼ばれるrenderStatusHUD経由）
+//   から毎回呼ぶことで、常に最新のアンビエント天候を反映する。
+//   話の演出ブロックで手動指定中（weatherManualOverride）は上書きしない
+function applyAmbientWeatherEffect() {
+  if (weatherManualOverride) return;
+  if (typeof player === "undefined" || !player || !player.weather) return;
+  const type = player.weather.current;
+  setWeatherEffect((type === "clear" || type === "cloudy") ? null : type); // ★晴れ・曇りは演出無し（元々rain/snow/sakuraにしか演出が無いため）
 }
 
 // ★エンディングブロック（scenariobuild.js）から呼ばれる、簡易エンドロール（下から上へ流れるスタッフロール風演出）。
@@ -1351,6 +1427,11 @@ function switchTab(tabId) {
     renderEquipmentTab();
   }
   
+  // 料理タブに切り替えたら、画面を描画し直す
+  if (tabId === 'tab-cooking' && typeof renderCookingTab === "function") {
+    renderCookingTab(); // cooking.js
+  }
+  
   // 便利タブに切り替えたら、アイコン一覧の画面に戻す（セーブ/ロード画面を開いたままにしない）
   if (tabId === 'tab-convenience') {
     renderConvenienceIcons();
@@ -1620,11 +1701,27 @@ function renderStatusHUD() {
   
   // ★メインタブのアナログ/デジタル時計を、今のゲーム内時刻に合わせて描画する（要望対応）
   renderMainTabClock();
+  renderMainTabWeather(); // ★要望対応：天候システムの現在・次の天候表示
   
   renderMainTabCompanionParams();
   renderObjectiveBanner();
   renderActiveQuestBanner(); // ★要望対応：話の目標のすぐ下に、受注中のクエストがあれば表示する
   renderRankUpBanner();
+}
+
+// ★要望対応：天候システム（player.weather、player.js）の「現在」「次」をメインタブの時計の上に表示する
+const WEATHER_TYPE_EMOJI = { clear: "☀️", cloudy: "☁️", rain: "☔", snow: "❄️", sakura: "🌸", thunderstorm: "⛈️", hail: "🧊" };
+function renderMainTabWeather() {
+  if (!player) return;
+  if (typeof ensurePlayerWeatherState === "function") ensurePlayerWeatherState(); // player.js（旧セーブ互換）
+  const weather = player.weather || { current: "clear", next: "clear" };
+  const currentEl = document.getElementById("main-tab-weather-current");
+  const nextEl = document.getElementById("main-tab-weather-next");
+  const currentLabel = (typeof WEATHER_TYPE_LABELS_JA !== "undefined" && WEATHER_TYPE_LABELS_JA[weather.current]) || "晴れ";
+  const nextLabel = (typeof WEATHER_TYPE_LABELS_JA !== "undefined" && WEATHER_TYPE_LABELS_JA[weather.next]) || "晴れ";
+  if (currentEl) currentEl.textContent = `${WEATHER_TYPE_EMOJI[weather.current] || "☀️"} ${currentLabel}`;
+  if (nextEl) nextEl.textContent = `次：${WEATHER_TYPE_EMOJI[weather.next] || "☀️"} ${nextLabel}`;
+  if (typeof applyAmbientWeatherEffect === "function") applyAmbientWeatherEffect(); // ★バグ修正：天候演出を実際に反映する
 }
 
 // ★メインタブのアナログ時計（時針・分針のみ）とデジタル時計を、player.gameHour（0〜24の小数）に合わせて描画する
@@ -1861,6 +1958,12 @@ function getEquippableInventoryEntries(slotFilter = null) {
     const itemData = getEffectiveItemMaster(slot); // player.js（サビ取り等の個体ごとの上書きも反映）
     if (!itemData || !itemData.params || !itemData.params.装備部位) return;
     if (slotFilter && itemData.params.装備部位 !== slotFilter) return;
+    // ★バグ修正：既に自分／仲間／一時離脱中の仲間の誰かが装備している実体は、まだインベントリに
+    //   残っているように見えて選べてしまっていた（選ぶと、元の持ち主の装備欄が実体の消えた
+    //   instanceIdを指したまま残ってしまう＝一時離脱中の仲間の装備が「インベントリに残る」バグ）。
+    //   ここで除外する（今まさにこのスロットに装備中の実体は、別途「外す」項目から扱うので、
+    //   ここでも除外して一覧の重複を防ぐ）
+    if (typeof isInstanceEquippedByAnyone === "function" && isInstanceEquippedByAnyone(slot.instanceId)) return;
     
     entries.push({ instanceId: slot.instanceId, itemId: slot.itemId, itemData, statBonus: slot.statBonus, lockedToClass: slot.lockedToClass || null });
   });
@@ -2983,7 +3086,7 @@ function decideInventorySelection() {
   
   if (isItemDetailOpen) {
     const master = ITEM_MASTER[slot.itemId];
-    const isUsable = master && master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒 || master.params.帰還);
+    const isUsable = master && ((master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒 || master.params.帰還)) || master.isRecipeItem);
     const inBattle = typeof battleState !== "undefined" && !!battleState;
     if (isUsable && !inBattle) {
       useItemFromInventoryTab(slot.itemId, master);
@@ -3076,7 +3179,7 @@ function showItemDetail(slot) {
   panel.appendChild(paramsEl);
   
   // ★回復量・疲労回復量のいずれかを持つアイテム（薬草・ポーションなど）は、戦闘中でなくてもここから使える
-  const isUsable = master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒 || master.params.帰還);
+  const isUsable = (master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒 || master.params.帰還)) || master.isRecipeItem;
   if (isUsable) {
     const useBtn = document.createElement("button");
     const inBattle = typeof battleState !== "undefined" && !!battleState;
@@ -3197,7 +3300,18 @@ async function performItemHealWithTargetSelection(master) {
   const messageParts = [];
   targets.forEach(unit => {
     const effect = applyHealingItemEffect(master, unit, divisor);
-    if (effect.message) messageParts.push(`${getHealTargetDisplayName(unit)}：${effect.message}`); // player.js
+    const parts = [];
+    if (effect.message) parts.push(effect.message);
+    // ★要望対応：料理（foodBuffKindを持つアイテム）は、戦闘中に食べた相手へ一時的なバフをかける（技の自己強化と同じ仕組みを流用）。
+    //   戦闘外で使った場合や、battleStateが無い場合は何も起きない（applySelfBuffFromSkill/applyCompanionSelfBuffが内部で判定する）
+    if (master.foodBuffKind) {
+      const buffEffect = { kind: master.foodBuffKind, duration: master.foodBuffDuration, power: master.foodBuffPower };
+      const label = (unit === player)
+        ? (typeof applySelfBuffFromSkill === "function" ? applySelfBuffFromSkill(buffEffect) : null) // battle.js
+        : (typeof applyCompanionSelfBuff === "function" ? applyCompanionSelfBuff(unit, buffEffect) : null); // battle.js
+      if (label) parts.push(`${label}状態になった`);
+    }
+    if (parts.length > 0) messageParts.push(`${getHealTargetDisplayName(unit)}：${parts.join("。")}`);
   });
   return messageParts.length > 0 ? messageParts.join(" ") : "特に変化は無かった。";
 }
@@ -3245,6 +3359,23 @@ async function useItemFromInventoryTab(itemId, master) {
     if (typeof battleState !== "undefined" && battleState) {
       changeSpeaker("");
       await displayMessage("戦闘中は、「たたかう」→「道具」から使ってほしいようだ。", { allowSubFocus: true });
+      return;
+    }
+    
+    // ★要望対応：料理レシピ発見アイテム。使うと対象のレシピIDをレシピ帳（player.knownCookingRecipeIds）に登録する
+    if (master.isRecipeItem) {
+      if (!Array.isArray(player.knownCookingRecipeIds)) player.knownCookingRecipeIds = [];
+      const recipeId = master.unlockRecipeId;
+      const alreadyKnown = recipeId && player.knownCookingRecipeIds.includes(recipeId);
+      if (recipeId && !alreadyKnown) player.knownCookingRecipeIds.push(recipeId);
+      removeItem(itemId, 1);
+      closeItemDetail();
+      renderInventory();
+      changeSpeaker("");
+      const msg = !recipeId ? "レシピの中身は……よく読み取れなかった。"
+        : alreadyKnown ? "「" + master.name + "」を読んだ。……このレシピは、もう知っているようだ。"
+        : "「" + master.name + "」を読んだ！ 料理タブのレシピ帳に新しいレシピが記録された。";
+      await displayMessage(msg, { allowSubFocus: true });
       return;
     }
     
