@@ -1951,6 +1951,12 @@ function getEquippableInventoryEntries(slotFilter = null) {
     const itemData = getEffectiveItemMaster(slot); // player.js（サビ取り等の個体ごとの上書きも反映）
     if (!itemData || !itemData.params || !itemData.params.装備部位) return;
     if (slotFilter && itemData.params.装備部位 !== slotFilter) return;
+    // ★バグ修正：既に自分／仲間／一時離脱中の仲間の誰かが装備している実体は、まだインベントリに
+    //   残っているように見えて選べてしまっていた（選ぶと、元の持ち主の装備欄が実体の消えた
+    //   instanceIdを指したまま残ってしまう＝一時離脱中の仲間の装備が「インベントリに残る」バグ）。
+    //   ここで除外する（今まさにこのスロットに装備中の実体は、別途「外す」項目から扱うので、
+    //   ここでも除外して一覧の重複を防ぐ）
+    if (typeof isInstanceEquippedByAnyone === "function" && isInstanceEquippedByAnyone(slot.instanceId)) return;
     
     entries.push({ instanceId: slot.instanceId, itemId: slot.itemId, itemData, statBonus: slot.statBonus, lockedToClass: slot.lockedToClass || null });
   });

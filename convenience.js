@@ -1942,6 +1942,7 @@ async function restoreGameFromSaveData(data, persistLoadedDataFn) {
   if (!chapter1Finished && typeof data.scenarioStep === "number" && data.messageLog) {
     // ★第一話の途中のセーブ：シナリオを最初から再実行し、セーブ地点まで一気に再生する
     player = sanitizeLoadedPlayer(deepClone(data.player)); // player.js（古いセーブの互換性維持）
+    if (typeof recalculateLevelCapFromProgress === "function") recalculateLevelCapFromProgress(); // player.js（要望対応：レベル上限ブロック）
     inventorySlots = deepClone(data.inventorySlots);
     sanitizeInventoryInstanceIds(); // inventory.js（古いセーブ互換：instanceIdが無いマスに振り直す）
     migrateLegacyEquipmentReferences(); // player.js（古いセーブ互換：装備欄のitemId参照をinstanceIdに変換）
@@ -1965,6 +1966,7 @@ async function restoreGameFromSaveData(data, persistLoadedDataFn) {
   } else {
     // ★自由行動パートに入ってからのセーブ：記録されていた場所を直接開き直す
     player = sanitizeLoadedPlayer(deepClone(data.player)); // player.js（古いセーブの互換性維持）
+    if (typeof recalculateLevelCapFromProgress === "function") recalculateLevelCapFromProgress(); // player.js（要望対応：レベル上限ブロック）
     inventorySlots = deepClone(data.inventorySlots);
     sanitizeInventoryInstanceIds(); // inventory.js（古いセーブ互換：instanceIdが無いマスに振り直す）
     migrateLegacyEquipmentReferences(); // player.js（古いセーブ互換：装備欄のitemId参照をinstanceIdに変換）
