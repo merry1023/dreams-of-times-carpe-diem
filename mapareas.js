@@ -1323,6 +1323,20 @@ function buildEstateAreaEditor(area, persist) {
     empInput.onchange = () => { area.estateMaxEmployees = Math.max(0, Math.floor(Number(empInput.value)) || 0); persist(); };
     empRow.appendChild(empInput);
     wrap.appendChild(empRow);
+    
+    // ★要望対応：客の来やすさをエリアごとに1〜1000で設定（値が大きいほど売れやすい。基準値は500）
+    const custRow = document.createElement("div");
+    custRow.className = "scenariobuild-condition-row";
+    custRow.appendChild(labelSpan("客の来やすさ（1〜1000・基準500）："));
+    const custInput = document.createElement("input");
+    custInput.type = "number";
+    custInput.min = "1";
+    custInput.max = "1000";
+    custInput.className = "scenariobuild-condition-input";
+    custInput.value = area.estateCustomerRate != null ? area.estateCustomerRate : 500;
+    custInput.onchange = () => { area.estateCustomerRate = Math.max(1, Math.min(1000, Math.floor(Number(custInput.value)) || 500)); persist(); };
+    custRow.appendChild(custInput);
+    wrap.appendChild(custRow);
   }
   
   if (area.type === "estateHouse") {

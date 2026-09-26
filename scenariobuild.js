@@ -5268,6 +5268,7 @@ function getFurnitureManagerConfig() {
     fields: [
       { key: "name", label: "名前", type: "text", placeholder: "例：木の椅子" },
       { key: "imagePath", label: "画像パス（任意）", type: "text", placeholder: "例：img/furniture/chair.png" },
+      { key: "color", label: "画像が無い時の色", type: "color" },
       { key: "price", label: "価格（陳）", type: "number", placeholder: "0" },
       { key: "width", label: "横（マス）", type: "number", placeholder: "1" },
       { key: "height", label: "縦（マス）", type: "number", placeholder: "1" },
@@ -5275,7 +5276,7 @@ function getFurnitureManagerConfig() {
       { key: "storageSlots", label: "収納数（倉庫の場合のみ使用）", type: "number", placeholder: "10" }
     ],
     newEntity: () => ({
-      id: generateId("furniture"), name: "新しい家具", imagePath: "", price: 0,
+      id: generateId("furniture"), name: "新しい家具", imagePath: "", color: "#4a4a4a", price: 0,
       width: 1, height: 1, isStorage: false, storageSlots: 10
     })
   };
