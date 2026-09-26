@@ -472,6 +472,7 @@ function initPlayer(className) {
     furnitureStorage: {}, // ★不動産システム：倉庫家具ごとの収納中身（キー＝家具のinstanceId）。furniture.js参照
     weather: { current: pickRandomWeatherType(), next: pickRandomWeatherType(), hoursUntilNextChange: pickWeatherChangeInterval() }, // ★要望対応：天候システム（現在の天候・次に来る天候・2〜8時間でランダムに切り替わる）
     fishing: { rodItemId: null, baitItemId: null }, // ★要望対応：釣り場で選んでいる釣竿・釣り餌（fishing.js）
+    levelCap: null, // ★要望対応：レベル上限ブロックで設定される、今の時点で超えられない上限レベル（null＝上限無し）
     fame: 0, // ★隠しステータス「名声度」。クエストをクリアすると増え、一定量たまるとランクが上がる
     rank: "F", // 冒険者ランク（クエスト受注の条件に使う想定）
     clearedTrialRanks: [], // ★ランクC以上への昇格試練のクリア記録（questboard.js参照）
@@ -1481,6 +1482,35 @@ function addProgressPoints(amount) {
   player.progressPoints += amount;
 }
 
+// ★要望対応：レベル上限ブロックの捜索（if/選択肢の中も再帰的に見る）
+function collectLevelCapBlocksInOrder(blocks, out) {
+  (blocks || []).forEach(block => {
+    if (!block) return;
+    if (block.type === "levelcap" && Number(block.level) > 0) out.push(Number(block.level));
+    if (block.type === "if") {
+      collectLevelCapBlocksInOrder(block.trueBlocks, out);
+      collectLevelCapBlocksInOrder(block.falseBlocks, out);
+    }
+    if (block.type === "choice") {
+      (block.options || []).forEach(opt => collectLevelCapBlocksInOrder(opt.blocks, out));
+    }
+  });
+}
+
+// ★要望対応：ロード直後に呼ぶ。保存されているレベル上限をそのまま信じるのではなく、
+//   「クリア済みの話」＋「今進んでいる話（chapter.started）」の中にあるレベル上限ブロックを
+//   話の並び順に探し、一番新しい（最後に見つかった）ものを今の上限として設定し直す。
+//   話の追加・修正があっても、進み具合から毎回正しく組み立て直せるようにするため
+function recalculateLevelCapFromProgress() {
+  if (typeof scenarioProject === "undefined" || !scenarioProject || !Array.isArray(scenarioProject.chapters)) return;
+  const found = [];
+  scenarioProject.chapters.forEach(chapter => {
+    if (!chapter.cleared && !chapter.started) return; // ★クリア済み、または今進んでいる話だけを対象にする
+    collectLevelCapBlocksInOrder(chapter.blocks, found);
+  });
+  if (player) player.levelCap = found.length > 0 ? found[found.length - 1] : null;
+}
+
 function addExp(amount) {
   if (!player) return { leveledUp: false, previousLevel: 0, newLevel: 0, newSkills: [] };
   
@@ -1493,7 +1523,8 @@ function addExp(amount) {
   player.classTotalExp[player.class] = (player.classTotalExp[player.class] || 0) + amount;
   
   let expToNextLevel = expNeededForLevel(player.level);
-  while (player.exp >= expToNextLevel) {
+  // ★要望対応：レベル上限ブロックで設定した上限に達したら、経験値は貯まってもレベルは上がらなくする
+  while (player.exp >= expToNextLevel && (!player.levelCap || player.level < player.levelCap)) {
     player.exp -= expToNextLevel;
     player.level += 1;
     expToNextLevel = expNeededForLevel(player.level);
@@ -1514,7 +1545,8 @@ function addExp(amount) {
     companion.exp += amount;
     companion.totalExp = (typeof companion.totalExp === "number" ? companion.totalExp : 0) + amount; // ★累計獲得経験値も併せて記録する
     let companionExpToNext = expNeededForLevel(companion.level);
-    while (companion.exp >= companionExpToNext) {
+    // ★要望対応：レベル上限はパーティー全員（仲間も）が対象
+    while (companion.exp >= companionExpToNext && (!player.levelCap || companion.level < player.levelCap)) {
       companion.exp -= companionExpToNext;
       companion.level += 1;
       companionExpToNext = expNeededForLevel(companion.level);

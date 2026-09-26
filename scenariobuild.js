@@ -445,6 +445,34 @@ function normalizeScenarioProject() {
   //   未設定は通常扱い）
   if (!Array.isArray(scenarioProject.elementDefs)) scenarioProject.elementDefs = []; // [{ id, name }, ...]
   if (!scenarioProject.elementMatchups || typeof scenarioProject.elementMatchups !== "object") scenarioProject.elementMatchups = {};
+  // ★バグ修正：以前スキルの「属性」は直接入力（自由記述の文字列）だったが、属性管理タブ＋
+  //   リスト選択方式に変わった際、既存データの生の値（例：「火」）が新しい属性一覧（{id, name}）の
+  //   idと一致しなくなり、選択欄に反映されず属性が消えてしまったように見えていた。
+  //   どの属性idにも一致しない生の値を持つ技を探し、その値を「名前」とする属性を属性管理タブに
+  //   新規登録した上で、その技のelementを新しい属性idに繋ぎ直す（同じ生の値の技は属性を共有する。
+  //   一度繋ぎ直せば以後は正常なidになるため、この処理は安全に何度呼んでも良い）
+  (function migrateLegacySkillElements() {
+    const knownElementIds = new Set(scenarioProject.elementDefs.map(el => el.id));
+    const migratedElementIdByRawValue = new Map();
+    scenarioProject.skills.forEach(skill => {
+      const rawValue = skill.element;
+      if (rawValue == null || rawValue === "" || rawValue === "無" || knownElementIds.has(rawValue)) return;
+      const rawKey = String(rawValue);
+      let newElementId = migratedElementIdByRawValue.get(rawKey);
+      if (!newElementId) {
+        const existingByName = scenarioProject.elementDefs.find(el => el.name === rawKey);
+        if (existingByName) {
+          newElementId = existingByName.id;
+        } else {
+          newElementId = generateId("element");
+          scenarioProject.elementDefs.push({ id: newElementId, name: rawKey });
+          knownElementIds.add(newElementId);
+        }
+        migratedElementIdByRawValue.set(rawKey, newElementId);
+      }
+      skill.element = newElementId;
+    });
+  })();
   // ★要望対応：ログインボーナス。常に必ず7日分（1〜7日目）が揃った状態にしておく
   if (!Array.isArray(scenarioProject.loginBonusDays)) scenarioProject.loginBonusDays = [];
   for (let day = 0; day < 7; day++) {
@@ -2466,7 +2494,8 @@ const SCENARIO_BLOCK_TYPES = {
   portrait_expression: "立ち絵：表情変更",
   portrait_move: "立ち絵：移動",
   portrait_motion: "立ち絵：動き",
-  increment_area_visit: "エリア来訪回数を増やす"
+  increment_area_visit: "エリア来訪回数を増やす",
+  levelcap: "レベル上限" // ★要望対応：ここから先、指定レベルを超えて成長しないようにする
 };
 
 function getEditingChapter() {
@@ -3013,6 +3042,7 @@ function createBlock(type) {
   if (type === "portrait_motion") return { ...base, instanceId: "", motionType: "jump" }; // motionType: "jump" | "shake"
   if (type === "increment_area_visit") return { ...base, areaKey: "" };
   if (type === "jump") return { ...base, targetBlockId: null }; // ★要望対応：ifの中/外を問わず、話の中のどのブロックへも直接ジャンプできる
+  if (type === "levelcap") return { ...base, level: 1 }; // ★要望対応：レベル上限ブロック
   return base;
 }
 
@@ -3103,6 +3133,7 @@ function blockPreviewText(block) {
   if (block.type === "ending") return block.title;
   if (block.type === "clearchapter") return "タイトルには戻らない";
   if (block.type === "if") return `条件${(block.conditions || []).length}個（${block.combineMode === "OR" ? "Ⅱ" : "&"}）`;
+  if (block.type === "levelcap") return `Lv${block.level || 1}を超えられなくする`;
   if (block.type === "jump") return block.targetBlockId ? "→ 指定ブロックへ" : "（未設定）";
   if (block.type === "addcompanion") {
     const c = (scenarioProject.companions || []).find(c => c.id === block.companionId);
@@ -3852,6 +3883,25 @@ function buildBlockFormFields(chapter, block) {
       markScenarioBuildDirty();
       renderScenarioBuildPanel();
     }));
+    return wrap;
+  }
+  
+  if (block.type === "levelcap") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note scenariobuild-condition";
+    noteEl.textContent = "ここから先、指定したレベルを超えて成長できなくなります（経験値は普通に貯まりますが、レベルアップだけ止まります。パーティー全員が対象です）。既にこのレベルを超えている場合、レベル自体は下がりません。ロード後は、クリア済みの話・今進んでいる話の中で一番新しいレベル上限ブロックが自動的に適用されます。";
+    wrap.appendChild(noteEl);
+    const levelRow = document.createElement("div");
+    levelRow.className = "scenariobuild-condition-row";
+    levelRow.appendChild(labelSpan("上限レベル："));
+    const levelInput = document.createElement("input");
+    levelInput.type = "number";
+    levelInput.min = "1";
+    levelInput.className = "scenariobuild-condition-input";
+    levelInput.value = block.level != null ? block.level : 1;
+    levelInput.onchange = () => { block.level = Math.max(1, Number(levelInput.value) || 1); persist(); };
+    levelRow.appendChild(levelInput);
+    wrap.appendChild(levelRow);
     return wrap;
   }
   
@@ -12591,6 +12641,12 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
     // ★要望対応：指定したブロックへ直接ジャンプする。行き先が見つかるまでrunBlockSequence側で
     //   外側の配列へ次々と伝播していくので、ifの中から外・別の分岐先など、話の中のどこへでも移動できる
     return block.targetBlockId ? ("JUMP:" + block.targetBlockId) : nextDefaultId;
+  }
+  
+  if (block.type === "levelcap") {
+    // ★要望対応：レベル上限ブロック。ここから先、指定レベルを超えて成長できなくする（player.jsのaddExpが参照する）
+    if (typeof player !== "undefined" && player) player.levelCap = Math.max(1, Number(block.level) || 1);
+    return nextDefaultId;
   }
   
   if (block.type === "addcompanion") {
