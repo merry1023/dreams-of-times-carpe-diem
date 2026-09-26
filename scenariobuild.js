@@ -1711,7 +1711,9 @@ function renderScenarioBuildTabManager(container) {
     checkbox.checked = isScenarioPlayTabEnabled(tab.id);
     checkbox.onchange = () => {
       setScenarioPlayTabEnabled(tab.id, checkbox.checked);
-      if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
+      // ★要望対応：チェック変更のたびに即保存してしまうと、他のタブ編集と保存の挙動が揃わないため、
+      //   他の編集項目と同じく「未保存の変更あり」の印を付けるだけにし、実際の保存は💾保存ボタンで行う
+      if (typeof markScenarioBuildDirty === "function") markScenarioBuildDirty();
       if (typeof applyPlayTabVisibility === "function") applyPlayTabVisibility(); // ★バグ修正：ONにしてもタブバーの表示がその場で更新されていなかった
       renderScenarioBuildPanel();
     };
@@ -5317,9 +5319,28 @@ function getFishManagerConfig() {
 
 // ★不動産システム：家具管理タブ。「家具屋系」施設で販売する家具を、アイテムと同じ感覚で登録する
 //   （名前・画像・価格・縦横サイズ。倉庫チェックを付けると、部屋に置いた時に専用の収納として使える）
+// ★要望対応：家具の種類を「収納/非収納」の2択だけでなく増やした。storageは今まで通りisStorageと連動、
+//   それ以外の種類は「使用」コマンドを選んだ時に効果メッセージ（useMessage）を表示するだけの簡易な区分。
+//   isStorageは古いセーブデータとの互換のため残してあり、type==="storage"と常に同期させる
+const FURNITURE_TYPE_DEFS = [
+  { value: "decoration", label: "装飾品（使用不可・見た目だけ）" },
+  { value: "storage", label: "収納" },
+  { value: "seating", label: "座る／腰掛ける" },
+  { value: "bed", label: "寝具（休む）" },
+  { value: "lighting", label: "照明" },
+  { value: "appliance", label: "家電・道具" },
+  { value: "other", label: "その他（使用可能）" }
+];
+function isFurnitureStorageType(def) {
+  return !!(def && (def.type === "storage" || def.isStorage));
+}
+function isFurnitureUsableType(def) {
+  return !!(def && def.type && def.type !== "decoration" && def.type !== "storage");
+}
+
 function getFurnitureManagerConfig() {
   return {
-    note: "「家具屋系」施設で販売する家具を登録します。縦・横のサイズは、家の部屋に配置する時のマス目の大きさです（部屋の広さは、マップ設定タブの「間取り編集」で設定）。「倉庫として使える」を付けた家具は、部屋に置くと専用の収納になります（インベントリとは別枠。倉庫家具1つ1つが別々の収納です）。",
+    note: "「家具屋系」施設で販売する家具を登録します。縦・横のサイズは、家の部屋に配置する時のマス目の大きさです（部屋の広さは、マップ設定タブの「間取り編集」で設定）。種類を「収納」にすると、部屋に置いた時に専用の収納として使えます（インベントリとは別枠。倉庫家具1つ1つが別々の収納です）。それ以外の種類は、プレイヤーがカーソルモードで「使用」を選んだ時に効果メッセージを表示します。",
     category: "furniture",
     useDetailEditor: true,
     getList: () => scenarioProject.furniture,
@@ -5330,13 +5351,23 @@ function getFurnitureManagerConfig() {
       { key: "price", label: "価格（陳）", type: "number", placeholder: "0" },
       { key: "width", label: "横（マス）", type: "number", placeholder: "1" },
       { key: "height", label: "縦（マス）", type: "number", placeholder: "1" },
-      { key: "isStorage", label: "倉庫として使える", type: "checkbox" },
-      { key: "storageSlots", label: "収納数（倉庫の場合のみ使用）", type: "number", placeholder: "10" }
+      { key: "type", label: "種類", type: "select", options: FURNITURE_TYPE_DEFS },
+      { key: "storageSlots", label: "収納数（種類が収納の場合のみ使用）", type: "number", placeholder: "10" },
+      { key: "useMessage", label: "使用時のメッセージ（種類が収納・装飾品以外の場合のみ使用）", type: "text", placeholder: "例：しばらく腰掛けて休んだ。" }
     ],
     newEntity: () => ({
       id: generateId("furniture"), name: "新しい家具", imagePath: "", color: "#4a4a4a", price: 0,
-      width: 1, height: 1, isStorage: false, storageSlots: 10
-    })
+      width: 1, height: 1, type: "decoration", isStorage: false, storageSlots: 10, useMessage: ""
+    }),
+    // ★保存直前に、typeとisStorageの食い違い（古いデータや手編集）を必ず解消しておく
+    onChange: () => {
+      (scenarioProject.furniture || []).forEach(def => {
+        if (def.type === "storage") def.isStorage = true;
+        else if (def.isStorage && !def.type) def.type = "storage";
+        else if (!def.type) def.type = def.isStorage ? "storage" : "decoration";
+        if (def.type !== "storage") def.isStorage = false;
+      });
+    }
   };
 }
 
@@ -9129,7 +9160,7 @@ function buildFacilityRow(facility) {
         markScenarioBuildDirty();
       };
       optionRow.appendChild(checkbox);
-      const storageLabel = furniture.isStorage ? "・倉庫" : "";
+      const storageLabel = isFurnitureStorageType(furniture) ? "・倉庫" : "";
       optionRow.appendChild(document.createTextNode(` ${furniture.name || "（名前未設定）"}（${furniture.price || 0}陳・${furniture.width || 1}×${furniture.height || 1}${storageLabel}）`));
       infoEl.appendChild(optionRow);
     });

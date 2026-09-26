@@ -65,22 +65,24 @@
       </div>
     </div>
     
-    <!-- ★不動産システム：部屋への家具配置（furniture.js pickFurniturePlacement）。矢印キー／ボタンで視覚的に移動できるミニ画面 -->
-    <div id="furniture-placement-overlay" class="furniture-placement-overlay hidden">
-      <div class="furniture-placement-box">
-        <p id="furniture-placement-label" class="furniture-placement-label"></p>
-        <div id="furniture-placement-grid" class="furniture-placement-grid"></div>
-        <div class="furniture-placement-dpad">
-          <button id="furniture-placement-up" class="furniture-placement-dpad-btn furniture-placement-dpad-up">↑</button>
-          <div class="furniture-placement-dpad-row">
-            <button id="furniture-placement-left" class="furniture-placement-dpad-btn">←</button>
-            <button id="furniture-placement-right" class="furniture-placement-dpad-btn">→</button>
+    <!-- ★不動産システム：倉庫⇔インベントリのアイテム移動画面（furniture.js manageFurnitureStorage）。
+         サブ画面インベントリタブと同じ見た目のグリッドを左右2ペイン、q/eキーで操作対象を切替 -->
+    <div id="furniture-storage-overlay" class="furniture-storage-overlay hidden">
+      <div class="furniture-storage-box">
+        <p id="furniture-storage-title" class="furniture-storage-title"></p>
+        <div class="furniture-storage-panes">
+          <div class="furniture-storage-pane">
+            <p id="furniture-storage-left-label" class="furniture-storage-pane-label"></p>
+            <div id="furniture-storage-left-grid" class="furniture-storage-grid"></div>
           </div>
-          <button id="furniture-placement-down" class="furniture-placement-dpad-btn furniture-placement-dpad-down">↓</button>
+          <div class="furniture-storage-pane">
+            <p id="furniture-storage-right-label" class="furniture-storage-pane-label"></p>
+            <div id="furniture-storage-right-grid" class="furniture-storage-grid"></div>
+          </div>
         </div>
-        <div class="furniture-placement-controls">
-          <button id="furniture-placement-confirm" class="furniture-placement-btn furniture-placement-confirm-btn">ここに置く<span class="key-badge">Enter</span></button>
-          <button id="furniture-placement-cancel" class="furniture-placement-btn">やめる<span class="key-badge">Esc</span></button>
+        <p class="furniture-storage-hint">矢印キー：カーソル移動／Zキー：選択／Q・Eキー：操作するインベントリを切替／Fキー：並び替え</p>
+        <div class="furniture-storage-controls">
+          <button id="furniture-storage-close" class="devmode-btn">閉じる<span class="key-badge">X</span></button>
         </div>
       </div>
     </div>
