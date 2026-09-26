@@ -215,7 +215,10 @@ async function addItemToShopShelf(area, key, goBack) {
     return;
   }
   
-  const choices = entries.map(e => ({ text: `${e.master.name} ×${e.totalQty}（真価：${e.master.trueValue || 0}陳）`, next: e.itemId }));
+  const choices = entries.map(e => {
+    const priceGuide = e.master.buyPrice ? `普通の価格：${e.master.buyPrice}陳` : "普通の価格：不明";
+    return { text: `${e.master.name} ×${e.totalQty}（${priceGuide}）`, next: e.itemId };
+  });
   choices.push({ text: "やめる", next: "cancel", isBack: true });
   await displayMessage("何を並べる？");
   const picked = await displayChoices(choices);
@@ -225,14 +228,17 @@ async function addItemToShopShelf(area, key, goBack) {
   const qty = await pickQuantity(entry.totalQty, entry.master.name); // town.js
   if (!qty || qty <= 0) { await manageShopShelves(area, key, goBack); return; }
   
+  // ★価格スライダーの上限は内部的にtrueValueから計算するが、trueValue自体は「なんでも鑑定」で見抜くまで
+  //   隠しておく想定の値（items.js参照）なので、プレイヤーに見せる目安は普通の価格（buyPrice）にする
   const trueValue = entry.master.trueValue || 1;
   const suggestedMax = Math.max(trueValue * 3, trueValue + 10);
+  const priceGuideText = entry.master.buyPrice ? `普通の価格の目安：${entry.master.buyPrice}陳` : "普通の価格は不明";
   const price = await pickQuantity(suggestedMax, entry.master.name, {
     min: 1,
     step: 1,
     stepOptions: [1, 10, 100],
     formatValue: v => `${v}陳`,
-    formatLabel: max => `値段を決める（真価の目安：${trueValue}陳）` // ★要望対応：値付けの売れ行きへの影響はプレイヤーに探らせたいので、しきい値は文言で明かさない
+    formatLabel: max => `値段を決める（${priceGuideText}）` // ★要望対応：値付けの売れ行きへの影響はプレイヤーに探らせたいので、しきい値は文言で明かさない
   });
   if (!price || price <= 0) { await manageShopShelves(area, key, goBack); return; }
   
