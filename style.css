@@ -3938,6 +3938,14 @@ html, body {
 }
 
 /* ===== 仲間との会話タブ（Gemini API連携） ===== */
+.companionchat-heading {
+  margin: 4px 0 10px;
+  font-size: 0.95em;
+  color: #ffc107;
+  border-left: 3px solid #ffc107;
+  padding-left: 6px;
+}
+
 .companionchat-login-notice {
   display: flex;
   flex-direction: column;

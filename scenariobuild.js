@@ -246,6 +246,10 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.fameThresholds = data.fameThresholds || {};
   if (Array.isArray(data.loginBonusDays)) scenarioProject.loginBonusDays = data.loginBonusDays; // ★要望対応：ログインボーナス
   if (data.companionChatSettings && typeof data.companionChatSettings === "object") scenarioProject.companionChatSettings = data.companionChatSettings; // ★要望対応：会話AI設定
+  // ★重大バグ修正：タブ管理（プレイ画面のどのタブを出すか）の設定が、保存データから一切読み込まれておらず、
+  //   ページ再読み込みやテストプレイのやり直しのたびに空({})へ戻ってしまい、ONにしたはずのタブ（特に会話）が
+  //   毎回既定値（会話はfalse）に巻き戻っていた
+  if (data.scenarioBuildTabVisibility && typeof data.scenarioBuildTabVisibility === "object") scenarioProject.scenarioBuildTabVisibility = data.scenarioBuildTabVisibility;
   if (typeof data.creditsText === "string") scenarioProject.creditsText = data.creditsText; // ★書き出し側に合わせてクレジットの文面も取り込む
   if (typeof data.introText === "string") scenarioProject.introText = data.introText; // ★オープニングの注意書きも同様に取り込む
   if (!scenarioProject.deletedBuiltinIds) scenarioProject.deletedBuiltinIds = {};
@@ -11948,6 +11952,7 @@ function exportGameSettingsAsJsFile() {
     fameThresholds: scenarioProject.fameThresholds,
     loginBonusDays: scenarioProject.loginBonusDays, // ★要望対応：ログインボーナス
     companionChatSettings: scenarioProject.companionChatSettings, // ★要望対応：会話AI設定
+    scenarioBuildTabVisibility: scenarioProject.scenarioBuildTabVisibility || {}, // ★重大バグ修正：タブ管理の設定も保存対象に含める
     creditsText: scenarioProject.creditsText || "", // ★以前はここに無く、JSファイル出力するとクレジットの文面だけ引き継がれない不具合があった
     introText: scenarioProject.introText || "", // ★オープニングの注意書き（titlescreen.jsのDEFAULT_INTRO_SPLASH_TEXT）
     deletedBuiltinIds: {
