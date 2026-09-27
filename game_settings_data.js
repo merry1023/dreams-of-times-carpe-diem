@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1790421212255,
+  "version": 1790532942367,
   "enemies": [
     {
       "id": "goblin",
@@ -2165,7 +2165,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       },
       "isFishingRod": true,
       "rodDurability": 75,
-      "rodPower": 4.5,
+      "rodPower": 3.5,
       "stackable": false,
       "baitFishTypes": []
     },
@@ -2494,6 +2494,33 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "listedPrice": 1,
       "trueValue": 1,
       "builtin": true
+    },
+    {
+      "id": "fish_1790506381682_9",
+      "name": "ユルマンフィッシュ",
+      "category": "fish",
+      "description": "全体的に柔軟的で食べやすい魚。しかし歯ごたえは皆無。",
+      "rank": "F",
+      "listedPrice": 20,
+      "trueValue": 20,
+      "builtin": true
+    },
+    {
+      "id": "item_1790531256969_1",
+      "name": "えちち本",
+      "category": "book",
+      "description": "言わなくても分かる。漢の夢が詰まっている。",
+      "rank": "A",
+      "listedPrice": 300,
+      "trueValue": 300,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "pages": [
+        "ンアッー!(≧д≦)"
+      ],
+      "params": {
+        "希少度": 1
+      }
     }
   ],
   "furniture": [
@@ -2501,23 +2528,130 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "furniture_1790162502818_8",
       "name": "コッシー",
       "imagePath": "",
-      "price": 0,
+      "price": 5000,
       "width": 1,
       "height": 1,
       "isStorage": false,
       "storageSlots": 10,
-      "color": "#8a6c00"
+      "color": "#8a6c00",
+      "type": "seating",
+      "useMessage": "コッシーにコシ掛けた"
     },
     {
       "id": "furniture_1790162524441_9",
       "name": "たんすッ",
       "imagePath": "",
-      "price": 0,
+      "price": 12000,
       "width": 2,
       "height": 1,
       "isStorage": true,
+      "storageSlots": 30,
+      "color": "#805100",
+      "type": "storage"
+    },
+    {
+      "id": "furniture_1790504334894_3",
+      "name": "おじいちゃん家にある感じのおじいちゃんの懐かしい匂いがする布団",
+      "imagePath": "",
+      "color": "#feffc7",
+      "price": 7000,
+      "width": 2,
+      "height": 3,
+      "type": "bed",
+      "isStorage": false,
       "storageSlots": 10,
-      "color": "#805100"
+      "useMessage": "天井を見ていると、顔のようなものが見えた。"
+    },
+    {
+      "id": "furniture_1790504745949_5",
+      "name": "小さなランプ",
+      "imagePath": "",
+      "color": "#f1ff8a",
+      "price": 2000,
+      "width": 1,
+      "height": 1,
+      "type": "lighting",
+      "isStorage": false,
+      "storageSlots": 10,
+      "useMessage": "ぼんやりと光る。"
+    },
+    {
+      "id": "furniture_1790505006461_6",
+      "name": "加熱魔法発生機「アツインデス」",
+      "imagePath": "",
+      "color": "#000000",
+      "price": 12000,
+      "width": 1,
+      "height": 1,
+      "type": "cookingAppliance",
+      "isStorage": false,
+      "storageSlots": 10,
+      "useMessage": ""
+    },
+    {
+      "id": "furniture_1790505192223_7",
+      "name": "みにまむ収納箱",
+      "imagePath": "",
+      "color": "#ffffff",
+      "price": 300,
+      "width": 1,
+      "height": 1,
+      "type": "storage",
+      "isStorage": true,
+      "storageSlots": 3,
+      "useMessage": ""
+    },
+    {
+      "id": "furniture_1790505294304_8",
+      "name": "やたらと枕の大きいベッド",
+      "imagePath": "",
+      "color": "#ffffff",
+      "price": 130000,
+      "width": 3,
+      "height": 4,
+      "type": "bed",
+      "isStorage": false,
+      "storageSlots": 10,
+      "useMessage": "心地よく眠れそうだ..."
+    },
+    {
+      "id": "furniture_1790531805277_2",
+      "name": "小さな本棚",
+      "imagePath": "",
+      "color": "#a85a00",
+      "price": 3000,
+      "width": 1,
+      "height": 1,
+      "type": "bookshelf",
+      "isStorage": false,
+      "storageSlots": 8,
+      "useMessage": ""
+    },
+    {
+      "id": "furniture_1790532378071_10",
+      "name": "質素な机",
+      "imagePath": "",
+      "color": "#af7612",
+      "price": 4000,
+      "width": 2,
+      "height": 1,
+      "type": "decoration",
+      "isStorage": false,
+      "storageSlots": 10,
+      "useMessage": ""
+    },
+    {
+      "id": "furniture_1790532855000_11",
+      "name": "温かな壁",
+      "imagePath": "",
+      "color": "#572e00",
+      "price": 3000,
+      "width": 1,
+      "height": 1,
+      "type": "decoration",
+      "isStorage": false,
+      "storageSlots": 10,
+      "useMessage": ""
     }
   ],
   "fishItems": [
@@ -2556,6 +2690,18 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "rank": "F",
       "listedPrice": 100,
       "trueValue": 100
+    },
+    {
+      "id": "fish_1790506381682_9",
+      "name": "ユルマンフィッシュ",
+      "description": "全体的に柔軟的で食べやすい魚。しかし歯ごたえは皆無。",
+      "fishType": "マンフィッシュ科",
+      "power": 3,
+      "hp": 40,
+      "size": 25,
+      "rank": "F",
+      "listedPrice": 20,
+      "trueValue": 20
     }
   ],
   "skills": [
@@ -10737,7 +10883,13 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         {
           "fishId": "fish_1790065872945_3",
           "weight": 1,
-          "timeOfDay": "any",
+          "timeOfDay": "night",
+          "weather": "any"
+        },
+        {
+          "fishId": "fish_1790506381682_9",
+          "weight": 1,
+          "timeOfDay": "night",
           "weather": "any"
         }
       ]
@@ -11047,8 +11199,127 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "enterBlocks": [],
       "furnitureIds": [
         "furniture_1790162502818_8",
-        "furniture_1790162524441_9"
+        "furniture_1790162524441_9",
+        "furniture_1790504334894_3",
+        "furniture_1790504745949_5",
+        "furniture_1790505006461_6",
+        "furniture_1790505192223_7",
+        "furniture_1790505294304_8",
+        "furniture_1790531805277_2",
+        "furniture_1790532378071_10"
       ]
+    },
+    {
+      "id": "facility_1790506660349_10",
+      "type": "flavor",
+      "name": "釣り人のおっさん",
+      "bgTrack": "",
+      "bgImage": "",
+      "ownerDialogue": "",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "minBet": 10,
+      "maxBet": 1000,
+      "slotImages": {},
+      "slotWeights": {},
+      "entryItemId": "",
+      "entryItemQty": 1,
+      "floors": [],
+      "regularEnemyPool": [],
+      "bossRoundConfig": {},
+      "coinItemIdBlue": "",
+      "coinItemIdYellow": "",
+      "coinItemIdRed": "",
+      "milestone10CoinQty": 1,
+      "milestone20CoinQty": 1,
+      "milestone50CoinQty": 1,
+      "finalClearBlueCoinQty": 0,
+      "finalClearYellowCoinQty": 0,
+      "finalClearRedCoinQty": 0,
+      "finalClearGoldReward": 0,
+      "finalClearExpReward": 0,
+      "exchangeOffers": [],
+      "enterBlocks": [
+        {
+          "type": "dialogue",
+          "speaker": "釣り人のおっさん",
+          "text": "よおあんちゃん。"
+        },
+        {
+          "type": "dialogue",
+          "speaker": "釣り人のおっさん",
+          "text": "あんちゃんも釣りか？いい情報を教えてやんよ！"
+        },
+        {
+          "type": "dialogue",
+          "speaker": "釣り人のおっさん",
+          "text": "ここにはいろんな魚がいるが、実はな、夜にしか出ない魚もいるんだぜ？時間帯によって出る魚の種類も十人十色ってな！"
+        },
+        {
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "なんか、言葉の使い方合ってます？それ..."
+        },
+        {
+          "type": "dialogue",
+          "speaker": "釣り人のおっさん",
+          "text": "そんなこと気にすんなって！人生楽しめりゃいいんだよ！"
+        },
+        {
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "な、なるほど...！"
+        }
+      ]
+    },
+    {
+      "id": "facility_1790532213468_9",
+      "type": "shop",
+      "name": "王都書店",
+      "bgTrack": "",
+      "bgImage": "",
+      "ownerDialogue": "",
+      "price": 20,
+      "sleepinessRecovery": 40,
+      "fatigueRecovery": 40,
+      "classChangeCost": 100,
+      "minBet": 10,
+      "maxBet": 1000,
+      "slotImages": {},
+      "slotWeights": {},
+      "entryItemId": "",
+      "entryItemQty": 1,
+      "floors": [],
+      "regularEnemyPool": [],
+      "bossRoundConfig": {},
+      "coinItemIdBlue": "",
+      "coinItemIdYellow": "",
+      "coinItemIdRed": "",
+      "milestone10CoinQty": 1,
+      "milestone20CoinQty": 1,
+      "milestone50CoinQty": 1,
+      "finalClearBlueCoinQty": 0,
+      "finalClearYellowCoinQty": 0,
+      "finalClearRedCoinQty": 0,
+      "finalClearGoldReward": 0,
+      "finalClearExpReward": 0,
+      "exchangeOffers": [],
+      "enterBlocks": [
+        {
+          "type": "dialogue",
+          "speaker": "書店の店員",
+          "text": ".......っす...."
+        }
+      ],
+      "shopItems": [
+        {
+          "itemId": "item_1790531256969_1",
+          "price": 300
+        }
+      ],
+      "shopOffers": []
     }
   ],
   "portraitCharacters": [],
@@ -12082,7 +12353,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "facility_1789442530326_5",
         "facility_1789648540174_1",
         "facility_1790077753643_1",
-        "facility_1790126744988_5"
+        "facility_1790126744988_5",
+        "facility_1790532213468_9"
       ],
       "mapNodeSize": 20,
       "leftTarget": "custom_area_1788853853599_1",
@@ -12262,7 +12534,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "enemyLevel": null,
       "unlockConditions": [],
       "facilityIds": [
-        "facility_1790066593024_6"
+        "facility_1790066593024_6",
+        "facility_1790506660349_10"
       ],
       "mapNodeSize": 5
     },
@@ -12270,8 +12543,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "area_1790162062422_1",
       "name": "幻魔の森の別荘",
       "type": "estateHouse",
-      "x": 30.045340796979687,
-      "y": 14.628719238209818,
+      "x": 29.417614121993864,
+      "y": 15.113420750061778,
       "bgTrack": "",
       "bgImage": "",
       "bossId": "",
@@ -12302,14 +12575,21 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             "id": "room_1790162141937_2",
             "x": 0,
             "y": 0,
-            "width": 4,
-            "height": 4,
+            "width": 2,
+            "height": 3,
             "name": "玄関",
             "doors": {
               "north": true,
               "south": false,
               "east": false,
               "west": false
+            },
+            "floorColor": "#949494",
+            "doorStyle": {
+              "north": {
+                "position": 0,
+                "color": "#6b4226"
+              }
             }
           },
           {
@@ -12317,24 +12597,38 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             "x": 0,
             "y": -1,
             "width": 2,
-            "height": 20,
+            "height": 7,
             "name": "渡り廊下",
             "doors": {
               "north": true,
               "south": true,
-              "east": false,
-              "west": false
+              "east": true,
+              "west": true
+            },
+            "doorStyle": {
+              "north": {
+                "position": 0,
+                "color": "#6b4226"
+              },
+              "south": {
+                "position": 0,
+                "color": "#6b4226"
+              },
+              "west": {
+                "position": 3,
+                "color": "#6b4226"
+              }
             }
           },
           {
             "id": "room_1790162185741_4",
             "x": 0,
             "y": -2,
-            "width": 30,
-            "height": 25,
+            "width": 12,
+            "height": 8,
             "name": "リビング",
             "doors": {
-              "north": false,
+              "north": true,
               "south": true,
               "east": true,
               "west": false
@@ -12344,14 +12638,64 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             "id": "room_1790162249419_5",
             "x": 1,
             "y": -2,
-            "width": 15,
-            "height": 15,
+            "width": 7,
+            "height": 7,
             "name": "寝室",
             "doors": {
               "north": false,
               "south": false,
               "east": false,
               "west": true
+            },
+            "floorColor": "#7d5b45"
+          },
+          {
+            "id": "room_1790504193636_1",
+            "x": 0,
+            "y": -3,
+            "width": 8,
+            "height": 4,
+            "name": "物置",
+            "doors": {
+              "north": false,
+              "south": true,
+              "east": false,
+              "west": false
+            }
+          },
+          {
+            "id": "room_1790504228173_2",
+            "x": -1,
+            "y": -1,
+            "width": 6,
+            "height": 6,
+            "name": "小部屋",
+            "doors": {
+              "north": false,
+              "south": false,
+              "east": true,
+              "west": false
+            }
+          },
+          {
+            "id": "room_1790531891477_3",
+            "x": 1,
+            "y": -1,
+            "width": 4,
+            "height": 4,
+            "name": "トイレ",
+            "roomType": "toilet",
+            "doors": {
+              "north": false,
+              "south": false,
+              "east": false,
+              "west": true
+            },
+            "doorStyle": {
+              "west": {
+                "position": 1,
+                "color": "#6b4226"
+              }
             }
           }
         ],
@@ -12809,7 +13153,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     "randomnames": true,
     "elements": true,
     "fishmgmt": true,
-    "tab-companionchat": true
+    "tab-companionchat": false
   },
   "creditsText": "敵などのデザインは僕が描いたものです。まだ下手ですが上手くなれるよう精進します...\nその他「フリー素材/コンポーザー様の楽曲等」を使用させていただいています\n\n背景\n<ゲームまてりあるず>様\n<AIPICT>様\n\n使用させていただいたBGM\n\n<クリエイター【オト】（https://creatoroto-blog.com/）>様\n「Oak-Village」\n\n<かずち>様\n「宵露洞窟」\n\n<ハルト>様\n「月明かりの草原」\n\n<松浦洋介>様\n「The Murmuring Forest」\n\n<Masuo>様\n「森へ」\n\n<dingerbox>様\n「haptime」\n「vacsina」\n「lirva」\n「burglar」\n\n<蒲鉾さちこ>様\n「哀愁と憂いの春に」\n「闇夜にたゆたう海」\n\n<しゃぐま>様\n「穢れ無き水面」\n\n<EBIMAYO>様\n「GOODRUSH」\n\n<アキラの音楽空間 https://www.akira-m.net/index.php>様\n「メヌエット」(ルイージ・ボッケリーニ作曲)\n\n<おみー>様\n「Alfredia」\n\n<ああああ>様、<daph>様\n「C'est la Vie」\n\n<CYLTIE>様\n「Life music,Life work」\n\n<maroyu>様\n「Existenz」",
   "introText": "これから始める方へ。\nこのゲームはクソゲーです。\n開発者がノリで作ったしょうもないシナリオで、\n場が凍りつく会話や一部下ネタがふくまれます。立ち絵管理\n\nキャラクターのイラストは開発者が描いたものですが、\nあまり上手とは言えませんので我慢してください。\n苦手な方はこの場でブラウザバックすることを\nおすすめしマスカット。",
