@@ -204,6 +204,37 @@ function renderRoomView(room, uiState) {
     grid.appendChild(cell);
   }
   
+  // ★要望対応：本編プレイ画面でも、間取り編集で設定したドアの位置・色が壁に見えるようにする
+  if (room.doors && typeof FLOORPLAN_DIRECTIONS === "object") {
+    Object.keys(FLOORPLAN_DIRECTIONS).forEach(dirKey => {
+      if (!room.doors[dirKey]) return;
+      const isHorizontalWall = dirKey === "north" || dirKey === "south";
+      const wallLengthCells = isHorizontalWall ? roomW : roomH;
+      const style = (room.doorStyle && room.doorStyle[dirKey]) || {};
+      const maxPos = Math.max(0, wallLengthCells - 1);
+      const position = Math.max(0, Math.min(maxPos, Number.isFinite(style.position) ? style.position : Math.floor(maxPos / 2)));
+      const color = style.color || "#6b4226";
+      
+      const doorEl = document.createElement("div");
+      doorEl.className = "room-view-door";
+      doorEl.style.backgroundColor = color;
+      const thickness = Math.max(4, Math.floor(cellPx * 0.2));
+      const doorSpanPx = Math.max(6, Math.floor(cellPx * 0.7));
+      if (isHorizontalWall) {
+        doorEl.style.width = doorSpanPx + "px";
+        doorEl.style.height = thickness + "px";
+        doorEl.style.left = (position * cellPx + (cellPx - doorSpanPx) / 2) + "px";
+        doorEl.style[dirKey === "north" ? "top" : "bottom"] = -(thickness / 2) + "px";
+      } else {
+        doorEl.style.height = doorSpanPx + "px";
+        doorEl.style.width = thickness + "px";
+        doorEl.style.top = (position * cellPx + (cellPx - doorSpanPx) / 2) + "px";
+        doorEl.style[dirKey === "west" ? "left" : "right"] = -(thickness / 2) + "px";
+      }
+      grid.appendChild(doorEl);
+    });
+  }
+  
   const excludeInstanceId = uiState && uiState.placing ? uiState.placing.excludeInstanceId : null;
   getRoomPlacedFurniture(room.id).forEach(inst => {
     if (excludeInstanceId && inst.instanceId === excludeInstanceId) return; // ★移動・回転中の家具は、元の位置には描かず後でカーソル位置に描く
@@ -292,6 +323,8 @@ function manageFurnitureStorage(instance) {
     if (!Array.isArray(player.furnitureStorage[instance.instanceId])) player.furnitureStorage[instance.instanceId] = [];
     const storage = player.furnitureStorage[instance.instanceId];
     const def = findFurnitureDef(instance.furnitureId);
+    // ★要望対応：本棚は「本」の種類のアイテムしか収納できない
+    const isBookOnlyStorage = !!(def && def.type === "bookshelf");
     
     const overlay = document.getElementById("furniture-storage-overlay");
     const titleEl = document.getElementById("furniture-storage-title");
@@ -327,6 +360,7 @@ function manageFurnitureStorage(instance) {
         if (!slot || seen.has(slot.itemId)) return;
         const master = ITEM_MASTER[slot.itemId];
         if (!master || !STACKABLE_CATEGORIES.includes(master.category)) return;
+        if (isBookOnlyStorage && master.category !== "book") return; // ★本棚には本以外を預けられない
         seen.add(slot.itemId);
         const totalQty = inventorySlots.filter(s => s && s.itemId === slot.itemId).reduce((sum, s) => sum + s.quantity, 0);
         entries.push({ itemId: slot.itemId, quantity: totalQty, master });
@@ -396,7 +430,7 @@ function manageFurnitureStorage(instance) {
       if (leftIndex >= leftEntries.length) leftIndex = Math.max(0, leftEntries.length - 1);
       if (rightIndex >= rightEntries.length) rightIndex = Math.max(0, rightEntries.length - 1);
       
-      if (titleEl) titleEl.textContent = `「${def ? def.name : "倉庫"}」の中身を整理する`;
+      if (titleEl) titleEl.textContent = `「${def ? def.name : "倉庫"}」の中身を整理する` + (isBookOnlyStorage ? "（本のみ収納可）" : "");
       if (leftLabelEl) leftLabelEl.textContent = `① 倉庫${activePane === "left" ? "【操作中】" : ""}　${leftEntries.length > 0 ? `${leftIndex + 1}/${leftEntries.length}　` : ""}並び替え：${storageSortMode === "name" ? "名前順" : "預けた順"}`;
       if (rightLabelEl) rightLabelEl.textContent = `② インベントリ${activePane === "right" ? "【操作中】" : ""}　${rightEntries.length > 0 ? `${rightIndex + 1}/${rightEntries.length}　` : ""}並び替え：${INVENTORY_SORT_MODE_LABELS[inventorySortMode]}`;
       
@@ -438,6 +472,7 @@ function manageFurnitureStorage(instance) {
       pauseKeys();
       removeMenuPopupEl();
       overlay.classList.add("hidden");
+      isGameDialogOpen = false; // mainfunc.js（要望対応：閉じたら背景の操作ロックを解除する）
       closeBtn.onclick = null;
       resolve();
     }
@@ -587,6 +622,7 @@ function manageFurnitureStorage(instance) {
     if (legendEl) legendEl.textContent = "↑↓←→：カーソル移動／Z：選ぶ／Q・E：倉庫とインベントリを切替／F：並び替え／X：閉じる";
     closeBtn.onclick = (event) => { event.stopPropagation(); cleanupAndResolve(); };
     resumeKeys();
+    isGameDialogOpen = true; // mainfunc.js（要望対応：開いている間は裏の部屋・町の画面を操作できないようにする）
     overlay.classList.remove("hidden");
     render();
   });

@@ -13,14 +13,33 @@ const FLOORPLAN_DIRECTIONS = {
   west: { dx: -1, dy: 0, opposite: "east", label: "西" }
 };
 
+// ★要望対応：部屋の種類（間取り編集で選べる。今のところ「便所」のみ。トイレ家具は便所タイプの部屋にしか置けない）
+const FLOORPLAN_ROOM_TYPE_DEFS = [
+  { value: "", label: "（指定なし）" },
+  { value: "toilet", label: "便所" }
+];
+
 function makeNewFloorPlanRoom(x, y) {
   return {
     id: generateId("room"), // scenariobuild.js
     x, y,
     width: 4, height: 4, // ★家具配置マス目のサイズ（フェーズ2で使用）
     name: "",
-    doors: { north: false, south: false, east: false, west: false }
+    roomType: "", // ★要望対応：部屋の種類（"" or "toilet"）
+    doors: { north: false, south: false, east: false, west: false },
+    doorStyle: {} // ★要望対応：ドアごとの表示位置・色（{ north: { position, color }, ... }、未設定なら中央・茶色）
   };
+}
+
+// ★要望対応：指定した部屋・方向のドアの表示設定（位置・色）を取得する。無ければ壁の中央・既定色で初期化する
+function ensureFloorPlanDoorStyle(room, dirKey) {
+  if (!room.doorStyle || typeof room.doorStyle !== "object") room.doorStyle = {};
+  if (!room.doorStyle[dirKey] || typeof room.doorStyle[dirKey] !== "object") {
+    const isHorizontalWall = dirKey === "north" || dirKey === "south";
+    const maxPos = Math.max(0, (isHorizontalWall ? (room.width || 1) : (room.height || 1)) - 1);
+    room.doorStyle[dirKey] = { position: Math.floor(maxPos / 2), color: "#6b4226" };
+  }
+  return room.doorStyle[dirKey];
 }
 
 // ★家エリアが間取りデータを持っていなければ、部屋1つ（原点）で初期化する。
@@ -245,24 +264,73 @@ function buildFloorPlanRoomDetail(area, floorPlan, room, persist) {
   floorColorRow.appendChild(floorColorInput);
   infoEl.appendChild(floorColorRow);
   
+  // ★要望対応：部屋の種類（トイレ等、特定の家具はここで指定した種類の部屋にしか置けない）
+  const roomTypeRow = document.createElement("div");
+  roomTypeRow.className = "scenariobuild-condition-row";
+  roomTypeRow.appendChild(labelSpan("部屋の種類："));
+  const roomTypeSelect = document.createElement("select");
+  roomTypeSelect.className = "scenariobuild-title-input";
+  FLOORPLAN_ROOM_TYPE_DEFS.forEach(opt => {
+    const optionEl = document.createElement("option");
+    optionEl.value = opt.value;
+    optionEl.textContent = opt.label;
+    roomTypeSelect.appendChild(optionEl);
+  });
+  roomTypeSelect.value = room.roomType || "";
+  roomTypeSelect.onchange = () => { room.roomType = roomTypeSelect.value; persist(); };
+  roomTypeRow.appendChild(roomTypeSelect);
+  const roomTypeHint = document.createElement("p");
+  roomTypeHint.className = "devmode-note";
+  roomTypeHint.style.margin = "2px 0 0 0";
+  roomTypeHint.textContent = "「便所」にすると、種類が「トイレ」の家具をこの部屋に置けるようになります。";
+  infoEl.appendChild(roomTypeRow);
+  infoEl.appendChild(roomTypeHint);
+  
   const doorNote = document.createElement("p");
   doorNote.className = "devmode-note scenariobuild-condition";
-  doorNote.textContent = "ドア（隣に部屋がある方向にだけ設置できます。設置した方向にのみ、隣の部屋へ移動できるようになります）：";
+  doorNote.textContent = "ドア（隣に部屋がある方向にだけ設置できます。設置した方向にのみ、隣の部屋へ移動できるようになります。位置・色は本編プレイ画面での見た目です）：";
   infoEl.appendChild(doorNote);
   
   Object.keys(FLOORPLAN_DIRECTIONS).forEach(dirKey => {
     const dir = FLOORPLAN_DIRECTIONS[dirKey];
     const neighbor = findFloorPlanRoomAt(floorPlan, room.x + dir.dx, room.y + dir.dy);
-    const doorRow = document.createElement("label");
+    const doorRow = document.createElement("div");
     doorRow.className = "scenariobuild-condition-row";
-    doorRow.style.cursor = neighbor ? "pointer" : "default";
+    const checkboxLabel = document.createElement("label");
+    checkboxLabel.style.cursor = neighbor ? "pointer" : "default";
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = !!room.doors[dirKey];
     checkbox.disabled = !neighbor;
     checkbox.onchange = () => { toggleFloorPlanDoor(area, room.id, dirKey); persist(); };
-    doorRow.appendChild(checkbox);
-    doorRow.appendChild(document.createTextNode(` ${dir.label}のドア` + (neighbor ? `（${neighbor.name || "部屋"}へ）` : "（隣に部屋がありません）")));
+    checkboxLabel.appendChild(checkbox);
+    checkboxLabel.appendChild(document.createTextNode(` ${dir.label}のドア` + (neighbor ? `（${neighbor.name || "部屋"}へ）` : "（隣に部屋がありません）")));
+    doorRow.appendChild(checkboxLabel);
+    
+    if (room.doors[dirKey]) {
+      const isHorizontalWall = dirKey === "north" || dirKey === "south";
+      const maxPos = Math.max(0, (isHorizontalWall ? (room.width || 1) : (room.height || 1)) - 1);
+      const style = ensureFloorPlanDoorStyle(room, dirKey);
+      if (style.position > maxPos) style.position = maxPos;
+      
+      doorRow.appendChild(labelSpan(" 位置："));
+      const posInput = document.createElement("input");
+      posInput.type = "number";
+      posInput.min = "0";
+      posInput.max = String(maxPos);
+      posInput.className = "scenariobuild-condition-input";
+      posInput.value = style.position;
+      posInput.onchange = () => { style.position = Math.max(0, Math.min(maxPos, Math.floor(Number(posInput.value)) || 0)); persist(); };
+      doorRow.appendChild(posInput);
+      
+      doorRow.appendChild(labelSpan(" 色："));
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.value = style.color || "#6b4226";
+      colorInput.onchange = () => { style.color = colorInput.value; persist(); };
+      doorRow.appendChild(colorInput);
+    }
+    
     infoEl.appendChild(doorRow);
   });
   
@@ -463,7 +531,12 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         return;
       }
       if (sub.next === "use") {
-        await displayMessage((def && def.useMessage) || "特に変わったことは無いようだ。");
+        // ★要望対応：調理魔家電を使うと、料理タブと同じ仕様の料理モーダルを開く（cooking.js）
+        if (def && def.type === "cookingAppliance" && typeof openCookingModal === "function") {
+          await openCookingModal();
+        } else {
+          await displayMessage((def && def.useMessage) || "特に変わったことは無いようだ。");
+        }
         resumeKeys(); render();
         return;
       }
@@ -482,12 +555,18 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     }
     
     async function openUnplacedFurniturePicker() {
-      const unplaced = player.ownedFurniture.filter(inst => !inst.placement);
+      const allUnplaced = player.ownedFurniture.filter(inst => !inst.placement);
+      // ★要望対応：トイレなど、部屋の種類によって置ける家具を絞り込む
+      const unplaced = allUnplaced.filter(inst => isFurniturePlacementAllowedInRoom(findFurnitureDef(inst.furnitureId), room)); // scenariobuild.js
       pauseKeys();
       if (typeof showMessageWindow === "function") showMessageWindow();
       changeSpeaker("");
       if (unplaced.length === 0) {
-        await displayMessage("持っている未設置の家具が無いようだ。（家具屋で購入できます）");
+        if (allUnplaced.length > 0) {
+          await displayMessage("持っている未設置の家具の中に、この部屋（" + (room.name || "この部屋") + "）に置けるものが無いようだ。（例：トイレは「便所」タイプの部屋にしか置けません）");
+        } else {
+          await displayMessage("持っている未設置の家具が無いようだ。（家具屋で購入できます）");
+        }
         resumeKeys(); render();
         return;
       }
