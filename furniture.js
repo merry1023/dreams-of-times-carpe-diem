@@ -373,12 +373,21 @@ function manageFurnitureStorage(instance) {
       entries.forEach((entry, i) => gridEl.appendChild(buildSlotEl(entry, isActive && i === selectedIndex)));
     }
     
-    // ★要望対応：カーソルが今の表示範囲からはみ出たら、そのマスが見えるところまで自動でスクロールする
+    // ★要望対応：カーソルが今の表示範囲からはみ出たら、そのマスが見えるところまで自動でスクロールする。
+    //   el.scrollIntoView()はこの画面のように「外枠」と「グリッド」で入れ子になったスクロール領域があると
+    //   ブラウザによって挙動が不安定なことがあるため、対象のグリッド要素に対してscrollTopを直接計算して確実に動かす
     function scrollActivePaneIntoView() {
       const gridEl = getPaneGridEl(activePane);
       const idx = getPaneIndex(activePane);
       const el = gridEl.children[idx];
-      if (el && typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "nearest", inline: "nearest" });
+      if (!el || typeof el.getBoundingClientRect !== "function") return;
+      const containerRect = gridEl.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      if (elRect.top < containerRect.top) {
+        gridEl.scrollTop -= (containerRect.top - elRect.top);
+      } else if (elRect.bottom > containerRect.bottom) {
+        gridEl.scrollTop += (elRect.bottom - containerRect.bottom);
+      }
     }
     
     function render() {
@@ -388,8 +397,8 @@ function manageFurnitureStorage(instance) {
       if (rightIndex >= rightEntries.length) rightIndex = Math.max(0, rightEntries.length - 1);
       
       if (titleEl) titleEl.textContent = `「${def ? def.name : "倉庫"}」の中身を整理する`;
-      if (leftLabelEl) leftLabelEl.textContent = `① 倉庫${activePane === "left" ? "【操作中】" : ""}　並び替え：${storageSortMode === "name" ? "名前順" : "預けた順"}`;
-      if (rightLabelEl) rightLabelEl.textContent = `② インベントリ${activePane === "right" ? "【操作中】" : ""}　並び替え：${INVENTORY_SORT_MODE_LABELS[inventorySortMode]}`;
+      if (leftLabelEl) leftLabelEl.textContent = `① 倉庫${activePane === "left" ? "【操作中】" : ""}　${leftEntries.length > 0 ? `${leftIndex + 1}/${leftEntries.length}　` : ""}並び替え：${storageSortMode === "name" ? "名前順" : "預けた順"}`;
+      if (rightLabelEl) rightLabelEl.textContent = `② インベントリ${activePane === "right" ? "【操作中】" : ""}　${rightEntries.length > 0 ? `${rightIndex + 1}/${rightEntries.length}　` : ""}並び替え：${INVENTORY_SORT_MODE_LABELS[inventorySortMode]}`;
       
       renderPane("left", "（空っぽ）");
       renderPane("right", "（預けられる物が無いようだ）");
