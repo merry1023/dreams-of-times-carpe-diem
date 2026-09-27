@@ -13,14 +13,33 @@ const FLOORPLAN_DIRECTIONS = {
   west: { dx: -1, dy: 0, opposite: "east", label: "西" }
 };
 
+// ★要望対応：部屋の種類（間取り編集で選べる。今のところ「便所」のみ。トイレ家具は便所タイプの部屋にしか置けない）
+const FLOORPLAN_ROOM_TYPE_DEFS = [
+  { value: "", label: "（指定なし）" },
+  { value: "toilet", label: "便所" }
+];
+
 function makeNewFloorPlanRoom(x, y) {
   return {
     id: generateId("room"), // scenariobuild.js
     x, y,
     width: 4, height: 4, // ★家具配置マス目のサイズ（フェーズ2で使用）
     name: "",
-    doors: { north: false, south: false, east: false, west: false }
+    roomType: "", // ★要望対応：部屋の種類（"" or "toilet"）
+    doors: { north: false, south: false, east: false, west: false },
+    doorStyle: {} // ★要望対応：ドアごとの表示位置・色（{ north: { position, color }, ... }、未設定なら中央・茶色）
   };
+}
+
+// ★要望対応：指定した部屋・方向のドアの表示設定（位置・色）を取得する。無ければ壁の中央・既定色で初期化する
+function ensureFloorPlanDoorStyle(room, dirKey) {
+  if (!room.doorStyle || typeof room.doorStyle !== "object") room.doorStyle = {};
+  if (!room.doorStyle[dirKey] || typeof room.doorStyle[dirKey] !== "object") {
+    const isHorizontalWall = dirKey === "north" || dirKey === "south";
+    const maxPos = Math.max(0, (isHorizontalWall ? (room.width || 1) : (room.height || 1)) - 1);
+    room.doorStyle[dirKey] = { position: Math.floor(maxPos / 2), color: "#6b4226" };
+  }
+  return room.doorStyle[dirKey];
 }
 
 // ★家エリアが間取りデータを持っていなければ、部屋1つ（原点）で初期化する。
@@ -245,24 +264,73 @@ function buildFloorPlanRoomDetail(area, floorPlan, room, persist) {
   floorColorRow.appendChild(floorColorInput);
   infoEl.appendChild(floorColorRow);
   
+  // ★要望対応：部屋の種類（トイレ等、特定の家具はここで指定した種類の部屋にしか置けない）
+  const roomTypeRow = document.createElement("div");
+  roomTypeRow.className = "scenariobuild-condition-row";
+  roomTypeRow.appendChild(labelSpan("部屋の種類："));
+  const roomTypeSelect = document.createElement("select");
+  roomTypeSelect.className = "scenariobuild-title-input";
+  FLOORPLAN_ROOM_TYPE_DEFS.forEach(opt => {
+    const optionEl = document.createElement("option");
+    optionEl.value = opt.value;
+    optionEl.textContent = opt.label;
+    roomTypeSelect.appendChild(optionEl);
+  });
+  roomTypeSelect.value = room.roomType || "";
+  roomTypeSelect.onchange = () => { room.roomType = roomTypeSelect.value; persist(); };
+  roomTypeRow.appendChild(roomTypeSelect);
+  const roomTypeHint = document.createElement("p");
+  roomTypeHint.className = "devmode-note";
+  roomTypeHint.style.margin = "2px 0 0 0";
+  roomTypeHint.textContent = "「便所」にすると、種類が「トイレ」の家具をこの部屋に置けるようになります。";
+  infoEl.appendChild(roomTypeRow);
+  infoEl.appendChild(roomTypeHint);
+  
   const doorNote = document.createElement("p");
   doorNote.className = "devmode-note scenariobuild-condition";
-  doorNote.textContent = "ドア（隣に部屋がある方向にだけ設置できます。設置した方向にのみ、隣の部屋へ移動できるようになります）：";
+  doorNote.textContent = "ドア（隣に部屋がある方向にだけ設置できます。設置した方向にのみ、隣の部屋へ移動できるようになります。位置・色は本編プレイ画面での見た目です）：";
   infoEl.appendChild(doorNote);
   
   Object.keys(FLOORPLAN_DIRECTIONS).forEach(dirKey => {
     const dir = FLOORPLAN_DIRECTIONS[dirKey];
     const neighbor = findFloorPlanRoomAt(floorPlan, room.x + dir.dx, room.y + dir.dy);
-    const doorRow = document.createElement("label");
+    const doorRow = document.createElement("div");
     doorRow.className = "scenariobuild-condition-row";
-    doorRow.style.cursor = neighbor ? "pointer" : "default";
+    const checkboxLabel = document.createElement("label");
+    checkboxLabel.style.cursor = neighbor ? "pointer" : "default";
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = !!room.doors[dirKey];
     checkbox.disabled = !neighbor;
     checkbox.onchange = () => { toggleFloorPlanDoor(area, room.id, dirKey); persist(); };
-    doorRow.appendChild(checkbox);
-    doorRow.appendChild(document.createTextNode(` ${dir.label}のドア` + (neighbor ? `（${neighbor.name || "部屋"}へ）` : "（隣に部屋がありません）")));
+    checkboxLabel.appendChild(checkbox);
+    checkboxLabel.appendChild(document.createTextNode(` ${dir.label}のドア` + (neighbor ? `（${neighbor.name || "部屋"}へ）` : "（隣に部屋がありません）")));
+    doorRow.appendChild(checkboxLabel);
+    
+    if (room.doors[dirKey]) {
+      const isHorizontalWall = dirKey === "north" || dirKey === "south";
+      const maxPos = Math.max(0, (isHorizontalWall ? (room.width || 1) : (room.height || 1)) - 1);
+      const style = ensureFloorPlanDoorStyle(room, dirKey);
+      if (style.position > maxPos) style.position = maxPos;
+      
+      doorRow.appendChild(labelSpan(" 位置："));
+      const posInput = document.createElement("input");
+      posInput.type = "number";
+      posInput.min = "0";
+      posInput.max = String(maxPos);
+      posInput.className = "scenariobuild-condition-input";
+      posInput.value = style.position;
+      posInput.onchange = () => { style.position = Math.max(0, Math.min(maxPos, Math.floor(Number(posInput.value)) || 0)); persist(); };
+      doorRow.appendChild(posInput);
+      
+      doorRow.appendChild(labelSpan(" 色："));
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.value = style.color || "#6b4226";
+      colorInput.onchange = () => { style.color = colorInput.value; persist(); };
+      doorRow.appendChild(colorInput);
+    }
+    
     infoEl.appendChild(doorRow);
   });
   
@@ -291,48 +359,280 @@ function buildFloorPlanRoomDetail(area, floorPlan, room, persist) {
 }
 
 // ===================================================================
-// ===== プレイヤー側：購入済みの家に入った時の部屋間移動 =====
+// ===== プレイヤー側：購入済みの家に入った時の部屋間移動・家具操作 =====
 // ===================================================================
+// ★要望対応：以前は選択肢（displayChoices）でドアや家具を選んでいたが分かりづらいため、
+//   メイン画面上のカーソル操作に一新した。g（またはボタン）で「部屋移動モード」⇔「カーソルモード」を切替。
+//   ・部屋移動モード：矢印キーでドアのある方向の部屋へ移動する
+//   ・カーソルモード：矢印キーでマス目のカーソルを動かし、zキーで家具を選ぶと
+//     「移動・回転」「使用」「片付ける」などを選べる。「移動・回転」は専用の編集画面を出さず、
+//     このメイン画面のグリッド上でそのまま矢印キーで動かし、Rキーで90度ずつ回転できる
 async function openHouseInterior(area, goBack) {
   const floorPlan = ensureFloorPlan(area);
   await showFloorPlanRoomScreen(area, floorPlan, floorPlan.startRoomId, goBack);
 }
 
 async function showFloorPlanRoomScreen(area, floorPlan, roomId, goBack) {
-  const room = floorPlan.rooms.find(r => r.id === roomId) || floorPlan.rooms[0];
   changeSpeaker("");
-  
-  // ★要望対応：部屋にいる間、間取り（指定した幅）と置いてある家具をメイン画面に視覚的に表示する
-  if (typeof renderRoomView === "function") renderRoomView(room); // furniture.js
-  
-  const doorChoices = [];
-  Object.keys(FLOORPLAN_DIRECTIONS).forEach(dirKey => {
-    if (!room.doors[dirKey]) return;
-    const dir = FLOORPLAN_DIRECTIONS[dirKey];
-    const neighbor = findFloorPlanRoomAt(floorPlan, room.x + dir.dx, room.y + dir.dy);
-    if (!neighbor) return;
-    doorChoices.push({ text: `${dir.label}のドアへ進む（${neighbor.name || "部屋"}）`, next: neighbor.id });
+  await runRoomInteraction(area, floorPlan, roomId, goBack); // furniture.jsの家具操作もここから呼ばれる
+}
+
+function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
+  return new Promise(resolve => {
+    ensurePlayerFurniture(); // furniture.js
+    const areaKey = getEstateAreaKey(area); // realestate.js
+    let room = floorPlan.rooms.find(r => r.id === startRoomId) || floorPlan.rooms[0];
+    let mode = "move"; // "move"＝部屋移動モード／"cursor"＝カーソルモード
+    let cursor = { x: 0, y: 0 };
+    let placing = null; // 移動・回転中の家具： { instance, def, rotation, isNew, originalPlacement }
+    let listenerActive = false;
+    
+    function describeDoorHint() {
+      const openDirs = Object.keys(FLOORPLAN_DIRECTIONS).filter(d => room.doors[d]);
+      if (openDirs.length === 0) return "この部屋にはドアが無いようだ。";
+      return "ドア：" + openDirs.map(d => FLOORPLAN_DIRECTIONS[d].label).join("・");
+    }
+    
+    function currentUiState() {
+      if (placing) {
+        const size = getFurnitureEffectiveSize(placing.def, placing.rotation); // furniture.js
+        const valid = isFurniturePlacementFree(room, cursor.x, cursor.y, size.w, size.h, placing.instance.instanceId); // furniture.js
+        return {
+          mode: "placing",
+          modeLabel: "移動・回転中の家具：「" + placing.def.name + "」",
+          legend: ["↑↓←→：移動", "R：90度回転", "Z：ここに確定", "X：やめる（元に戻す）"],
+          cursor,
+          placing: { def: placing.def, rotation: placing.rotation, excludeInstanceId: placing.instance.instanceId, valid },
+          hint: `横${size.w}×縦${size.h}マス${valid ? "" : "（この位置には置けません）"}`
+        };
+      }
+      if (mode === "cursor") {
+        return {
+          mode: "cursor",
+          modeLabel: "カーソルモード",
+          legend: ["↑↓←→：カーソル移動", "Z：家具を選ぶ／空きマスなら新しく置く", "G：部屋移動モードに切替", "X：家を出る"],
+          cursor,
+          onToggleMode: toggleMode,
+          onLeave: leaveHouse,
+          hint: `${room.name || "部屋"}にいる。`
+        };
+      }
+      return {
+        mode: "move",
+        modeLabel: "部屋移動モード",
+        legend: ["↑↓←→：ドアの方向へ移動", "G：カーソルモードに切替（家具を操作）", "X：家を出る"],
+        onToggleMode: toggleMode,
+        onLeave: leaveHouse,
+        hint: `${room.name || "部屋"}にいる。${describeDoorHint()}`
+      };
+    }
+    
+    function render() {
+      if (typeof hideMessageWindow === "function") hideMessageWindow(); // ★要望対応：カーソル操作中はメッセージウィンドウが邪魔なので隠す
+      if (typeof renderRoomView === "function") renderRoomView(room, currentUiState()); // furniture.js
+    }
+    
+    function toggleMode() {
+      mode = mode === "move" ? "cursor" : "move";
+      if (mode === "cursor") clampCursorToRoom();
+      render();
+    }
+    
+    function clampCursorToRoom() {
+      cursor.x = Math.max(0, Math.min((room.width || 1) - 1, cursor.x));
+      cursor.y = Math.max(0, Math.min((room.height || 1) - 1, cursor.y));
+    }
+    
+    function moveDoorDirection(dirKey) {
+      if (!room.doors[dirKey]) return;
+      const dir = FLOORPLAN_DIRECTIONS[dirKey];
+      const neighbor = findFloorPlanRoomAt(floorPlan, room.x + dir.dx, room.y + dir.dy);
+      if (!neighbor) return;
+      room = neighbor;
+      render();
+    }
+    
+    function moveCursor(dx, dy) {
+      cursor.x = Math.max(0, Math.min((room.width || 1) - 1, cursor.x + dx));
+      cursor.y = Math.max(0, Math.min((room.height || 1) - 1, cursor.y + dy));
+      render();
+    }
+    
+    function movePlacing(dx, dy) {
+      const size = getFurnitureEffectiveSize(placing.def, placing.rotation); // furniture.js
+      cursor.x = Math.max(0, Math.min((room.width || 1) - size.w, cursor.x + dx));
+      cursor.y = Math.max(0, Math.min((room.height || 1) - size.h, cursor.y + dy));
+      render();
+    }
+    
+    // ★要望対応：Rキーで右回りに90度ずつ回転。部屋自体に入らないサイズになる場合は回転を諦め、
+    //   入る場合は座標がはみ出さないよう寄せてから回転を確定する（他の家具と重なっても、確定操作(z)の時に弾かれる）
+    function rotatePlacing() {
+      const newRotation = (placing.rotation + 1) % 4;
+      const size = getFurnitureEffectiveSize(placing.def, newRotation); // furniture.js
+      if (size.w > (room.width || 1) || size.h > (room.height || 1)) return;
+      cursor.x = Math.min(cursor.x, Math.max(0, (room.width || 1) - size.w));
+      cursor.y = Math.min(cursor.y, Math.max(0, (room.height || 1) - size.h));
+      placing.rotation = newRotation;
+      render();
+    }
+    
+    async function confirmPlacing() {
+      const size = getFurnitureEffectiveSize(placing.def, placing.rotation); // furniture.js
+      if (!isFurniturePlacementFree(room, cursor.x, cursor.y, size.w, size.h, placing.instance.instanceId)) return; // furniture.js
+      placing.instance.placement = { areaKey, roomId: room.id, x: cursor.x, y: cursor.y, rotation: placing.rotation };
+      const wasNew = placing.isNew;
+      const placedDef = placing.def;
+      placing = null;
+      render();
+      pauseKeys();
+      if (typeof showMessageWindow === "function") showMessageWindow(); // ★確定メッセージを出す間だけメッセージウィンドウを戻す
+      changeSpeaker("");
+      await displayMessage(wasNew ? `「${placedDef.name}」を置いた。` : `「${placedDef.name}」を移動した。`);
+      resumeKeys();
+      render();
+    }
+    
+    function cancelPlacing() {
+      if (placing.isNew) placing.instance.placement = null; // ★新規に置こうとしていた家具は未設置のまま戻す
+      else if (placing.originalPlacement) placing.instance.placement = placing.originalPlacement; // ★移動中だった家具は元の位置に戻す
+      placing = null;
+      render();
+    }
+    
+    function pauseKeys() { if (listenerActive) { window.removeEventListener("keydown", handleKeyDown); listenerActive = false; } }
+    function resumeKeys() { if (!listenerActive) { window.addEventListener("keydown", handleKeyDown); listenerActive = true; } }
+    
+    function leaveHouse() {
+      pauseKeys();
+      if (typeof hideRoomView === "function") hideRoomView(); // furniture.js
+      if (typeof showMessageWindow === "function") showMessageWindow(); // ★家を出た後は通常のシナリオ表示に戻すので、隠していたメッセージウィンドウを戻す
+      resolve();
+      goBack();
+    }
+    
+    async function openFurnitureActionMenu(inst) {
+      pauseKeys();
+      const def = findFurnitureDef(inst.furnitureId); // furniture.js
+      if (typeof showMessageWindow === "function") showMessageWindow(); // ★選択肢を出す間だけメッセージウィンドウを戻す
+      changeSpeaker("");
+      const options = [];
+      if (isFurnitureStorageType(def)) options.push({ text: "収納を開ける", next: "storage" }); // scenariobuild.js
+      else if (isFurnitureUsableType(def)) options.push({ text: "使用する", next: "use" }); // scenariobuild.js
+      options.push({ text: "移動・回転する", next: "move" });
+      options.push({ text: "片付ける（未設置に戻す）", next: "unplace" });
+      options.push({ text: "やめる", next: "cancel", isBack: true });
+      await displayMessage(`「${def ? def.name : "？"}」`);
+      const sub = await displayChoices(options);
+      
+      if (sub.next === "storage") {
+        await manageFurnitureStorage(inst); // furniture.js（倉庫⇔インベントリのデュアルペインUI）
+        resumeKeys(); render();
+        return;
+      }
+      if (sub.next === "use") {
+        // ★要望対応：調理魔家電を使うと、料理タブと同じ仕様の料理モーダルを開く（cooking.js）
+        if (def && def.type === "cookingAppliance" && typeof openCookingModal === "function") {
+          await openCookingModal();
+        } else {
+          await displayMessage((def && def.useMessage) || "特に変わったことは無いようだ。");
+        }
+        resumeKeys(); render();
+        return;
+      }
+      if (sub.next === "move") {
+        placing = { instance: inst, def, rotation: inst.placement.rotation || 0, isNew: false, originalPlacement: { ...inst.placement } };
+        resumeKeys(); render();
+        return;
+      }
+      if (sub.next === "unplace") {
+        inst.placement = null;
+        await displayMessage(`「${def ? def.name : "？"}」を片付けた。`);
+        resumeKeys(); render();
+        return;
+      }
+      resumeKeys(); render();
+    }
+    
+    async function openUnplacedFurniturePicker() {
+      const allUnplaced = player.ownedFurniture.filter(inst => !inst.placement);
+      // ★要望対応：トイレなど、部屋の種類によって置ける家具を絞り込む
+      const unplaced = allUnplaced.filter(inst => isFurniturePlacementAllowedInRoom(findFurnitureDef(inst.furnitureId), room)); // scenariobuild.js
+      pauseKeys();
+      if (typeof showMessageWindow === "function") showMessageWindow();
+      changeSpeaker("");
+      if (unplaced.length === 0) {
+        if (allUnplaced.length > 0) {
+          await displayMessage("持っている未設置の家具の中に、この部屋（" + (room.name || "この部屋") + "）に置けるものが無いようだ。（例：トイレは「便所」タイプの部屋にしか置けません）");
+        } else {
+          await displayMessage("持っている未設置の家具が無いようだ。（家具屋で購入できます）");
+        }
+        resumeKeys(); render();
+        return;
+      }
+      const choices = unplaced.map(inst => {
+        const def = findFurnitureDef(inst.furnitureId);
+        return { text: def ? def.name : "？", next: inst.instanceId };
+      });
+      choices.push({ text: "やめる", next: "cancel", isBack: true });
+      await displayMessage("ここに置く家具を選んでください。");
+      const picked = await displayChoices(choices);
+      if (picked.next === "cancel") { resumeKeys(); render(); return; }
+      
+      const inst = unplaced.find(i => i.instanceId === picked.next);
+      const def = findFurnitureDef(inst.furnitureId);
+      const positions = findValidFurniturePositions(room, def, null, 0); // furniture.js
+      if (positions.length === 0) {
+        await displayMessage("この部屋には、もう置ける場所が無いようだ。");
+        resumeKeys(); render();
+        return;
+      }
+      cursor = { x: positions[0].x, y: positions[0].y };
+      placing = { instance: inst, def, rotation: 0, isNew: true, originalPlacement: null };
+      resumeKeys(); render();
+    }
+    
+    function handleKeyDown(event) {
+      if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
+      
+      if (placing) {
+        if (event.key === "ArrowUp") { event.preventDefault(); movePlacing(0, -1); }
+        else if (event.key === "ArrowDown") { event.preventDefault(); movePlacing(0, 1); }
+        else if (event.key === "ArrowLeft") { event.preventDefault(); movePlacing(-1, 0); }
+        else if (event.key === "ArrowRight") { event.preventDefault(); movePlacing(1, 0); }
+        else if (event.key === "r" || event.key === "R") { event.preventDefault(); rotatePlacing(); }
+        else if (event.key === "z" || event.key === "Z" || event.key === " ") { event.preventDefault(); confirmPlacing(); }
+        else if (event.key === "x" || event.key === "X" || event.key === "Escape") { event.preventDefault(); cancelPlacing(); }
+        return;
+      }
+      
+      if (event.key === "g" || event.key === "G") { event.preventDefault(); toggleMode(); return; }
+      
+      if (mode === "move") {
+        if (event.key === "ArrowUp") { event.preventDefault(); moveDoorDirection("north"); }
+        else if (event.key === "ArrowDown") { event.preventDefault(); moveDoorDirection("south"); }
+        else if (event.key === "ArrowLeft") { event.preventDefault(); moveDoorDirection("west"); }
+        else if (event.key === "ArrowRight") { event.preventDefault(); moveDoorDirection("east"); }
+        return;
+      }
+      
+      // mode === "cursor"
+      if (event.key === "ArrowUp") { event.preventDefault(); moveCursor(0, -1); }
+      else if (event.key === "ArrowDown") { event.preventDefault(); moveCursor(0, 1); }
+      else if (event.key === "ArrowLeft") { event.preventDefault(); moveCursor(-1, 0); }
+      else if (event.key === "ArrowRight") { event.preventDefault(); moveCursor(1, 0); }
+      else if (event.key === "z" || event.key === "Z" || event.key === " ") {
+        event.preventDefault();
+        const atCell = getFurnitureAtCell(room, cursor.x, cursor.y, null); // furniture.js
+        if (atCell) openFurnitureActionMenu(atCell);
+        else openUnplacedFurniturePicker();
+      } else if (event.key === "x" || event.key === "X" || event.key === "Escape") {
+        event.preventDefault();
+        leaveHouse();
+      }
+    }
+    
+    resumeKeys();
+    render();
   });
-  const placedFurniture = (typeof getRoomPlacedFurniture === "function") ? getRoomPlacedFurniture(room.id) : []; // furniture.js
-  const choices = doorChoices.concat([
-    { text: "家具を置く／片付ける", next: "furniture" },
-    { text: "家を出る", next: "leave", isBack: true }
-  ]);
-  
-  const roomLabel = room.name || "部屋";
-  const furnitureNote = placedFurniture.length === 0 ? "この部屋には何も置かれていないようだ。" : "";
-  const doorNote = doorChoices.length === 0 ? "この部屋にはドアが無いようだ。" : "";
-  await displayMessage(`${roomLabel}にいる。${furnitureNote}${doorNote ? "\n" + doorNote : ""}`);
-  
-  const picked = await displayChoices(choices);
-  if (picked.next === "leave") {
-    if (typeof hideRoomView === "function") hideRoomView(); // furniture.js
-    goBack();
-    return;
-  }
-  if (picked.next === "furniture") {
-    await manageRoomFurniture(area, floorPlan, room, () => showFloorPlanRoomScreen(area, floorPlan, room.id, goBack)); // furniture.js
-    return;
-  }
-  await showFloorPlanRoomScreen(area, floorPlan, picked.next, goBack);
 }

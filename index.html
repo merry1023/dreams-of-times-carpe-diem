@@ -65,23 +65,53 @@
       </div>
     </div>
     
-    <!-- ★不動産システム：部屋への家具配置（furniture.js pickFurniturePlacement）。矢印キー／ボタンで視覚的に移動できるミニ画面 -->
-    <div id="furniture-placement-overlay" class="furniture-placement-overlay hidden">
-      <div class="furniture-placement-box">
-        <p id="furniture-placement-label" class="furniture-placement-label"></p>
-        <div id="furniture-placement-grid" class="furniture-placement-grid"></div>
-        <div class="furniture-placement-dpad">
-          <button id="furniture-placement-up" class="furniture-placement-dpad-btn furniture-placement-dpad-up">↑</button>
-          <div class="furniture-placement-dpad-row">
-            <button id="furniture-placement-left" class="furniture-placement-dpad-btn">←</button>
-            <button id="furniture-placement-right" class="furniture-placement-dpad-btn">→</button>
+    <!-- ★不動産システム：倉庫⇔インベントリのアイテム移動画面（furniture.js manageFurnitureStorage）。
+         サブ画面インベントリタブと同じ見た目のグリッドを左右2ペイン、q/eキーで操作対象を切替 -->
+    <div id="furniture-storage-overlay" class="furniture-storage-overlay hidden">
+      <div class="furniture-storage-box">
+        <p id="furniture-storage-title" class="furniture-storage-title"></p>
+        <div class="furniture-storage-panes">
+          <div class="furniture-storage-pane">
+            <p id="furniture-storage-left-label" class="furniture-storage-pane-label"></p>
+            <div id="furniture-storage-left-grid" class="furniture-storage-grid"></div>
           </div>
-          <button id="furniture-placement-down" class="furniture-placement-dpad-btn furniture-placement-dpad-down">↓</button>
+          <div class="furniture-storage-pane">
+            <p id="furniture-storage-right-label" class="furniture-storage-pane-label"></p>
+            <div id="furniture-storage-right-grid" class="furniture-storage-grid"></div>
+          </div>
         </div>
-        <div class="furniture-placement-controls">
-          <button id="furniture-placement-confirm" class="furniture-placement-btn furniture-placement-confirm-btn">ここに置く<span class="key-badge">Enter</span></button>
-          <button id="furniture-placement-cancel" class="furniture-placement-btn">やめる<span class="key-badge">Esc</span></button>
+        <p id="furniture-storage-legend" class="furniture-storage-hint">矢印キー：カーソル移動／Zキー：選択／Q・Eキー：操作するインベントリを切替／Fキー：並び替え</p>
+        <div class="furniture-storage-controls">
+          <button id="furniture-storage-close" class="devmode-btn">閉じる<span class="key-badge">X</span></button>
         </div>
+      </div>
+    </div>
+    
+    <!-- ★要望対応：調理魔家電を使うと開く料理モーダル。中身（料理道具選び→材料スロット→作る）はcooking.jsが描画する -->
+    <div id="cooking-modal-overlay" class="cooking-modal-overlay hidden">
+      <div class="cooking-modal-box">
+        <div class="cooking-modal-header">
+          <p class="cooking-modal-title">調理魔家電</p>
+          <button id="cooking-modal-close" class="devmode-btn">閉じる<span class="key-badge">X</span></button>
+        </div>
+        <div id="cooking-root" class="cooking-root"></div>
+      </div>
+    </div>
+    
+    <!-- ★要望対応：種類が「本」のアイテムを使った時に開く、ページをめくって読むモーダル（book.js） -->
+    <div id="book-reading-overlay" class="book-reading-overlay hidden">
+      <div class="book-reading-box">
+        <div class="book-reading-header">
+          <p id="book-reading-title" class="book-reading-title"></p>
+          <button id="book-reading-close" class="devmode-btn">閉じる<span class="key-badge">X</span></button>
+        </div>
+        <div id="book-reading-body" class="book-reading-body"></div>
+        <div class="book-reading-footer">
+          <button id="book-reading-prev" class="devmode-btn">← 前のページ</button>
+          <span id="book-reading-page-indicator" class="book-reading-page-indicator"></span>
+          <button id="book-reading-next" class="devmode-btn">次のページ →</button>
+        </div>
+        <p class="book-reading-hint">←→：ページをめくる／Xキー：閉じる</p>
       </div>
     </div>
     
@@ -300,7 +330,6 @@
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-companionchat')">会話</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-strength')">強さ</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-equipment')">装備</button>
-        <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-cooking')">料理</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-convenience')">便利</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-log')">ログ</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-setting')">設定</button>
@@ -414,11 +443,6 @@
         <div id="tab-equipment" class="tab-content">
           <div id="equipment-slots" class="equipment-slots"></div>
           <div id="equipment-inventory-list" class="equipment-inventory-list"></div>
-        </div>
-
-        <!-- ★要望対応：料理タブ。料理道具を選ぶ→材料スロットに材料を置く→作る、の一連の操作をcooking.jsが描画する -->
-        <div id="tab-cooking" class="tab-content">
-          <div id="cooking-root" class="cooking-root"></div>
         </div>
 
         <div id="tab-convenience" class="tab-content">
@@ -556,6 +580,7 @@
 <script src="memoryHall.js"></script>
 <script src="crafting.js"></script>
 <script src="cooking.js"></script>
+<script src="book.js"></script>
 <script src="questboard.js"></script>
 <script src="auction.js"></script>
 <script src="enemy.js"></script>

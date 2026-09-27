@@ -1,5 +1,6 @@
 // cooking.js
-// ★要望対応：料理タブ。サブ画面のどこからでも開ける（施設は不要）。
+// ★要望対応：以前は「料理」タブだったが廃止し、家に置いた「調理魔家電」（furniture.js/floorplan.js）を
+//   使った時だけ開くモーダルに変更した。仕様自体は料理タブの時と同じ。
 //   流れ：所持している「料理道具」（cookingToolカテゴリ）を選ぶ → その道具のスロット数ぶん、材料を自由に置く
 //   → 作る個数を指定 → 「作る」。材料が対象の道具向けのレシピ（scenarioProject.recipes、shopType:"cooking"）と
 //   個数までぴったり一致すれば成功（完成品＝foodカテゴリのアイテムを獲得）、一致しなければ
@@ -8,6 +9,51 @@
 //   レシピは「使う」と登録される専用アイテム（items.js/scenariobuild.jsのisRecipeItem）で発見できるが、
 //   未発見でも材料さえ合っていれば作成できる（player.knownCookingRecipeIdsはレシピ帳の表示にだけ使う）。
 //   「作る」を押すとレシピごとに指定した秒数（recipe.cookTimeSeconds）ぶんゲージが溜まるまで待たされる。
+
+// ★要望対応：料理タブを廃止し、「調理魔家電」を使った時だけ開くモーダルに変更した。
+//   仕様（道具選び→材料スロット→作る）自体は料理タブの時と同じで、renderCookingTab等はそのまま流用する。
+let isCookingModalOpen = false;
+let cookingModalResolve = null;
+
+// ★調理魔家電（furniture.js/floorplan.js）から呼ぶ。開いている間はisGameDialogOpenを立てて、
+//   裏の部屋画面や町の背景が矢印キー等で動いてしまわないようにする
+function openCookingModal() {
+  return new Promise(async resolve => {
+    const blockedReason = isCookingBlocked();
+    if (blockedReason) {
+      changeSpeaker("");
+      await displayMessage(blockedReason, { allowSubFocus: true });
+      resolve();
+      return;
+    }
+    const overlay = document.getElementById("cooking-modal-overlay");
+    if (!overlay) { resolve(); return; }
+    cookingModalResolve = resolve;
+    isCookingModalOpen = true;
+    isGameDialogOpen = true; // mainfunc.js（他画面のキー操作を止める共通フラグを流用して背景をロックする）
+    cookingSelectedToolInstanceId = null;
+    cookingSlotPicks = [];
+    cookingCursorIndex = 0;
+    cookingMaterialPickerSlotIndex = null;
+    overlay.classList.remove("hidden");
+    renderCookingTab();
+  });
+}
+
+function closeCookingModal() {
+  if (!isCookingModalOpen) return;
+  if (cookingGaugeActive) return; // ★調理ゲージが溜まっている間は閉じさせない
+  const overlay = document.getElementById("cooking-modal-overlay");
+  if (overlay) overlay.classList.add("hidden");
+  isCookingModalOpen = false;
+  isGameDialogOpen = false; // mainfunc.js
+  const resolve = cookingModalResolve;
+  cookingModalResolve = null;
+  if (resolve) resolve();
+}
+
+const cookingModalCloseBtn = document.getElementById("cooking-modal-close");
+if (cookingModalCloseBtn) cookingModalCloseBtn.onclick = (event) => { event.stopPropagation(); closeCookingModal(); };
 
 let cookingSelectedToolInstanceId = null;
 // ★選んだスロットの中身。[{ itemId, count }, ...]（未選択のスロットはitemId: ""）
@@ -248,10 +294,7 @@ async function attemptCook() {
 //   Z（決定）でその項目を実行、X（キャンセル）で材料枠を空にする
 function handleCookingKeyDown(event) {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★シナリオエディタ表示中は本編を操作させない
-  if (typeof controlFocus !== "undefined" && controlFocus !== "sub") return; // ★サブ画面操作中のみ有効
-  const activeTab = document.querySelector(".tab-content.active");
-  if (!activeTab || activeTab.id !== "tab-cooking") return;
-  if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return; // ★確認ダイアログ表示中は反応しない
+  if (!isCookingModalOpen) return; // ★調理魔家電を使ってモーダルを開いている間だけ有効（料理タブは廃止した）
   if (event.repeat) return;
   if (cookingGaugeActive) return; // ★ゲージが溜まっている間・結果メッセージ表示中は操作させない
   if (isCookingBlocked()) return; // ★戦闘中・シナリオ再生中はここでも操作させない
@@ -347,11 +390,14 @@ function handleCookingKeyDown(event) {
   }
   
   if (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
     if (current.type === "slot" && cookingSlotPicks[current.index].itemId) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
       cookingSlotPicks[current.index] = { itemId: "", count: 1 };
       renderCookingTab();
+    } else {
+      // ★要望対応：料理タブでは無くなったので、Xキーでモーダルそのものを閉じられるようにする
+      closeCookingModal();
     }
   }
 }

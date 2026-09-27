@@ -1193,7 +1193,9 @@ function ensureCustomItemsRegistered() {
       foodBuffDuration: item.category === "food" ? (Number(item.foodBuffDuration) || existing.foodBuffDuration || 3) : existing.foodBuffDuration,
       foodBuffPower: item.category === "food" ? (Number(item.foodBuffPower) || existing.foodBuffPower || 0) : existing.foodBuffPower,
       isRecipeItem: (typeof item.isRecipeItem === "boolean") ? item.isRecipeItem : !!existing.isRecipeItem,
-      unlockRecipeId: item.isRecipeItem ? (item.unlockRecipeId || existing.unlockRecipeId || "") : existing.unlockRecipeId
+      unlockRecipeId: item.isRecipeItem ? (item.unlockRecipeId || existing.unlockRecipeId || "") : existing.unlockRecipeId,
+      // ★要望対応：種類が「本」のアイテムの中身（ページごとの本文）。アイテム編集の専用エディタ（buildBookPagesEditor）で追加・削除する
+      pages: item.category === "book" ? (Array.isArray(item.pages) ? item.pages : (existing.pages || [])) : existing.pages
     };
   });
 }
@@ -1711,7 +1713,9 @@ function renderScenarioBuildTabManager(container) {
     checkbox.checked = isScenarioPlayTabEnabled(tab.id);
     checkbox.onchange = () => {
       setScenarioPlayTabEnabled(tab.id, checkbox.checked);
-      if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
+      // ★要望対応：チェック変更のたびに即保存してしまうと、他のタブ編集と保存の挙動が揃わないため、
+      //   他の編集項目と同じく「未保存の変更あり」の印を付けるだけにし、実際の保存は💾保存ボタンで行う
+      if (typeof markScenarioBuildDirty === "function") markScenarioBuildDirty();
       if (typeof applyPlayTabVisibility === "function") applyPlayTabVisibility(); // ★バグ修正：ONにしてもタブバーの表示がその場で更新されていなかった
       renderScenarioBuildPanel();
     };
@@ -5213,6 +5217,7 @@ function getItemManagerConfig() {
     { value: "material", label: "魔物素材" }, { value: "weapon", label: "武器" },
     { value: "armor", label: "防具" }, { value: "tool", label: "道具" },
     { value: "cookingTool", label: "料理道具" }, { value: "food", label: "料理" },
+    { value: "book", label: "本" },
     { value: "misc", label: "その他" }
   ];
   return {
@@ -5225,7 +5230,8 @@ function getItemManagerConfig() {
     filterOptions: [
       { key: "equipment", label: "装備", values: ["weapon", "armor"] },
       { key: "tools", label: "道具", values: ["herb", "potion", "material", "tool", "misc"] },
-      { key: "cooking", label: "料理関連", values: ["cookingTool", "food"] }
+      { key: "cooking", label: "料理関連", values: ["cookingTool", "food"] },
+      { key: "books", label: "本", values: ["book"] }
     ],
     fields: [
       { key: "name", label: "名前", type: "text", placeholder: "アイテム名" },
@@ -5317,9 +5323,37 @@ function getFishManagerConfig() {
 
 // ★不動産システム：家具管理タブ。「家具屋系」施設で販売する家具を、アイテムと同じ感覚で登録する
 //   （名前・画像・価格・縦横サイズ。倉庫チェックを付けると、部屋に置いた時に専用の収納として使える）
+// ★要望対応：家具の種類を「収納/非収納」の2択だけでなく増やした。storageは今まで通りisStorageと連動、
+//   それ以外の種類は「使用」コマンドを選んだ時に効果メッセージ（useMessage）を表示するだけの簡易な区分。
+//   isStorageは古いセーブデータとの互換のため残してあり、type==="storage"と常に同期させる
+const FURNITURE_TYPE_DEFS = [
+  { value: "decoration", label: "装飾品（使用不可・見た目だけ）" },
+  { value: "storage", label: "収納" },
+  { value: "bookshelf", label: "本棚（「本」の種類のアイテムのみ収納可能）" },
+  { value: "seating", label: "座る／腰掛ける" },
+  { value: "bed", label: "寝具（休む）" },
+  { value: "lighting", label: "照明" },
+  { value: "appliance", label: "家電・道具" },
+  { value: "cookingAppliance", label: "調理魔家電（レンジ・コンロ等。使うと料理画面を開く）" },
+  { value: "toilet", label: "トイレ（部屋の種類が「便所」の部屋にしか置けない）" },
+  { value: "other", label: "その他（使用可能）" }
+];
+// ★要望対応：本棚は「本」専用の収納なので、isFurnitureStorageTypeの対象に含める（isStorageとの同期はonChange側で行う）
+function isFurnitureStorageType(def) {
+  return !!(def && (def.type === "storage" || def.type === "bookshelf" || def.isStorage));
+}
+function isFurnitureUsableType(def) {
+  return !!(def && def.type && def.type !== "decoration" && def.type !== "storage" && def.type !== "bookshelf");
+}
+// ★要望対応：この家具が、指定した部屋に置けるかどうか（今のところ「トイレ」だけ、部屋の種類が「便所」の時のみ設置可能）
+function isFurniturePlacementAllowedInRoom(def, room) {
+  if (def && def.type === "toilet") return !!(room && room.roomType === "toilet");
+  return true;
+}
+
 function getFurnitureManagerConfig() {
   return {
-    note: "「家具屋系」施設で販売する家具を登録します。縦・横のサイズは、家の部屋に配置する時のマス目の大きさです（部屋の広さは、マップ設定タブの「間取り編集」で設定）。「倉庫として使える」を付けた家具は、部屋に置くと専用の収納になります（インベントリとは別枠。倉庫家具1つ1つが別々の収納です）。",
+    note: "「家具屋系」施設で販売する家具を登録します。縦・横のサイズは、家の部屋に配置する時のマス目の大きさです（部屋の広さは、マップ設定タブの「間取り編集」で設定）。種類を「収納」にすると、部屋に置いた時に専用の収納として使えます（インベントリとは別枠。倉庫家具1つ1つが別々の収納です）。「本棚」は同じ収納ですが、種類が「本」のアイテムしか収納できません。「調理魔家電」は使うと料理の画面を開きます（材料や道具はそれまでの料理と同じ仕組みです）。「トイレ」は間取り編集で部屋の種類を「便所」にした部屋にしか置けません。それ以外の種類は、プレイヤーがカーソルモードで「使用」を選んだ時に効果メッセージを表示します。",
     category: "furniture",
     useDetailEditor: true,
     getList: () => scenarioProject.furniture,
@@ -5330,13 +5364,23 @@ function getFurnitureManagerConfig() {
       { key: "price", label: "価格（陳）", type: "number", placeholder: "0" },
       { key: "width", label: "横（マス）", type: "number", placeholder: "1" },
       { key: "height", label: "縦（マス）", type: "number", placeholder: "1" },
-      { key: "isStorage", label: "倉庫として使える", type: "checkbox" },
-      { key: "storageSlots", label: "収納数（倉庫の場合のみ使用）", type: "number", placeholder: "10" }
+      { key: "type", label: "種類", type: "select", options: FURNITURE_TYPE_DEFS },
+      { key: "storageSlots", label: "収納数（種類が収納・本棚の場合のみ使用）", type: "number", placeholder: "10" },
+      { key: "useMessage", label: "使用時のメッセージ（種類が収納・本棚・装飾品・調理魔家電以外の場合のみ使用）", type: "text", placeholder: "例：しばらく腰掛けて休んだ。" }
     ],
     newEntity: () => ({
       id: generateId("furniture"), name: "新しい家具", imagePath: "", color: "#4a4a4a", price: 0,
-      width: 1, height: 1, isStorage: false, storageSlots: 10
-    })
+      width: 1, height: 1, type: "decoration", isStorage: false, storageSlots: 10, useMessage: ""
+    }),
+    // ★保存直前に、typeとisStorageの食い違い（古いデータや手編集）を必ず解消しておく
+    onChange: () => {
+      (scenarioProject.furniture || []).forEach(def => {
+        if (def.type === "storage") def.isStorage = true;
+        else if (def.isStorage && !def.type) def.type = "storage";
+        else if (!def.type) def.type = def.isStorage ? "storage" : "decoration";
+        if (def.type !== "storage") def.isStorage = false;
+      });
+    }
   };
 }
 
@@ -5818,7 +5862,7 @@ function buildRecipeRow(recipe) {
   if (recipe.shopType === "cooking") {
     const cookingNoteEl = document.createElement("p");
     cookingNoteEl.className = "devmode-note";
-    cookingNoteEl.textContent = "料理タブでは、下の「必要な材料」と個数まで完全に一致する材料を置いた時だけ成立します（多い分・少ない分・種類違いはすべて失敗＝材料ロスになります）。このレシピのIDは、種類「料理」のレシピ発見アイテム（アイテム管理タブの「（レシピ）登録される料理レシピのID」）に設定すると、そのアイテムを使った時にレシピ帳へ登録されます。IDはこの行の右下に表示されます。";
+    cookingNoteEl.textContent = "料理（調理魔家電を使った時に開くモーダル）では、下の「必要な材料」と個数まで完全に一致する材料を置いた時だけ成立します（多い分・少ない分・種類違いはすべて失敗＝材料ロスになります）。このレシピのIDは、種類「料理」のレシピ発見アイテム（アイテム管理タブの「（レシピ）登録される料理レシピのID」）に設定すると、そのアイテムを使った時にレシピ帳へ登録されます。IDはこの行の右下に表示されます。";
     infoEl.appendChild(cookingNoteEl);
   }
   
@@ -9129,7 +9173,7 @@ function buildFacilityRow(facility) {
         markScenarioBuildDirty();
       };
       optionRow.appendChild(checkbox);
-      const storageLabel = furniture.isStorage ? "・倉庫" : "";
+      const storageLabel = isFurnitureStorageType(furniture) ? "・倉庫" : "";
       optionRow.appendChild(document.createTextNode(` ${furniture.name || "（名前未設定）"}（${furniture.price || 0}陳・${furniture.width || 1}×${furniture.height || 1}${storageLabel}）`));
       infoEl.appendChild(optionRow);
     });
@@ -9779,8 +9823,70 @@ const ITEM_CATEGORY_PARAM_KEYS = {
   potion: ["回復量", "SP回復量", "疲労回復量", "眠気軽減割合", "薬効", "対象", "蘇生"],
   material: ["希少度", "素材ランク", "用途"],
   tool: ["用途", "対象", "帰還", "薬効", "蘇生"],
-  misc: ["対象", "用途", "希少度"]
+  misc: ["対象", "用途", "希少度"],
+  book: [] // ★本は効果パラメータを使わない（中身はページ編集で設定する）
 };
+
+// ★要望対応：種類が「本」のアイテムの中身をページ単位で編集する。ページの追加・削除・本文編集ができる
+//   （プレイヤーがインベントリ等でこのアイテムを「使う」と、ここで書いた内容がそのままめくって読める）
+function buildBookPagesEditor(item, persist) {
+  const wrap = document.createElement("div");
+  const noteEl = document.createElement("p");
+  noteEl.className = "devmode-note scenariobuild-condition";
+  noteEl.textContent = "本の中身：ページを追加すると、プレイヤーがこのアイテムを使った時にページをめくりながら読めます。";
+  wrap.appendChild(noteEl);
+  
+  if (!Array.isArray(item.pages)) item.pages = [];
+  
+  item.pages.forEach((page, index) => {
+    const row = document.createElement("div");
+    row.className = "scenariobuild-chapter-row";
+    
+    const info = document.createElement("div");
+    info.className = "scenariobuild-chapter-info";
+    const label = document.createElement("p");
+    label.className = "devmode-note";
+    label.textContent = `${index + 1}ページ目`;
+    info.appendChild(label);
+    const textarea = document.createElement("textarea");
+    textarea.className = "scenariobuild-title-input scenariobuild-textarea";
+    textarea.rows = 4;
+    textarea.placeholder = "このページの本文（改行OK）";
+    textarea.value = page || "";
+    textarea.onchange = () => { item.pages[index] = textarea.value; persist(); };
+    info.appendChild(textarea);
+    row.appendChild(info);
+    
+    const buttonsEl = document.createElement("div");
+    buttonsEl.className = "scenariobuild-chapter-buttons";
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "devmode-btn devmode-btn-danger";
+    deleteBtn.textContent = "このページを削除";
+    deleteBtn.onclick = (event) => {
+      event.stopPropagation();
+      item.pages.splice(index, 1);
+      persist();
+      renderScenarioBuildPanel();
+    };
+    buttonsEl.appendChild(deleteBtn);
+    row.appendChild(buttonsEl);
+    
+    wrap.appendChild(row);
+  });
+  
+  const addBtn = document.createElement("button");
+  addBtn.className = "devmode-btn";
+  addBtn.textContent = "＋ページを追加";
+  addBtn.onclick = (event) => {
+    event.stopPropagation();
+    item.pages.push("");
+    persist();
+    renderScenarioBuildPanel();
+  };
+  wrap.appendChild(addBtn);
+  
+  return wrap;
+}
 
 function buildItemParamsEditor(item, persist) {
   const wrap = document.createElement("div");
@@ -11245,6 +11351,7 @@ function renderEntityDetailEditor(container) {
   appendEntityFieldInputs(config, entity, fieldsWrap);
   if (config.showLevelPreview) fieldsWrap.appendChild(buildMonsterLevelPreview(entity));
   if (ref.category === "items") {
+    if (entity.category === "book") fieldsWrap.appendChild(buildBookPagesEditor(entity, persist));
     fieldsWrap.appendChild(buildItemParamsEditor(entity, persist));
     // ★「治す状態異常」は使用して効果を発揮するアイテム（薬草・ポーション・道具）にしか意味が無いため、
     //   それ以外（武器・防具・魔物素材・その他）では出さない。以前は全カテゴリで表示していたため、

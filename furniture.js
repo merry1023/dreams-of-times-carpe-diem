@@ -14,6 +14,14 @@ function findFurnitureDef(furnitureId) {
   return scenarioProject.furniture.find(f => f.id === furnitureId) || null;
 }
 
+// ★要望対応：家具はRキーで90度ずつ回転できる。rotationは0〜3（0/90/180/270度・右回り）で家具の設置情報(placement)に持つ。
+//   90度・270度の時は見た目上のマス目の縦横が入れ替わる（配置の当たり判定・描画の両方でこの実寸を使う）
+function getFurnitureEffectiveSize(def, rotation) {
+  const w = def.width || 1, h = def.height || 1;
+  const r = ((rotation || 0) % 4 + 4) % 4;
+  return (r === 1 || r === 3) ? { w: h, h: w } : { w, h };
+}
+
 // ===================================================================
 // ===== 家具屋（購入） =====
 // ===================================================================
@@ -33,7 +41,7 @@ async function openFurnitureShop(facility, goBack) {
 async function showFurnitureShopList(facility, catalog, goBack) {
   changeSpeaker(facility.name || "");
   const choices = catalog.map(f => ({
-    text: `${f.name}（${f.price || 0}陳・${f.width || 1}×${f.height || 1}マス${f.isStorage ? "・倉庫" : ""}）`,
+    text: `${f.name}（${f.price || 0}陳・${f.width || 1}×${f.height || 1}マス${isFurnitureStorageType(f) ? "・倉庫" : ""}）`,
     next: f.id
   }));
   choices.push({ text: "やめる", next: "cancel", isBack: true });
@@ -67,7 +75,8 @@ function getRoomPlacedFurniture(roomId) {
   return player.ownedFurniture.filter(inst => inst.placement && inst.placement.roomId === roomId);
 }
 
-// ★指定した位置(x,y)〜(x+w,y+h)が、部屋の範囲内かつ他の家具と重なっていないか
+// ★指定した位置(x,y)〜(x+w,y+h)が、部屋の範囲内かつ他の家具と重なっていないか。
+//   他の家具側も、それぞれの設置時rotationに応じた実寸（縦横入れ替え済み）で判定する
 function isFurniturePlacementFree(room, x, y, w, h, excludeInstanceId) {
   if (x < 0 || y < 0 || x + w > (room.width || 1) || y + h > (room.height || 1)) return false;
   return !getRoomPlacedFurniture(room.id).some(inst => {
@@ -75,18 +84,34 @@ function isFurniturePlacementFree(room, x, y, w, h, excludeInstanceId) {
     const def = findFurnitureDef(inst.furnitureId);
     if (!def) return false;
     const px = inst.placement.x, py = inst.placement.y;
-    const pw = def.width || 1, ph = def.height || 1;
+    const size = getFurnitureEffectiveSize(def, inst.placement.rotation);
+    const pw = size.w, ph = size.h;
     return x < px + pw && x + w > px && y < py + ph && y + h > py; // ★矩形同士の重なり判定
   });
 }
 
+// ★カーソル座標(x,y)の位置にある家具（1×1とは限らないので占有範囲で判定）を1つ返す。無ければnull
+function getFurnitureAtCell(room, x, y, excludeInstanceId) {
+  return getRoomPlacedFurniture(room.id).find(inst => {
+    if (inst.instanceId === excludeInstanceId) return false;
+    const def = findFurnitureDef(inst.furnitureId);
+    if (!def) return false;
+    const size = getFurnitureEffectiveSize(def, inst.placement.rotation);
+    const px = inst.placement.x, py = inst.placement.y;
+    return x >= px && x < px + size.w && y >= py && y < py + size.h;
+  }) || null;
+}
+
 // ★家具1つを、画像があれば画像、無ければ縁取り付きの指定サイズのブロックとして描く
 //   （グリッド上でwidth×heightマスぶんをまとめて1つのブロックとして占有させる。
-//   room-view-panelとfurniture-placement-gridの両方から共通で使う）
+//   room-view-panel（部屋のカーソル操作画面）から使う）
 // cellPx: このグリッドの1マスの実際のpxサイズ（省略時は配置ミニ画面の26px相当）。
 //   1×1のような小さいブロックでも名前がはみ出さないよう、ブロックの実サイズからフォントサイズを逆算する
-function buildFurnitureBlockEl(def, x, y, extraClass, cellPx) {
-  const fw = def.width || 1, fh = def.height || 1;
+// ★rotation（0〜3・右回りに90度単位）を渡すと、90度・270度の時は横幅と縦幅を入れ替えて占有マスを計算する。
+//   画像そのものを回転させるわけではなく、あくまで占有マスの縦横を入れ替えるだけの簡易対応
+function buildFurnitureBlockEl(def, x, y, extraClass, cellPx, rotation) {
+  const size = getFurnitureEffectiveSize(def, rotation);
+  const fw = size.w, fh = size.h;
   const px = cellPx || 26;
   const block = document.createElement("div");
   block.className = "furniture-placement-block " + extraClass;
@@ -115,11 +140,51 @@ function buildFurnitureBlockEl(def, x, y, extraClass, cellPx) {
 }
 
 // ★要望対応：部屋にいる間、メイン画面（背景の手前）に部屋の間取りを視覚的に表示する。
-//   部屋の「指定した幅」（room.width）に合わせて、画面に収まるようマス目1つぶんのpxサイズを自動調整する
-function renderRoomView(room) {
+//   部屋の「指定した幅」（room.width）に合わせて、画面に収まるようマス目1つぶんのpxサイズを自動調整する。
+//   uiStateを渡すと、上部にモード切替・家を出るボタンのツールバーと、カーソル／移動中家具の表示を追加する
+//   （uiStateの形：{ modeLabel, onToggleMode, onLeave, hint, cursor:{x,y}, placing:{def,rotation,excludeInstanceId,valid} }）
+function renderRoomView(room, uiState) {
   const panel = document.getElementById("room-view-panel");
   if (!panel) return;
   panel.innerHTML = "";
+  
+  if (uiState) {
+    const toolbar = document.createElement("div");
+    toolbar.className = "room-view-toolbar";
+    
+    const modeLabel = document.createElement("span");
+    modeLabel.className = "room-view-mode-label";
+    modeLabel.textContent = uiState.modeLabel || "";
+    toolbar.appendChild(modeLabel);
+    
+    if (uiState.onToggleMode) {
+      const modeBtn = document.createElement("button");
+      modeBtn.className = "devmode-btn room-view-toolbar-btn";
+      modeBtn.textContent = "モード切替 [G]";
+      modeBtn.onclick = (event) => { event.stopPropagation(); uiState.onToggleMode(); };
+      toolbar.appendChild(modeBtn);
+    }
+    if (uiState.onLeave) {
+      const leaveBtn = document.createElement("button");
+      leaveBtn.className = "devmode-btn room-view-toolbar-btn";
+      leaveBtn.textContent = "家を出る";
+      leaveBtn.onclick = (event) => { event.stopPropagation(); uiState.onLeave(); };
+      toolbar.appendChild(leaveBtn);
+    }
+    panel.appendChild(toolbar);
+    
+    // ★要望対応：一目で操作方法が分かるよう、今のモードで使えるキーを常に一覧表示する（1行のヒントだけでは分かりにくいとの声のため）
+    if (Array.isArray(uiState.legend) && uiState.legend.length > 0) {
+      const legendEl = document.createElement("ul");
+      legendEl.className = "room-view-legend";
+      uiState.legend.forEach(line => {
+        const li = document.createElement("li");
+        li.textContent = line;
+        legendEl.appendChild(li);
+      });
+      panel.appendChild(legendEl);
+    }
+  }
   
   const roomW = room.width || 1, roomH = room.height || 1;
   const maxPanelWidthPx = Math.min(window.innerWidth * 0.7, 480);
@@ -127,6 +192,7 @@ function renderRoomView(room) {
   
   const grid = document.createElement("div");
   grid.className = "room-view-grid";
+  grid.style.position = "relative";
   grid.style.gridTemplateColumns = `repeat(${roomW}, ${cellPx}px)`;
   grid.style.gridTemplateRows = `repeat(${roomH}, ${cellPx}px)`;
   
@@ -138,13 +204,75 @@ function renderRoomView(room) {
     grid.appendChild(cell);
   }
   
+  // ★要望対応：本編プレイ画面でも、間取り編集で設定したドアの位置・色が壁に見えるようにする
+  if (room.doors && typeof FLOORPLAN_DIRECTIONS === "object") {
+    Object.keys(FLOORPLAN_DIRECTIONS).forEach(dirKey => {
+      if (!room.doors[dirKey]) return;
+      const isHorizontalWall = dirKey === "north" || dirKey === "south";
+      const wallLengthCells = isHorizontalWall ? roomW : roomH;
+      const style = (room.doorStyle && room.doorStyle[dirKey]) || {};
+      const maxPos = Math.max(0, wallLengthCells - 1);
+      const position = Math.max(0, Math.min(maxPos, Number.isFinite(style.position) ? style.position : Math.floor(maxPos / 2)));
+      const color = style.color || "#6b4226";
+      
+      const doorEl = document.createElement("div");
+      doorEl.className = "room-view-door";
+      doorEl.style.backgroundColor = color;
+      const thickness = Math.max(4, Math.floor(cellPx * 0.2));
+      const doorSpanPx = Math.max(6, Math.floor(cellPx * 0.7));
+      if (isHorizontalWall) {
+        doorEl.style.width = doorSpanPx + "px";
+        doorEl.style.height = thickness + "px";
+        doorEl.style.left = (position * cellPx + (cellPx - doorSpanPx) / 2) + "px";
+        doorEl.style[dirKey === "north" ? "top" : "bottom"] = -(thickness / 2) + "px";
+      } else {
+        doorEl.style.height = doorSpanPx + "px";
+        doorEl.style.width = thickness + "px";
+        doorEl.style.top = (position * cellPx + (cellPx - doorSpanPx) / 2) + "px";
+        doorEl.style[dirKey === "west" ? "left" : "right"] = -(thickness / 2) + "px";
+      }
+      grid.appendChild(doorEl);
+    });
+  }
+  
+  const excludeInstanceId = uiState && uiState.placing ? uiState.placing.excludeInstanceId : null;
   getRoomPlacedFurniture(room.id).forEach(inst => {
+    if (excludeInstanceId && inst.instanceId === excludeInstanceId) return; // ★移動・回転中の家具は、元の位置には描かず後でカーソル位置に描く
     const def = findFurnitureDef(inst.furnitureId);
     if (!def) return;
-    grid.appendChild(buildFurnitureBlockEl(def, inst.placement.x, inst.placement.y, "furniture-placement-block-occupied", cellPx));
+    grid.appendChild(buildFurnitureBlockEl(def, inst.placement.x, inst.placement.y, "furniture-placement-block-occupied", cellPx, inst.placement.rotation));
   });
   
+  if (uiState && uiState.placing) {
+    // ★要望対応：移動・回転モードは専用画面を出さず、このメイン画面のグリッド上でそのまま動かす
+    const p = uiState.placing;
+    const cls = p.valid ? "furniture-placement-block-cursor-ok" : "furniture-placement-block-cursor-bad";
+    grid.appendChild(buildFurnitureBlockEl(p.def, uiState.cursor.x, uiState.cursor.y, cls, cellPx, p.rotation));
+  } else if (uiState && uiState.cursor && uiState.mode === "cursor") {
+    // ★カーソルモード：家具の無いマスにも、今どこを見ているか分かるよう枠だけのカーソルを出す
+    const atCell = getFurnitureAtCell(room, uiState.cursor.x, uiState.cursor.y, null);
+    if (!atCell) {
+      const cursorEl = document.createElement("div");
+      cursorEl.className = "room-view-cursor";
+      cursorEl.style.gridColumn = `${uiState.cursor.x + 1} / span 1`;
+      cursorEl.style.gridRow = `${uiState.cursor.y + 1} / span 1`;
+      grid.appendChild(cursorEl);
+    } else {
+      // ★家具の上にカーソルがある時は、その家具ブロックごと光らせる
+      const def = findFurnitureDef(atCell.furnitureId);
+      if (def) grid.appendChild(buildFurnitureBlockEl(def, atCell.placement.x, atCell.placement.y, "room-view-cursor-on-furniture", cellPx, atCell.placement.rotation));
+    }
+  }
+  
   panel.appendChild(grid);
+  
+  if (uiState && uiState.hint) {
+    const hintEl = document.createElement("p");
+    hintEl.className = "room-view-hint";
+    hintEl.textContent = uiState.hint;
+    panel.appendChild(hintEl);
+  }
+  
   panel.classList.remove("hidden");
 }
 
@@ -153,277 +281,350 @@ function hideRoomView() {
   if (panel) panel.classList.add("hidden");
 }
 
-// ★部屋への家具配置を、矢印キー／ボタンで視覚的に選べるミニ画面（quantity-pickerと同じ作りのオーバーレイ）。
-//   Promiseで { x, y }（決定時）または null（キャンセル時）を返す
-function pickFurniturePlacement(room, furnitureDef, excludeInstanceId, labelText) {
-  return new Promise(resolve => {
-    const overlay = document.getElementById("furniture-placement-overlay");
-    const labelEl = document.getElementById("furniture-placement-label");
-    const gridEl = document.getElementById("furniture-placement-grid");
-    const confirmBtn = document.getElementById("furniture-placement-confirm");
-    const cancelBtn = document.getElementById("furniture-placement-cancel");
-    const upBtn = document.getElementById("furniture-placement-up");
-    const downBtn = document.getElementById("furniture-placement-down");
-    const leftBtn = document.getElementById("furniture-placement-left");
-    const rightBtn = document.getElementById("furniture-placement-right");
-    
-    if (!overlay || !gridEl) { resolve(null); return; } // ★万一オーバーレイが見つからなければ、置けなかった扱いにする
-    
-    const w = furnitureDef.width || 1, h = furnitureDef.height || 1;
-    const roomW = room.width || 1, roomH = room.height || 1;
-    const maxX = Math.max(0, roomW - w), maxY = Math.max(0, roomH - h);
-    const others = getRoomPlacedFurniture(room.id).filter(inst => inst.instanceId !== excludeInstanceId);
-    
-    // ★最初のカーソル位置は、置ける場所があればそこから探す
-    let cursor = { x: 0, y: 0 };
-    outer: for (let y = 0; y <= maxY; y++) {
-      for (let x = 0; x <= maxX; x++) {
-        if (isFurniturePlacementFree(room, x, y, w, h, excludeInstanceId)) { cursor = { x, y }; break outer; }
-      }
-    }
-    
-    gridEl.style.gridTemplateColumns = `repeat(${roomW}, 26px)`;
-    labelEl.textContent = labelText || `「${furnitureDef.name}」をどこに置く？`;
-    
-    function isValidHere() {
-      return isFurniturePlacementFree(room, cursor.x, cursor.y, w, h, excludeInstanceId);
-    }
-    
-    function render() {
-      gridEl.innerHTML = "";
-      const validNow = isValidHere();
-      confirmBtn.disabled = !validNow;
-      
-      for (let y = 0; y < roomH; y++) {
-        for (let x = 0; x < roomW; x++) {
-          const cell = document.createElement("div");
-          cell.className = "furniture-placement-cell";
-          gridEl.appendChild(cell);
-        }
-      }
-      
-      others.forEach(inst => {
-        const otherDef = findFurnitureDef(inst.furnitureId);
-        if (!otherDef) return;
-        gridEl.appendChild(buildFurnitureBlockEl(otherDef, inst.placement.x, inst.placement.y, "furniture-placement-block-occupied"));
-      });
-      
-      gridEl.appendChild(buildFurnitureBlockEl(furnitureDef, cursor.x, cursor.y, validNow ? "furniture-placement-block-cursor-ok" : "furniture-placement-block-cursor-bad"));
-    }
-    
-    function move(dx, dy) {
-      cursor.x = Math.max(0, Math.min(maxX, cursor.x + dx));
-      cursor.y = Math.max(0, Math.min(maxY, cursor.y + dy));
-      render();
-    }
-    
-    function cleanup() {
-      overlay.classList.add("hidden");
-      window.removeEventListener("keydown", handleKeyDown);
-      upBtn.onclick = null; downBtn.onclick = null; leftBtn.onclick = null; rightBtn.onclick = null;
-      confirmBtn.onclick = null; cancelBtn.onclick = null;
-    }
-    
-    function confirm() {
-      if (!isValidHere()) return;
-      cleanup();
-      resolve({ x: cursor.x, y: cursor.y });
-    }
-    
-    function cancel() {
-      cleanup();
-      resolve(null);
-    }
-    
-    function handleKeyDown(event) {
-      if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★シナリオエディタ表示中は反応しない
-      if (event.key === "ArrowUp") { event.preventDefault(); move(0, -1); }
-      else if (event.key === "ArrowDown") { event.preventDefault(); move(0, 1); }
-      else if (event.key === "ArrowLeft") { event.preventDefault(); move(-1, 0); }
-      else if (event.key === "ArrowRight") { event.preventDefault(); move(1, 0); }
-      else if (event.key === "Enter") { event.preventDefault(); confirm(); }
-      else if (event.key === "Escape") { event.preventDefault(); cancel(); }
-    }
-    
-    upBtn.onclick = () => move(0, -1);
-    downBtn.onclick = () => move(0, 1);
-    leftBtn.onclick = () => move(-1, 0);
-    rightBtn.onclick = () => move(1, 0);
-    confirmBtn.onclick = confirm;
-    cancelBtn.onclick = cancel;
-    window.addEventListener("keydown", handleKeyDown);
-    
-    overlay.classList.remove("hidden");
-    render();
-  });
-}
-
-function findValidFurniturePositions(room, furnitureDef, excludeInstanceId) {
-  const w = furnitureDef.width || 1, h = furnitureDef.height || 1;
+function findValidFurniturePositions(room, furnitureDef, excludeInstanceId, rotation) {
+  const size = getFurnitureEffectiveSize(furnitureDef, rotation);
   const positions = [];
-  for (let y = 0; y <= (room.height || 1) - h; y++) {
-    for (let x = 0; x <= (room.width || 1) - w; x++) {
-      if (isFurniturePlacementFree(room, x, y, w, h, excludeInstanceId)) positions.push({ x, y });
+  for (let y = 0; y <= (room.height || 1) - size.h; y++) {
+    for (let x = 0; x <= (room.width || 1) - size.w; x++) {
+      if (isFurniturePlacementFree(room, x, y, size.w, size.h, excludeInstanceId)) positions.push({ x, y });
     }
   }
   return positions;
 }
 
-// ★部屋にいる時、その部屋の家具（設置済み・未設置とも）を管理する画面。floorplan.jsの部屋画面から呼ばれる
-async function manageRoomFurniture(area, floorPlan, room, goBackToRoom) {
-  ensurePlayerFurniture();
-  const areaKey = getEstateAreaKey(area); // realestate.js
-  const placedHere = getRoomPlacedFurniture(room.id);
-  const unplaced = player.ownedFurniture.filter(inst => !inst.placement);
-  
-  changeSpeaker("");
-  const choices = [];
-  placedHere.forEach(inst => {
-    const def = findFurnitureDef(inst.furnitureId);
-    choices.push({ text: `${def ? def.name : "？"}（設置済み）`, next: "placed:" + inst.instanceId });
-  });
-  unplaced.forEach(inst => {
-    const def = findFurnitureDef(inst.furnitureId);
-    if (!def) return;
-    choices.push({ text: `${def.name}をここに置く`, next: "unplaced:" + inst.instanceId });
-  });
-  choices.push({ text: "戻る", next: "back", isBack: true });
-  
-  const emptyNote = (placedHere.length === 0 && unplaced.length === 0) ? "持っている家具が無いようだ。（家具屋で購入できます）" : "家具を選んでください。";
-  await displayMessage(emptyNote);
-  const picked = await displayChoices(choices);
-  if (picked.next === "back") { await goBackToRoom(); return; }
-  
-  if (picked.next.startsWith("placed:")) {
-    const instanceId = picked.next.slice("placed:".length);
-    const inst = player.ownedFurniture.find(f => f.instanceId === instanceId);
-    const def = inst && findFurnitureDef(inst.furnitureId);
-    const options = [];
-    if (def && def.isStorage) options.push({ text: "収納を開ける", next: "storage" });
-    options.push({ text: "位置を移動する", next: "move" });
-    options.push({ text: "片付ける（未設置に戻す）", next: "unplace" });
-    options.push({ text: "やめる", next: "cancel", isBack: true });
-    await displayMessage(`「${def ? def.name : "？"}」`);
-    const sub = await displayChoices(options);
-    if (sub.next === "storage") {
-      await manageFurnitureStorage(inst, () => manageRoomFurniture(area, floorPlan, room, goBackToRoom));
-      return;
+// ★グリッド上のカーソル移動（上下左右）を、行×列の位置計算で行う共通ヘルパー。
+//   倉庫UIの2つのペイン（インベントリ画面の仕組みを流用）でも、部屋のカーソルモードと同じ考え方を使う
+function computeGridMove(index, key, cols, count) {
+  if (count <= 0) return 0;
+  const rows = Math.max(1, Math.ceil(count / cols));
+  let row = Math.floor(index / cols), col = index % cols;
+  if (key === "ArrowUp") row = Math.max(0, row - 1);
+  else if (key === "ArrowDown") row = Math.min(rows - 1, row + 1);
+  else if (key === "ArrowLeft") col = Math.max(0, col - 1);
+  else if (key === "ArrowRight") col = Math.min(cols - 1, col + 1);
+  return Math.max(0, Math.min(count - 1, row * cols + col));
+}
+
+// ===================================================================
+// ===== 倉庫（isFurnitureStorageTypeな家具に付く収納） =====
+// ===================================================================
+// ★要望対応：倉庫の中身とインベントリの間でアイテムをやり取りする画面。
+//   サブ画面のインベントリタブと同じ見た目（inventory-slot等）の2つのグリッドを左右に並べ、
+//   q/eキーで操作するペインを切り替え、矢印キーでカーソル移動、zキーで選択→個数の小メニュー、
+//   Fキーでそれぞれのペインの並び替えを切り替えられる（右側は本編インベントリと共通のinventorySortMode）
+// ★要望対応：倉庫の中身とインベントリの間でアイテムをやり取りする画面。
+//   サブ画面のインベントリタブと同じ見た目（inventory-slot等）の2つのグリッドを左右に並べ、
+//   q/eキーで操作するペインを切り替え、矢印キーでカーソル移動（画面外に出たら自動スクロール）、
+//   zキーで選択するとアイテムの隣に小さいメニューを出し（displayChoicesは全画面オーバーレイの裏に
+//   隠れてしまうため使わない）、個数を選ぶ。Fキーでそれぞれのペインの並び替えを切り替えられる
+function manageFurnitureStorage(instance) {
+  return new Promise(resolve => {
+    ensurePlayerFurniture();
+    if (!Array.isArray(player.furnitureStorage[instance.instanceId])) player.furnitureStorage[instance.instanceId] = [];
+    const storage = player.furnitureStorage[instance.instanceId];
+    const def = findFurnitureDef(instance.furnitureId);
+    // ★要望対応：本棚は「本」の種類のアイテムしか収納できない
+    const isBookOnlyStorage = !!(def && def.type === "bookshelf");
+    
+    const overlay = document.getElementById("furniture-storage-overlay");
+    const titleEl = document.getElementById("furniture-storage-title");
+    const legendEl = document.getElementById("furniture-storage-legend");
+    const leftGridEl = document.getElementById("furniture-storage-left-grid");
+    const rightGridEl = document.getElementById("furniture-storage-right-grid");
+    const leftLabelEl = document.getElementById("furniture-storage-left-label");
+    const rightLabelEl = document.getElementById("furniture-storage-right-label");
+    const closeBtn = document.getElementById("furniture-storage-close");
+    
+    if (!overlay || !leftGridEl || !rightGridEl) { resolve(); return; } // ★万一オーバーレイが見つからなければ何もしない
+    
+    const COLS = 4;
+    let activePane = "left"; // "left"＝倉庫側、"right"＝インベントリ側
+    let leftIndex = 0, rightIndex = 0;
+    let storageSortMode = "added"; // "added"（預けた順）｜"name"（名前順）
+    let listenerActive = false;
+    let menu = null; // ★アイテム選択時の小メニュー： { pane, entry, options:[{label,value}], index }
+    let menuEl = null;
+    
+    function getLeftEntries() {
+      const entries = storage.map(s => ({ itemId: s.itemId, quantity: s.quantity, master: (typeof ITEM_MASTER !== "undefined" ? ITEM_MASTER[s.itemId] : null) }));
+      if (storageSortMode === "name") entries.sort((a, b) => (a.master ? a.master.name : a.itemId).localeCompare(b.master ? b.master.name : b.itemId, "ja"));
+      return entries;
     }
-    if (sub.next === "move" && def) {
-      const pos = await pickFurniturePlacement(room, def, inst.instanceId, `「${def.name}」をどこに移動する？（横${room.width}×縦${room.height}マス）`);
-      if (pos) {
-        inst.placement.x = pos.x;
-        inst.placement.y = pos.y;
-        await displayMessage(`「${def.name}」を移動した。`);
+    
+    // ★倉庫に預けられるのは今まで通りスタック可能なカテゴリ（薬草・素材など）のみ。装備品は個体差・装備中の判定が絡むため対象外
+    function getRightEntries() {
+      if (typeof reorganizeInventory === "function") reorganizeInventory(); // mainfunc.js：本編インベントリと同じ並び順・スタックまとめを適用
+      const seen = new Set();
+      const entries = [];
+      inventorySlots.forEach(slot => {
+        if (!slot || seen.has(slot.itemId)) return;
+        const master = ITEM_MASTER[slot.itemId];
+        if (!master || !STACKABLE_CATEGORIES.includes(master.category)) return;
+        if (isBookOnlyStorage && master.category !== "book") return; // ★本棚には本以外を預けられない
+        seen.add(slot.itemId);
+        const totalQty = inventorySlots.filter(s => s && s.itemId === slot.itemId).reduce((sum, s) => sum + s.quantity, 0);
+        entries.push({ itemId: slot.itemId, quantity: totalQty, master });
+      });
+      return entries;
+    }
+    
+    function getPaneEntries(pane) { return pane === "left" ? getLeftEntries() : getRightEntries(); }
+    function getPaneGridEl(pane) { return pane === "left" ? leftGridEl : rightGridEl; }
+    function getPaneIndex(pane) { return pane === "left" ? leftIndex : rightIndex; }
+    function setPaneIndex(pane, i) { if (pane === "left") leftIndex = i; else rightIndex = i; }
+    
+    // ★見た目はサブ画面インベントリタブのスロット（inventory-slot／item-name／item-qty）をそのまま流用する
+    function buildSlotEl(entry, isSelected) {
+      const slotDiv = document.createElement("div");
+      slotDiv.className = "inventory-slot furniture-storage-slot" + (isSelected ? " selected" : "");
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "item-name";
+      nameSpan.textContent = entry.master ? entry.master.name : entry.itemId;
+      slotDiv.appendChild(nameSpan);
+      if (entry.quantity > 1) {
+        const qtySpan = document.createElement("span");
+        qtySpan.className = "item-qty";
+        qtySpan.textContent = entry.quantity;
+        slotDiv.appendChild(qtySpan);
+      }
+      return slotDiv;
+    }
+    
+    function renderPane(pane, emptyText) {
+      const gridEl = getPaneGridEl(pane);
+      const entries = getPaneEntries(pane);
+      const isActive = activePane === pane;
+      gridEl.innerHTML = "";
+      gridEl.classList.toggle("furniture-storage-grid-active", isActive);
+      if (entries.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "devmode-note";
+        empty.textContent = emptyText;
+        gridEl.appendChild(empty);
+        return;
+      }
+      const selectedIndex = getPaneIndex(pane);
+      entries.forEach((entry, i) => gridEl.appendChild(buildSlotEl(entry, isActive && i === selectedIndex)));
+    }
+    
+    // ★要望対応：カーソルが今の表示範囲からはみ出たら、そのマスが見えるところまで自動でスクロールする。
+    //   el.scrollIntoView()はこの画面のように「外枠」と「グリッド」で入れ子になったスクロール領域があると
+    //   ブラウザによって挙動が不安定なことがあるため、対象のグリッド要素に対してscrollTopを直接計算して確実に動かす
+    function scrollActivePaneIntoView() {
+      const gridEl = getPaneGridEl(activePane);
+      const idx = getPaneIndex(activePane);
+      const el = gridEl.children[idx];
+      if (!el || typeof el.getBoundingClientRect !== "function") return;
+      const containerRect = gridEl.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      if (elRect.top < containerRect.top) {
+        gridEl.scrollTop -= (containerRect.top - elRect.top);
+      } else if (elRect.bottom > containerRect.bottom) {
+        gridEl.scrollTop += (elRect.bottom - containerRect.bottom);
       }
     }
-    if (sub.next === "unplace") {
-      inst.placement = null;
-      await displayMessage(`「${def ? def.name : "？"}」を片付けた。`);
-    }
-    await manageRoomFurniture(area, floorPlan, room, goBackToRoom);
-    return;
-  }
-  
-  if (picked.next.startsWith("unplaced:")) {
-    const instanceId = picked.next.slice("unplaced:".length);
-    const inst = player.ownedFurniture.find(f => f.instanceId === instanceId);
-    const def = inst && findFurnitureDef(inst.furnitureId);
-    if (!def) { await manageRoomFurniture(area, floorPlan, room, goBackToRoom); return; }
     
-    if (findValidFurniturePositions(room, def, null).length === 0) {
-      await displayMessage("この部屋には、もう置ける場所が無いようだ。");
-      await manageRoomFurniture(area, floorPlan, room, goBackToRoom);
-      return;
+    function render() {
+      const leftEntries = getLeftEntries();
+      const rightEntries = getRightEntries();
+      if (leftIndex >= leftEntries.length) leftIndex = Math.max(0, leftEntries.length - 1);
+      if (rightIndex >= rightEntries.length) rightIndex = Math.max(0, rightEntries.length - 1);
+      
+      if (titleEl) titleEl.textContent = `「${def ? def.name : "倉庫"}」の中身を整理する` + (isBookOnlyStorage ? "（本のみ収納可）" : "");
+      if (leftLabelEl) leftLabelEl.textContent = `① 倉庫${activePane === "left" ? "【操作中】" : ""}　${leftEntries.length > 0 ? `${leftIndex + 1}/${leftEntries.length}　` : ""}並び替え：${storageSortMode === "name" ? "名前順" : "預けた順"}`;
+      if (rightLabelEl) rightLabelEl.textContent = `② インベントリ${activePane === "right" ? "【操作中】" : ""}　${rightEntries.length > 0 ? `${rightIndex + 1}/${rightEntries.length}　` : ""}並び替え：${INVENTORY_SORT_MODE_LABELS[inventorySortMode]}`;
+      
+      renderPane("left", "（空っぽ）");
+      renderPane("right", "（預けられる物が無いようだ）");
+      scrollActivePaneIntoView();
+      renderMenuPopup();
     }
     
-    // ★要望対応：選択肢ではなく、矢印キー／ボタンで視覚的に位置を選ぶミニ画面
-    const pos = await pickFurniturePlacement(room, def, null, `「${def.name}」をどこに置く？（横${room.width}×縦${room.height}マス）`);
-    if (pos) {
-      inst.placement = { areaKey, roomId: room.id, x: pos.x, y: pos.y };
-      await displayMessage(`「${def.name}」を置いた。`);
+    function switchPane() {
+      if (menu) return; // ★メニュー表示中はペイン切替を無視（先にメニューを閉じてもらう）
+      activePane = activePane === "left" ? "right" : "left";
+      render();
     }
-    await manageRoomFurniture(area, floorPlan, room, goBackToRoom);
-    return;
-  }
-}
-
-// ===================================================================
-// ===== 倉庫（isStorageな家具に付く収納） =====
-// ===================================================================
-async function manageFurnitureStorage(instance, goBack) {
-  ensurePlayerFurniture();
-  if (!Array.isArray(player.furnitureStorage[instance.instanceId])) player.furnitureStorage[instance.instanceId] = [];
-  const storage = player.furnitureStorage[instance.instanceId];
-  const def = findFurnitureDef(instance.furnitureId);
-  
-  changeSpeaker("");
-  const choices = storage.map((entry, i) => {
-    const master = typeof ITEM_MASTER !== "undefined" ? ITEM_MASTER[entry.itemId] : null;
-    return { text: `${master ? master.name : entry.itemId} ×${entry.quantity}　（取り出す）`, next: "take:" + i };
-  });
-  choices.push({ text: "アイテムを預ける", next: "deposit" });
-  choices.push({ text: "閉じる", next: "close", isBack: true });
-  
-  await displayMessage(`「${def ? def.name : "倉庫"}」の中身：` + (storage.length === 0 ? "（空っぽ）" : ""));
-  const picked = await displayChoices(choices);
-  
-  if (picked.next === "close") { await goBack(); return; }
-  
-  if (picked.next === "deposit") {
-    await depositItemToFurnitureStorage(instance, goBack);
-    return;
-  }
-  
-  if (picked.next.startsWith("take:")) {
-    const i = Number(picked.next.slice("take:".length));
-    const entry = storage[i];
-    if (entry) {
-      addItem(entry.itemId, entry.quantity); // inventory.js
-      storage.splice(i, 1);
+    
+    function moveCursor(key) {
+      const entries = getPaneEntries(activePane);
+      const newIndex = computeGridMove(getPaneIndex(activePane), key, COLS, entries.length);
+      setPaneIndex(activePane, newIndex);
+      render();
+    }
+    
+    function cycleSort() {
+      if (menu) return;
+      if (activePane === "left") storageSortMode = storageSortMode === "added" ? "name" : "added";
+      else if (typeof cycleInventorySortMode === "function") cycleInventorySortMode(); // mainfunc.js（本編インベントリと共通）
+      render();
+    }
+    
+    function pauseKeys() { if (listenerActive) { window.removeEventListener("keydown", handleKeyDown); listenerActive = false; } }
+    function resumeKeys() { if (!listenerActive) { window.addEventListener("keydown", handleKeyDown); listenerActive = true; } }
+    
+    function removeMenuPopupEl() {
+      if (menuEl && menuEl.parentElement) menuEl.parentElement.removeChild(menuEl);
+      menuEl = null;
+    }
+    
+    function cleanupAndResolve() {
+      pauseKeys();
+      removeMenuPopupEl();
+      overlay.classList.add("hidden");
+      isGameDialogOpen = false; // mainfunc.js（要望対応：閉じたら背景の操作ロックを解除する）
+      closeBtn.onclick = null;
+      resolve();
+    }
+    
+    // ★スタック可能なアイテム1種類ぶんを、倉庫↔インベントリ間で指定した個数だけ移動する
+    function transfer(direction, itemId, quantity) {
+      if (!quantity || quantity <= 0) return;
+      if (direction === "toStorage") {
+        removeItem(itemId, quantity); // inventory.js
+        const existing = storage.find(s => s.itemId === itemId);
+        if (existing) existing.quantity += quantity; else storage.push({ itemId, quantity });
+      } else {
+        const existing = storage.find(s => s.itemId === itemId);
+        if (!existing) return;
+        const moveQty = Math.min(quantity, existing.quantity);
+        existing.quantity -= moveQty;
+        if (existing.quantity <= 0) storage.splice(storage.indexOf(existing), 1);
+        addItem(itemId, moveQty); // inventory.js
+      }
       if (typeof renderStatusHUD === "function") renderStatusHUD();
-      await displayMessage("取り出した。");
     }
-    await manageFurnitureStorage(instance, goBack);
-    return;
-  }
+    
+    // ★要望対応：選んだアイテムの「隣」に小さいメニューを出す（全画面の displayChoices はこのオーバーレイの
+    //   裏に隠れてしまうため使わない）。倉庫→インベントリ方向の時は動詞を「収納する」ではなく「戻す」系にする
+    function openTransferMenu(pane) {
+      const entries = getPaneEntries(pane);
+      const idx = getPaneIndex(pane);
+      const entry = entries[idx];
+      if (!entry) return;
+      const toStorage = pane === "right"; // 右（インベントリ）で選んだ物は倉庫へ、左（倉庫）で選んだ物はインベントリへ
+      const direction = toStorage ? "toStorage" : "toInventory";
+      const totalQty = entry.quantity;
+      const options = totalQty > 1 ? [
+        { label: toStorage ? "全部収納する" : "全部戻す", value: "all" },
+        { label: toStorage ? "半分収納する" : "半分戻す", value: "half" },
+        { label: toStorage ? "個数を選択して収納する" : "個数を選択して戻す", value: "pick" },
+        { label: toStorage ? "ひとつだけ収納する" : "ひとつだけ戻す", value: "one" },
+        { label: "やめる", value: "cancel" }
+      ] : [
+        { label: toStorage ? "収納する" : "インベントリに戻す", value: "all" },
+        { label: "やめる", value: "cancel" }
+      ];
+      menu = { pane, idx, entry, direction, totalQty, options, index: 0 };
+      render();
+    }
+    
+    function moveMenu(dy) {
+      if (!menu) return;
+      menu.index = Math.max(0, Math.min(menu.options.length - 1, menu.index + dy));
+      renderMenuPopup();
+    }
+    
+    async function confirmMenu() {
+      if (!menu) return;
+      const { direction, entry, totalQty, options } = menu;
+      const value = options[menu.index].value;
+      menu = null;
+      removeMenuPopupEl();
+      if (value === "cancel") { render(); return; }
+      let qty = 0;
+      if (value === "all") qty = totalQty;
+      else if (value === "half") qty = Math.max(1, Math.ceil(totalQty / 2));
+      else if (value === "one") qty = 1;
+      else if (value === "pick") {
+        pauseKeys(); // ★個数選択の専用ミニ画面（town.js pickQuantity）が自前のキー操作を持つので、こちらは一旦止める
+        qty = await pickQuantity(totalQty, entry.master ? entry.master.name : entry.itemId); // town.js
+        resumeKeys();
+      }
+      if (qty > 0) transfer(direction, entry.itemId, qty);
+      render();
+    }
+    
+    function cancelMenu() {
+      menu = null;
+      removeMenuPopupEl();
+      render();
+    }
+    
+    // ★選んだアイテムのスロット要素の右隣（入らなければ左隣）に、メニューを浮かせて表示する
+    function renderMenuPopup() {
+      removeMenuPopupEl();
+      if (!menu) return;
+      const gridEl = getPaneGridEl(menu.pane);
+      const slotEl = gridEl.children[menu.idx];
+      
+      const popup = document.createElement("div");
+      popup.className = "furniture-storage-menu-popup";
+      const header = document.createElement("p");
+      header.className = "furniture-storage-menu-popup-header";
+      header.textContent = `${menu.entry.master ? menu.entry.master.name : menu.entry.itemId} ×${menu.totalQty}`;
+      popup.appendChild(header);
+      menu.options.forEach((opt, i) => {
+        const row = document.createElement("div");
+        row.className = "furniture-storage-menu-popup-option" + (i === menu.index ? " selected" : "");
+        row.textContent = opt.label;
+        row.onclick = (event) => { event.stopPropagation(); menu.index = i; confirmMenu(); };
+        popup.appendChild(row);
+      });
+      const footer = document.createElement("p");
+      footer.className = "furniture-storage-menu-popup-footer";
+      footer.textContent = "↑↓：選択　Z：決定　X：やめる";
+      popup.appendChild(footer);
+      
+      overlay.appendChild(popup);
+      menuEl = popup;
+      
+      const popupWidth = 190; // ★CSSのwidthと合わせておく（配置計算に必要）
+      const estimatedHeight = 40 + menu.options.length * 26 + 20;
+      let left, top;
+      if (slotEl) {
+        const rect = slotEl.getBoundingClientRect();
+        left = rect.right + 8;
+        if (left + popupWidth > window.innerWidth - 8) left = rect.left - popupWidth - 8; // ★右にはみ出るなら左隣に出す
+        if (left < 8) left = Math.max(8, Math.min(window.innerWidth - popupWidth - 8, rect.left));
+        top = rect.top;
+        if (top + estimatedHeight > window.innerHeight - 8) top = Math.max(8, window.innerHeight - estimatedHeight - 8);
+      } else {
+        left = window.innerWidth / 2 - popupWidth / 2;
+        top = window.innerHeight / 2 - estimatedHeight / 2;
+      }
+      popup.style.left = left + "px";
+      popup.style.top = top + "px";
+    }
+    
+    function selectCurrent() {
+      openTransferMenu(activePane);
+    }
+    
+    function handleKeyDown(event) {
+      if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
+      
+      if (menu) {
+        if (event.key === "ArrowUp") { event.preventDefault(); moveMenu(-1); }
+        else if (event.key === "ArrowDown") { event.preventDefault(); moveMenu(1); }
+        else if (event.key === "z" || event.key === "Z" || event.key === " ") { event.preventDefault(); confirmMenu(); }
+        else if (event.key === "x" || event.key === "X" || event.key === "Escape") { event.preventDefault(); cancelMenu(); }
+        return;
+      }
+      
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) { event.preventDefault(); moveCursor(event.key); }
+      else if (event.key === "q" || event.key === "Q" || event.key === "e" || event.key === "E") { event.preventDefault(); switchPane(); }
+      else if (event.key === "f" || event.key === "F") { event.preventDefault(); cycleSort(); }
+      else if (event.key === "z" || event.key === "Z" || event.key === " ") { event.preventDefault(); selectCurrent(); }
+      else if (event.key === "x" || event.key === "X" || event.key === "Escape") { event.preventDefault(); cleanupAndResolve(); }
+    }
+    
+    if (legendEl) legendEl.textContent = "↑↓←→：カーソル移動／Z：選ぶ／Q・E：倉庫とインベントリを切替／F：並び替え／X：閉じる";
+    closeBtn.onclick = (event) => { event.stopPropagation(); cleanupAndResolve(); };
+    resumeKeys();
+    isGameDialogOpen = true; // mainfunc.js（要望対応：開いている間は裏の部屋・町の画面を操作できないようにする）
+    overlay.classList.remove("hidden");
+    render();
+  });
 }
 
-// ★倉庫に預けられるのは、スタック可能なカテゴリ（薬草・素材など）のみ。装備品は対象外（個体差・装備中の判定が絡むため）
-async function depositItemToFurnitureStorage(instance, goBack) {
-  const storage = player.furnitureStorage[instance.instanceId];
-  const seenItemIds = new Set();
-  const entries = [];
-  inventorySlots.forEach(slot => {
-    if (!slot || seenItemIds.has(slot.itemId)) return;
-    const master = ITEM_MASTER[slot.itemId];
-    if (!master || !STACKABLE_CATEGORIES.includes(master.category)) return;
-    seenItemIds.add(slot.itemId);
-    const totalQty = inventorySlots.filter(s => s && s.itemId === slot.itemId).reduce((sum, s) => sum + s.quantity, 0);
-    entries.push({ itemId: slot.itemId, master, totalQty });
-  });
-  
-  changeSpeaker("");
-  if (entries.length === 0) {
-    await displayMessage("預けられる物（薬草・素材など）を持っていないようだ。");
-    await manageFurnitureStorage(instance, goBack);
-    return;
-  }
-  
-  const choices = entries.map(e => ({ text: `${e.master.name} ×${e.totalQty}`, next: e.itemId }));
-  choices.push({ text: "やめる", next: "cancel", isBack: true });
-  await displayMessage("何を預ける？");
-  const picked = await displayChoices(choices);
-  if (picked.next === "cancel") { await manageFurnitureStorage(instance, goBack); return; }
-  
-  const entry = entries.find(e => e.itemId === picked.next);
-  const qty = await pickQuantity(entry.totalQty, entry.master.name); // town.js
-  if (!qty || qty <= 0) { await manageFurnitureStorage(instance, goBack); return; }
-  
-  removeItem(entry.itemId, qty); // inventory.js
-  const existing = storage.find(s => s.itemId === entry.itemId);
-  if (existing) existing.quantity += qty; else storage.push({ itemId: entry.itemId, quantity: qty });
-  if (typeof renderStatusHUD === "function") renderStatusHUD();
-  await displayMessage(`${qty}個を預けた。`);
-  await manageFurnitureStorage(instance, goBack);
-}
