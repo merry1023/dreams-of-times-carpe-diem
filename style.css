@@ -1145,8 +1145,7 @@ html, body {
 
 #tab-skill.active,
 #tab-strength.active,
-#tab-companions.active,
-#tab-cooking.active {
+#tab-companions.active {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -7279,3 +7278,145 @@ html, body {
   text-align: center;
 }
 
+/* ★要望対応：調理魔家電を使うと開く料理モーダル（旧・料理タブと中身は同じ、cooking.js） */
+.cooking-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 201000;
+}
+
+.cooking-modal-overlay.hidden {
+  display: none !important;
+  pointer-events: none;
+}
+
+.cooking-modal-box {
+  width: 640px;
+  max-width: 94vw;
+  max-height: 88vh;
+  background-color: #1a1a1a;
+  border: 3px solid #ffc107;
+  border-radius: 10px;
+  padding: 16px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.cooking-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.cooking-modal-title {
+  color: #ffe9a8;
+  font-size: 15px;
+  margin: 0;
+}
+
+.cooking-modal-box .cooking-root {
+  max-height: 76vh;
+}
+
+/* ★要望対応：種類が「本」のアイテムを使った時に開く、ページをめくって読むモーダル（book.js） */
+.book-reading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 201000;
+}
+
+.book-reading-overlay.hidden {
+  display: none !important;
+  pointer-events: none;
+}
+
+.book-reading-box {
+  width: 520px;
+  max-width: 92vw;
+  max-height: 86vh;
+  background-color: #1a1a1a;
+  background-image: linear-gradient(#2a2118, #1a1a1a);
+  border: 3px solid #c9a15a;
+  border-radius: 10px;
+  padding: 16px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.book-reading-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.book-reading-title {
+  color: #ffe9a8;
+  font-size: 15px;
+  margin: 0;
+}
+
+.book-reading-body {
+  flex: 1;
+  min-height: 160px;
+  max-height: 60vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  color: #eee;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  background-color: rgba(0, 0, 0, 0.25);
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.book-reading-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.book-reading-page-indicator {
+  color: #bbb;
+  font-size: 12px;
+}
+
+.book-reading-hint {
+  color: #888;
+  font-size: 11px;
+  text-align: center;
+  margin: 8px 0 0 0;
+}
+
+/* ★要望対応：本編プレイ画面（room-view-panel）で、部屋のドアを壁に貼り付いたブロックとして表示する */
+.room-view-door {
+  position: absolute;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  z-index: 2;
+}

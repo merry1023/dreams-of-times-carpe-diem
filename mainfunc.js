@@ -1427,11 +1427,6 @@ function switchTab(tabId) {
     renderEquipmentTab();
   }
   
-  // 料理タブに切り替えたら、画面を描画し直す
-  if (tabId === 'tab-cooking' && typeof renderCookingTab === "function") {
-    renderCookingTab(); // cooking.js
-  }
-  
   // 便利タブに切り替えたら、アイコン一覧の画面に戻す（セーブ/ロード画面を開いたままにしない）
   if (tabId === 'tab-convenience') {
     renderConvenienceIcons();
@@ -3073,6 +3068,7 @@ const CATEGORY_LABELS = {
   material: "魔物素材",
   weapon: "武器",
   armor: "防具",
+  book: "本",
   misc: "その他"
 };
 
@@ -3086,7 +3082,7 @@ function decideInventorySelection() {
   
   if (isItemDetailOpen) {
     const master = ITEM_MASTER[slot.itemId];
-    const isUsable = master && ((master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒 || master.params.帰還)) || master.isRecipeItem);
+    const isUsable = master && ((master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒 || master.params.帰還)) || master.isRecipeItem || master.category === "book");
     const inBattle = typeof battleState !== "undefined" && !!battleState;
     if (isUsable && !inBattle) {
       useItemFromInventoryTab(slot.itemId, master);
@@ -3179,7 +3175,7 @@ function showItemDetail(slot) {
   panel.appendChild(paramsEl);
   
   // ★回復量・疲労回復量のいずれかを持つアイテム（薬草・ポーションなど）は、戦闘中でなくてもここから使える
-  const isUsable = (master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒 || master.params.帰還)) || master.isRecipeItem;
+  const isUsable = (master.params && (master.params.回復量 > 0 || master.params.SP回復量 > 0 || master.params.疲労回復量 > 0 || master.params.眠気軽減割合 > 0 || master.params.解毒 || master.params.帰還)) || master.isRecipeItem || master.category === "book";
   if (isUsable) {
     const useBtn = document.createElement("button");
     const inBattle = typeof battleState !== "undefined" && !!battleState;
@@ -3362,6 +3358,14 @@ async function useItemFromInventoryTab(itemId, master) {
       return;
     }
     
+    // ★要望対応：種類が「本」のアイテム。使うと消費せず、ページをめくって読める専用モーダルを開く
+    if (master.category === "book") {
+      closeItemDetail();
+      await openBookReadingModal(master); // book.js
+      renderInventory();
+      return;
+    }
+    
     // ★要望対応：料理レシピ発見アイテム。使うと対象のレシピIDをレシピ帳（player.knownCookingRecipeIds）に登録する
     if (master.isRecipeItem) {
       if (!Array.isArray(player.knownCookingRecipeIds)) player.knownCookingRecipeIds = [];
@@ -3374,7 +3378,7 @@ async function useItemFromInventoryTab(itemId, master) {
       changeSpeaker("");
       const msg = !recipeId ? "レシピの中身は……よく読み取れなかった。"
         : alreadyKnown ? "「" + master.name + "」を読んだ。……このレシピは、もう知っているようだ。"
-        : "「" + master.name + "」を読んだ！ 料理タブのレシピ帳に新しいレシピが記録された。";
+        : "「" + master.name + "」を読んだ！ 調理魔家電で開ける料理のレシピ帳に新しいレシピが記録された。";
       await displayMessage(msg, { allowSubFocus: true });
       return;
     }
