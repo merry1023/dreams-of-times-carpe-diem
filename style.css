@@ -7162,6 +7162,9 @@ html, body {
 .furniture-storage-box {
   width: 720px;
   max-width: 94vw;
+  max-height: 92vh; /* ★要望対応：この箱自体の高さも画面内に収まるよう上限をつけ、はみ出た分は箱ごとスクロールできるようにする */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background-color: #1a1a1a;
   border: 3px solid #ffc107;
   border-radius: 10px;
@@ -7204,6 +7207,7 @@ html, body {
   min-height: 220px;
   max-height: 44vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   align-content: start;
 }
 
