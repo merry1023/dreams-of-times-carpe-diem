@@ -3,7 +3,7 @@
 // リクエストだけをキャッシュ対象にし、それ以外（JS・HTML本体など、更新頻度が高いファイル）は
 // 通常通りネットワークから取得する（バージョン更新時に古いコードのまま固まってしまわないように）。
 
-const CACHE_NAME = "carpe-diem-assets-v1";
+const CACHE_NAME = "carpe-diem-assets-v2";
 
 // ★このキャッシュ対象にする拡張子（画像・音声）
 const CACHEABLE_EXTENSIONS = [
