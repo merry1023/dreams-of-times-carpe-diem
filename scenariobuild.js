@@ -1195,7 +1195,9 @@ function ensureCustomItemsRegistered() {
       isRecipeItem: (typeof item.isRecipeItem === "boolean") ? item.isRecipeItem : !!existing.isRecipeItem,
       unlockRecipeId: item.isRecipeItem ? (item.unlockRecipeId || existing.unlockRecipeId || "") : existing.unlockRecipeId,
       // ★要望対応：種類が「本」のアイテムの中身（ページごとの本文）。アイテム編集の専用エディタ（buildBookPagesEditor）で追加・削除する
-      pages: item.category === "book" ? (Array.isArray(item.pages) ? item.pages : (existing.pages || [])) : existing.pages
+      pages: item.category === "book" ? (Array.isArray(item.pages) ? item.pages : (existing.pages || [])) : existing.pages,
+      // ★要望対応：本のジャンル分け（種類が「本」の時だけ意味を持つ。分類・雰囲気付け用でゲーム性には影響しない）
+      bookGenre: item.category === "book" ? (item.bookGenre || existing.bookGenre || "その他") : existing.bookGenre
     };
   });
 }
@@ -5211,6 +5213,23 @@ function getBgmManagerConfig() {
   };
 }
 
+// ★要望対応：本の種類（ジャンル）を増やしてほしい、という要望向けに用意した選択肢一覧。
+//   ゲーム性（効果）には影響せず、本棚に並べた時の雰囲気付け・分類用。items.js側の既存の本アイテムもこの分類に沿っている
+const BOOK_GENRE_OPTIONS = [
+  { value: "冒険譚", label: "冒険譚" },
+  { value: "恋愛小説", label: "恋愛小説" },
+  { value: "推理小説", label: "推理小説" },
+  { value: "図鑑", label: "図鑑" },
+  { value: "魔法書", label: "魔法書" },
+  { value: "詩集", label: "詩集" },
+  { value: "怪談・ホラー", label: "怪談・ホラー" },
+  { value: "商売指南", label: "商売指南" },
+  { value: "童話", label: "童話" },
+  { value: "神話・歴史書", label: "神話・歴史書" },
+  { value: "記録・手記", label: "記録・手記" },
+  { value: "その他", label: "その他" }
+];
+
 function getItemManagerConfig() {
   const categoryOptions = [
     { value: "herb", label: "薬草" }, { value: "potion", label: "ポーション" },
@@ -5261,7 +5280,10 @@ function getItemManagerConfig() {
       { key: "foodBuffPower", label: "（料理）バフの効果量", type: "number", placeholder: "5" },
       // ★要望対応：このアイテムを「使う」と、指定した料理レシピがレシピ帳に登録される（レシピ発見アイテム）
       { key: "isRecipeItem", label: "料理レシピとして扱う（使うとレシピ帳に登録）", type: "checkbox" },
-      { key: "unlockRecipeId", label: "（レシピ）登録される料理レシピのID", type: "text", placeholder: "レシピ管理タブで確認できるID" }
+      { key: "unlockRecipeId", label: "（レシピ）登録される料理レシピのID", type: "text", placeholder: "レシピ管理タブで確認できるID" },
+      // ★要望対応：本の種類（ジャンル）を増やしてほしい、という要望に合わせて追加。
+      //   ゲーム性には影響しない分類用の項目（本棚での見た目・雰囲気付け用）。種類を「本」にした時だけ意味を持つ
+      { key: "bookGenre", label: "（本）ジャンル", type: "select", options: BOOK_GENRE_OPTIONS }
     ],
     newEntity: () => ({ id: generateId("item"), name: "", category: "material", description: "", rank: "F", listedPrice: 0, trueValue: 0, unsellable: false }),
     quickAddOptions: categoryOptions.map(opt => ({
@@ -5275,7 +5297,9 @@ function getItemManagerConfig() {
       return {
         name: master.name, category: master.category, description: master.description,
         rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue, unsellable: !!master.unsellable,
-        stackable: master.stackable
+        stackable: master.stackable,
+        bookGenre: master.bookGenre,
+        pages: Array.isArray(master.pages) ? master.pages.slice() : undefined
       };
     }
   };
