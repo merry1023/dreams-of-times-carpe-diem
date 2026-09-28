@@ -1189,6 +1189,8 @@ function ensureCustomItemsRegistered() {
       //   アイテム管理タブで耐久度・スロット数・バフ等を設定しても実際のゲームには反映されていなかった
       toolDurability: item.category === "cookingTool" ? (Number(item.toolDurability) || existing.toolDurability || 30) : existing.toolDurability,
       toolSlotCount: item.category === "cookingTool" ? (Number(item.toolSlotCount) || existing.toolSlotCount || 3) : existing.toolSlotCount,
+      // ★要望対応：料理道具の「大きさ」。使う調理魔家電の大きさ以下でないと使えない（未設定は1）
+      toolSize: item.category === "cookingTool" ? (Number(item.toolSize) || existing.toolSize || 1) : existing.toolSize,
       foodBuffKind: item.category === "food" ? (item.foodBuffKind || existing.foodBuffKind || "") : existing.foodBuffKind,
       foodBuffDuration: item.category === "food" ? (Number(item.foodBuffDuration) || existing.foodBuffDuration || 3) : existing.foodBuffDuration,
       foodBuffPower: item.category === "food" ? (Number(item.foodBuffPower) || existing.foodBuffPower || 0) : existing.foodBuffPower,
@@ -5274,6 +5276,7 @@ function getItemManagerConfig() {
       // ★要望対応：料理タブ用。種類を「料理道具」にした時だけ意味を持つ
       { key: "toolDurability", label: "（料理道具）耐久度", type: "number", placeholder: "30" },
       { key: "toolSlotCount", label: "（料理道具）材料スロット数", type: "number", placeholder: "3" },
+      { key: "toolSize", label: "（料理道具）大きさ（調理魔家電の大きさ以下でないと使えない）", type: "number", placeholder: "1" },
       // ★要望対応：種類を「料理」にした時だけ意味を持つ、戦闘中だけの自己バフ（技の自己強化と同じ仕組みを流用）
       { key: "foodBuffKind", label: "（料理）戦闘中バフの種類", type: "select", options: getSkillSelfBuffKindOptions() },
       { key: "foodBuffDuration", label: "（料理）バフの持続ターン数", type: "number", placeholder: "3" },
@@ -5356,7 +5359,7 @@ const FURNITURE_TYPE_DEFS = [
   { value: "bookshelf", label: "本棚（「本」の種類のアイテムのみ収納可能）" },
   { value: "seating", label: "座る／腰掛ける" },
   { value: "bed", label: "寝具（使うと8時間経過し、主人公のHP・SP・眠気・疲労度が半分まで回復）" },
-  { value: "lighting", label: "照明（輝度・範囲を設定すると、置いた部屋が明るくなる）" },
+  { value: "lighting", label: "照明（輝度・範囲を設定すると、置いた部屋が明るくなる。使うとオン／オフが切り替わる）" },
   { value: "appliance", label: "家電・道具" },
   { value: "cookingAppliance", label: "調理魔家電（レンジ・コンロ等。使うと料理画面を開く）" },
   { value: "toilet", label: "トイレ（部屋の種類が「便所」の部屋にしか置けない）" },
@@ -5389,6 +5392,7 @@ function getFurnitureManagerConfig() {
       { key: "width", label: "横（マス）", type: "number", placeholder: "1" },
       { key: "height", label: "縦（マス）", type: "number", placeholder: "1" },
       { key: "type", label: "種類", type: "select", options: FURNITURE_TYPE_DEFS },
+      { key: "applianceSize", label: "大きさ（種類が調理魔家電の場合のみ。これより大きい「大きさ」の料理道具は使えない）", type: "number", placeholder: "3" },
       { key: "luminance", label: "輝度（種類が照明の場合のみ。0〜30。大きいほど明るい）", type: "number", placeholder: "15" },
       { key: "lightRange", label: "範囲（種類が照明の場合のみ。照らせるマス数。中心から外に向かって暗くなり、範囲の外は照らせない）", type: "number", placeholder: "4" },
       { key: "storageSlots", label: "収納数（種類が収納・本棚の場合のみ使用）", type: "number", placeholder: "10" },

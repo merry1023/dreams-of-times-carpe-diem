@@ -552,7 +552,12 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       if (sub.next === "use") {
         // ★要望対応：調理魔家電を使うと、料理タブと同じ仕様の料理モーダルを開く（cooking.js）
         if (def && def.type === "cookingAppliance" && typeof openCookingModal === "function") {
-          await openCookingModal();
+          await openCookingModal(def); // ★家電の大きさを渡す
+        } else if (def && def.type === "lighting") {
+          // ★要望対応：照明は使うたびにオン／オフが切り替わる（部屋の明るさに反映される）
+          inst.lightOn = (inst.lightOn === false);
+          changeSpeaker("");
+          await displayMessage(inst.lightOn ? "照明をつけた。" : "照明を消した。");
         } else if (def && def.type === "bed") {
           // ★要望対応：寝具を使うと8時間経過し、HP・SP・眠気・疲労度が「半分まで」回復する。回復するのは主人公だけ（仲間は対象外）。
           //   HP・SPは現在値が最大の半分に届いていなければ半分まで引き上げ、眠気・疲労度は現在値が最大の半分を超えていれば半分まで下げる
