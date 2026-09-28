@@ -139,6 +139,55 @@ function buildFurnitureBlockEl(def, x, y, extraClass, cellPx, rotation) {
   return block;
 }
 
+// ★要望対応：部屋の明るさ。部屋は元々かなり暗く（room.brightness、間取り編集で部屋ごとに設定可能。既定は下記）、
+//   種類「照明」の家具（輝度def.luminance：最大30、範囲def.lightRange：マス数）を置くと、照明の中心から
+//   外側に向かって直線的に減衰しながら明るくなる。照明の範囲の外は照らせない。明るさは最大30で頭打ち
+const ROOM_BRIGHTNESS_MAX = 30;
+const ROOM_BRIGHTNESS_DEFAULT = 4;
+const ROOM_DARKNESS_MAX_ALPHA = 0.86; // ★明るさ0の時の暗さ（真っ暗にはせず、うっすら見える程度に）
+
+function computeRoomBrightnessGrid(room) {
+  const w = room.width || 1, h = room.height || 1;
+  const base = Number.isFinite(room.brightness) ? Math.max(0, Math.min(ROOM_BRIGHTNESS_MAX, room.brightness)) : ROOM_BRIGHTNESS_DEFAULT;
+  const grid = [];
+  for (let y = 0; y < h; y++) { grid.push(new Array(w).fill(base)); }
+  getRoomPlacedFurniture(room.id).forEach(inst => {
+    const def = findFurnitureDef(inst.furnitureId);
+    if (!def || def.type !== "lighting") return;
+    const luminance = Math.max(0, Math.min(ROOM_BRIGHTNESS_MAX, Number(def.luminance) || 0));
+    const range = Math.max(0, Number(def.lightRange) || 0);
+    if (luminance <= 0 || range <= 0) return;
+    const size = getFurnitureEffectiveSize(def, inst.placement.rotation);
+    const cx = inst.placement.x + size.w / 2; // ★照明の中心（家具の占める範囲の真ん中）
+    const cy = inst.placement.y + size.h / 2;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const dist = Math.hypot((x + 0.5) - cx, (y + 0.5) - cy);
+        if (dist >= range) continue; // ★範囲の外は照らせない
+        grid[y][x] += luminance * (1 - dist / range);
+      }
+    }
+  });
+  return grid.map(row => row.map(v => Math.min(ROOM_BRIGHTNESS_MAX, v)));
+}
+
+function buildRoomDarknessOverlayEl(room, roomW, roomH, cellPx) {
+  const brightness = computeRoomBrightnessGrid(room);
+  const overlay = document.createElement("div");
+  overlay.className = "room-view-darkness";
+  overlay.style.gridTemplateColumns = `repeat(${roomW}, ${cellPx}px)`;
+  overlay.style.gridTemplateRows = `repeat(${roomH}, ${cellPx}px)`;
+  for (let y = 0; y < roomH; y++) {
+    for (let x = 0; x < roomW; x++) {
+      const cell = document.createElement("div");
+      const alpha = ROOM_DARKNESS_MAX_ALPHA * (1 - brightness[y][x] / ROOM_BRIGHTNESS_MAX);
+      cell.style.backgroundColor = `rgba(0, 0, 8, ${alpha.toFixed(3)})`;
+      overlay.appendChild(cell);
+    }
+  }
+  return overlay;
+}
+
 // ★要望対応：部屋にいる間、メイン画面（背景の手前）に部屋の間取りを視覚的に表示する。
 //   部屋の「指定した幅」（room.width）に合わせて、画面に収まるようマス目1つぶんのpxサイズを自動調整する。
 //   uiStateを渡すと、上部にモード切替・家を出るボタンのツールバーと、カーソル／移動中家具の表示を追加する
@@ -243,11 +292,15 @@ function renderRoomView(room, uiState) {
     grid.appendChild(buildFurnitureBlockEl(def, inst.placement.x, inst.placement.y, "furniture-placement-block-occupied", cellPx, inst.placement.rotation));
   });
   
+  grid.appendChild(buildRoomDarknessOverlayEl(room, roomW, roomH, cellPx)); // ★要望対応：部屋の暗さ（照明で明るくなる）
+  
   if (uiState && uiState.placing) {
     // ★要望対応：移動・回転モードは専用画面を出さず、このメイン画面のグリッド上でそのまま動かす
     const p = uiState.placing;
     const cls = p.valid ? "furniture-placement-block-cursor-ok" : "furniture-placement-block-cursor-bad";
-    grid.appendChild(buildFurnitureBlockEl(p.def, uiState.cursor.x, uiState.cursor.y, cls, cellPx, p.rotation));
+    const placingEl = buildFurnitureBlockEl(p.def, uiState.cursor.x, uiState.cursor.y, cls, cellPx, p.rotation);
+    placingEl.style.zIndex = "4";
+    grid.appendChild(placingEl);
   } else if (uiState && uiState.cursor && uiState.mode === "cursor") {
     // ★カーソルモード：家具の無いマスにも、今どこを見ているか分かるよう枠だけのカーソルを出す
     const atCell = getFurnitureAtCell(room, uiState.cursor.x, uiState.cursor.y, null);
@@ -256,11 +309,16 @@ function renderRoomView(room, uiState) {
       cursorEl.className = "room-view-cursor";
       cursorEl.style.gridColumn = `${uiState.cursor.x + 1} / span 1`;
       cursorEl.style.gridRow = `${uiState.cursor.y + 1} / span 1`;
+      cursorEl.style.zIndex = "4";
       grid.appendChild(cursorEl);
     } else {
       // ★家具の上にカーソルがある時は、その家具ブロックごと光らせる
       const def = findFurnitureDef(atCell.furnitureId);
-      if (def) grid.appendChild(buildFurnitureBlockEl(def, atCell.placement.x, atCell.placement.y, "room-view-cursor-on-furniture", cellPx, atCell.placement.rotation));
+      if (def) {
+        const hiEl = buildFurnitureBlockEl(def, atCell.placement.x, atCell.placement.y, "room-view-cursor-on-furniture", cellPx, atCell.placement.rotation);
+        hiEl.style.zIndex = "4";
+        grid.appendChild(hiEl);
+      }
     }
   }
   

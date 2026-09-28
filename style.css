@@ -5279,6 +5279,14 @@ html, body {
   transition: none;
 }
 
+/* ★要望対応：進行度をゲージ（バー）ではなく、残り秒数のカウントダウン表示に変更 */
+.cooking-countdown {
+  font-size: 2.2em;
+  font-weight: bold;
+  color: #ffc107;
+  margin: 4px 0 0 0;
+}
+
 .crafting-recipe-row {
   text-align: left;
   padding: 8px 10px;
@@ -7410,6 +7418,16 @@ html, body {
   font-size: 11px;
   text-align: center;
   margin: 8px 0 0 0;
+}
+
+/* ★要望対応：部屋の暗さ（照明の輝度・範囲に応じて場所ごとに明るくなる。furniture.jsのbuildRoomDarknessOverlayEl） */
+.room-view-darkness {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  pointer-events: none;
+  z-index: 3;
 }
 
 /* ★要望対応：本編プレイ画面（room-view-panel）で、部屋のドアを壁に貼り付いたブロックとして表示する */

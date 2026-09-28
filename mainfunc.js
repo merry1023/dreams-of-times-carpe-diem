@@ -1538,6 +1538,7 @@ window.addEventListener("keydown", (event) => {
 //    矢印キーでカーソル移動・Zで決定・Xで戻る、を有効にする
 window.addEventListener("keydown", (event) => {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★要望対応：シナリオエディタ表示中は本編を操作させない
+  if (isGameDialogOpen) return; // ★要望対応：本を読むモーダル等が開いている間は、インベントリタブ側のカーソル操作を割り込ませない
   if (controlFocus !== "sub") return; // ★サブ画面操作中のみ有効にする
   if (event.repeat) return; // ★押しっぱなしで連続移動・連続決定しないようにする
   
@@ -1589,6 +1590,7 @@ const SCROLL_TAB_TARGETS = {
 
 window.addEventListener("keydown", (event) => {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★要望対応：シナリオエディタ表示中は本編を操作させない
+  if (isGameDialogOpen) return; // ★要望対応：本を読むモーダル等が開いている間は割り込ませない
   if (controlFocus !== "sub") return;
   if (!["ArrowUp", "ArrowDown"].includes(event.key)) return;
   

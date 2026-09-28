@@ -55,6 +55,17 @@ function closeCookingModal() {
 const cookingModalCloseBtn = document.getElementById("cooking-modal-close");
 if (cookingModalCloseBtn) cookingModalCloseBtn.onclick = (event) => { event.stopPropagation(); closeCookingModal(); };
 
+// ★要望対応：料理モーダルを開いたまま結果メッセージ等を表示すると、通常のメッセージウィンドウは
+//   z-indexがモーダルより低く裏に隠れて見えなくなってしまうため、メッセージを出す間だけ一時的に
+//   モーダルを隠し、表示が終わったら（モーダルがまだ開いていれば）元に戻す
+async function cookingMessage(text) {
+  const overlay = document.getElementById("cooking-modal-overlay");
+  const wasVisible = !!(overlay && !overlay.classList.contains("hidden"));
+  if (wasVisible) overlay.classList.add("hidden");
+  await displayMessage(text, { allowSubFocus: true });
+  if (wasVisible && isCookingModalOpen && overlay) overlay.classList.remove("hidden");
+}
+
 let cookingSelectedToolInstanceId = null;
 // ★選んだスロットの中身。[{ itemId, count }, ...]（未選択のスロットはitemId: ""）
 let cookingSlotPicks = [];
@@ -162,41 +173,45 @@ function getCookingFocusList() {
 }
 
 // ★要望対応：「作る」を押してから、レシピごとに指定した秒数ぶんゲージが溜まるアニメーションを見せて待たせる
+// ★要望対応：進行度をゲージ（バー）ではなく、残り秒数のカウントダウン表示に変更した
 function waitForCookingGauge(durationSeconds) {
   return new Promise(resolve => {
     const root = document.getElementById("cooking-root");
     if (!root) { resolve(); return; }
-    const durationMs = Math.max(150, (Number(durationSeconds) || 0) * 1000);
+    const totalSeconds = Math.max(1, Math.ceil(Number(durationSeconds) || 0));
+    const durationMs = totalSeconds * 1000;
     const start = Date.now();
     
-    // ★バグ修正：以前は毎フレームroot.innerHTMLを丸ごと作り直していたため、CSSのtransitionが
-    //   効かず（同じ要素の値が変化する時にしか働かない）、ゲージが滑らかに溜まっていくように
-    //   見えなかった。要素は最初に一度だけ作り、以降はfillの幅（style.width）だけを更新する
     root.innerHTML = "";
     const wrap = document.createElement("div");
     wrap.className = "cooking-gauge-wrap";
     const label = document.createElement("p");
     label.textContent = "調理中……";
     wrap.appendChild(label);
-    const outer = document.createElement("div");
-    outer.className = "gauge-bar cooking-gauge-outer";
-    const inner = document.createElement("div");
-    inner.className = "gauge-fill cooking-gauge-fill";
-    inner.style.width = "0%";
-    outer.appendChild(inner);
-    wrap.appendChild(outer);
+    const countdownEl = document.createElement("p");
+    countdownEl.className = "cooking-countdown";
+    wrap.appendChild(countdownEl);
     root.appendChild(wrap);
     
+    let lastShownSeconds = -1;
+    function render(remainingSeconds) {
+      if (remainingSeconds === lastShownSeconds) return;
+      lastShownSeconds = remainingSeconds;
+      countdownEl.textContent = `残り${remainingSeconds}秒`;
+    }
+    render(totalSeconds);
+    
     function tick() {
-      // ★調理中に別の描画（タブ切り替えで戻ってきた時のrenderCookingTab()等）でroot自体や
-      //   このゲージ要素が入れ替わっていたら、以降は無駄に動かし続けずそのまま終わらせる
-      if (!document.body.contains(inner)) {
+      // ★調理中に別の描画（renderCookingTab()等）でroot自体やこのカウントダウン要素が
+      //   入れ替わっていたら、以降は無駄に動かし続けずそのまま終わらせる
+      if (!document.body.contains(countdownEl)) {
         resolve();
         return;
       }
-      const fraction = Math.min(1, (Date.now() - start) / durationMs);
-      inner.style.width = `${Math.min(100, Math.max(0, fraction * 100))}%`;
-      if (fraction >= 1) {
+      const elapsedMs = Date.now() - start;
+      const remainingSeconds = Math.max(0, Math.ceil((durationMs - elapsedMs) / 1000));
+      render(remainingSeconds);
+      if (elapsedMs >= durationMs) {
         resolve();
         return;
       }
@@ -218,7 +233,7 @@ async function attemptCook() {
     const blockedReason = isCookingBlocked();
     if (blockedReason) {
       changeSpeaker("");
-      await displayMessage(blockedReason, { allowSubFocus: true });
+      await cookingMessage(blockedReason);
       return;
     }
     
@@ -228,7 +243,7 @@ async function attemptCook() {
     const filled = cookingSlotPicks.filter(p => p.itemId && p.count > 0);
     if (filled.length === 0) {
       changeSpeaker("");
-      await displayMessage("材料を何も置いていないようだ。", { allowSubFocus: true });
+      await cookingMessage("材料を何も置いていないようだ。");
       return;
     }
     
@@ -239,7 +254,7 @@ async function attemptCook() {
       const needed = pick.count * batchCount;
       if (getItemCount(pick.itemId) < needed) { // crafting.js
         changeSpeaker("");
-        await displayMessage(`「${ITEM_MASTER[pick.itemId].name}」が足りないようだ（必要：${needed}個）。`, { allowSubFocus: true });
+        await cookingMessage(`「${ITEM_MASTER[pick.itemId].name}」が足りないようだ（必要：${needed}個）。`);
         return;
       }
     }
@@ -247,7 +262,7 @@ async function attemptCook() {
     // ★対象の道具向けレシピの中から、個数までぴったり一致するものを探す（ゲージの待ち時間はここで先に決める）
     const matchedRecipe = getMatchedCookingRecipe(tool, cookingSlotPicks);
     
-    // ★要望対応：レシピ管理タブで指定した秒数ぶん、ゲージが溜まるまで待たせる（一致しなかった時は既定の短い待ち時間）
+    // ★要望対応：レシピ管理タブで指定した秒数ぶん、カウントダウンで待たせる（一致しなかった時は既定の短い待ち時間）
     const waitSeconds = matchedRecipe && matchedRecipe.cookTimeSeconds != null ? Number(matchedRecipe.cookTimeSeconds) : (matchedRecipe ? 3 : 2);
     cookingGaugeActive = true;
     await waitForCookingGauge(waitSeconds);
@@ -267,12 +282,12 @@ async function attemptCook() {
     const addOk = addItem(resultItemId, resultCount);
     const resultMaster = ITEM_MASTER[resultItemId];
     if (addOk) {
-      await displayMessage(`「${resultMaster ? resultMaster.name : resultItemId}」が${resultCount}個出来上がった！`, { allowSubFocus: true });
+      await cookingMessage(`「${resultMaster ? resultMaster.name : resultItemId}」が${resultCount}個出来上がった！`);
     } else {
-      await displayMessage("……持ち物がいっぱいで、出来上がった料理を持てなかった。もったいないことをした……", { allowSubFocus: true });
+      await cookingMessage("……持ち物がいっぱいで、出来上がった料理を持てなかった。もったいないことをした……");
     }
     if (durabilityResult.broke) {
-      await displayMessage(`「${tool.master.name}」は、ついに使い物にならなくなってしまった……`, { allowSubFocus: true });
+      await cookingMessage(`「${tool.master.name}」は、ついに使い物にならなくなってしまった……`);
       cookingSelectedToolInstanceId = null;
       cookingSlotPicks = [];
       cookingCursorIndex = 0;
