@@ -26,6 +26,7 @@ function makeNewFloorPlanRoom(x, y) {
     width: 4, height: 4, // ★家具配置マス目のサイズ（フェーズ2で使用）
     name: "",
     roomType: "", // ★要望対応：部屋の種類（"" or "toilet"）
+    brightness: 4, // ★要望対応：部屋の明るさ（0〜30。既定はかなり暗め）
     doors: { north: false, south: false, east: false, west: false },
     doorStyle: {} // ★要望対応：ドアごとの表示位置・色（{ north: { position, color }, ... }、未設定なら中央・茶色）
   };
@@ -263,6 +264,24 @@ function buildFloorPlanRoomDetail(area, floorPlan, room, persist) {
   floorColorInput.onchange = () => { room.floorColor = floorColorInput.value; persist(); };
   floorColorRow.appendChild(floorColorInput);
   infoEl.appendChild(floorColorRow);
+  
+  // ★要望対応：部屋そのものの明るさ（0〜30）。部屋は元々かなり暗く、照明の家具を置くとその周りが明るくなる
+  const brightnessRow = document.createElement("div");
+  brightnessRow.className = "scenariobuild-condition-row";
+  brightnessRow.appendChild(labelSpan("部屋の明るさ（0〜30）："));
+  const brightnessInput = document.createElement("input");
+  brightnessInput.type = "number";
+  brightnessInput.min = "0";
+  brightnessInput.max = "30";
+  brightnessInput.className = "scenariobuild-condition-input";
+  brightnessInput.value = Number.isFinite(room.brightness) ? room.brightness : ROOM_BRIGHTNESS_DEFAULT; // furniture.js
+  brightnessInput.onchange = () => {
+    const v = Number(brightnessInput.value);
+    room.brightness = Math.max(0, Math.min(30, Number.isFinite(v) ? v : ROOM_BRIGHTNESS_DEFAULT));
+    persist();
+  };
+  brightnessRow.appendChild(brightnessInput);
+  infoEl.appendChild(brightnessRow);
   
   // ★要望対応：部屋の種類（トイレ等、特定の家具はここで指定した種類の部屋にしか置けない）
   const roomTypeRow = document.createElement("div");
@@ -534,6 +553,19 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         // ★要望対応：調理魔家電を使うと、料理タブと同じ仕様の料理モーダルを開く（cooking.js）
         if (def && def.type === "cookingAppliance" && typeof openCookingModal === "function") {
           await openCookingModal();
+        } else if (def && def.type === "bed") {
+          // ★要望対応：寝具を使うと8時間経過し、HP・SP・眠気・疲労度が「半分まで」回復する。回復するのは主人公だけ（仲間は対象外）。
+          //   HP・SPは現在値が最大の半分に届いていなければ半分まで引き上げ、眠気・疲労度は現在値が最大の半分を超えていれば半分まで下げる
+          //   （既に半分より良い状態なら、悪化させないようそのまま）
+          const g = player.gauges || {};
+          if (g.hp) g.hp.current = Math.max(g.hp.current, Math.floor(g.hp.max / 2));
+          if (g.sp) g.sp.current = Math.max(g.sp.current, Math.floor(g.sp.max / 2));
+          if (g.fatigue) g.fatigue.current = Math.min(g.fatigue.current, Math.floor(g.fatigue.max / 2));
+          if (g.sleepiness) g.sleepiness.current = Math.min(g.sleepiness.current, Math.floor(g.sleepiness.max / 2));
+          if (typeof advanceGameTime === "function") advanceGameTime(8); // player.js
+          if (typeof renderStatusHUD === "function") renderStatusHUD();
+          changeSpeaker("");
+          await displayMessage((def.useMessage) || "ぐっすりと眠った。8時間が経過し、体力も気力も半分ほどまで回復した。");
         } else {
           await displayMessage((def && def.useMessage) || "特に変わったことは無いようだ。");
         }
