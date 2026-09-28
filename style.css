@@ -7426,6 +7426,7 @@ html, body {
   top: 0;
   left: 0;
   display: grid;
+  gap: 2px; /* ★.room-view-gridのgapと同じにして、床のマスと位置を一致させる */
   pointer-events: none;
   z-index: 3;
 }
@@ -7437,4 +7438,10 @@ html, body {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
   pointer-events: none;
   z-index: 2;
+}
+
+/* ★要望対応：調理魔家電より大きくて使えない料理道具 */
+.cooking-tool-card.cooking-tool-too-big {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

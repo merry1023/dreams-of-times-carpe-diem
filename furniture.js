@@ -154,6 +154,7 @@ function computeRoomBrightnessGrid(room) {
   getRoomPlacedFurniture(room.id).forEach(inst => {
     const def = findFurnitureDef(inst.furnitureId);
     if (!def || def.type !== "lighting") return;
+    if (inst.lightOn === false) return; // ★要望対応：オフにした照明は照らさない（未設定＝オン）
     const luminance = Math.max(0, Math.min(ROOM_BRIGHTNESS_MAX, Number(def.luminance) || 0));
     const range = Math.max(0, Number(def.lightRange) || 0);
     if (luminance <= 0 || range <= 0) return;
@@ -272,12 +273,12 @@ function renderRoomView(room, uiState) {
       if (isHorizontalWall) {
         doorEl.style.width = doorSpanPx + "px";
         doorEl.style.height = thickness + "px";
-        doorEl.style.left = (position * cellPx + (cellPx - doorSpanPx) / 2) + "px";
+        doorEl.style.left = (position * (cellPx + 2) + (cellPx - doorSpanPx) / 2) + "px"; // ★グリッドのgap(2px)ぶんを含めたマス送り幅
         doorEl.style[dirKey === "north" ? "top" : "bottom"] = -(thickness / 2) + "px";
       } else {
         doorEl.style.height = doorSpanPx + "px";
         doorEl.style.width = thickness + "px";
-        doorEl.style.top = (position * cellPx + (cellPx - doorSpanPx) / 2) + "px";
+        doorEl.style.top = (position * (cellPx + 2) + (cellPx - doorSpanPx) / 2) + "px";
         doorEl.style[dirKey === "west" ? "left" : "right"] = -(thickness / 2) + "px";
       }
       grid.appendChild(doorEl);
