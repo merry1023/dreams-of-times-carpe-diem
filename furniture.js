@@ -193,10 +193,19 @@ function buildRoomDarknessOverlayEl(room, roomW, roomH, cellPx) {
 //   部屋の「指定した幅」（room.width）に合わせて、画面に収まるようマス目1つぶんのpxサイズを自動調整する。
 //   uiStateを渡すと、上部にモード切替・家を出るボタンのツールバーと、カーソル／移動中家具の表示を追加する
 //   （uiStateの形：{ modeLabel, onToggleMode, onLeave, hint, cursor:{x,y}, placing:{def,rotation,excludeInstanceId,valid} }）
-function renderRoomView(room, uiState) {
+function renderRoomView(room, uiState, floorPlan) {
   const panel = document.getElementById("room-view-panel");
   if (!panel) return;
   panel.innerHTML = "";
+  
+  // ★要望対応：今いる部屋の名前を、小さなヒント文だけでなく、もっと大きく分かりやすい場所に出す
+  const titleEl = document.createElement("p");
+  titleEl.className = "room-view-title";
+  titleEl.textContent = room.name || "名もない部屋";
+  panel.appendChild(titleEl);
+  
+  // ★要望対応：左下に間取り図（ミニマップ）を表示し、家の中で今どこにいるか分かりやすくする
+  if (floorPlan) renderFloorPlanMinimap(floorPlan, room);
   
   if (uiState) {
     const toolbar = document.createElement("div");
@@ -273,12 +282,12 @@ function renderRoomView(room, uiState) {
       if (isHorizontalWall) {
         doorEl.style.width = doorSpanPx + "px";
         doorEl.style.height = thickness + "px";
-        doorEl.style.left = (position * (cellPx + 2) + (cellPx - doorSpanPx) / 2) + "px"; // ★グリッドのgap(2px)ぶんを含めたマス送り幅
+        doorEl.style.left = (position * cellPx + (cellPx - doorSpanPx) / 2) + "px";
         doorEl.style[dirKey === "north" ? "top" : "bottom"] = -(thickness / 2) + "px";
       } else {
         doorEl.style.height = doorSpanPx + "px";
         doorEl.style.width = thickness + "px";
-        doorEl.style.top = (position * (cellPx + 2) + (cellPx - doorSpanPx) / 2) + "px";
+        doorEl.style.top = (position * cellPx + (cellPx - doorSpanPx) / 2) + "px";
         doorEl.style[dirKey === "west" ? "left" : "right"] = -(thickness / 2) + "px";
       }
       grid.appendChild(doorEl);
@@ -338,6 +347,44 @@ function renderRoomView(room, uiState) {
 function hideRoomView() {
   const panel = document.getElementById("room-view-panel");
   if (panel) panel.classList.add("hidden");
+  const mapEl = document.getElementById("floorplan-minimap");
+  if (mapEl) mapEl.classList.add("hidden");
+}
+
+// ★要望対応：左下の間取り図。部屋を(x,y)の位置関係のまま小さな格子で並べ、今いる部屋だけ光らせる
+function renderFloorPlanMinimap(floorPlan, room) {
+  const mapEl = document.getElementById("floorplan-minimap");
+  if (!mapEl) return;
+  const rooms = (floorPlan && Array.isArray(floorPlan.rooms)) ? floorPlan.rooms : [];
+  if (rooms.length === 0) { mapEl.classList.add("hidden"); return; }
+  
+  const xs = rooms.map(r => r.x), ys = rooms.map(r => r.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const cols = maxX - minX + 1, rowsCount = maxY - minY + 1;
+  
+  mapEl.innerHTML = "";
+  const titleEl = document.createElement("p");
+  titleEl.className = "floorplan-minimap-title";
+  titleEl.textContent = "間取り図";
+  mapEl.appendChild(titleEl);
+  
+  const grid = document.createElement("div");
+  grid.className = "floorplan-minimap-grid";
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  grid.style.gridTemplateRows = `repeat(${rowsCount}, 1fr)`;
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const r = rooms.find(rr => rr.x === x && rr.y === y);
+      const cell = document.createElement("div");
+      cell.className = "floorplan-minimap-cell"
+        + (!r ? " floorplan-minimap-cell-empty" : "")
+        + (r && room && r.id === room.id ? " floorplan-minimap-cell-current" : "");
+      grid.appendChild(cell);
+    }
+  }
+  mapEl.appendChild(grid);
+  mapEl.classList.remove("hidden");
 }
 
 function findValidFurniturePositions(room, furnitureDef, excludeInstanceId, rotation) {
