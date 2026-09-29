@@ -28,7 +28,8 @@ function makeNewFloorPlanRoom(x, y) {
     roomType: "", // ★要望対応：部屋の種類（"" or "toilet"）
     brightness: 4, // ★要望対応：部屋の明るさ（0〜30。既定はかなり暗め）
     doors: { north: false, south: false, east: false, west: false },
-    doorStyle: {} // ★要望対応：ドアごとの表示位置・色（{ north: { position, color }, ... }、未設定なら中央・茶色）
+    doorStyle: {}, // ★要望対応：ドアごとの表示位置・色（{ north: { position, color }, ... }、未設定なら中央・茶色）
+    fixedItems: [] // ★要望対応：「さらに細かく編集する」で置く、間取り自体に含まれる固定設置物（階段・動かせない家具等）
   };
 }
 
@@ -45,24 +46,62 @@ function ensureFloorPlanDoorStyle(room, dirKey) {
 
 // ★家エリアが間取りデータを持っていなければ、部屋1つ（原点）で初期化する。
 //   startRoomIdは「家に入った時にどの部屋から始まるか」の明示的な記録（部屋を削除した時にずれないようにするため）
-function ensureFloorPlan(area) {
-  if (!area.floorPlan || !Array.isArray(area.floorPlan.rooms) || area.floorPlan.rooms.length === 0) {
+// ★要望対応：階段で行き来する「階」ごとの間取り。floor（0が基準の階、正の数で上の階、負の数で下の階）ごとに
+//   別々の間取り（部屋一式）を持つ。以前は area.floorPlan（間取り1つだけ）だったため、古いセーブ・
+//   シナリオデータはここで floor 0 として area.floorPlans に移行する
+function ensureFloorPlan(area, floor) {
+  floor = Number.isFinite(floor) ? floor : 0;
+  if (!area.floorPlans || typeof area.floorPlans !== "object") {
+    area.floorPlans = {};
+    if (area.floorPlan && Array.isArray(area.floorPlan.rooms) && area.floorPlan.rooms.length > 0) {
+      area.floorPlans["0"] = area.floorPlan; // ★移行
+    }
+  }
+  const key = String(floor);
+  if (!area.floorPlans[key] || !Array.isArray(area.floorPlans[key].rooms) || area.floorPlans[key].rooms.length === 0) {
     const firstRoom = makeNewFloorPlanRoom(0, 0);
-    area.floorPlan = { rooms: [firstRoom], startRoomId: firstRoom.id };
+    area.floorPlans[key] = { floor, rooms: [firstRoom], startRoomId: firstRoom.id };
   }
-  if (!area.floorPlan.startRoomId || !area.floorPlan.rooms.some(r => r.id === area.floorPlan.startRoomId)) {
-    area.floorPlan.startRoomId = area.floorPlan.rooms[0].id;
+  const floorPlan = area.floorPlans[key];
+  floorPlan.floor = floor;
+  if (!floorPlan.startRoomId || !floorPlan.rooms.some(r => r.id === floorPlan.startRoomId)) {
+    floorPlan.startRoomId = floorPlan.rooms[0].id;
   }
-  return area.floorPlan;
+  return floorPlan;
+}
+
+// ★シナリオエディタの間取り編集で「他に何階まであるか」を一覧するための一覧（0階は常に含む）
+function getExistingFloorNumbers(area) {
+  ensureFloorPlan(area, 0);
+  return Object.keys(area.floorPlans || {}).map(Number).filter(n => Number.isFinite(n)).sort((a, b) => a - b);
 }
 
 function findFloorPlanRoomAt(floorPlan, x, y) {
   return floorPlan.rooms.find(r => r.x === x && r.y === y) || null;
 }
 
+// ★要望対応：部屋の「固定設置物」（間取り自体の一部として置く階段・動かせない家具等）まわりのヘルパー
+function ensureRoomFixedItems(room) {
+  if (!Array.isArray(room.fixedItems)) room.fixedItems = [];
+  return room.fixedItems;
+}
+
+function findFixedItemAt(room, x, y) {
+  return ensureRoomFixedItems(room).find(it => x >= it.x && x < it.x + (it.w || 1) && y >= it.y && y < it.y + (it.h || 1)) || null;
+}
+
+// ★要望対応：階段を置く。directionは"up"（上の階へ）または"down"（下の階へ）。
+//   行き先の階がまだ無ければ、部屋1つだけの新しい階をここで自動的に作る
+function placeStairsFixedItem(area, floorPlan, room, x, y, direction) {
+  const targetFloor = floorPlan.floor + (direction === "up" ? 1 : -1);
+  ensureFloorPlan(area, targetFloor);
+  const item = { id: generateId("fixeditem"), kind: "stairs", x, y, w: 1, h: 1, direction, targetFloor };
+  ensureRoomFixedItems(room).push(item);
+  return item;
+}
+
 // ★選択中の部屋の指定方向に、新しい部屋を追加する（既にその方向に部屋があれば何もしない）
-function addFloorPlanRoom(area, fromRoomId, direction) {
-  const floorPlan = ensureFloorPlan(area);
+function addFloorPlanRoom(floorPlan, fromRoomId, direction) {
   const fromRoom = floorPlan.rooms.find(r => r.id === fromRoomId);
   const dir = FLOORPLAN_DIRECTIONS[direction];
   if (!fromRoom || !dir) return null;
@@ -75,8 +114,7 @@ function addFloorPlanRoom(area, fromRoomId, direction) {
 
 // ★部屋を削除する（最後の1部屋は削除不可）。隣接部屋側のドアも一緒にOFFにしておく。
 //   削除した部屋が「開始部屋（startRoomId）」だった場合は、残った部屋のどれかへ付け替える
-function deleteFloorPlanRoom(area, roomId) {
-  const floorPlan = ensureFloorPlan(area);
+function deleteFloorPlanRoom(floorPlan, roomId) {
   if (floorPlan.rooms.length <= 1) return false;
   const room = floorPlan.rooms.find(r => r.id === roomId);
   if (!room) return false;
@@ -94,8 +132,7 @@ function deleteFloorPlanRoom(area, roomId) {
 
 // ★ドアは両部屋で対になる1枚の壁の扉として扱う（片方の部屋からは見えるが反対側からは見えない、ということは無い）。
 //   隣に部屋が無い方向へは設置できない
-function toggleFloorPlanDoor(area, roomId, direction) {
-  const floorPlan = ensureFloorPlan(area);
+function toggleFloorPlanDoor(floorPlan, roomId, direction) {
   const room = floorPlan.rooms.find(r => r.id === roomId);
   const dir = FLOORPLAN_DIRECTIONS[direction];
   if (!room || !dir) return;
@@ -128,7 +165,8 @@ function renderFloorPlanEditor(container) {
     return;
   }
   
-  const floorPlan = ensureFloorPlan(area);
+  // ★要望対応：階段で行き来する「階」の切り替え（0が基準の階。scenariobuild.jsのscenarioBuildSelectedFloor）
+  const floorPlan = ensureFloorPlan(area, scenarioBuildSelectedFloor);
   if (!floorPlan.rooms.some(r => r.id === scenarioBuildSelectedRoomId)) {
     scenarioBuildSelectedRoomId = floorPlan.rooms[0].id;
   }
@@ -137,6 +175,29 @@ function renderFloorPlanEditor(container) {
   const titleEl = document.createElement("h3");
   titleEl.textContent = "間取り編集：" + (area.name || "（名前未設定）");
   container.appendChild(titleEl);
+  
+  // ★階の切り替えUI。既にある階（階段で作られた階）はボタンで一覧、無ければ「＋階段で作る」旨の案内のみ
+  const floorRow = document.createElement("div");
+  floorRow.className = "scenariobuild-condition-row";
+  floorRow.appendChild(labelSpan("階："));
+  getExistingFloorNumbers(area).forEach(floorNum => {
+    const floorBtn = document.createElement("button");
+    floorBtn.className = "devmode-btn";
+    if (floorNum === scenarioBuildSelectedFloor) { floorBtn.style.backgroundColor = "#ffc107"; floorBtn.style.color = "#1a1a1a"; }
+    floorBtn.textContent = floorNum === 0 ? "0階（基準）" : (floorNum > 0 ? `${floorNum}階` : `地下${-floorNum}階`);
+    floorBtn.onclick = (event) => {
+      event.stopPropagation();
+      scenarioBuildSelectedFloor = floorNum;
+      scenarioBuildSelectedRoomId = null; // ★階を切り替えたら、その階の最初の部屋を選び直す
+      renderScenarioBuildPanel();
+    };
+    floorRow.appendChild(floorBtn);
+  });
+  container.appendChild(floorRow);
+  const floorNote = document.createElement("p");
+  floorNote.className = "devmode-note";
+  floorNote.textContent = "他の階は、この部屋の「さらに細かく編集する」から階段を置くと自動的に作られます。";
+  container.appendChild(floorNote);
   
   const noteEl = document.createElement("p");
   noteEl.className = "devmode-note";
@@ -196,7 +257,7 @@ function buildFloorPlanGrid(area, floorPlan, selectedRoom, persist) {
         addBtn.title = `${FLOORPLAN_DIRECTIONS[dirKey].label}に部屋を追加`;
         addBtn.onclick = (event) => {
           event.stopPropagation();
-          const newRoom = addFloorPlanRoom(area, selectedRoom.id, dirKey);
+          const newRoom = addFloorPlanRoom(floorPlan, selectedRoom.id, dirKey);
           if (newRoom) scenarioBuildSelectedRoomId = newRoom.id;
           persist();
         };
@@ -321,7 +382,7 @@ function buildFloorPlanRoomDetail(area, floorPlan, room, persist) {
     checkbox.type = "checkbox";
     checkbox.checked = !!room.doors[dirKey];
     checkbox.disabled = !neighbor;
-    checkbox.onchange = () => { toggleFloorPlanDoor(area, room.id, dirKey); persist(); };
+    checkbox.onchange = () => { toggleFloorPlanDoor(floorPlan, room.id, dirKey); persist(); };
     checkboxLabel.appendChild(checkbox);
     checkboxLabel.appendChild(document.createTextNode(` ${dir.label}のドア` + (neighbor ? `（${neighbor.name || "部屋"}へ）` : "（隣に部屋がありません）")));
     doorRow.appendChild(checkboxLabel);
@@ -365,7 +426,7 @@ function buildFloorPlanRoomDetail(area, floorPlan, room, persist) {
     event.stopPropagation();
     const ok = await showGameConfirm(`「${room.name || "部屋"}」を削除しますか？`);
     if (!ok) return;
-    if (deleteFloorPlanRoom(area, room.id)) {
+    if (deleteFloorPlanRoom(floorPlan, room.id)) {
       scenarioBuildSelectedRoomId = floorPlan.rooms[0].id;
       persist();
     }
@@ -374,7 +435,173 @@ function buildFloorPlanRoomDetail(area, floorPlan, room, persist) {
   card.appendChild(buttonsEl);
   
   wrap.appendChild(card);
+  wrap.appendChild(buildFixedItemEditorSection(area, floorPlan, room, persist));
   return wrap;
+}
+function buildFixedItemEditorSection(area, floorPlan, room, persist) {
+  const wrap = document.createElement("div");
+  wrap.className = "scenariobuild-condition";
+  
+  const toggleBtn = document.createElement("button");
+  toggleBtn.className = "devmode-btn";
+  toggleBtn.textContent = scenarioBuildFixedItemEditorOpen ? "さらに細かく編集する（閉じる）" : "さらに細かく編集する（階段・固定家具の設置）";
+  toggleBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioBuildFixedItemEditorOpen = !scenarioBuildFixedItemEditorOpen;
+    scenarioBuildFixedItemSelectedCell = null;
+    renderScenarioBuildPanel();
+  };
+  wrap.appendChild(toggleBtn);
+  
+  if (!scenarioBuildFixedItemEditorOpen) return wrap;
+  
+  const note = document.createElement("p");
+  note.className = "devmode-note";
+  note.textContent = "ここに置いたものは、プレイヤーの持ち物とは関係なく、この部屋に最初から固定で置かれます（間取り自体の一部）。マスを選ぶと、下に設置・編集欄が出ます。置けるのは今のところ「階段」と「家具（家具管理タブに登録済みのもの）」です。";
+  wrap.appendChild(note);
+  
+  const roomW = room.width || 1, roomH = room.height || 1;
+  const items = ensureRoomFixedItems(room);
+  const grid = document.createElement("div");
+  grid.className = "fixeditem-editor-grid";
+  grid.style.gridTemplateColumns = `repeat(${roomW}, 30px)`;
+  
+  for (let y = 0; y < roomH; y++) {
+    for (let x = 0; x < roomW; x++) {
+      const item = findFixedItemAt(room, x, y);
+      const cellBtn = document.createElement("button");
+      cellBtn.type = "button";
+      cellBtn.className = "fixeditem-editor-cell"
+        + (item ? " fixeditem-editor-cell-filled" : "")
+        + (item && item.kind === "stairs" ? " fixeditem-editor-cell-stairs" : "")
+        + (item && item.kind === "furniture" && item.locked ? " fixeditem-editor-cell-locked" : "")
+        + (scenarioBuildFixedItemSelectedCell && scenarioBuildFixedItemSelectedCell.x === x && scenarioBuildFixedItemSelectedCell.y === y ? " fixeditem-editor-cell-selected" : "");
+      if (item) {
+        cellBtn.textContent = item.kind === "stairs" ? "階段" : (findFurnitureDef(item.furnitureId) ? findFurnitureDef(item.furnitureId).name : "？");
+      }
+      cellBtn.onclick = (event) => {
+        event.stopPropagation();
+        scenarioBuildFixedItemSelectedCell = { x, y };
+        renderScenarioBuildPanel();
+      };
+      grid.appendChild(cellBtn);
+    }
+  }
+  wrap.appendChild(grid);
+  
+  if (scenarioBuildFixedItemSelectedCell) {
+    wrap.appendChild(buildFixedItemCellDetail(area, floorPlan, room, scenarioBuildFixedItemSelectedCell, persist));
+  }
+  
+  return wrap;
+}
+
+function buildFixedItemCellDetail(area, floorPlan, room, cell, persist) {
+  const box = document.createElement("div");
+  box.className = "scenariobuild-condition-row";
+  box.style.flexDirection = "column";
+  box.style.alignItems = "flex-start";
+  const items = ensureRoomFixedItems(room);
+  const existing = findFixedItemAt(room, cell.x, cell.y);
+  
+  const title = document.createElement("p");
+  title.className = "devmode-note";
+  title.textContent = `選択中のマス：(${cell.x}, ${cell.y})`;
+  box.appendChild(title);
+  
+  if (existing) {
+    if (existing.kind === "stairs") {
+      const info = document.createElement("p");
+      info.className = "devmode-note";
+      info.textContent = `階段（${existing.direction === "up" ? "上" : "下"}の階（${existing.targetFloor}階）へ）`;
+      box.appendChild(info);
+    } else {
+      const def = findFurnitureDef(existing.furnitureId);
+      const info = document.createElement("p");
+      info.className = "devmode-note";
+      info.textContent = `家具：${def ? def.name : "（見つかりません。家具管理タブで削除された可能性があります）"}`;
+      box.appendChild(info);
+      
+      const lockLabel = document.createElement("label");
+      lockLabel.style.cursor = "pointer";
+      const lockCheckbox = document.createElement("input");
+      lockCheckbox.type = "checkbox";
+      lockCheckbox.checked = !!existing.locked;
+      lockCheckbox.onchange = () => { existing.locked = lockCheckbox.checked; persist(); };
+      lockLabel.appendChild(lockCheckbox);
+      lockLabel.appendChild(document.createTextNode(" プレイ中は動かせないようにロックする（外すと、プレイヤーがカーソルモードで移動できます）"));
+      box.appendChild(lockLabel);
+    }
+    
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "devmode-btn devmode-btn-danger";
+    deleteBtn.textContent = "このマスの設置物を削除";
+    deleteBtn.onclick = (event) => {
+      event.stopPropagation();
+      room.fixedItems = items.filter(it => it.id !== existing.id);
+      scenarioBuildFixedItemSelectedCell = null;
+      persist();
+    };
+    box.appendChild(deleteBtn);
+  } else {
+    const addNote = document.createElement("p");
+    addNote.className = "devmode-note";
+    addNote.textContent = "このマスに置くものを選んでください：";
+    box.appendChild(addNote);
+    
+    const stairsRow = document.createElement("div");
+    stairsRow.className = "scenariobuild-chapter-buttons";
+    const stairsUpBtn = document.createElement("button");
+    stairsUpBtn.className = "devmode-btn";
+    stairsUpBtn.textContent = "階段を置く（上の階へ）";
+    stairsUpBtn.onclick = (event) => {
+      event.stopPropagation();
+      const newItem = placeStairsFixedItem(area, floorPlan, room, cell.x, cell.y, "up");
+      scenarioBuildFixedItemSelectedCell = { x: newItem.x, y: newItem.y };
+      persist();
+    };
+    stairsRow.appendChild(stairsUpBtn);
+    
+    const stairsDownBtn = document.createElement("button");
+    stairsDownBtn.className = "devmode-btn";
+    stairsDownBtn.textContent = "階段を置く（下の階へ）";
+    stairsDownBtn.onclick = (event) => {
+      event.stopPropagation();
+      const newItem = placeStairsFixedItem(area, floorPlan, room, cell.x, cell.y, "down");
+      scenarioBuildFixedItemSelectedCell = { x: newItem.x, y: newItem.y };
+      persist();
+    };
+    stairsRow.appendChild(stairsDownBtn);
+    box.appendChild(stairsRow);
+    
+    const furnitureNote = document.createElement("p");
+    furnitureNote.className = "devmode-note";
+    furnitureNote.textContent = "家具（家具管理タブに登録済みのもの）を置く：";
+    box.appendChild(furnitureNote);
+    
+    const furnitureListWrap = document.createElement("div");
+    furnitureListWrap.className = "fixeditem-furniture-picker";
+    (scenarioProject.furniture || []).forEach(def => {
+      const btn = document.createElement("button");
+      btn.className = "devmode-btn";
+      btn.textContent = def.name || "（無名の家具）";
+      btn.onclick = (event) => {
+        event.stopPropagation();
+        items.push({ id: generateId("fixeditem"), kind: "furniture", furnitureId: def.id, x: cell.x, y: cell.y, w: 1, h: 1, locked: true });
+        persist();
+      };
+      furnitureListWrap.appendChild(btn);
+    });
+    if ((scenarioProject.furniture || []).length === 0) {
+      const emptyNote = document.createElement("p");
+      emptyNote.className = "devmode-note";
+      emptyNote.textContent = "（家具管理タブにまだ何も登録されていません）";
+      furnitureListWrap.appendChild(emptyNote);
+    }
+    box.appendChild(furnitureListWrap);
+  }
+  
+  return box;
 }
 
 // ===================================================================
@@ -415,13 +642,13 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     function currentUiState() {
       if (placing) {
         const size = getFurnitureEffectiveSize(placing.def, placing.rotation); // furniture.js
-        const valid = isFurniturePlacementFree(room, cursor.x, cursor.y, size.w, size.h, placing.instance.instanceId); // furniture.js
+        const valid = isFurniturePlacementFree(room, cursor.x, cursor.y, size.w, size.h, placing.instance ? placing.instance.instanceId : null, placing.fixedItem ? placing.fixedItem.id : null); // furniture.js
         return {
           mode: "placing",
           modeLabel: "移動・回転中の家具：「" + placing.def.name + "」",
-          legend: ["↑↓←→：移動", "R：90度回転", "Z：ここに確定", "X：やめる（元に戻す）"],
+          legend: placing.fixedItem ? ["↑↓←→：移動", "Z：ここに確定", "X：やめる（元に戻す）"] : ["↑↓←→：移動", "R：90度回転", "Z：ここに確定", "X：やめる（元に戻す）"],
           cursor,
-          placing: { def: placing.def, rotation: placing.rotation, excludeInstanceId: placing.instance.instanceId, valid },
+          placing: { def: placing.def, rotation: placing.rotation, excludeInstanceId: placing.instance ? placing.instance.instanceId : null, excludeFixedItemId: placing.fixedItem ? placing.fixedItem.id : null, valid },
           hint: `横${size.w}×縦${size.h}マス${valid ? "" : "（この位置には置けません）"}`
         };
       }
@@ -487,6 +714,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     // ★要望対応：Rキーで右回りに90度ずつ回転。部屋自体に入らないサイズになる場合は回転を諦め、
     //   入る場合は座標がはみ出さないよう寄せてから回転を確定する（他の家具と重なっても、確定操作(z)の時に弾かれる）
     function rotatePlacing() {
+      if (placing.fixedItem) return; // ★要望対応：固定設置物は今のところ回転に対応しない（1マスの階段・素の家具のみ）
       const newRotation = (placing.rotation + 1) % 4;
       const size = getFurnitureEffectiveSize(placing.def, newRotation); // furniture.js
       if (size.w > (room.width || 1) || size.h > (room.height || 1)) return;
@@ -498,6 +726,22 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     
     async function confirmPlacing() {
       const size = getFurnitureEffectiveSize(placing.def, placing.rotation); // furniture.js
+      if (placing.fixedItem) {
+        // ★要望対応：「さらに細かく編集する」で置いた、ロックされていない固定設置物をプレイ中に動かす
+        if (!isFurniturePlacementFree(room, cursor.x, cursor.y, size.w, size.h, null, placing.fixedItem.id)) return; // furniture.js
+        placing.fixedItem.x = cursor.x;
+        placing.fixedItem.y = cursor.y;
+        const placedDef = placing.def;
+        placing = null;
+        render();
+        pauseKeys();
+        if (typeof showMessageWindow === "function") showMessageWindow();
+        changeSpeaker("");
+        await displayMessage(`「${placedDef.name}」を移動した。`);
+        resumeKeys();
+        render();
+        return;
+      }
       if (!isFurniturePlacementFree(room, cursor.x, cursor.y, size.w, size.h, placing.instance.instanceId)) return; // furniture.js
       placing.instance.placement = { areaKey, roomId: room.id, x: cursor.x, y: cursor.y, rotation: placing.rotation };
       const wasNew = placing.isNew;
@@ -513,6 +757,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     }
     
     function cancelPlacing() {
+      if (placing.fixedItem) { placing = null; render(); return; } // ★固定設置物の移動中止（座標はまだ書き換えていないので何もしなくて良い）
       if (placing.isNew) placing.instance.placement = null; // ★新規に置こうとしていた家具は未設置のまま戻す
       else if (placing.originalPlacement) placing.instance.placement = placing.originalPlacement; // ★移動中だった家具は元の位置に戻す
       placing = null;
@@ -528,6 +773,34 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       if (typeof showMessageWindow === "function") showMessageWindow(); // ★家を出た後は通常のシナリオ表示に戻すので、隠していたメッセージウィンドウを戻す
       resolve();
       goBack();
+    }
+    
+    // ★要望対応：調理魔家電／照明／寝具の「使用する」効果。プレイヤー所有の家具（instance）でも、
+    //   「さらに細かく編集する」で置いた固定家具（item）でも同じロジックで使えるよう共通化した
+    async function performFurnitureUseEffect(def, statefulTarget) {
+      if (def && def.type === "cookingAppliance" && typeof openCookingModal === "function") {
+        await openCookingModal(def); // ★家電の大きさを渡す
+      } else if (def && def.type === "lighting") {
+        // ★要望対応：照明は使うたびにオン／オフが切り替わる（部屋の明るさに反映される）
+        statefulTarget.lightOn = (statefulTarget.lightOn === false);
+        changeSpeaker("");
+        await displayMessage(statefulTarget.lightOn ? "照明をつけた。" : "照明を消した。");
+      } else if (def && def.type === "bed") {
+        // ★要望対応：寝具を使うと8時間経過し、HP・SP・眠気・疲労度が「半分まで」回復する。回復するのは主人公だけ（仲間は対象外）。
+        //   HP・SPは現在値が最大の半分に届いていなければ半分まで引き上げ、眠気・疲労度は現在値が最大の半分を超えていれば半分まで下げる
+        //   （既に半分より良い状態なら、悪化させないようそのまま）
+        const g = player.gauges || {};
+        if (g.hp) g.hp.current = Math.max(g.hp.current, Math.floor(g.hp.max / 2));
+        if (g.sp) g.sp.current = Math.max(g.sp.current, Math.floor(g.sp.max / 2));
+        if (g.fatigue) g.fatigue.current = Math.min(g.fatigue.current, Math.floor(g.fatigue.max / 2));
+        if (g.sleepiness) g.sleepiness.current = Math.min(g.sleepiness.current, Math.floor(g.sleepiness.max / 2));
+        if (typeof advanceGameTime === "function") advanceGameTime(8); // player.js
+        if (typeof renderStatusHUD === "function") renderStatusHUD();
+        changeSpeaker("");
+        await displayMessage((def.useMessage) || "ぐっすりと眠った。8時間が経過し、体力も気力も半分ほどまで回復した。");
+      } else {
+        await displayMessage((def && def.useMessage) || "特に変わったことは無いようだ。");
+      }
     }
     
     async function openFurnitureActionMenu(inst) {
@@ -550,30 +823,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         return;
       }
       if (sub.next === "use") {
-        // ★要望対応：調理魔家電を使うと、料理タブと同じ仕様の料理モーダルを開く（cooking.js）
-        if (def && def.type === "cookingAppliance" && typeof openCookingModal === "function") {
-          await openCookingModal(def); // ★家電の大きさを渡す
-        } else if (def && def.type === "lighting") {
-          // ★要望対応：照明は使うたびにオン／オフが切り替わる（部屋の明るさに反映される）
-          inst.lightOn = (inst.lightOn === false);
-          changeSpeaker("");
-          await displayMessage(inst.lightOn ? "照明をつけた。" : "照明を消した。");
-        } else if (def && def.type === "bed") {
-          // ★要望対応：寝具を使うと8時間経過し、HP・SP・眠気・疲労度が「半分まで」回復する。回復するのは主人公だけ（仲間は対象外）。
-          //   HP・SPは現在値が最大の半分に届いていなければ半分まで引き上げ、眠気・疲労度は現在値が最大の半分を超えていれば半分まで下げる
-          //   （既に半分より良い状態なら、悪化させないようそのまま）
-          const g = player.gauges || {};
-          if (g.hp) g.hp.current = Math.max(g.hp.current, Math.floor(g.hp.max / 2));
-          if (g.sp) g.sp.current = Math.max(g.sp.current, Math.floor(g.sp.max / 2));
-          if (g.fatigue) g.fatigue.current = Math.min(g.fatigue.current, Math.floor(g.fatigue.max / 2));
-          if (g.sleepiness) g.sleepiness.current = Math.min(g.sleepiness.current, Math.floor(g.sleepiness.max / 2));
-          if (typeof advanceGameTime === "function") advanceGameTime(8); // player.js
-          if (typeof renderStatusHUD === "function") renderStatusHUD();
-          changeSpeaker("");
-          await displayMessage((def.useMessage) || "ぐっすりと眠った。8時間が経過し、体力も気力も半分ほどまで回復した。");
-        } else {
-          await displayMessage((def && def.useMessage) || "特に変わったことは無いようだ。");
-        }
+        await performFurnitureUseEffect(def, inst);
         resumeKeys(); render();
         return;
       }
@@ -585,6 +835,59 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       if (sub.next === "unplace") {
         inst.placement = null;
         await displayMessage(`「${def ? def.name : "？"}」を片付けた。`);
+        resumeKeys(); render();
+        return;
+      }
+      resumeKeys(); render();
+    }
+    
+    // ★要望対応：「さらに細かく編集する」で置いた固定設置物（階段・固定家具）を、カーソルモードで選んだ時のメニュー
+    async function openFixedItemActionMenu(item) {
+      pauseKeys();
+      if (typeof showMessageWindow === "function") showMessageWindow();
+      changeSpeaker("");
+      
+      if (item.kind === "stairs") {
+        const options = [];
+        if (item.direction === "up") options.push({ text: "上の階へ行く", next: "go" });
+        if (item.direction === "down") options.push({ text: "下の階へ行く", next: "go" });
+        options.push({ text: "留まる", next: "cancel", isBack: true });
+        await displayMessage("階段だ。");
+        const sub = await displayChoices(options);
+        if (sub.next === "go") {
+          const targetFloorPlan = ensureFloorPlan(area, item.targetFloor);
+          floorPlan = targetFloorPlan;
+          room = targetFloorPlan.rooms.find(r => r.id === targetFloorPlan.startRoomId) || targetFloorPlan.rooms[0];
+          cursor = { x: 0, y: 0 };
+          mode = "cursor";
+        }
+        resumeKeys(); render();
+        return;
+      }
+      
+      // item.kind === "furniture"
+      const def = findFurnitureDef(item.furnitureId);
+      const pseudoInst = { instanceId: item.id, furnitureId: item.furnitureId }; // ★収納機能（player.furnitureStorage）を固定家具のidキーでそのまま流用する
+      const options = [];
+      if (isFurnitureStorageType(def)) options.push({ text: "収納を開ける", next: "storage" });
+      else if (isFurnitureUsableType(def)) options.push({ text: "使用する", next: "use" });
+      if (!item.locked) options.push({ text: "移動する", next: "move" }); // ★要望対応：ロックされていなければプレイ中でも動かせる
+      options.push({ text: "やめる", next: "cancel", isBack: true });
+      await displayMessage(`「${def ? def.name : "？"}」` + (item.locked ? "（固定されていて動かせないようだ）" : ""));
+      const sub = await displayChoices(options);
+      
+      if (sub.next === "storage") {
+        await manageFurnitureStorage(pseudoInst); // furniture.js
+        resumeKeys(); render();
+        return;
+      }
+      if (sub.next === "use") {
+        await performFurnitureUseEffect(def, item);
+        resumeKeys(); render();
+        return;
+      }
+      if (sub.next === "move") {
+        placing = { fixedItem: item, def, rotation: 0, isNew: false };
         resumeKeys(); render();
         return;
       }
@@ -660,8 +963,10 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       else if (event.key === "ArrowRight") { event.preventDefault(); moveCursor(1, 0); }
       else if (event.key === "z" || event.key === "Z" || event.key === " ") {
         event.preventDefault();
+        const fixedAtCell = findFixedItemAt(room, cursor.x, cursor.y);
         const atCell = getFurnitureAtCell(room, cursor.x, cursor.y, null); // furniture.js
-        if (atCell) openFurnitureActionMenu(atCell);
+        if (fixedAtCell) openFixedItemActionMenu(fixedAtCell);
+        else if (atCell) openFurnitureActionMenu(atCell);
         else openUnplacedFurniturePicker();
       } else if (event.key === "x" || event.key === "X" || event.key === "Escape") {
         event.preventDefault();
