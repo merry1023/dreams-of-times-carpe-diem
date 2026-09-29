@@ -448,7 +448,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     
     function render() {
       if (typeof hideMessageWindow === "function") hideMessageWindow(); // ★要望対応：カーソル操作中はメッセージウィンドウが邪魔なので隠す
-      if (typeof renderRoomView === "function") renderRoomView(room, currentUiState()); // furniture.js
+      if (typeof renderRoomView === "function") renderRoomView(room, currentUiState(), floorPlan); // furniture.js
     }
     
     function toggleMode() {

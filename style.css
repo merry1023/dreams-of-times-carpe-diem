@@ -7016,7 +7016,7 @@ html, body {
 }
 
 .furniture-placement-block-outline {
-  border: 2px dashed #999;
+  border: 2px solid #999; /* ★要望対応：点線から実線に変更 */
   background-color: #4a4a4a; /* ★家具管理タブで色指定が無い時のデフォルト。指定があればJS側でこの背景色を上書きする */
 }
 
@@ -7076,6 +7076,16 @@ html, body {
   display: none !important;
 }
 
+/* ★要望対応：今いる部屋の名前を、もっと大きく分かりやすい場所（パネル最上部）に出す */
+.room-view-title {
+  margin: 0 0 8px 0;
+  color: #fff;
+  font-size: 20px;
+  font-weight: bold;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.9);
+  text-align: center;
+}
+
 .room-view-toolbar {
   display: flex;
   align-items: center;
@@ -7116,7 +7126,7 @@ html, body {
 
 .room-view-grid {
   display: grid;
-  gap: 2px;
+  gap: 0; /* ★要望対応：マスの間の黒い格子線を無くす（隙間を作らない） */
 }
 
 .room-view-cell {
@@ -7426,7 +7436,6 @@ html, body {
   top: 0;
   left: 0;
   display: grid;
-  gap: 2px; /* ★.room-view-gridのgapと同じにして、床のマスと位置を一致させる */
   pointer-events: none;
   z-index: 3;
 }
@@ -7444,4 +7453,52 @@ html, body {
 .cooking-tool-card.cooking-tool-too-big {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* ★要望対応：左下に間取り図（ミニマップ）を表示し、家の中で今どこにいるか分かりやすくする */
+.floorplan-minimap {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 2; /* ★room-view-panelと同じ階層（立ち絵より手前、メッセージウィンドウより奥） */
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.floorplan-minimap.hidden {
+  display: none !important;
+}
+
+.floorplan-minimap-title {
+  margin: 0 0 4px 0;
+  color: #ffe9a8;
+  font-size: 10px;
+  text-align: center;
+}
+
+.floorplan-minimap-grid {
+  display: grid;
+  gap: 3px;
+}
+
+.floorplan-minimap-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.floorplan-minimap-cell-empty {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.floorplan-minimap-cell-current {
+  background-color: #ffe066;
+  border-color: #fff;
+  box-shadow: 0 0 5px #ffe066;
 }
