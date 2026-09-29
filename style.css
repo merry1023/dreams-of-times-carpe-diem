@@ -7458,8 +7458,8 @@ html, body {
 /* ★要望対応：左下に間取り図（ミニマップ）を表示し、家の中で今どこにいるか分かりやすくする */
 .floorplan-minimap {
   position: fixed;
-  left: 12px;
-  bottom: 12px;
+  left: 24px;
+  bottom: 28px; /* ★要望対応：画面端から、もう少し距離を置いて浮かせる */
   z-index: 2; /* ★room-view-panelと同じ階層（立ち絵より手前、メッセージウィンドウより奥） */
   padding: 8px;
   background-color: rgba(0, 0, 0, 0.55);
@@ -7501,4 +7501,62 @@ html, body {
   background-color: #ffe066;
   border-color: #fff;
   box-shadow: 0 0 5px #ffe066;
+}
+
+/* ★要望対応：部屋の中の階段・ロックされた固定家具の見た目 */
+.room-view-stairs-block {
+  background-color: #8a7a5a !important;
+  border-style: double !important;
+}
+
+.room-view-fixed-locked {
+  box-shadow: inset 0 0 0 2px #999 !important;
+}
+
+/* ★シナリオエディタ「さらに細かく編集する」の設置グリッド */
+.fixeditem-editor-grid {
+  display: grid;
+  gap: 2px;
+  margin: 8px 0;
+}
+
+.fixeditem-editor-cell {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 8px;
+  line-height: 1.1;
+  color: #ddd;
+  background-color: #333;
+  border: 1px solid #555;
+  border-radius: 3px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.fixeditem-editor-cell-filled {
+  background-color: #5a4a2a;
+  border-color: #c9a15a;
+}
+
+.fixeditem-editor-cell-stairs {
+  background-color: #4a5a6a;
+  border-color: #7aa5c9;
+}
+
+.fixeditem-editor-cell-locked {
+  box-shadow: inset 0 0 0 2px #999;
+}
+
+.fixeditem-editor-cell-selected {
+  outline: 2px solid #ffc107;
+}
+
+.fixeditem-furniture-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  max-height: 160px;
+  overflow-y: auto;
 }
