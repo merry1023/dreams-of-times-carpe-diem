@@ -5279,6 +5279,14 @@ html, body {
   transition: none;
 }
 
+/* ★要望対応：進行度をゲージ（バー）ではなく、残り秒数のカウントダウン表示に変更 */
+.cooking-countdown {
+  font-size: 2.2em;
+  font-weight: bold;
+  color: #ffc107;
+  margin: 4px 0 0 0;
+}
+
 .crafting-recipe-row {
   text-align: left;
   padding: 8px 10px;
@@ -7008,7 +7016,7 @@ html, body {
 }
 
 .furniture-placement-block-outline {
-  border: 2px dashed #999;
+  border: 2px solid #999; /* ★要望対応：点線から実線に変更 */
   background-color: #4a4a4a; /* ★家具管理タブで色指定が無い時のデフォルト。指定があればJS側でこの背景色を上書きする */
 }
 
@@ -7068,6 +7076,16 @@ html, body {
   display: none !important;
 }
 
+/* ★要望対応：今いる部屋の名前を、もっと大きく分かりやすい場所（パネル最上部）に出す */
+.room-view-title {
+  margin: 0 0 8px 0;
+  color: #fff;
+  font-size: 20px;
+  font-weight: bold;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.9);
+  text-align: center;
+}
+
 .room-view-toolbar {
   display: flex;
   align-items: center;
@@ -7108,7 +7126,7 @@ html, body {
 
 .room-view-grid {
   display: grid;
-  gap: 2px;
+  gap: 0; /* ★要望対応：マスの間の黒い格子線を無くす（隙間を作らない） */
 }
 
 .room-view-cell {
@@ -7162,6 +7180,9 @@ html, body {
   width: 720px;
   max-width: 94vw;
   max-height: 92vh; /* ★要望対応：この箱自体の高さも画面内に収まるよう上限をつけ、はみ出た分は箱ごとスクロールできるようにする */
+  height: 92vh; /* ★要望対応：倉庫/インベントリのグリッドが表示できるマス数を増やすため、箱を画面いっぱいまで使う */
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   background-color: #1a1a1a;
@@ -7181,11 +7202,16 @@ html, body {
 .furniture-storage-panes {
   display: flex;
   gap: 12px;
+  flex: 1;
+  min-height: 0;
 }
 
 .furniture-storage-pane {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .furniture-storage-pane-label {
@@ -7203,11 +7229,14 @@ html, body {
   border: 1px solid #444;
   border-radius: 6px;
   padding: 6px;
-  min-height: 220px;
-  max-height: 44vh;
+  flex: 1; /* ★要望対応：以前は max-height:44vh 固定で約20マスしか見えなかったので、残りの高さをすべて使う */
+  min-height: 160px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain; /* ★グリッドの端でスクロールが外側の箱に連鎖して動かなくなるのを防ぐ */
+  touch-action: pan-y; /* ★スマホ・タブレットでの縦スワイプによるスクロールを明示的に許可 */
   align-content: start;
+  grid-auto-rows: 50px; /* ★行の高さを固定して、大量のアイテムでも行が潰れないようにする */
 }
 
 .furniture-storage-grid-active {
@@ -7412,6 +7441,16 @@ html, body {
   margin: 8px 0 0 0;
 }
 
+/* ★要望対応：部屋の暗さ（照明の輝度・範囲に応じて場所ごとに明るくなる。furniture.jsのbuildRoomDarknessOverlayEl） */
+.room-view-darkness {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  pointer-events: none;
+  z-index: 3;
+}
+
 /* ★要望対応：本編プレイ画面（room-view-panel）で、部屋のドアを壁に貼り付いたブロックとして表示する */
 .room-view-door {
   position: absolute;
@@ -7419,4 +7458,125 @@ html, body {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
   pointer-events: none;
   z-index: 2;
+}
+
+/* ★要望対応：調理魔家電より大きくて使えない料理道具 */
+.cooking-tool-card.cooking-tool-too-big {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ★要望対応：左下に間取り図（ミニマップ）を表示し、家の中で今どこにいるか分かりやすくする */
+.floorplan-minimap {
+  position: fixed;
+  left: 24px;
+  bottom: 28px; /* ★要望対応：画面端から、もう少し距離を置いて浮かせる */
+  z-index: 2; /* ★room-view-panelと同じ階層（立ち絵より手前、メッセージウィンドウより奥） */
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.floorplan-minimap.hidden {
+  display: none !important;
+}
+
+.floorplan-minimap-title {
+  margin: 0 0 4px 0;
+  color: #ffe9a8;
+  font-size: 10px;
+  text-align: center;
+}
+
+.floorplan-minimap-grid {
+  display: grid;
+  gap: 3px;
+}
+
+.floorplan-minimap-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.floorplan-minimap-cell-empty {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.floorplan-minimap-cell-current {
+  background-color: #ffe066;
+  border-color: #fff;
+  box-shadow: 0 0 5px #ffe066;
+}
+
+/* ★要望対応：部屋の中の階段・ロックされた固定家具の見た目 */
+.room-view-stairs-block {
+  background-color: #8a7a5a !important;
+  border-style: double !important;
+}
+
+.room-view-fixed-locked {
+  box-shadow: inset 0 0 0 2px #999 !important;
+}
+
+/* ★シナリオエディタ「さらに細かく編集する」の設置グリッド */
+.fixeditem-editor-grid {
+  display: grid;
+  gap: 2px;
+  margin: 8px 0;
+}
+
+.fixeditem-editor-cell {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 8px;
+  line-height: 1.1;
+  color: #ddd;
+  background-color: #333;
+  border: 1px solid #555;
+  border-radius: 3px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.fixeditem-editor-cell-filled {
+  background-color: #5a4a2a;
+  border-color: #c9a15a;
+}
+
+.fixeditem-editor-cell-stairs {
+  background-color: #4a5a6a;
+  border-color: #7aa5c9;
+}
+
+.fixeditem-editor-cell-locked {
+  box-shadow: inset 0 0 0 2px #999;
+}
+
+.fixeditem-editor-cell-selected {
+  outline: 2px solid #ffc107;
+}
+
+.fixeditem-furniture-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+/* ★要望対応：天井選択モード。天井を見上げているイメージが伝わるよう、床を少し青く暗くする */
+.room-view-grid-ceiling-mode {
+  filter: brightness(0.7) saturate(0.6) hue-rotate(190deg) brightness(1.3);
+}
+
+.room-view-ceiling-block {
+  box-shadow: inset 0 0 0 2px #7aa5ff;
 }

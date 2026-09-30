@@ -60,6 +60,9 @@ let scenarioBuildSubView = "characters"; // ★右（サブ）側。常時表示
 let scenarioBuildEditingChapterId = null;
 let scenarioBuildEditingMapAreaId = null; // ★マップ設定の専用全画面エディタで、今どのエリアを編集中か
 let scenarioBuildSelectedRoomId = null; // ★間取りエディタで、今どの部屋を選択中か（realestate floorplan）
+let scenarioBuildSelectedFloor = 0; // ★要望対応：間取りエディタで、今どの階を編集中か（0が基準の階、floorplan.js）
+let scenarioBuildFixedItemEditorOpen = false; // ★要望対応：「さらに細かく編集する」（階段・固定家具の設置）を開いているか
+let scenarioBuildFixedItemSelectedCell = null; // ★要望対応：「さらに細かく編集する」で選択中のマス（{x,y}）
 let scenarioBuildEditingOptionRef = null; // ★選択肢の専用全画面エディタで、今どの選択肢を編集中か（{ chapterId, blockId, optionId }）
 let scenarioBuildEditingIfRef = null; // ★ifブロックの専用全画面エディタで、今どのブロックを編集中か（{ chapterId, blockId }）
 let scenarioBuildEditingSkillIfBlockId = null; // ★特殊技のifブロック専用全画面エディタで、今編集中のブロックid（対象の技はscenarioBuildEditingSkillIdから分かる）
@@ -1189,13 +1192,17 @@ function ensureCustomItemsRegistered() {
       //   アイテム管理タブで耐久度・スロット数・バフ等を設定しても実際のゲームには反映されていなかった
       toolDurability: item.category === "cookingTool" ? (Number(item.toolDurability) || existing.toolDurability || 30) : existing.toolDurability,
       toolSlotCount: item.category === "cookingTool" ? (Number(item.toolSlotCount) || existing.toolSlotCount || 3) : existing.toolSlotCount,
+      // ★要望対応：料理道具の「大きさ」。使う調理魔家電の大きさ以下でないと使えない（未設定は1）
+      toolSize: item.category === "cookingTool" ? (Number(item.toolSize) || existing.toolSize || 1) : existing.toolSize,
       foodBuffKind: item.category === "food" ? (item.foodBuffKind || existing.foodBuffKind || "") : existing.foodBuffKind,
       foodBuffDuration: item.category === "food" ? (Number(item.foodBuffDuration) || existing.foodBuffDuration || 3) : existing.foodBuffDuration,
       foodBuffPower: item.category === "food" ? (Number(item.foodBuffPower) || existing.foodBuffPower || 0) : existing.foodBuffPower,
       isRecipeItem: (typeof item.isRecipeItem === "boolean") ? item.isRecipeItem : !!existing.isRecipeItem,
       unlockRecipeId: item.isRecipeItem ? (item.unlockRecipeId || existing.unlockRecipeId || "") : existing.unlockRecipeId,
       // ★要望対応：種類が「本」のアイテムの中身（ページごとの本文）。アイテム編集の専用エディタ（buildBookPagesEditor）で追加・削除する
-      pages: item.category === "book" ? (Array.isArray(item.pages) ? item.pages : (existing.pages || [])) : existing.pages
+      pages: item.category === "book" ? (Array.isArray(item.pages) ? item.pages : (existing.pages || [])) : existing.pages,
+      // ★要望対応：本のジャンル分け（種類が「本」の時だけ意味を持つ。分類・雰囲気付け用でゲーム性には影響しない）
+      bookGenre: item.category === "book" ? (item.bookGenre || existing.bookGenre || "その他") : existing.bookGenre
     };
   });
 }
@@ -5211,6 +5218,23 @@ function getBgmManagerConfig() {
   };
 }
 
+// ★要望対応：本の種類（ジャンル）を増やしてほしい、という要望向けに用意した選択肢一覧。
+//   ゲーム性（効果）には影響せず、本棚に並べた時の雰囲気付け・分類用。items.js側の既存の本アイテムもこの分類に沿っている
+const BOOK_GENRE_OPTIONS = [
+  { value: "冒険譚", label: "冒険譚" },
+  { value: "恋愛小説", label: "恋愛小説" },
+  { value: "推理小説", label: "推理小説" },
+  { value: "図鑑", label: "図鑑" },
+  { value: "魔法書", label: "魔法書" },
+  { value: "詩集", label: "詩集" },
+  { value: "怪談・ホラー", label: "怪談・ホラー" },
+  { value: "商売指南", label: "商売指南" },
+  { value: "童話", label: "童話" },
+  { value: "神話・歴史書", label: "神話・歴史書" },
+  { value: "記録・手記", label: "記録・手記" },
+  { value: "その他", label: "その他" }
+];
+
 function getItemManagerConfig() {
   const categoryOptions = [
     { value: "herb", label: "薬草" }, { value: "potion", label: "ポーション" },
@@ -5255,13 +5279,17 @@ function getItemManagerConfig() {
       // ★要望対応：料理タブ用。種類を「料理道具」にした時だけ意味を持つ
       { key: "toolDurability", label: "（料理道具）耐久度", type: "number", placeholder: "30" },
       { key: "toolSlotCount", label: "（料理道具）材料スロット数", type: "number", placeholder: "3" },
+      { key: "toolSize", label: "（料理道具）大きさ（調理魔家電の大きさ以下でないと使えない）", type: "number", placeholder: "1" },
       // ★要望対応：種類を「料理」にした時だけ意味を持つ、戦闘中だけの自己バフ（技の自己強化と同じ仕組みを流用）
       { key: "foodBuffKind", label: "（料理）戦闘中バフの種類", type: "select", options: getSkillSelfBuffKindOptions() },
       { key: "foodBuffDuration", label: "（料理）バフの持続ターン数", type: "number", placeholder: "3" },
       { key: "foodBuffPower", label: "（料理）バフの効果量", type: "number", placeholder: "5" },
       // ★要望対応：このアイテムを「使う」と、指定した料理レシピがレシピ帳に登録される（レシピ発見アイテム）
       { key: "isRecipeItem", label: "料理レシピとして扱う（使うとレシピ帳に登録）", type: "checkbox" },
-      { key: "unlockRecipeId", label: "（レシピ）登録される料理レシピのID", type: "text", placeholder: "レシピ管理タブで確認できるID" }
+      { key: "unlockRecipeId", label: "（レシピ）登録される料理レシピのID", type: "text", placeholder: "レシピ管理タブで確認できるID" },
+      // ★要望対応：本の種類（ジャンル）を増やしてほしい、という要望に合わせて追加。
+      //   ゲーム性には影響しない分類用の項目（本棚での見た目・雰囲気付け用）。種類を「本」にした時だけ意味を持つ
+      { key: "bookGenre", label: "（本）ジャンル", type: "select", options: BOOK_GENRE_OPTIONS }
     ],
     newEntity: () => ({ id: generateId("item"), name: "", category: "material", description: "", rank: "F", listedPrice: 0, trueValue: 0, unsellable: false }),
     quickAddOptions: categoryOptions.map(opt => ({
@@ -5275,7 +5303,9 @@ function getItemManagerConfig() {
       return {
         name: master.name, category: master.category, description: master.description,
         rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue, unsellable: !!master.unsellable,
-        stackable: master.stackable
+        stackable: master.stackable,
+        bookGenre: master.bookGenre,
+        pages: Array.isArray(master.pages) ? master.pages.slice() : undefined
       };
     }
   };
@@ -5331,8 +5361,8 @@ const FURNITURE_TYPE_DEFS = [
   { value: "storage", label: "収納" },
   { value: "bookshelf", label: "本棚（「本」の種類のアイテムのみ収納可能）" },
   { value: "seating", label: "座る／腰掛ける" },
-  { value: "bed", label: "寝具（休む）" },
-  { value: "lighting", label: "照明" },
+  { value: "bed", label: "寝具（使うと8時間経過し、主人公のHP・SP・眠気・疲労度が半分まで回復）" },
+  { value: "lighting", label: "照明（輝度・範囲を設定すると、置いた部屋が明るくなる。使うとオン／オフが切り替わる）" },
   { value: "appliance", label: "家電・道具" },
   { value: "cookingAppliance", label: "調理魔家電（レンジ・コンロ等。使うと料理画面を開く）" },
   { value: "toilet", label: "トイレ（部屋の種類が「便所」の部屋にしか置けない）" },
@@ -5365,6 +5395,10 @@ function getFurnitureManagerConfig() {
       { key: "width", label: "横（マス）", type: "number", placeholder: "1" },
       { key: "height", label: "縦（マス）", type: "number", placeholder: "1" },
       { key: "type", label: "種類", type: "select", options: FURNITURE_TYPE_DEFS },
+      { key: "applianceSize", label: "大きさ（種類が調理魔家電の場合のみ。これより大きい「大きさ」の料理道具は使えない）", type: "number", placeholder: "3" },
+      { key: "isCeiling", label: "天井に取り付ける（チェックすると、床ではなく「天井選択モード」でのみ設置・選択できるようになる。照明なら床にも明かりが届く）", type: "checkbox" },
+      { key: "luminance", label: "輝度（種類が照明の場合のみ。0〜30。大きいほど明るい）", type: "number", placeholder: "15" },
+      { key: "lightRange", label: "範囲（種類が照明の場合のみ。照らせるマス数。中心から外に向かって暗くなり、範囲の外は照らせない）", type: "number", placeholder: "4" },
       { key: "storageSlots", label: "収納数（種類が収納・本棚の場合のみ使用）", type: "number", placeholder: "10" },
       { key: "useMessage", label: "使用時のメッセージ（種類が収納・本棚・装飾品・調理魔家電以外の場合のみ使用）", type: "text", placeholder: "例：しばらく腰掛けて休んだ。" }
     ],

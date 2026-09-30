@@ -13,11 +13,17 @@
 // ★要望対応：料理タブを廃止し、「調理魔家電」を使った時だけ開くモーダルに変更した。
 //   仕様（道具選び→材料スロット→作る）自体は料理タブの時と同じで、renderCookingTab等はそのまま流用する。
 let isCookingModalOpen = false;
+let cookingApplianceSize = Infinity; // ★今開いている調理魔家電の大きさ。これより大きい料理道具は使えない
+
+// ★要望対応：料理道具が今の調理魔家電に対して大きすぎないか
+function isCookingToolTooBig(master) {
+  return (Number(master && master.toolSize) || 1) > cookingApplianceSize;
+}
 let cookingModalResolve = null;
 
 // ★調理魔家電（furniture.js/floorplan.js）から呼ぶ。開いている間はisGameDialogOpenを立てて、
 //   裏の部屋画面や町の背景が矢印キー等で動いてしまわないようにする
-function openCookingModal() {
+function openCookingModal(applianceDef) {
   return new Promise(async resolve => {
     const blockedReason = isCookingBlocked();
     if (blockedReason) {
@@ -29,6 +35,7 @@ function openCookingModal() {
     const overlay = document.getElementById("cooking-modal-overlay");
     if (!overlay) { resolve(); return; }
     cookingModalResolve = resolve;
+    cookingApplianceSize = applianceDef ? (Number(applianceDef.applianceSize) || 1) : Infinity; // ★要望対応：使う家電の大きさ
     isCookingModalOpen = true;
     isGameDialogOpen = true; // mainfunc.js（他画面のキー操作を止める共通フラグを流用して背景をロックする）
     cookingSelectedToolInstanceId = null;
@@ -54,6 +61,21 @@ function closeCookingModal() {
 
 const cookingModalCloseBtn = document.getElementById("cooking-modal-close");
 if (cookingModalCloseBtn) cookingModalCloseBtn.onclick = (event) => { event.stopPropagation(); closeCookingModal(); };
+
+// ★要望対応：料理モーダルを開いたまま結果メッセージ等を表示すると、通常のメッセージウィンドウは
+//   z-indexがモーダルより低く裏に隠れて見えなくなってしまうため、メッセージを出す間だけ一時的に
+//   モーダルを隠し、表示が終わったら（モーダルがまだ開いていれば）元に戻す
+async function cookingMessage(text) {
+  const overlay = document.getElementById("cooking-modal-overlay");
+  if (overlay) overlay.classList.add("hidden"); // ★一連のメッセージを読み終えるまで隠したままにする（restoreCookingOverlayで戻す）
+  await displayMessage(text, { allowSubFocus: true });
+}
+
+// ★メッセージ表示のために隠していた料理モーダルを、モーダルがまだ開いていれば元に戻す
+function restoreCookingOverlay() {
+  const overlay = document.getElementById("cooking-modal-overlay");
+  if (overlay && isCookingModalOpen) overlay.classList.remove("hidden");
+}
 
 let cookingSelectedToolInstanceId = null;
 // ★選んだスロットの中身。[{ itemId, count }, ...]（未選択のスロットはitemId: ""）
@@ -104,6 +126,8 @@ function getCookableMaterialOptions() {
 }
 
 function selectCookingTool(instanceId) {
+  const picked = getOwnedCookingTools().find(t => t.slot.instanceId === instanceId);
+  if (picked && isCookingToolTooBig(picked.master)) return; // ★家電より大きい道具は使えない
   cookingSelectedToolInstanceId = instanceId;
   const tool = getSelectedCookingTool();
   // ★要望対応：スロット数を設定し忘れていても材料が1つしか選べなくならないよう、未設定時は既定値3を使う（アイテム編集欄のプレースホルダーと合わせる）
@@ -162,41 +186,45 @@ function getCookingFocusList() {
 }
 
 // ★要望対応：「作る」を押してから、レシピごとに指定した秒数ぶんゲージが溜まるアニメーションを見せて待たせる
+// ★要望対応：進行度をゲージ（バー）ではなく、残り秒数のカウントダウン表示に変更した
 function waitForCookingGauge(durationSeconds) {
   return new Promise(resolve => {
     const root = document.getElementById("cooking-root");
     if (!root) { resolve(); return; }
-    const durationMs = Math.max(150, (Number(durationSeconds) || 0) * 1000);
+    const totalSeconds = Math.max(1, Math.ceil(Number(durationSeconds) || 0));
+    const durationMs = totalSeconds * 1000;
     const start = Date.now();
     
-    // ★バグ修正：以前は毎フレームroot.innerHTMLを丸ごと作り直していたため、CSSのtransitionが
-    //   効かず（同じ要素の値が変化する時にしか働かない）、ゲージが滑らかに溜まっていくように
-    //   見えなかった。要素は最初に一度だけ作り、以降はfillの幅（style.width）だけを更新する
     root.innerHTML = "";
     const wrap = document.createElement("div");
     wrap.className = "cooking-gauge-wrap";
     const label = document.createElement("p");
     label.textContent = "調理中……";
     wrap.appendChild(label);
-    const outer = document.createElement("div");
-    outer.className = "gauge-bar cooking-gauge-outer";
-    const inner = document.createElement("div");
-    inner.className = "gauge-fill cooking-gauge-fill";
-    inner.style.width = "0%";
-    outer.appendChild(inner);
-    wrap.appendChild(outer);
+    const countdownEl = document.createElement("p");
+    countdownEl.className = "cooking-countdown";
+    wrap.appendChild(countdownEl);
     root.appendChild(wrap);
     
+    let lastShownSeconds = -1;
+    function render(remainingSeconds) {
+      if (remainingSeconds === lastShownSeconds) return;
+      lastShownSeconds = remainingSeconds;
+      countdownEl.textContent = `残り${remainingSeconds}秒`;
+    }
+    render(totalSeconds);
+    
     function tick() {
-      // ★調理中に別の描画（タブ切り替えで戻ってきた時のrenderCookingTab()等）でroot自体や
-      //   このゲージ要素が入れ替わっていたら、以降は無駄に動かし続けずそのまま終わらせる
-      if (!document.body.contains(inner)) {
+      // ★調理中に別の描画（renderCookingTab()等）でroot自体やこのカウントダウン要素が
+      //   入れ替わっていたら、以降は無駄に動かし続けずそのまま終わらせる
+      if (!document.body.contains(countdownEl)) {
         resolve();
         return;
       }
-      const fraction = Math.min(1, (Date.now() - start) / durationMs);
-      inner.style.width = `${Math.min(100, Math.max(0, fraction * 100))}%`;
-      if (fraction >= 1) {
+      const elapsedMs = Date.now() - start;
+      const remainingSeconds = Math.max(0, Math.ceil((durationMs - elapsedMs) / 1000));
+      render(remainingSeconds);
+      if (elapsedMs >= durationMs) {
         resolve();
         return;
       }
@@ -214,11 +242,12 @@ async function attemptCook() {
   //   画面上どこにも見えず、「ゲージや完成メッセージがまともに表示されない」ように見えていた。
   //   スキル・装備・インベントリタブと同じrunWithLocationMenuHidden()で包み、必要な間だけ
   //   行き先メニューを一時的に隠してメッセージを見せるようにする
+  try {
   await runWithLocationMenuHidden(async () => {
     const blockedReason = isCookingBlocked();
     if (blockedReason) {
       changeSpeaker("");
-      await displayMessage(blockedReason, { allowSubFocus: true });
+      await cookingMessage(blockedReason);
       return;
     }
     
@@ -228,7 +257,7 @@ async function attemptCook() {
     const filled = cookingSlotPicks.filter(p => p.itemId && p.count > 0);
     if (filled.length === 0) {
       changeSpeaker("");
-      await displayMessage("材料を何も置いていないようだ。", { allowSubFocus: true });
+      await cookingMessage("材料を何も置いていないようだ。");
       return;
     }
     
@@ -239,7 +268,7 @@ async function attemptCook() {
       const needed = pick.count * batchCount;
       if (getItemCount(pick.itemId) < needed) { // crafting.js
         changeSpeaker("");
-        await displayMessage(`「${ITEM_MASTER[pick.itemId].name}」が足りないようだ（必要：${needed}個）。`, { allowSubFocus: true });
+        await cookingMessage(`「${ITEM_MASTER[pick.itemId].name}」が足りないようだ（必要：${needed}個）。`);
         return;
       }
     }
@@ -247,7 +276,7 @@ async function attemptCook() {
     // ★対象の道具向けレシピの中から、個数までぴったり一致するものを探す（ゲージの待ち時間はここで先に決める）
     const matchedRecipe = getMatchedCookingRecipe(tool, cookingSlotPicks);
     
-    // ★要望対応：レシピ管理タブで指定した秒数ぶん、ゲージが溜まるまで待たせる（一致しなかった時は既定の短い待ち時間）
+    // ★要望対応：レシピ管理タブで指定した秒数ぶん、カウントダウンで待たせる（一致しなかった時は既定の短い待ち時間）
     const waitSeconds = matchedRecipe && matchedRecipe.cookTimeSeconds != null ? Number(matchedRecipe.cookTimeSeconds) : (matchedRecipe ? 3 : 2);
     cookingGaugeActive = true;
     await waitForCookingGauge(waitSeconds);
@@ -267,12 +296,12 @@ async function attemptCook() {
     const addOk = addItem(resultItemId, resultCount);
     const resultMaster = ITEM_MASTER[resultItemId];
     if (addOk) {
-      await displayMessage(`「${resultMaster ? resultMaster.name : resultItemId}」が${resultCount}個出来上がった！`, { allowSubFocus: true });
+      await cookingMessage(`「${resultMaster ? resultMaster.name : resultItemId}」が${resultCount}個出来上がった！`);
     } else {
-      await displayMessage("……持ち物がいっぱいで、出来上がった料理を持てなかった。もったいないことをした……", { allowSubFocus: true });
+      await cookingMessage("……持ち物がいっぱいで、出来上がった料理を持てなかった。もったいないことをした……");
     }
     if (durabilityResult.broke) {
-      await displayMessage(`「${tool.master.name}」は、ついに使い物にならなくなってしまった……`, { allowSubFocus: true });
+      await cookingMessage(`「${tool.master.name}」は、ついに使い物にならなくなってしまった……`);
       cookingSelectedToolInstanceId = null;
       cookingSlotPicks = [];
       cookingCursorIndex = 0;
@@ -288,6 +317,9 @@ async function attemptCook() {
     renderStatusHUD();
     renderCookingTab();
   });
+  } finally {
+    restoreCookingOverlay();
+  }
 }
 
 // ★要望対応：料理タブのキーボード操作。↑↓でカーソル移動、←→で選択中の項目の値を変える、
@@ -297,6 +329,23 @@ function handleCookingKeyDown(event) {
   if (!isCookingModalOpen) return; // ★調理魔家電を使ってモーダルを開いている間だけ有効（料理タブは廃止した）
   if (event.repeat) return;
   if (cookingGaugeActive) return; // ★ゲージが溜まっている間・結果メッセージ表示中は操作させない
+  
+  // ★バグ修正：Xキーでモーダルを閉じられなかった。料理道具が1つも無い（フォーカス対象が空）時や、
+  //   戦闘中扱いの時に、下の早期returnでキャンセルが無視されていたため、キャンセル判定を最優先で行う
+  const isCancelKey = (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(event.key)) || event.key === "x" || event.key === "X" || event.key === "Escape";
+  if (isCancelKey && cookingMaterialPickerSlotIndex === null) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const fl = isCookingBlocked() ? [] : getCookingFocusList();
+    const cur = fl.length > 0 ? fl[Math.max(0, Math.min(cookingCursorIndex, fl.length - 1))] : null;
+    if (cur && cur.type === "slot" && cookingSlotPicks[cur.index] && cookingSlotPicks[cur.index].itemId) {
+      cookingSlotPicks[cur.index] = { itemId: "", count: 1 };
+      renderCookingTab();
+    } else {
+      closeCookingModal();
+    }
+    return;
+  }
   if (isCookingBlocked()) return; // ★戦闘中・シナリオ再生中はここでも操作させない
   
   // ★要望対応：材料ピッカー（インベントリ風グリッド）表示中も、鍵盤（↑↓←→で移動・決定・キャンセル）で選べるようにする
@@ -401,7 +450,7 @@ function handleCookingKeyDown(event) {
     }
   }
 }
-window.addEventListener("keydown", handleCookingKeyDown);
+window.addEventListener("keydown", handleCookingKeyDown, true); // ★キャプチャ段階で先に受け取り、他の画面のキー処理に横取りされないようにする
 
 function renderCookingTab() {
   const root = document.getElementById("cooking-root");
@@ -451,7 +500,9 @@ function renderCookingTab() {
       card.type = "button";
       const isCursorHere = currentFocus && currentFocus.type === "tool" && currentFocus.index === toolIndex;
       const isSelected = slot.instanceId === cookingSelectedToolInstanceId;
-      card.className = "cooking-tool-card" + (isSelected ? " selected" : "") + (isCursorHere ? " cooking-cursor" : "");
+      const tooBig = isCookingToolTooBig(master);
+      card.className = "cooking-tool-card" + (isSelected ? " selected" : "") + (isCursorHere ? " cooking-cursor" : "") + (tooBig ? " cooking-tool-too-big" : "");
+      if (tooBig) card.title = "この調理魔家電には大きすぎて使えない";
       const nameLine = document.createElement("span");
       nameLine.className = "cooking-tool-name-line";
       if (isSelected) {
@@ -462,7 +513,7 @@ function renderCookingTab() {
       }
       const nameEl = document.createElement("span");
       nameEl.className = "cooking-tool-name";
-      nameEl.textContent = `${master.name}（スロット${Math.max(1, Number(master.toolSlotCount) || 3)}）`;
+      nameEl.textContent = `${master.name}（スロット${Math.max(1, Number(master.toolSlotCount) || 3)}／大きさ${Number(master.toolSize) || 1}）` + (tooBig ? "　※この家電には大きすぎて使えない" : "");
       nameLine.appendChild(nameEl);
       const maxDurability = Math.max(1, Number(master.toolDurability) || 30);
       const durability = slot.durability != null ? slot.durability : maxDurability;
