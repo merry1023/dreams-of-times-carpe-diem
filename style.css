@@ -7180,6 +7180,9 @@ html, body {
   width: 720px;
   max-width: 94vw;
   max-height: 92vh; /* ★要望対応：この箱自体の高さも画面内に収まるよう上限をつけ、はみ出た分は箱ごとスクロールできるようにする */
+  height: 92vh; /* ★要望対応：倉庫/インベントリのグリッドが表示できるマス数を増やすため、箱を画面いっぱいまで使う */
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   background-color: #1a1a1a;
@@ -7199,11 +7202,16 @@ html, body {
 .furniture-storage-panes {
   display: flex;
   gap: 12px;
+  flex: 1;
+  min-height: 0;
 }
 
 .furniture-storage-pane {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .furniture-storage-pane-label {
@@ -7221,11 +7229,14 @@ html, body {
   border: 1px solid #444;
   border-radius: 6px;
   padding: 6px;
-  min-height: 220px;
-  max-height: 44vh;
+  flex: 1; /* ★要望対応：以前は max-height:44vh 固定で約20マスしか見えなかったので、残りの高さをすべて使う */
+  min-height: 160px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain; /* ★グリッドの端でスクロールが外側の箱に連鎖して動かなくなるのを防ぐ */
+  touch-action: pan-y; /* ★スマホ・タブレットでの縦スワイプによるスクロールを明示的に許可 */
   align-content: start;
+  grid-auto-rows: 50px; /* ★行の高さを固定して、大量のアイテムでも行が潰れないようにする */
 }
 
 .furniture-storage-grid-active {
