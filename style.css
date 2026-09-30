@@ -7156,6 +7156,36 @@ html, body {
   max-width: 320px;
 }
 
+/* ★要望対応：矢印キーの代わりに使える方向ボタン（スマホ等キーボードが無い環境向け） */
+.room-view-dpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.room-view-dpad-row {
+  display: flex;
+  gap: 28px;
+}
+
+.room-view-dpad-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.room-view-dpad-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
 /* ★要望対応：倉庫⇔インベントリのアイテム移動画面（furniture.js manageFurnitureStorage）。
    サブ画面インベントリタブのスロット見た目（inventory-slot等）を流用した2ペイン構成 */
 .furniture-storage-overlay {

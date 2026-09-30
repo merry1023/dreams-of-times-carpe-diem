@@ -258,6 +258,27 @@ function renderRoomView(room, uiState, floorPlan) {
       });
       panel.appendChild(legendEl);
     }
+    
+    // ★要望対応：スマホなど矢印キーが使えない環境でも操作できるよう、矢印キーと同じ働きをする方向ボタンを出す
+    if (typeof uiState.onDirection === "function") {
+      const dpad = document.createElement("div");
+      dpad.className = "room-view-dpad";
+      const makeBtn = (label, dirKey, extraClass) => {
+        const btn = document.createElement("button");
+        btn.className = "room-view-dpad-btn" + (extraClass ? " " + extraClass : "");
+        btn.textContent = label;
+        btn.onclick = (event) => { event.stopPropagation(); uiState.onDirection(dirKey); };
+        return btn;
+      };
+      dpad.appendChild(makeBtn("↑", "up", "room-view-dpad-up"));
+      const midRow = document.createElement("div");
+      midRow.className = "room-view-dpad-row";
+      midRow.appendChild(makeBtn("←", "left"));
+      midRow.appendChild(makeBtn("→", "right"));
+      dpad.appendChild(midRow);
+      dpad.appendChild(makeBtn("↓", "down", "room-view-dpad-down"));
+      panel.appendChild(dpad);
+    }
   }
   
   const roomW = room.width || 1, roomH = room.height || 1;
