@@ -5232,6 +5232,7 @@ const BOOK_GENRE_OPTIONS = [
   { value: "童話", label: "童話" },
   { value: "神話・歴史書", label: "神話・歴史書" },
   { value: "記録・手記", label: "記録・手記" },
+  { value: "修行記", label: "修行記" },
   { value: "その他", label: "その他" }
 ];
 
