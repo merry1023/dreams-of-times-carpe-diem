@@ -665,7 +665,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         return {
           mode: "cursor",
           modeLabel: "カーソルモード",
-          legend: ["↑↓←→：カーソル移動", "Z：家具を選ぶ／空きマスなら新しく置く", "G：モード切替（次は天井選択）", "X：家を出る"],
+          legend: ["↑↓←→：カーソル移動", "Z：家具を選ぶ／空きマスなら新しく置く", "G：モード切替（次は天井選択）", "L：家中の天井照明を点ける", "X：家を出る"],
           cursor,
           onToggleMode: toggleMode,
           onLeave: leaveHouse,
@@ -677,7 +677,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         return {
           mode: "ceiling",
           modeLabel: "天井選択モード",
-          legend: ["↑↓←→：カーソル移動", "Z：天井の家具を選ぶ／空きマスなら新しく置く", "G：モード切替（次は部屋移動）", "X：家を出る"],
+          legend: ["↑↓←→：カーソル移動", "Z：天井の家具を選ぶ／空きマスなら新しく置く", "G：モード切替（次は部屋移動）", "L：家中の天井照明を点ける", "X：家を出る"],
           cursor,
           onToggleMode: toggleMode,
           onLeave: leaveHouse,
@@ -687,7 +687,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       return {
         mode: "move",
         modeLabel: "部屋移動モード",
-        legend: ["↑↓←→：ドアの方向へ移動", "G：モード切替（次はカーソルモード）", "X：家を出る"],
+        legend: ["↑↓←→：ドアの方向へ移動", "G：モード切替（次はカーソルモード）", "L：家中の天井照明を点ける", "X：家を出る"],
         onToggleMode: toggleMode,
         onLeave: leaveHouse,
         hint: `${room.name || "部屋"}にいる。${describeDoorHint()}`
@@ -697,6 +697,25 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     function render() {
       if (typeof hideMessageWindow === "function") hideMessageWindow(); // ★要望対応：カーソル操作中はメッセージウィンドウが邪魔なので隠す
       if (typeof renderRoomView === "function") renderRoomView(room, currentUiState(), floorPlan); // furniture.js
+    }
+    
+    // ★要望対応：Lキーで、この家（area）の全ての階・全ての部屋にある「天井の照明」を一斉に点ける
+    function turnOnAllCeilingLights() {
+      const floors = (area.floorPlans && typeof area.floorPlans === "object") ? Object.values(area.floorPlans) : [floorPlan];
+      floors.forEach(fp => {
+        if (!fp || !Array.isArray(fp.rooms)) return;
+        fp.rooms.forEach(r => {
+          getRoomPlacedFurniture(r.id).forEach(inst => { // furniture.js
+            const def = findFurnitureDef(inst.furnitureId);
+            if (def && def.type === "lighting" && def.isCeiling) inst.lightOn = true;
+          });
+          (Array.isArray(r.fixedItems) ? r.fixedItems : []).forEach(item => {
+            if (item.kind !== "furniture") return;
+            const def = findFurnitureDef(item.furnitureId);
+            if (def && def.type === "lighting" && def.isCeiling) item.lightOn = true;
+          });
+        });
+      });
     }
     
     function toggleMode() {
@@ -974,6 +993,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       }
       
       if (event.key === "g" || event.key === "G") { event.preventDefault(); toggleMode(); return; }
+      if (event.key === "l" || event.key === "L") { event.preventDefault(); turnOnAllCeilingLights(); render(); return; } // ★要望対応：Lキーで、この家の全部屋の天井の照明を一斉に点ける
       
       if (mode === "move") {
         if (event.key === "ArrowUp") { event.preventDefault(); moveDoorDirection("north"); }
