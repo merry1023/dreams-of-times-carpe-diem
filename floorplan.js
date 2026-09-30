@@ -86,8 +86,13 @@ function ensureRoomFixedItems(room) {
   return room.fixedItems;
 }
 
-function findFixedItemAt(room, x, y) {
-  return ensureRoomFixedItems(room).find(it => x >= it.x && x < it.x + (it.w || 1) && y >= it.y && y < it.y + (it.h || 1)) || null;
+function findFixedItemAt(room, x, y, isCeiling) {
+  return ensureRoomFixedItems(room).find(it => {
+    if (x < it.x || x >= it.x + (it.w || 1) || y < it.y || y >= it.y + (it.h || 1)) return false;
+    const itDef = it.kind === "furniture" ? findFurnitureDef(it.furnitureId) : null;
+    const itIsCeiling = it.kind === "furniture" && itDef ? !!itDef.isCeiling : false; // ★階段は常に床レイヤー扱い
+    return itIsCeiling === !!isCeiling;
+  }) || null;
 }
 
 // ★要望対応：階段を置く。directionは"up"（上の階へ）または"down"（下の階へ）。
@@ -468,7 +473,7 @@ function buildFixedItemEditorSection(area, floorPlan, room, persist) {
   
   for (let y = 0; y < roomH; y++) {
     for (let x = 0; x < roomW; x++) {
-      const item = findFixedItemAt(room, x, y);
+      const item = findFixedItemAt(room, x, y, false); // ★「さらに細かく編集する」は今のところ床レイヤーのみ対応
       const cellBtn = document.createElement("button");
       cellBtn.type = "button";
       cellBtn.className = "fixeditem-editor-cell"
@@ -502,7 +507,7 @@ function buildFixedItemCellDetail(area, floorPlan, room, cell, persist) {
   box.style.flexDirection = "column";
   box.style.alignItems = "flex-start";
   const items = ensureRoomFixedItems(room);
-  const existing = findFixedItemAt(room, cell.x, cell.y);
+  const existing = findFixedItemAt(room, cell.x, cell.y, false);
   
   const title = document.createElement("p");
   title.className = "devmode-note";
@@ -581,7 +586,10 @@ function buildFixedItemCellDetail(area, floorPlan, room, cell, persist) {
     
     const furnitureListWrap = document.createElement("div");
     furnitureListWrap.className = "fixeditem-furniture-picker";
-    (scenarioProject.furniture || []).forEach(def => {
+    // ★天井家具（isCeiling）は、この固定配置エディタでは床・天井の区別が無いため今回は対象外
+    //   （プレイヤーが天井選択モードで自分の持ち物として設置する運用にしている）
+    const floorFurnitureList = (scenarioProject.furniture || []).filter(def => !def.isCeiling);
+    floorFurnitureList.forEach(def => {
       const btn = document.createElement("button");
       btn.className = "devmode-btn";
       btn.textContent = def.name || "（無名の家具）";
@@ -592,7 +600,7 @@ function buildFixedItemCellDetail(area, floorPlan, room, cell, persist) {
       };
       furnitureListWrap.appendChild(btn);
     });
-    if ((scenarioProject.furniture || []).length === 0) {
+    if (floorFurnitureList.length === 0) {
       const emptyNote = document.createElement("p");
       emptyNote.className = "devmode-note";
       emptyNote.textContent = "（家具管理タブにまだ何も登録されていません）";
@@ -628,7 +636,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     ensurePlayerFurniture(); // furniture.js
     const areaKey = getEstateAreaKey(area); // realestate.js
     let room = floorPlan.rooms.find(r => r.id === startRoomId) || floorPlan.rooms[0];
-    let mode = "move"; // "move"＝部屋移動モード／"cursor"＝カーソルモード
+    let mode = "move"; // "move"＝部屋移動モード／"cursor"＝カーソルモード（床）／"ceiling"＝天井選択モード（要望対応：天井に取り付ける家具専用）
     let cursor = { x: 0, y: 0 };
     let placing = null; // 移動・回転中の家具： { instance, def, rotation, isNew, originalPlacement }
     let listenerActive = false;
@@ -642,13 +650,14 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     function currentUiState() {
       if (placing) {
         const size = getFurnitureEffectiveSize(placing.def, placing.rotation); // furniture.js
-        const valid = isFurniturePlacementFree(room, cursor.x, cursor.y, size.w, size.h, placing.instance ? placing.instance.instanceId : null, placing.fixedItem ? placing.fixedItem.id : null); // furniture.js
+        const isCeiling = !!(placing.isCeiling || (placing.def && placing.def.isCeiling));
+        const valid = isFurniturePlacementFree(room, cursor.x, cursor.y, size.w, size.h, placing.instance ? placing.instance.instanceId : null, placing.fixedItem ? placing.fixedItem.id : null, isCeiling); // furniture.js
         return {
           mode: "placing",
-          modeLabel: "移動・回転中の家具：「" + placing.def.name + "」",
+          modeLabel: "移動・回転中の家具：「" + placing.def.name + "」" + (isCeiling ? "（天井）" : ""),
           legend: placing.fixedItem ? ["↑↓←→：移動", "Z：ここに確定", "X：やめる（元に戻す）"] : ["↑↓←→：移動", "R：90度回転", "Z：ここに確定", "X：やめる（元に戻す）"],
           cursor,
-          placing: { def: placing.def, rotation: placing.rotation, excludeInstanceId: placing.instance ? placing.instance.instanceId : null, excludeFixedItemId: placing.fixedItem ? placing.fixedItem.id : null, valid },
+          placing: { def: placing.def, rotation: placing.rotation, excludeInstanceId: placing.instance ? placing.instance.instanceId : null, excludeFixedItemId: placing.fixedItem ? placing.fixedItem.id : null, isCeiling, valid },
           hint: `横${size.w}×縦${size.h}マス${valid ? "" : "（この位置には置けません）"}`
         };
       }
@@ -656,17 +665,29 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         return {
           mode: "cursor",
           modeLabel: "カーソルモード",
-          legend: ["↑↓←→：カーソル移動", "Z：家具を選ぶ／空きマスなら新しく置く", "G：部屋移動モードに切替", "X：家を出る"],
+          legend: ["↑↓←→：カーソル移動", "Z：家具を選ぶ／空きマスなら新しく置く", "G：モード切替（次は天井選択）", "X：家を出る"],
           cursor,
           onToggleMode: toggleMode,
           onLeave: leaveHouse,
           hint: `${room.name || "部屋"}にいる。`
         };
       }
+      if (mode === "ceiling") {
+        // ★要望対応：天井選択モード。普段は表示されない、天井に取り付ける家具（照明など）だけを操作する
+        return {
+          mode: "ceiling",
+          modeLabel: "天井選択モード",
+          legend: ["↑↓←→：カーソル移動", "Z：天井の家具を選ぶ／空きマスなら新しく置く", "G：モード切替（次は部屋移動）", "X：家を出る"],
+          cursor,
+          onToggleMode: toggleMode,
+          onLeave: leaveHouse,
+          hint: `${room.name || "部屋"}の天井を見ている。`
+        };
+      }
       return {
         mode: "move",
         modeLabel: "部屋移動モード",
-        legend: ["↑↓←→：ドアの方向へ移動", "G：カーソルモードに切替（家具を操作）", "X：家を出る"],
+        legend: ["↑↓←→：ドアの方向へ移動", "G：モード切替（次はカーソルモード）", "X：家を出る"],
         onToggleMode: toggleMode,
         onLeave: leaveHouse,
         hint: `${room.name || "部屋"}にいる。${describeDoorHint()}`
@@ -679,8 +700,9 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     }
     
     function toggleMode() {
-      mode = mode === "move" ? "cursor" : "move";
-      if (mode === "cursor") clampCursorToRoom();
+      // ★要望対応：モード選択に天井選択モードを追加。move→cursor→ceiling→moveの3つを順に切り替える
+      mode = mode === "move" ? "cursor" : (mode === "cursor" ? "ceiling" : "move");
+      if (mode === "cursor" || mode === "ceiling") clampCursorToRoom();
       render();
     }
     
@@ -726,9 +748,10 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     
     async function confirmPlacing() {
       const size = getFurnitureEffectiveSize(placing.def, placing.rotation); // furniture.js
+      const isCeiling = !!(placing.isCeiling || (placing.def && placing.def.isCeiling));
       if (placing.fixedItem) {
         // ★要望対応：「さらに細かく編集する」で置いた、ロックされていない固定設置物をプレイ中に動かす
-        if (!isFurniturePlacementFree(room, cursor.x, cursor.y, size.w, size.h, null, placing.fixedItem.id)) return; // furniture.js
+        if (!isFurniturePlacementFree(room, cursor.x, cursor.y, size.w, size.h, null, placing.fixedItem.id, isCeiling)) return; // furniture.js
         placing.fixedItem.x = cursor.x;
         placing.fixedItem.y = cursor.y;
         const placedDef = placing.def;
@@ -742,7 +765,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         render();
         return;
       }
-      if (!isFurniturePlacementFree(room, cursor.x, cursor.y, size.w, size.h, placing.instance.instanceId)) return; // furniture.js
+      if (!isFurniturePlacementFree(room, cursor.x, cursor.y, size.w, size.h, placing.instance.instanceId, null, isCeiling)) return; // furniture.js
       placing.instance.placement = { areaKey, roomId: room.id, x: cursor.x, y: cursor.y, rotation: placing.rotation };
       const wasNew = placing.isNew;
       const placedDef = placing.def;
@@ -894,9 +917,13 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       resumeKeys(); render();
     }
     
-    async function openUnplacedFurniturePicker() {
-      const allUnplaced = player.ownedFurniture.filter(inst => !inst.placement);
-      // ★要望対応：トイレなど、部屋の種類によって置ける家具を絞り込む
+    async function openUnplacedFurniturePicker(isCeiling) {
+      const allUnplaced = player.ownedFurniture.filter(inst => {
+        if (inst.placement) return false;
+        const def = findFurnitureDef(inst.furnitureId);
+        return !!(def && def.isCeiling) === !!isCeiling; // ★要望対応：天井選択モードでは天井家具だけ、通常は床家具だけを対象にする
+      });
+      // ★要望対応：トイレなど、部屋の種類によって置ける家具を絞り込む（天井家具には今のところ適用対象なし）
       const unplaced = allUnplaced.filter(inst => isFurniturePlacementAllowedInRoom(findFurnitureDef(inst.furnitureId), room)); // scenariobuild.js
       pauseKeys();
       if (typeof showMessageWindow === "function") showMessageWindow();
@@ -905,7 +932,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         if (allUnplaced.length > 0) {
           await displayMessage("持っている未設置の家具の中に、この部屋（" + (room.name || "この部屋") + "）に置けるものが無いようだ。（例：トイレは「便所」タイプの部屋にしか置けません）");
         } else {
-          await displayMessage("持っている未設置の家具が無いようだ。（家具屋で購入できます）");
+          await displayMessage(isCeiling ? "持っている未設置の天井用の家具が無いようだ。（家具屋で購入できます）" : "持っている未設置の家具が無いようだ。（家具屋で購入できます）");
         }
         resumeKeys(); render();
         return;
@@ -915,7 +942,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         return { text: def ? def.name : "？", next: inst.instanceId };
       });
       choices.push({ text: "やめる", next: "cancel", isBack: true });
-      await displayMessage("ここに置く家具を選んでください。");
+      await displayMessage(isCeiling ? "天井に置く家具を選んでください。" : "ここに置く家具を選んでください。");
       const picked = await displayChoices(choices);
       if (picked.next === "cancel") { resumeKeys(); render(); return; }
       
@@ -928,7 +955,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         return;
       }
       cursor = { x: positions[0].x, y: positions[0].y };
-      placing = { instance: inst, def, rotation: 0, isNew: true, originalPlacement: null };
+      placing = { instance: inst, def, rotation: 0, isNew: true, originalPlacement: null, isCeiling: !!isCeiling };
       resumeKeys(); render();
     }
     
@@ -956,18 +983,19 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         return;
       }
       
-      // mode === "cursor"
+      // mode === "cursor" or "ceiling"
       if (event.key === "ArrowUp") { event.preventDefault(); moveCursor(0, -1); }
       else if (event.key === "ArrowDown") { event.preventDefault(); moveCursor(0, 1); }
       else if (event.key === "ArrowLeft") { event.preventDefault(); moveCursor(-1, 0); }
       else if (event.key === "ArrowRight") { event.preventDefault(); moveCursor(1, 0); }
       else if (event.key === "z" || event.key === "Z" || event.key === " ") {
         event.preventDefault();
-        const fixedAtCell = findFixedItemAt(room, cursor.x, cursor.y);
-        const atCell = getFurnitureAtCell(room, cursor.x, cursor.y, null); // furniture.js
+        const isCeiling = mode === "ceiling";
+        const fixedAtCell = isCeiling ? null : findFixedItemAt(room, cursor.x, cursor.y, false); // ★天井の固定設置物は今のところ非対応
+        const atCell = getFurnitureAtCell(room, cursor.x, cursor.y, null, isCeiling); // furniture.js
         if (fixedAtCell) openFixedItemActionMenu(fixedAtCell);
         else if (atCell) openFurnitureActionMenu(atCell);
-        else openUnplacedFurniturePicker();
+        else openUnplacedFurniturePicker(isCeiling);
       } else if (event.key === "x" || event.key === "X" || event.key === "Escape") {
         event.preventDefault();
         leaveHouse();
