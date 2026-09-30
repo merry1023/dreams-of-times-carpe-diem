@@ -77,21 +77,27 @@ function getRoomPlacedFurniture(roomId) {
 
 // ★指定した位置(x,y)〜(x+w,y+h)が、部屋の範囲内かつ他の家具と重なっていないか。
 //   他の家具側も、それぞれの設置時rotationに応じた実寸（縦横入れ替え済み）で判定する
-function isFurniturePlacementFree(room, x, y, w, h, excludeInstanceId, excludeFixedItemId) {
+// ★要望対応：天井に取り付ける家具（isCeiling）は、床の家具とは別レイヤーとして扱う。
+//   isCeilingがtrueなら天井の設置物同士だけ、falseなら床の設置物（階段含む）同士だけを重なり判定する
+function isFurniturePlacementFree(room, x, y, w, h, excludeInstanceId, excludeFixedItemId, isCeiling) {
   if (x < 0 || y < 0 || x + w > (room.width || 1) || y + h > (room.height || 1)) return false;
   const overlapsFurniture = getRoomPlacedFurniture(room.id).some(inst => {
     if (inst.instanceId === excludeInstanceId) return false;
     const def = findFurnitureDef(inst.furnitureId);
     if (!def) return false;
+    if (!!def.isCeiling !== !!isCeiling) return false; // ★別レイヤーなので判定しない
     const px = inst.placement.x, py = inst.placement.y;
     const size = getFurnitureEffectiveSize(def, inst.placement.rotation);
     const pw = size.w, ph = size.h;
     return x < px + pw && x + w > px && y < py + ph && y + h > py; // ★矩形同士の重なり判定
   });
   if (overlapsFurniture) return false;
-  // ★要望対応：「さらに細かく編集する」で置いた固定設置物（階段・固定家具）とも重ならないようにする
+  // ★要望対応：「さらに細かく編集する」で置いた固定設置物（階段・固定家具）とも重ならないようにする（階段は常に床レイヤー扱い）
   const overlapsFixed = (typeof ensureRoomFixedItems === "function" ? ensureRoomFixedItems(room) : (room.fixedItems || [])).some(it => {
     if (it.id === excludeFixedItemId) return false;
+    const itDef = it.kind === "furniture" ? findFurnitureDef(it.furnitureId) : null;
+    const itIsCeiling = it.kind === "furniture" && itDef ? !!itDef.isCeiling : false;
+    if (itIsCeiling !== !!isCeiling) return false;
     const iw = it.w || 1, ih = it.h || 1;
     return x < it.x + iw && x + w > it.x && y < it.y + ih && y + h > it.y;
   });
@@ -99,11 +105,12 @@ function isFurniturePlacementFree(room, x, y, w, h, excludeInstanceId, excludeFi
 }
 
 // ★カーソル座標(x,y)の位置にある家具（1×1とは限らないので占有範囲で判定）を1つ返す。無ければnull
-function getFurnitureAtCell(room, x, y, excludeInstanceId) {
+function getFurnitureAtCell(room, x, y, excludeInstanceId, isCeiling) {
   return getRoomPlacedFurniture(room.id).find(inst => {
     if (inst.instanceId === excludeInstanceId) return false;
     const def = findFurnitureDef(inst.furnitureId);
     if (!def) return false;
+    if (!!def.isCeiling !== !!isCeiling) return false; // ★要望対応：床モードでは天井の家具を、天井モードでは床の家具を拾わない
     const size = getFurnitureEffectiveSize(def, inst.placement.rotation);
     const px = inst.placement.x, py = inst.placement.y;
     return x >= px && x < px + size.w && y >= py && y < py + size.h;
@@ -258,7 +265,7 @@ function renderRoomView(room, uiState, floorPlan) {
   const cellPx = Math.max(14, Math.min(32, Math.floor(maxPanelWidthPx / roomW)));
   
   const grid = document.createElement("div");
-  grid.className = "room-view-grid";
+  grid.className = "room-view-grid" + (uiState && uiState.mode === "ceiling" ? " room-view-grid-ceiling-mode" : "");
   grid.style.position = "relative";
   grid.style.gridTemplateColumns = `repeat(${roomW}, ${cellPx}px)`;
   grid.style.gridTemplateRows = `repeat(${roomH}, ${cellPx}px)`;
@@ -310,25 +317,31 @@ function renderRoomView(room, uiState, floorPlan) {
   
   const excludeInstanceId = uiState && uiState.placing ? uiState.placing.excludeInstanceId : null;
   const excludeFixedItemId = uiState && uiState.placing ? uiState.placing.excludeFixedItemId : null;
+  // ★要望対応：天井選択モードでは天井の家具だけ、それ以外（床のカーソルモード・移動モード）では床の家具だけを描く。
+  //   移動・回転中（placing）の時は、動かしている物自体のレイヤーに合わせる
+  const isCeilingLayer = uiState && uiState.placing ? !!uiState.placing.isCeiling : !!(uiState && uiState.mode === "ceiling");
   getRoomPlacedFurniture(room.id).forEach(inst => {
     if (excludeInstanceId && inst.instanceId === excludeInstanceId) return; // ★移動・回転中の家具は、元の位置には描かず後でカーソル位置に描く
     const def = findFurnitureDef(inst.furnitureId);
     if (!def) return;
-    grid.appendChild(buildFurnitureBlockEl(def, inst.placement.x, inst.placement.y, "furniture-placement-block-occupied", cellPx, inst.placement.rotation));
+    if (!!def.isCeiling !== isCeilingLayer) return; // ★普段は天井の家具を表示しない（天井選択モードでのみ表示）
+    grid.appendChild(buildFurnitureBlockEl(def, inst.placement.x, inst.placement.y, "furniture-placement-block-occupied" + (def.isCeiling ? " room-view-ceiling-block" : ""), cellPx, inst.placement.rotation));
   });
-  // ★要望対応：「さらに細かく編集する」で置いた固定設置物（階段・固定家具）も、部屋の中に描く
-  (Array.isArray(room.fixedItems) ? room.fixedItems : []).forEach(item => {
-    if (excludeFixedItemId && item.id === excludeFixedItemId) return; // ★移動中は、元の位置には描かず後でカーソル位置に描く
-    if (item.kind === "stairs") {
-      const stairsDef = { name: item.direction === "up" ? "階段（上へ）" : "階段（下へ）", color: "#8a7a5a" };
-      const el = buildFurnitureBlockEl(stairsDef, item.x, item.y, "furniture-placement-block-occupied room-view-stairs-block", cellPx, 0);
-      grid.appendChild(el);
-      return;
-    }
-    const def = findFurnitureDef(item.furnitureId);
-    if (!def) return;
-    grid.appendChild(buildFurnitureBlockEl(def, item.x, item.y, "furniture-placement-block-occupied" + (item.locked ? " room-view-fixed-locked" : ""), cellPx, 0));
-  });
+  // ★要望対応：「さらに細かく編集する」で置いた固定設置物（階段・固定家具）も、部屋の中に描く（今のところ床レイヤーのみ）
+  if (!isCeilingLayer) {
+    (Array.isArray(room.fixedItems) ? room.fixedItems : []).forEach(item => {
+      if (excludeFixedItemId && item.id === excludeFixedItemId) return; // ★移動中は、元の位置には描かず後でカーソル位置に描く
+      if (item.kind === "stairs") {
+        const stairsDef = { name: item.direction === "up" ? "階段（上へ）" : "階段（下へ）", color: "#8a7a5a" };
+        const el = buildFurnitureBlockEl(stairsDef, item.x, item.y, "furniture-placement-block-occupied room-view-stairs-block", cellPx, 0);
+        grid.appendChild(el);
+        return;
+      }
+      const def = findFurnitureDef(item.furnitureId);
+      if (!def) return;
+      grid.appendChild(buildFurnitureBlockEl(def, item.x, item.y, "furniture-placement-block-occupied" + (item.locked ? " room-view-fixed-locked" : ""), cellPx, 0));
+    });
+  }
   
   grid.appendChild(buildRoomDarknessOverlayEl(room, roomW, roomH, cellPx)); // ★要望対応：部屋の暗さ（照明で明るくなる）
   
@@ -339,9 +352,9 @@ function renderRoomView(room, uiState, floorPlan) {
     const placingEl = buildFurnitureBlockEl(p.def, uiState.cursor.x, uiState.cursor.y, cls, cellPx, p.rotation);
     placingEl.style.zIndex = "4";
     grid.appendChild(placingEl);
-  } else if (uiState && uiState.cursor && uiState.mode === "cursor") {
-    // ★カーソルモード：家具の無いマスにも、今どこを見ているか分かるよう枠だけのカーソルを出す
-    const atCell = getFurnitureAtCell(room, uiState.cursor.x, uiState.cursor.y, null);
+  } else if (uiState && uiState.cursor && (uiState.mode === "cursor" || uiState.mode === "ceiling")) {
+    // ★カーソルモード／天井選択モード：家具の無いマスにも、今どこを見ているか分かるよう枠だけのカーソルを出す
+    const atCell = getFurnitureAtCell(room, uiState.cursor.x, uiState.cursor.y, null, uiState.mode === "ceiling");
     if (!atCell) {
       const cursorEl = document.createElement("div");
       cursorEl.className = "room-view-cursor";
@@ -420,7 +433,7 @@ function findValidFurniturePositions(room, furnitureDef, excludeInstanceId, rota
   const positions = [];
   for (let y = 0; y <= (room.height || 1) - size.h; y++) {
     for (let x = 0; x <= (room.width || 1) - size.w; x++) {
-      if (isFurniturePlacementFree(room, x, y, size.w, size.h, excludeInstanceId)) positions.push({ x, y });
+      if (isFurniturePlacementFree(room, x, y, size.w, size.h, excludeInstanceId, null, !!furnitureDef.isCeiling)) positions.push({ x, y });
     }
   }
   return positions;
