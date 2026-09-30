@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1790532937904,
+  "version": 1790748888253,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -7406,6 +7406,12 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1789832190692_6",
           "type": "narration",
           "text": "黒いなにかは「✕」の文字のようにも見える。あるいは文字じゃないのかもしれないが、\nこすっても消えないし眠気が襲ってきたので、また俺だけ床で淋しく就寝した。"
+        },
+        {
+          "id": "block_1790535374033_1",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "(あれ？俺、ミタメに奴隷商のこと聞くの忘れてね...？し、しまった...やらかしたぜ...)"
         },
         {
           "id": "block_1789832333293_7",
