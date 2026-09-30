@@ -538,7 +538,18 @@ function manageFurnitureStorage(instance) {
         return;
       }
       const selectedIndex = getPaneIndex(pane);
-      entries.forEach((entry, i) => gridEl.appendChild(buildSlotEl(entry, isActive && i === selectedIndex)));
+      entries.forEach((entry, i) => {
+        const slotEl = buildSlotEl(entry, isActive && i === selectedIndex);
+        // ★要望対応：マウス・タッチでも直接アイテムを選べるようにする（キーボードが無い端末ではカーソル移動ができなかったため）
+        slotEl.onclick = (event) => {
+          event.stopPropagation();
+          if (menu) return;
+          activePane = pane;
+          setPaneIndex(pane, i);
+          openTransferMenu(pane);
+        };
+        gridEl.appendChild(slotEl);
+      });
     }
     
     // ★要望対応：カーソルが今の表示範囲からはみ出たら、そのマスが見えるところまで自動でスクロールする。
