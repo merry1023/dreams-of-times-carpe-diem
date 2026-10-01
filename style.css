@@ -7654,6 +7654,7 @@ html, body {
 @keyframes combo-cutin-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
 
 /* ★要望対応：天井選択モード。天井を見上げているイメージが伝わるよう、床を少し青く暗くする */
 .room-view-grid-ceiling-mode {
@@ -7662,4 +7663,49 @@ html, body {
 
 .room-view-ceiling-block {
   box-shadow: inset 0 0 0 2px #7aa5ff;
+}
+
+/* ★要望対応：便利タブ「属性コンボ」一覧 */
+.element-combo-note {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  color: #bbb;
+}
+.element-combo-empty {
+  margin: 16px 0;
+  text-align: center;
+  color: #999;
+}
+.element-combo-item {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 180, 60, 0.45);
+  border-radius: 6px;
+}
+.element-combo-name {
+  font-weight: bold;
+  color: #ffd27a;
+}
+.element-combo-order {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.element-combo-chip {
+  padding: 2px 8px;
+  background: rgba(255, 140, 30, 0.25);
+  border: 1px solid rgba(255, 180, 60, 0.7);
+  border-radius: 10px;
+  font-size: 13px;
+}
+.element-combo-arrow {
+  color: #ffb84d;
+}
+.element-combo-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #bbb;
 }
