@@ -7156,6 +7156,36 @@ html, body {
   max-width: 320px;
 }
 
+/* ★要望対応：矢印キーの代わりに使える方向ボタン（スマホ等キーボードが無い環境向け） */
+.room-view-dpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.room-view-dpad-row {
+  display: flex;
+  gap: 28px;
+}
+
+.room-view-dpad-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.room-view-dpad-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
 /* ★要望対応：倉庫⇔インベントリのアイテム移動画面（furniture.js manageFurnitureStorage）。
    サブ画面インベントリタブのスロット見た目（inventory-slot等）を流用した2ペイン構成 */
 .furniture-storage-overlay {
@@ -7180,6 +7210,9 @@ html, body {
   width: 720px;
   max-width: 94vw;
   max-height: 92vh; /* ★要望対応：この箱自体の高さも画面内に収まるよう上限をつけ、はみ出た分は箱ごとスクロールできるようにする */
+  height: 92vh; /* ★要望対応：倉庫/インベントリのグリッドが表示できるマス数を増やすため、箱を画面いっぱいまで使う */
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   background-color: #1a1a1a;
@@ -7199,11 +7232,16 @@ html, body {
 .furniture-storage-panes {
   display: flex;
   gap: 12px;
+  flex: 1;
+  min-height: 0;
 }
 
 .furniture-storage-pane {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .furniture-storage-pane-label {
@@ -7221,11 +7259,14 @@ html, body {
   border: 1px solid #444;
   border-radius: 6px;
   padding: 6px;
-  min-height: 220px;
-  max-height: 44vh;
+  flex: 1; /* ★要望対応：以前は max-height:44vh 固定で約20マスしか見えなかったので、残りの高さをすべて使う */
+  min-height: 160px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain; /* ★グリッドの端でスクロールが外側の箱に連鎖して動かなくなるのを防ぐ */
+  touch-action: pan-y; /* ★スマホ・タブレットでの縦スワイプによるスクロールを明示的に許可 */
   align-content: start;
+  grid-auto-rows: 50px; /* ★行の高さを固定して、大量のアイテムでも行が潰れないようにする */
 }
 
 .furniture-storage-grid-active {
@@ -7613,4 +7654,12 @@ html, body {
 @keyframes combo-cutin-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+
+/* ★要望対応：天井選択モード。天井を見上げているイメージが伝わるよう、床を少し青く暗くする */
+.room-view-grid-ceiling-mode {
+  filter: brightness(0.7) saturate(0.6) hue-rotate(190deg) brightness(1.3);
+}
+
+.room-view-ceiling-block {
+  box-shadow: inset 0 0 0 2px #7aa5ff;
 }

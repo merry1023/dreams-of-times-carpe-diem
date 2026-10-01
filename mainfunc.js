@@ -2598,7 +2598,15 @@ function renderSkills() {
     if (unlocked && skill.element) {
       const elementEl = document.createElement("span");
       elementEl.className = "skill-element-tag";
-      elementEl.textContent = `属性：${skill.element}`;
+      // ★バグ修正：属性管理タブ導入後、skill.elementには属性の「id」が入るようになったが、
+      //   ここではそのidをそのまま表示してしまっていたため、スキルタブの属性欄がidの文字列
+      //   （例："element_xxxxx"）のまま表示されてしまっていた。scenarioProject.elementDefs
+      //   からidに対応する属性名を引いて表示するようにする（旧データ等でidに一致する属性が
+      //   見つからない場合は、これまで通りその値をそのまま表示する）
+      const elementDefs = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.elementDefs)) ? scenarioProject.elementDefs : [];
+      const matchedElementDef = elementDefs.find(el => el.id === skill.element);
+      const elementDisplayName = matchedElementDef ? (matchedElementDef.name || skill.element) : skill.element;
+      elementEl.textContent = `属性：${elementDisplayName}`;
       infoRow.appendChild(elementEl);
     }
     

@@ -5237,6 +5237,7 @@ const BOOK_GENRE_OPTIONS = [
   { value: "童話", label: "童話" },
   { value: "神話・歴史書", label: "神話・歴史書" },
   { value: "記録・手記", label: "記録・手記" },
+  { value: "修行記", label: "修行記" },
   { value: "その他", label: "その他" }
 ];
 
@@ -5401,6 +5402,7 @@ function getFurnitureManagerConfig() {
       { key: "height", label: "縦（マス）", type: "number", placeholder: "1" },
       { key: "type", label: "種類", type: "select", options: FURNITURE_TYPE_DEFS },
       { key: "applianceSize", label: "大きさ（種類が調理魔家電の場合のみ。これより大きい「大きさ」の料理道具は使えない）", type: "number", placeholder: "3" },
+      { key: "isCeiling", label: "天井に取り付ける（チェックすると、床ではなく「天井選択モード」でのみ設置・選択できるようになる。照明なら床にも明かりが届く）", type: "checkbox" },
       { key: "luminance", label: "輝度（種類が照明の場合のみ。0〜30。大きいほど明るい）", type: "number", placeholder: "15" },
       { key: "lightRange", label: "範囲（種類が照明の場合のみ。照らせるマス数。中心から外に向かって暗くなり、範囲の外は照らせない）", type: "number", placeholder: "4" },
       { key: "storageSlots", label: "収納数（種類が収納・本棚の場合のみ使用）", type: "number", placeholder: "10" },

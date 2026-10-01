@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1790532942368,
+  "version": 1790748888930,
   "enemies": [
     {
       "id": "goblin",
@@ -2325,7 +2325,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "希少度": 1
       },
       "toolDurability": 270,
-      "toolSlotCount": 5
+      "toolSlotCount": 5,
+      "toolSize": 5
     },
     {
       "id": "item_1790126427439_3",
@@ -2521,6 +2522,116 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "params": {
         "希少度": 1
       }
+    },
+    {
+      "id": "book_dragonslayer_saga",
+      "name": "竜殺し英雄譚",
+      "category": "book",
+      "description": "各地に伝わる「竜殺し」の武勇伝を集めた本。あちこちで話が盛られすぎていて、どこまで本当か怪しい。",
+      "rank": "E",
+      "listedPrice": 200,
+      "trueValue": 200,
+      "builtin": true
+    },
+    {
+      "id": "book_romance_novel",
+      "name": "恋する行商人",
+      "category": "book",
+      "description": "旅から旅への行商人と、ある町の宿屋の娘との恋を描いた小説。町の女性たちの間でひそかに人気らしい。",
+      "rank": "E",
+      "listedPrice": 150,
+      "trueValue": 150,
+      "builtin": true
+    },
+    {
+      "id": "book_mystery_novel",
+      "name": "消えた鑑定士",
+      "category": "book",
+      "description": "とある町で起きた鑑定士失踪事件を追う推理小説。犯人の動機が「なんでも鑑定」がらみだったというオチに賛否両論。",
+      "rank": "D",
+      "listedPrice": 250,
+      "trueValue": 250,
+      "builtin": true
+    },
+    {
+      "id": "book_monster_encyclopedia",
+      "name": "魔物図鑑（初級編）",
+      "category": "book",
+      "description": "冒険者ギルドが新人向けに配布している魔物図鑑。危険度の低い魔物を中心にまとめられている。",
+      "rank": "E",
+      "listedPrice": 180,
+      "trueValue": 180,
+      "builtin": true
+    },
+    {
+      "id": "book_magic_primer",
+      "name": "初級魔法指南書",
+      "category": "book",
+      "description": "魔法の基礎理論をまとめた入門書。難しい術式の話は少なく、感覚的な説明が多いので独学者にも人気。",
+      "rank": "D",
+      "listedPrice": 400,
+      "trueValue": 400,
+      "builtin": true
+    },
+    {
+      "id": "book_poetry_anthology",
+      "name": "旅人の詩集",
+      "category": "book",
+      "description": "名も無き旅人たちが道すがら詠んだ詩を集めた詩集。うまい詩もあれば、明らかに酔っ払いが書いたようなものも混ざっている。",
+      "rank": "E",
+      "listedPrice": 120,
+      "trueValue": 120,
+      "builtin": true
+    },
+    {
+      "id": "book_ghost_stories",
+      "name": "夜宵の怪談集",
+      "category": "book",
+      "description": "各地の宿場町に伝わる怪談をまとめた一冊。読むと決まって誰かが「今夜眠れなくなった」と文句を言ってくる、と評判（悪評）の本。",
+      "rank": "D",
+      "listedPrice": 200,
+      "trueValue": 200,
+      "builtin": true
+    },
+    {
+      "id": "book_business_guide",
+      "name": "町の商人心得",
+      "category": "book",
+      "description": "駆け出しの商人・店主向けの実用書。買取価格の付け方から客あしらいまで、実践的な内容が並ぶ。",
+      "rank": "E",
+      "listedPrice": 220,
+      "trueValue": 220,
+      "builtin": true
+    },
+    {
+      "id": "book_fairy_tale",
+      "name": "月と籠の少女",
+      "category": "book",
+      "description": "子供向けの童話。籠に閉じ込められた少女が、旅人との出会いをきっかけに外の世界へ踏み出す話。",
+      "rank": "E",
+      "listedPrice": 100,
+      "trueValue": 100,
+      "builtin": true
+    },
+    {
+      "id": "book_ancient_myth",
+      "name": "古の神々と建国の伝承",
+      "category": "book",
+      "description": "この世界に伝わる古い神話と、周辺国の建国にまつわる伝承をまとめた歴史書。学者向けの硬い内容だが、意外と町の図書室でも人気がある。",
+      "rank": "C",
+      "listedPrice": 600,
+      "trueValue": 600,
+      "builtin": true
+    },
+    {
+      "id": "book_slavery_records",
+      "name": "ある解放記録",
+      "category": "book",
+      "description": "とある地方で行われていた人身売買の実態と、それに立ち向かった者たちの記録をまとめた手記。読む者を選ぶ、重い内容の一冊。",
+      "rank": "C",
+      "listedPrice": 500,
+      "trueValue": 500,
+      "builtin": true
     }
   ],
   "furniture": [
@@ -2573,7 +2684,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "type": "lighting",
       "isStorage": false,
       "storageSlots": 10,
-      "useMessage": "ぼんやりと光る。"
+      "useMessage": "ぼんやりと光る。",
+      "luminance": 23,
+      "lightRange": 6
     },
     {
       "id": "furniture_1790505006461_6",
@@ -2586,7 +2699,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "type": "cookingAppliance",
       "isStorage": false,
       "storageSlots": 10,
-      "useMessage": ""
+      "useMessage": "",
+      "applianceSize": 6
     },
     {
       "id": "furniture_1790505192223_7",
@@ -2652,6 +2766,22 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "isStorage": false,
       "storageSlots": 10,
       "useMessage": ""
+    },
+    {
+      "id": "furniture_1790748699413_3",
+      "name": "部屋のまるい電気",
+      "imagePath": "",
+      "color": "#ffffff",
+      "price": 7000,
+      "width": 1,
+      "height": 1,
+      "type": "lighting",
+      "isStorage": false,
+      "storageSlots": 10,
+      "useMessage": "パチっ",
+      "luminance": 26,
+      "lightRange": 30,
+      "isCeiling": true
     }
   ],
   "fishItems": [
@@ -10139,10 +10269,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "allowedClassNames": [
         "全能士",
         "戦士",
-        "性騎士",
         "ニート",
         "お宝鑑定団",
-        "魔法少女"
+        "魔法少女",
+        "性騎士"
       ]
     },
     {
@@ -11206,7 +11336,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "furniture_1790505192223_7",
         "furniture_1790505294304_8",
         "furniture_1790531805277_2",
-        "furniture_1790532378071_10"
+        "furniture_1790532378071_10",
+        "furniture_1790748699413_3",
+        "furniture_1790532855000_11"
       ]
     },
     {
@@ -12543,8 +12675,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "area_1790162062422_1",
       "name": "幻魔の森の別荘",
       "type": "estateHouse",
-      "x": 29.417614121993864,
-      "y": 15.113420750061778,
+      "x": 27.11596236593276,
+      "y": 14.315186386664738,
       "bgTrack": "",
       "bgImage": "",
       "bossId": "",
@@ -12568,7 +12700,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "facilityIds": [],
       "mapNodeSize": 3,
-      "estatePrice": 750000,
+      "estatePrice": 2400000,
       "floorPlan": {
         "rooms": [
           {
@@ -12615,6 +12747,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                 "color": "#6b4226"
               },
               "west": {
+                "position": 5,
+                "color": "#6b4226"
+              },
+              "east": {
                 "position": 3,
                 "color": "#6b4226"
               }
@@ -12632,7 +12768,83 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
               "south": true,
               "east": true,
               "west": false
-            }
+            },
+            "doorStyle": {
+              "north": {
+                "position": 3,
+                "color": "#6b4226"
+              },
+              "south": {
+                "position": 3,
+                "color": "#6b4226"
+              },
+              "east": {
+                "position": 3,
+                "color": "#6b4226"
+              }
+            },
+            "fixedItems": [
+              {
+                "id": "fixeditem_1790720403372_2",
+                "kind": "stairs",
+                "x": 11,
+                "y": 2,
+                "w": 1,
+                "h": 1,
+                "direction": "up",
+                "targetFloor": 1
+              },
+              {
+                "id": "fixeditem_1790720406016_3",
+                "kind": "stairs",
+                "x": 11,
+                "y": 1,
+                "w": 1,
+                "h": 1,
+                "direction": "up",
+                "targetFloor": 1
+              },
+              {
+                "id": "fixeditem_1790720408028_4",
+                "kind": "stairs",
+                "x": 11,
+                "y": 0,
+                "w": 1,
+                "h": 1,
+                "direction": "up",
+                "targetFloor": 1
+              },
+              {
+                "id": "fixeditem_1790720411181_5",
+                "kind": "stairs",
+                "x": 10,
+                "y": 2,
+                "w": 1,
+                "h": 1,
+                "direction": "up",
+                "targetFloor": 1
+              },
+              {
+                "id": "fixeditem_1790720412729_6",
+                "kind": "stairs",
+                "x": 10,
+                "y": 1,
+                "w": 1,
+                "h": 1,
+                "direction": "up",
+                "targetFloor": 1
+              },
+              {
+                "id": "fixeditem_1790720414022_7",
+                "kind": "stairs",
+                "x": 10,
+                "y": 0,
+                "w": 1,
+                "h": 1,
+                "direction": "up",
+                "targetFloor": 1
+              }
+            ]
           },
           {
             "id": "room_1790162249419_5",
@@ -12661,7 +12873,14 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
               "south": true,
               "east": false,
               "west": false
-            }
+            },
+            "doorStyle": {
+              "south": {
+                "position": 3,
+                "color": "#6b4226"
+              }
+            },
+            "brightness": 6
           },
           {
             "id": "room_1790504228173_2",
@@ -12699,7 +12918,289 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             }
           }
         ],
-        "startRoomId": "room_1790162141937_2"
+        "startRoomId": "room_1790162141937_2",
+        "floor": 0
+      },
+      "floorPlans": {
+        "0": {
+          "rooms": [
+            {
+              "id": "room_1790162141937_2",
+              "x": 0,
+              "y": 0,
+              "width": 2,
+              "height": 3,
+              "name": "玄関",
+              "doors": {
+                "north": true,
+                "south": false,
+                "east": false,
+                "west": false
+              },
+              "floorColor": "#949494",
+              "doorStyle": {
+                "north": {
+                  "position": 0,
+                  "color": "#6b4226"
+                }
+              },
+              "fixedItems": []
+            },
+            {
+              "id": "room_1790162154157_3",
+              "x": 0,
+              "y": -1,
+              "width": 2,
+              "height": 7,
+              "name": "渡り廊下",
+              "doors": {
+                "north": true,
+                "south": true,
+                "east": true,
+                "west": true
+              },
+              "doorStyle": {
+                "north": {
+                  "position": 0,
+                  "color": "#6b4226"
+                },
+                "south": {
+                  "position": 0,
+                  "color": "#6b4226"
+                },
+                "west": {
+                  "position": 5,
+                  "color": "#6b4226"
+                },
+                "east": {
+                  "position": 3,
+                  "color": "#6b4226"
+                }
+              },
+              "fixedItems": []
+            },
+            {
+              "id": "room_1790162185741_4",
+              "x": 0,
+              "y": -2,
+              "width": 12,
+              "height": 8,
+              "name": "リビング",
+              "doors": {
+                "north": true,
+                "south": true,
+                "east": true,
+                "west": false
+              },
+              "doorStyle": {
+                "north": {
+                  "position": 3,
+                  "color": "#6b4226"
+                },
+                "south": {
+                  "position": 3,
+                  "color": "#6b4226"
+                },
+                "east": {
+                  "position": 3,
+                  "color": "#6b4226"
+                }
+              },
+              "fixedItems": [
+                {
+                  "id": "fixeditem_1790720403372_2",
+                  "kind": "stairs",
+                  "x": 11,
+                  "y": 2,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "up",
+                  "targetFloor": 1
+                },
+                {
+                  "id": "fixeditem_1790720406016_3",
+                  "kind": "stairs",
+                  "x": 11,
+                  "y": 1,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "up",
+                  "targetFloor": 1
+                },
+                {
+                  "id": "fixeditem_1790720408028_4",
+                  "kind": "stairs",
+                  "x": 11,
+                  "y": 0,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "up",
+                  "targetFloor": 1
+                },
+                {
+                  "id": "fixeditem_1790720411181_5",
+                  "kind": "stairs",
+                  "x": 10,
+                  "y": 2,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "up",
+                  "targetFloor": 1
+                },
+                {
+                  "id": "fixeditem_1790720412729_6",
+                  "kind": "stairs",
+                  "x": 10,
+                  "y": 1,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "up",
+                  "targetFloor": 1
+                },
+                {
+                  "id": "fixeditem_1790720414022_7",
+                  "kind": "stairs",
+                  "x": 10,
+                  "y": 0,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "up",
+                  "targetFloor": 1
+                },
+                {
+                  "id": "fixeditem_1790748676350_2",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790162524441_9",
+                  "x": 8,
+                  "y": 0,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                }
+              ]
+            },
+            {
+              "id": "room_1790162249419_5",
+              "x": 1,
+              "y": -2,
+              "width": 7,
+              "height": 7,
+              "name": "寝室",
+              "doors": {
+                "north": false,
+                "south": false,
+                "east": false,
+                "west": true
+              },
+              "floorColor": "#7d5b45"
+            },
+            {
+              "id": "room_1790504193636_1",
+              "x": 0,
+              "y": -3,
+              "width": 8,
+              "height": 4,
+              "name": "物置",
+              "doors": {
+                "north": false,
+                "south": true,
+                "east": false,
+                "west": false
+              },
+              "doorStyle": {
+                "south": {
+                  "position": 3,
+                  "color": "#6b4226"
+                }
+              },
+              "brightness": 6
+            },
+            {
+              "id": "room_1790504228173_2",
+              "x": -1,
+              "y": -1,
+              "width": 6,
+              "height": 6,
+              "name": "小部屋",
+              "doors": {
+                "north": false,
+                "south": false,
+                "east": true,
+                "west": false
+              }
+            },
+            {
+              "id": "room_1790531891477_3",
+              "x": 1,
+              "y": -1,
+              "width": 4,
+              "height": 4,
+              "name": "トイレ",
+              "roomType": "toilet",
+              "doors": {
+                "north": false,
+                "south": false,
+                "east": false,
+                "west": true
+              },
+              "doorStyle": {
+                "west": {
+                  "position": 1,
+                  "color": "#6b4226"
+                }
+              }
+            }
+          ],
+          "startRoomId": "room_1790162141937_2",
+          "floor": 0
+        },
+        "1": {
+          "floor": 1,
+          "rooms": [
+            {
+              "id": "room_1790720403372_1",
+              "x": 0,
+              "y": 0,
+              "width": 8,
+              "height": 10,
+              "name": "二階リビング",
+              "roomType": "",
+              "brightness": 4,
+              "doors": {
+                "north": false,
+                "south": false,
+                "east": false,
+                "west": true
+              },
+              "doorStyle": {},
+              "fixedItems": []
+            },
+            {
+              "id": "room_1790748618696_1",
+              "x": -1,
+              "y": 0,
+              "width": 14,
+              "height": 8,
+              "name": "二階寝室",
+              "roomType": "",
+              "brightness": 4,
+              "doors": {
+                "north": false,
+                "south": false,
+                "east": true,
+                "west": false
+              },
+              "doorStyle": {
+                "east": {
+                  "position": 1,
+                  "color": "#6b4226"
+                }
+              },
+              "fixedItems": []
+            }
+          ],
+          "startRoomId": "room_1790720403372_1"
+        }
       }
     },
     {
