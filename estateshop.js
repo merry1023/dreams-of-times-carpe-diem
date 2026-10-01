@@ -216,7 +216,7 @@ async function addItemToShopShelf(area, key, goBack) {
   }
   
   const choices = entries.map(e => {
-    const priceGuide = e.master.buyPrice ? `普通の価格：${e.master.buyPrice}陳` : "普通の価格：不明";
+    const priceGuide = e.master.buyPrice ? `定価：${e.master.buyPrice}陳` : "定価：不明";
     return { text: `${e.master.name} ×${e.totalQty}（${priceGuide}）`, next: e.itemId };
   });
   choices.push({ text: "やめる", next: "cancel", isBack: true });
@@ -228,11 +228,12 @@ async function addItemToShopShelf(area, key, goBack) {
   const qty = await pickQuantity(entry.totalQty, entry.master.name); // town.js
   if (!qty || qty <= 0) { await manageShopShelves(area, key, goBack); return; }
   
-  // ★価格スライダーの上限は内部的にtrueValueから計算するが、trueValue自体は「なんでも鑑定」で見抜くまで
-  //   隠しておく想定の値（items.js参照）なので、プレイヤーに見せる目安は普通の価格（buyPrice）にする
-  const trueValue = entry.master.trueValue || 1;
-  const suggestedMax = Math.max(trueValue * 3, trueValue + 10);
-  const priceGuideText = entry.master.buyPrice ? `普通の価格の目安：${entry.master.buyPrice}陳` : "普通の価格は不明";
+  // ★価格スライダーの上限は、隠しステータスのtrueValueではなく、画面に見せている定価（buyPrice）を基準にする。
+  //   「真価＋15%を超えると売れにくくなる」という仕様上、わざと定価よりずっと高い値段を試せる必要があるため、
+  //   定価の10倍程度まで動かせるよう、かなり余裕を持たせた上限にしてある
+  const priceBasis = entry.master.buyPrice || entry.master.trueValue || 100;
+  const suggestedMax = Math.max(priceBasis * 10, priceBasis + 500, 500);
+  const priceGuideText = entry.master.buyPrice ? `定価の目安：${entry.master.buyPrice}陳` : "定価は不明";
   const price = await pickQuantity(suggestedMax, entry.master.name, {
     min: 1,
     step: 1,
