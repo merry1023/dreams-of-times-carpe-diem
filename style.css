@@ -7560,3 +7560,57 @@ html, body {
   max-height: 160px;
   overflow-y: auto;
 }
+
+/* ★要望対応：コンボスキル発動時のカットイン（画面中央に帯線と文字） */
+.combo-cutin {
+  position: absolute;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  animation: combo-cutin-fade-in 0.15s ease-out;
+}
+.combo-cutin.combo-cutin-out {
+  opacity: 0;
+  transition: opacity 0.35s ease-in;
+}
+.combo-cutin-band {
+  position: relative;
+  width: 100%;
+  padding: 14px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: linear-gradient(90deg, rgba(120, 20, 0, 0) 0%, rgba(200, 50, 10, 0.85) 20%, rgba(255, 140, 30, 0.9) 50%, rgba(200, 50, 10, 0.85) 80%, rgba(120, 20, 0, 0) 100%);
+  border-top: 3px solid #fff;
+  border-bottom: 3px solid #fff;
+  box-shadow: 0 0 18px rgba(255, 180, 60, 0.8);
+  animation: combo-cutin-slide 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.combo-cutin-label {
+  font-size: 12px;
+  letter-spacing: 0.4em;
+  color: #fff3c4;
+  text-shadow: 0 0 6px #000;
+}
+.combo-cutin-text {
+  font-size: clamp(22px, 5vw, 40px);
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 8px #000, 2px 2px 0 #7a1a00;
+  letter-spacing: 0.08em;
+  text-align: center;
+  padding: 0 12px;
+}
+@keyframes combo-cutin-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes combo-cutin-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

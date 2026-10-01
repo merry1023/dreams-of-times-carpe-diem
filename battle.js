@@ -741,7 +741,15 @@ async function handleFightMenu() {
   }
   
   if (choice.next === "skill") {
-    return await handleSkillMenu();
+    if (battleState) battleState.lastPlayerSkill = null;
+    const done = await handleSkillMenu();
+    // ★要望対応：コンボスキル。実際に技を撃ったターンだけ、その属性を履歴に積んで発動判定をする
+    if (done && battleState && battleState.lastPlayerSkill) {
+      const usedSkill = battleState.lastPlayerSkill;
+      battleState.lastPlayerSkill = null;
+      await recordSkillElementForCombo(usedSkill);
+    }
+    return done;
   }
   
   if (choice.next === "weaponskill") {
@@ -1373,7 +1381,13 @@ async function performCompanionAction(companion) {
     const success = await performCompanionWeaponSkillMenu(companion, activeWeaponSkills);
     if (!success) { await performCompanionAction(companion); return; } // ★対象選択をキャンセル／戻るを選んだ場合は、行動選択からやり直す
   } else {
+    if (battleState) battleState.lastCompanionSkill = null;
     await performCompanionSkillMenu(companion);
+    if (battleState && battleState.lastCompanionSkill) {
+      const usedSkill = battleState.lastCompanionSkill;
+      battleState.lastCompanionSkill = null;
+      await recordSkillElementForCombo(usedSkill); // ★要望対応：コンボ履歴はパーティ共有
+    }
   }
 }
 
@@ -1462,6 +1476,7 @@ async function performCompanionSkillMenu(companion) {
   }
   
   companion.gauges.sp.current -= skill.spCost;
+  if (battleState) battleState.lastCompanionSkill = skill; // ★コンボスキル用：仲間が撃った技
   changeSpeaker("");
   
   // ★バグ修正：スキル管理タブでブロック編集した技（狂戦士の技など）は、主人公と同じく
@@ -1469,7 +1484,7 @@ async function performCompanionSkillMenu(companion) {
   if (Array.isArray(skill.blocks) && skill.blocks.length > 0) {
     const success = await runSkillBlocksForCompanionTurn(companion, skill);
     if (!success) {
-      companion.gauges.sp.current += skill.spCost; // ★対象選択をキャンセルしたので、消費したSPを返す
+      companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★対象選択をキャンセルしたので、消費したSPを返す
       renderStatusHUD();
       await performCompanionSkillMenu(companion);
       return;
@@ -1519,7 +1534,7 @@ async function performCompanionSkillMenu(companion) {
         choices.push({ text: "やめる", next: "cancel", isBack: true });
         const picked = await displayChoices(choices);
         if (picked.next === "cancel") {
-          companion.gauges.sp.current += skill.spCost; // ★やめたので、消費したSPを返す
+          companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★やめたので、消費したSPを返す
           renderStatusHUD();
           await performCompanionSkillMenu(companion);
           return;
@@ -1556,7 +1571,7 @@ async function performCompanionSkillMenu(companion) {
   const aliveEnemies = getAliveEnemies();
   const targets = skill.target === "all" ? aliveEnemies : [await selectEnemyTarget()];
   if (!targets[0]) {
-    companion.gauges.sp.current += skill.spCost; // ★狙う相手を選ぶ前にキャンセルしたので、消費したSPを返す
+    companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★狙う相手を選ぶ前にキャンセルしたので、消費したSPを返す
     renderStatusHUD();
     await performCompanionSkillMenu(companion); // ★スキル選択からやり直す
     return;
@@ -1641,7 +1656,138 @@ async function performCompanionSkillMenu(companion) {
   updateBattleHud();
 }
 
+// ===== コンボスキル（要望対応） =====
+//   属性技を決まった順番で撃つと追加効果が発動する。履歴（battleState.comboHistory）は主人公と仲間で共有し、
+//   敵のターンに入るとリセットされる。属性なし（"無"）の技は履歴に影響しない。
+//   定義はシナリオエディタの「コンボスキル」タブ（scenarioProject.comboSkills）
+function isComboSkillLearned(requiredNames) {
+  if (!Array.isArray(requiredNames) || requiredNames.length === 0) return true;
+  const learned = new Set();
+  if (typeof getUnlockedSkills === "function") getUnlockedSkills().forEach(s => learned.add(s.name));
+  if (typeof player !== "undefined" && player && Array.isArray(player.companions) && typeof getCompanionSkills === "function") {
+    player.companions.forEach(c => { try { getCompanionSkills(c).forEach(s => learned.add(s.name)); } catch (e) { /* 無視 */ } });
+  }
+  return requiredNames.every(name => learned.has(name));
+}
+
+function isComboSkillUnlocked(combo) {
+  if (!combo || combo.enabled === false) return false;
+  // ★話の解禁方法は、話の編集と同じ条件（前の話・ランク・進行度・日数・フラグ）をそのまま使う
+  if (typeof evaluateChapterUnlockConditions === "function" && !evaluateChapterUnlockConditions(combo)) return false;
+  return isComboSkillLearned(combo.requiredSkillNames);
+}
+
+function findMatchingComboSkill() {
+  const history = (battleState && battleState.comboHistory) || [];
+  const combos = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.comboSkills)) ? scenarioProject.comboSkills : [];
+  let best = null;
+  combos.forEach(combo => {
+    const seq = (combo.elements || []).filter(Boolean);
+    if (seq.length < 2 || seq.length > history.length) return;
+    const tail = history.slice(history.length - seq.length);
+    if (!seq.every((el, i) => el === tail[i])) return;
+    if (!isComboSkillUnlocked(combo)) return;
+    if (!best || seq.length > best.seqLength) best = { combo, seqLength: seq.length }; // ★複数一致したら、長い手順のコンボを優先
+  });
+  return best ? best.combo : null;
+}
+
+async function recordSkillElementForCombo(skill) {
+  if (!battleState || !skill) return;
+  const element = skill.element;
+  if (!element || element === "無") return;
+  if (!Array.isArray(battleState.comboHistory)) battleState.comboHistory = [];
+  battleState.comboHistory.push(element);
+  if (battleState.comboHistory.length > 8) battleState.comboHistory.shift();
+  if (getAliveEnemies().length === 0) return;
+  const combo = findMatchingComboSkill();
+  if (!combo) return;
+  battleState.comboHistory = []; // ★発動したら履歴を空に戻す
+  await executeComboSkill(combo);
+}
+
+// ★画面中央に帯線と文字を出すカットイン（style.cssの.combo-cutin）。表示が終わるまで待つ
+function showComboCutIn(text) {
+  return new Promise(resolve => {
+    // ★右のサイドパネルまで覆わないよう、敵やメッセージウィンドウが入っているメイン画面の中に出す
+    const enemiesEl = document.getElementById("battle-enemies");
+    const host = (enemiesEl && enemiesEl.parentElement) || document.querySelector(".game-container") || document.body;
+    const el = document.createElement("div");
+    el.className = "combo-cutin";
+    const band = document.createElement("div");
+    band.className = "combo-cutin-band";
+    const label = document.createElement("span");
+    label.className = "combo-cutin-label";
+    label.textContent = "COMBO";
+    const main = document.createElement("span");
+    main.className = "combo-cutin-text";
+    main.textContent = text;
+    band.appendChild(label);
+    band.appendChild(main);
+    el.appendChild(band);
+    host.appendChild(el);
+    setTimeout(() => el.classList.add("combo-cutin-out"), 1500);
+    setTimeout(() => { el.remove(); resolve(); }, 1900);
+  });
+}
+
+function buildComboRuntimeSkill(c) {
+  const skill = {
+    name: c.name || "名無しのコンボ", description: c.description || "", type: c.type || "attack",
+    element: c.element || "無", power: Number(c.power) || 0, target: c.target === "all" ? "all" : "single",
+    hitCount: Math.max(1, Number(c.hitCount) || 1), atkType: c.atkType === "physical" ? "physical" : "magical"
+  };
+  if (c.statusEffectKind) skill.statusEffect = { kind: c.statusEffectKind, chance: Number(c.statusEffectChance) || 1, duration: Number(c.statusEffectDuration) || 1, power: Number(c.statusEffectPower) || 0 };
+  if (c.statusEffect2Kind) skill.statusEffect2 = { kind: c.statusEffect2Kind, chance: Number(c.statusEffect2Chance) || 1, duration: Number(c.statusEffect2Duration) || 1, power: Number(c.statusEffect2Power) || 0 };
+  if (c.selfBuffKind) skill.selfBuff = { kind: c.selfBuffKind, duration: Number(c.selfBuffDuration) || 1, power: Number(c.selfBuffPower) || 0, mode: c.selfBuffMode === "multiply" ? "multiply" : "add" };
+  const useBlockMode = c.useBlocks === true || (c.useBlocks == null && Array.isArray(c.blocks) && c.blocks.length > 0);
+  if (useBlockMode && Array.isArray(c.blocks) && c.blocks.length > 0) {
+    skill.blocks = c.blocks;
+    skill.variables = (c.variables && typeof c.variables === "object") ? c.variables : {};
+  }
+  return skill;
+}
+
+async function executeComboSkill(combo) {
+  const skill = buildComboRuntimeSkill(combo);
+  changeSpeaker("");
+  await showComboCutIn(combo.cutInText || skill.name);
+  await displayMessage(`コンボ発動！「${skill.name}」`);
+  const fallbackTarget = getCurrentTarget() || getAliveEnemies()[0] || null;
+  
+  if (skill.blocks && skill.blocks.length > 0) {
+    const context = { variables: { ...(skill.variables || {}) }, target: fallbackTarget, caster: player };
+    await runSkillBlockList(skill.blocks, skill, context);
+  } else if (skill.type === "attack") {
+    const targets = skill.target === "all" ? getAliveEnemies() : (fallbackTarget ? [fallbackTarget] : []);
+    for (const target of targets) {
+      for (let hit = 0; hit < skill.hitCount; hit++) {
+        if (target.hp <= 0) break;
+        const damage = calculateSkillDamage(skill, skill.hitCount);
+        const result = resolveDamageForTarget(target, damage, skill.element);
+        target.hp = Math.max(0, target.hp - result.damage);
+        await displayMessage(result.blocked ? `${target.displayName}には効いていないようだッ！` : `${target.displayName}に${result.damage}のダメージ！`);
+      }
+      for (const effect of [skill.statusEffect, skill.statusEffect2]) {
+        if (!effect || target.hp <= 0 || Math.random() >= effect.chance) continue;
+        const applied = applyEnemyStatusEffectFromSkill(target, effect);
+        if (applied) await displayMessage(`${target.displayName}は${applied}状態になった！`);
+      }
+    }
+  } else if (skill.type === "heal") {
+    const healed = applyHealToUnit(player, "hp", skill.power, false, false); // player.js
+    await displayMessage(`HPが${healed}回復した！`);
+  }
+  if (skill.selfBuff) {
+    const appliedSelf = applySelfBuffFromSkill(skill.selfBuff);
+    if (appliedSelf) await displayMessage(`自分は${appliedSelf}状態になった！`);
+  }
+  renderStatusHUD();
+  updateBattleHud();
+}
+
 async function enemyTeamTurn() {
+  if (battleState) battleState.comboHistory = []; // ★要望対応：敵のターンに入ったらコンボの属性履歴をリセットする
   const alive = getAliveEnemies();
   for (const enemy of alive) {
     if (!battleState) return; // ★途中で戦闘が終わっていたら中断
@@ -2950,6 +3096,7 @@ async function handleSkillMenu() {
   }
   
   changeGauge("sp", -skill.spCost);
+  if (battleState) battleState.lastPlayerSkill = skill; // ★コンボスキル用：このターンに撃った技（対象選択キャンセル時は呼び出し元がdone=falseで無視する）
   checkZetsurinAutoRecover(); // ★性騎士の「絶倫」：SPが2割を切ったら自動回復（1戦闘3回まで）
   checkMagicalGirlForcedDetransform(); // ★SPが3割を切ったら変身が強制解除される
   changeSpeaker("");
