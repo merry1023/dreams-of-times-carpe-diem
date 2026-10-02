@@ -29,6 +29,7 @@ let scenarioProject = {
   enemies: [],    // [{ id, name, maxHp, atk, exp, level }, ...] ★levelを設定すると、そのエリアではプレイヤーLvに関わらず固定の強さで出る
   bosses: [],     // [{ id, name, maxHp, atk, exp, level, bgmTrack, bgmFinalTrack, bgmCrisisTrack, invincibilityItemId }, ...]
   items: [],      // [{ id, name, category, description, rank, listedPrice, trueValue }, ...]
+  comboSkills: [], // ★要望対応：コンボスキル（属性の順番で発動する追加効果）。[{ id, name, elements:[属性id...], requiredSkillNames:[...], requiredChapterId... }, ...]
   skills: [],     // [{ id, className, skillId, name, description, type, element, spCost, unlockLevel, power, target, hitCount, statusEffectKind... }, ...]
                   // ★将来的に「特殊スキル編集」ボタンから、話のブロックエディタと同じ要領で技の動作を
                   //   ブロックで組めるようにする予定。その時はここに blocks:[...] を追加する想定
@@ -241,6 +242,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.recipes = data.recipes || [];
   if (Array.isArray(data.randomNamePool)) scenarioProject.randomNamePool = data.randomNamePool; // ★要望対応：ランダム名前管理タブ
   if (Array.isArray(data.elementDefs)) scenarioProject.elementDefs = data.elementDefs; // ★要望対応：属性管理タブ
+  if (Array.isArray(data.comboSkills)) scenarioProject.comboSkills = data.comboSkills; // ★要望対応：コンボスキル
   if (data.elementMatchups && typeof data.elementMatchups === "object") scenarioProject.elementMatchups = data.elementMatchups;
   scenarioProject.bgmTracks = data.bgmTracks || [];
   scenarioProject.mapAreas = data.mapAreas || [];
@@ -447,6 +449,7 @@ function normalizeScenarioProject() {
   //   （scenarioProject.elementMatchups[攻撃側属性id + ">" + 受ける側属性id] = "advantage"|"resist"、
   //   未設定は通常扱い）
   if (!Array.isArray(scenarioProject.elementDefs)) scenarioProject.elementDefs = []; // [{ id, name }, ...]
+  if (!Array.isArray(scenarioProject.comboSkills)) scenarioProject.comboSkills = []; // ★要望対応：コンボスキル
   if (!scenarioProject.elementMatchups || typeof scenarioProject.elementMatchups !== "object") scenarioProject.elementMatchups = {};
   // ★バグ修正：以前スキルの「属性」は直接入力（自由記述の文字列）だったが、属性管理タブ＋
   //   リスト選択方式に変わった際、既存データの生の値（例：「火」）が新しい属性一覧（{id, name}）の
@@ -1525,6 +1528,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
   { view: "tutorials", label: "チュートリアル管理" },
   { view: "skills", label: "スキル管理" },
+  { view: "combos", label: "コンボスキル" }, // ★要望対応：属性の順番で発動する追加効果の技
   { view: "statuses", label: "状態管理" },
   { view: "flags", label: "フラグ管理" },
   { view: "gamevars", label: "ゲーム変数管理" }, // ★要望対応：話ブロックのifで参照できる数値変数の管理タブ（システム変数一覧の「変数一覧」とは別物）
@@ -1671,6 +1675,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "achievements") renderEntityManager(bodyEl, getAchievementManagerConfig());
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
+  else if (scenarioBuildSubView === "combos") renderComboSkillManager(bodyEl); // ★要望対応：コンボスキル
   else if (scenarioBuildSubView === "statuses") renderStatusManager(bodyEl);
   else if (scenarioBuildSubView === "flags") renderFlagManager(bodyEl);
   else if (scenarioBuildSubView === "gamevars") renderVariableManager(bodyEl);
@@ -5232,6 +5237,7 @@ const BOOK_GENRE_OPTIONS = [
   { value: "童話", label: "童話" },
   { value: "神話・歴史書", label: "神話・歴史書" },
   { value: "記録・手記", label: "記録・手記" },
+  { value: "修行記", label: "修行記" },
   { value: "その他", label: "その他" }
 ];
 
@@ -7378,7 +7384,348 @@ function getEditingSkill() {
   if (scenarioBuildEditingItemSkillId) {
     return scenarioProject.items.find(i => i.id === scenarioBuildEditingItemSkillId) || null;
   }
-  return scenarioProject.skills.find(s => s.id === scenarioBuildEditingSkillId) || null;
+  // ★要望対応：コンボスキルも「特殊スキル編集」のブロックエディタをそのまま使い回す（idで技→コンボの順に探す）
+  return scenarioProject.skills.find(s => s.id === scenarioBuildEditingSkillId)
+    || (scenarioProject.comboSkills || []).find(s => s.id === scenarioBuildEditingSkillId) || null;
+}
+
+// ===== コンボスキル管理（要望対応） =====
+//   属性技を決まった順番で撃つと発動する追加効果の技。1件の中身はスキル管理の技とほぼ同じ編集方法で、
+//   違いは「属性の順番」を指定できること。履歴はパーティ共有で、敵のターンに入るとリセットされる（battle.js）。
+//   解禁条件＝「話の解禁方法（話の編集と同じ条件）」＋「指定した技を習得済み（複数選択可）」
+function createNewComboSkill() {
+  return {
+    id: generateId("combo"), name: "新しいコンボ", description: "", enabled: true,
+    elements: [], cutInText: "",
+    requiredChapterId: null, requiredRank: null, requiredProgress: null, requiredDays: null, requiredFlag: null,
+    requiredSkillNames: [],
+    type: "attack", element: "無", power: 20, target: "all", hitCount: 1, atkType: "magical",
+    statusEffectKind: "", statusEffectChance: 1, statusEffectDuration: 3, statusEffectPower: 3,
+    statusEffect2Kind: "", statusEffect2Chance: 1, statusEffect2Duration: 1, statusEffect2Power: 0,
+    selfBuffKind: "", selfBuffDuration: 1, selfBuffPower: 0, selfBuffMode: "add",
+    useBlocks: false, blocks: [], variables: {}
+  };
+}
+
+function renderComboSkillManager(container) {
+  if (!Array.isArray(scenarioProject.comboSkills)) scenarioProject.comboSkills = [];
+  const introEl = document.createElement("p");
+  introEl.className = "devmode-note";
+  introEl.textContent = "属性技を決まった順番で撃つと、追加効果（コンボスキル）が発動します。履歴はパーティ全員で共有され、敵のターンに入るとリセットされます。属性なしの技は履歴に影響しません。コンボはSPを消費せず、3手目などの最後の技のあとに続けて発動します。";
+  container.appendChild(introEl);
+
+  if (scenarioProject.elementDefs.length === 0) {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note";
+    noteEl.textContent = "先に「属性管理」タブで属性（炎・雷など）を登録してください。";
+    container.appendChild(noteEl);
+  }
+
+  const addBtn = document.createElement("button");
+  addBtn.className = "devmode-btn";
+  addBtn.textContent = "＋コンボスキルを追加";
+  addBtn.onclick = () => {
+    pushUndoSnapshot();
+    scenarioProject.comboSkills.push(createNewComboSkill());
+    markScenarioBuildDirty();
+    renderScenarioBuildPanel();
+  };
+  container.appendChild(addBtn);
+
+  scenarioProject.comboSkills.forEach((combo, index) => container.appendChild(buildComboSkillRow(combo, index)));
+}
+
+function buildComboSkillRow(combo, index) {
+  const list = scenarioProject.comboSkills;
+  if (!Array.isArray(combo.elements)) combo.elements = [];
+  if (!Array.isArray(combo.requiredSkillNames)) combo.requiredSkillNames = [];
+  const persist = () => markScenarioBuildDirty();
+
+  const row = document.createElement("div");
+  row.className = "scenariobuild-chapter-row";
+  const idEl = document.createElement("span");
+  idEl.className = "scenariobuild-chapter-number";
+  idEl.textContent = `#${index + 1}`;
+  row.appendChild(idEl);
+
+  const infoEl = document.createElement("div");
+  infoEl.className = "scenariobuild-chapter-info";
+
+  const basicRow = document.createElement("div");
+  basicRow.className = "scenariobuild-condition-row";
+  buildSkillTextInput(combo, "name", "技名", basicRow);
+  infoEl.appendChild(basicRow);
+  const descRow = document.createElement("div");
+  descRow.className = "scenariobuild-condition-row";
+  buildSkillTextInput(combo, "description", "説明", descRow);
+  infoEl.appendChild(descRow);
+  const cutRow = document.createElement("div");
+  cutRow.className = "scenariobuild-condition-row";
+  buildSkillTextInput(combo, "cutInText", "カットインの文字（空なら技名）", cutRow);
+  infoEl.appendChild(cutRow);
+
+  const enabledRow = document.createElement("label");
+  enabledRow.className = "scenariobuild-condition-row";
+  enabledRow.style.cursor = "pointer";
+  const enabledCheckbox = document.createElement("input");
+  enabledCheckbox.type = "checkbox";
+  enabledCheckbox.checked = combo.enabled !== false;
+  enabledCheckbox.onchange = () => { combo.enabled = enabledCheckbox.checked; persist(); };
+  enabledRow.appendChild(enabledCheckbox);
+  enabledRow.appendChild(document.createTextNode(" 実装済み（オフ＝編集中。実際のプレイでは発動しない）"));
+  infoEl.appendChild(enabledRow);
+
+  // ★属性の順番（コンボスキルだけの項目）
+  const orderBox = document.createElement("div");
+  orderBox.className = "scenariobuild-condition-multi";
+  orderBox.appendChild(labelSpan("属性の順番（上から順に撃つ）："));
+  const elementOptions = scenarioProject.elementDefs.map(el => ({ value: el.id, label: el.name || "（無名）" }));
+  combo.elements.forEach((elId, i) => {
+    const line = document.createElement("div");
+    line.className = "scenariobuild-condition-row";
+    line.appendChild(labelSpan(`${i + 1}手目：`));
+    const select = document.createElement("select");
+    select.className = "scenariobuild-jump-select";
+    const emptyOpt = document.createElement("option");
+    emptyOpt.value = ""; emptyOpt.textContent = "（未選択）";
+    select.appendChild(emptyOpt);
+    elementOptions.forEach(opt => {
+      const o = document.createElement("option");
+      o.value = opt.value; o.textContent = opt.label;
+      select.appendChild(o);
+    });
+    select.value = elId || "";
+    select.onchange = () => { combo.elements[i] = select.value; persist(); };
+    line.appendChild(select);
+    const mkBtn = (text, disabled, handler, danger) => {
+      const b = document.createElement("button");
+      b.className = "devmode-btn" + (danger ? " devmode-btn-danger" : "");
+      b.textContent = text; b.disabled = disabled;
+      b.onclick = (event) => { event.stopPropagation(); pushUndoSnapshot(); handler(); persist(); renderScenarioBuildPanel(); };
+      line.appendChild(b);
+    };
+    mkBtn("↑", i === 0, () => { [combo.elements[i - 1], combo.elements[i]] = [combo.elements[i], combo.elements[i - 1]]; });
+    mkBtn("↓", i === combo.elements.length - 1, () => { [combo.elements[i + 1], combo.elements[i]] = [combo.elements[i], combo.elements[i + 1]]; });
+    mkBtn("✕", false, () => { combo.elements.splice(i, 1); }, true);
+    orderBox.appendChild(line);
+  });
+  const addElBtn = document.createElement("button");
+  addElBtn.className = "devmode-btn";
+  addElBtn.textContent = "＋手を追加";
+  addElBtn.onclick = (event) => { event.stopPropagation(); pushUndoSnapshot(); combo.elements.push(""); persist(); renderScenarioBuildPanel(); };
+  orderBox.appendChild(addElBtn);
+  if (combo.elements.filter(Boolean).length < 2) {
+    const warn = document.createElement("p");
+    warn.className = "devmode-note";
+    warn.style.margin = "0";
+    warn.textContent = "⚠ 属性は2手以上指定しないと発動しません。";
+    orderBox.appendChild(warn);
+  }
+  infoEl.appendChild(orderBox);
+
+  // ★解禁条件①：話の解禁方法（話の編集と同じ条件。evaluateChapterUnlockConditions をそのまま使う）
+  const condDetails = document.createElement("details");
+  condDetails.className = "scenariobuild-skill-details";
+  const condSummary = document.createElement("summary");
+  condSummary.textContent = "解禁条件（話の解禁方法 ＋ 習得済みの技）";
+  condDetails.appendChild(condSummary);
+
+  const addCondRow = (label, el) => {
+    const r = document.createElement("div");
+    r.className = "scenariobuild-condition-row";
+    r.appendChild(labelSpan(label));
+    r.appendChild(el);
+    condDetails.appendChild(r);
+  };
+  const chapterSelect = document.createElement("select");
+  chapterSelect.className = "scenariobuild-jump-select";
+  const noneOpt = document.createElement("option");
+  noneOpt.value = ""; noneOpt.textContent = "（条件なし）";
+  chapterSelect.appendChild(noneOpt);
+  scenarioProject.chapters.forEach(c => {
+    const o = document.createElement("option");
+    o.value = c.id; o.textContent = c.title;
+    chapterSelect.appendChild(o);
+  });
+  chapterSelect.value = combo.requiredChapterId || "";
+  chapterSelect.onchange = () => { combo.requiredChapterId = chapterSelect.value || null; persist(); };
+  addCondRow("この話をクリア：", chapterSelect);
+
+  const rankSelect = document.createElement("select");
+  rankSelect.className = "scenariobuild-jump-select";
+  const rankNone = document.createElement("option");
+  rankNone.value = ""; rankNone.textContent = "（条件なし）";
+  rankSelect.appendChild(rankNone);
+  (typeof RANK_ORDER !== "undefined" ? RANK_ORDER : ["F", "E", "D", "C", "B", "A", "S"]).forEach(rank => {
+    const o = document.createElement("option");
+    o.value = rank; o.textContent = rank;
+    rankSelect.appendChild(o);
+  });
+  rankSelect.value = combo.requiredRank || "";
+  rankSelect.onchange = () => { combo.requiredRank = rankSelect.value || null; persist(); };
+  addCondRow("ランクが以上：", rankSelect);
+
+  const makeNumInput = (key) => {
+    const input = document.createElement("input");
+    input.type = "number"; input.min = "0";
+    input.className = "scenariobuild-condition-input";
+    input.placeholder = "なし";
+    input.value = combo[key] || "";
+    input.onchange = () => { const v = parseInt(input.value, 10); combo[key] = (!v || v <= 0) ? null : v; persist(); };
+    return input;
+  };
+  addCondRow("進行度が以上：", makeNumInput("requiredProgress"));
+  addCondRow("経過日数が以上：", makeNumInput("requiredDays"));
+
+  const flagInput = document.createElement("input");
+  flagInput.type = "text";
+  flagInput.className = "scenariobuild-title-input";
+  flagInput.placeholder = "なし";
+  flagInput.value = combo.requiredFlag || "";
+  flagInput.onchange = () => { combo.requiredFlag = flagInput.value.trim() || null; persist(); };
+  addCondRow("フラグが立っている：", flagInput);
+
+  // ★解禁条件②：指定した技を習得済み（複数選択可。全部習得していることが条件）
+  const skillBox = document.createElement("div");
+  skillBox.className = "scenariobuild-condition-multi";
+  skillBox.appendChild(labelSpan(`習得済みであること（複数選択可・全て必要）：現在${combo.requiredSkillNames.length}件`));
+  const byClass = {};
+  scenarioProject.skills.forEach(sk => {
+    if (!sk.name) return;
+    (byClass[sk.className || "（職業なし）"] = byClass[sk.className || "（職業なし）"] || []).push(sk);
+  });
+  Object.keys(byClass).forEach(className => {
+    const clsDetails = document.createElement("details");
+    clsDetails.className = "scenariobuild-skill-details";
+    const clsSummary = document.createElement("summary");
+    const selectedCount = byClass[className].filter(sk => combo.requiredSkillNames.includes(sk.name)).length;
+    clsSummary.textContent = `${className}の技${selectedCount ? `（${selectedCount}件選択中）` : ""}`;
+    clsDetails.appendChild(clsSummary);
+    byClass[className].slice().sort((a, b) => (a.unlockLevel || 0) - (b.unlockLevel || 0)).forEach(sk => {
+      const label = document.createElement("label");
+      label.className = "scenariobuild-condition-row";
+      label.style.cursor = "pointer";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = combo.requiredSkillNames.includes(sk.name);
+      cb.onchange = () => {
+        const idx = combo.requiredSkillNames.indexOf(sk.name);
+        if (cb.checked && idx < 0) combo.requiredSkillNames.push(sk.name);
+        if (!cb.checked && idx >= 0) combo.requiredSkillNames.splice(idx, 1);
+        persist();
+      };
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(` Lv.${sk.unlockLevel || "?"} ${sk.name}`));
+      clsDetails.appendChild(label);
+    });
+    skillBox.appendChild(clsDetails);
+  });
+  condDetails.appendChild(skillBox);
+  infoEl.appendChild(condDetails);
+
+  // ★動作（スキル管理と同じ：固定フィールド or 特殊スキル編集のブロック）
+  const hasBlocks = Array.isArray(combo.blocks) && combo.blocks.length > 0;
+  const isBlockMode = combo.useBlocks === true || (combo.useBlocks == null && hasBlocks);
+  const modeRow = document.createElement("div");
+  modeRow.className = "scenariobuild-condition-row";
+  modeRow.appendChild(labelSpan("この技の動作："));
+  const modeSelect = document.createElement("select");
+  modeSelect.className = "scenariobuild-jump-select";
+  [["fixed", "固定フィールド（下の威力・種類などの設定欄）"], ["blocks", "ブロックで組む（特殊スキル編集）"]].forEach(([value, label]) => {
+    const o = document.createElement("option");
+    o.value = value; o.textContent = label;
+    modeSelect.appendChild(o);
+  });
+  modeSelect.value = isBlockMode ? "blocks" : "fixed";
+  modeSelect.onchange = () => { combo.useBlocks = modeSelect.value === "blocks"; persist(); renderScenarioBuildPanel(); };
+  modeRow.appendChild(modeSelect);
+  infoEl.appendChild(modeRow);
+
+  const blockRow = document.createElement("div");
+  blockRow.className = "scenariobuild-condition-row";
+  const blockEditBtn = document.createElement("button");
+  blockEditBtn.className = "devmode-btn";
+  blockEditBtn.textContent = "⚡ 特殊スキル編集";
+  blockEditBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioBuildEditingSkillId = combo.id;
+    scenarioBuildMainView = "skillBlockEditor";
+    renderScenarioBuildPanel();
+  };
+  blockRow.appendChild(blockEditBtn);
+  if (isBlockMode) {
+    const badge = document.createElement("span");
+    badge.className = "devmode-note";
+    badge.style.margin = "0";
+    badge.textContent = `⚡ブロックで動作中（${(combo.blocks || []).length}件）：下の固定フィールドは無視されます`;
+    blockRow.appendChild(badge);
+  }
+  infoEl.appendChild(blockRow);
+
+  const fixedWrap = document.createElement("div");
+  fixedWrap.className = isBlockMode ? "scenariobuild-skill-fixed-fields-disabled" : "";
+  const paramsRow = document.createElement("div");
+  paramsRow.className = "scenariobuild-condition-row";
+  paramsRow.style.flexWrap = "wrap";
+  paramsRow.appendChild(buildSkillSelectInline(combo, "type", "種類", [
+    { value: "attack", label: "攻撃" }, { value: "heal", label: "回復" }, { value: "buff", label: "自己強化" }
+  ]));
+  paramsRow.appendChild(buildSkillSelectInline(combo, "element", "ダメージの属性", [{ value: "無", label: "無" }, ...elementOptions]));
+  paramsRow.appendChild(buildSkillNumberInline(combo, "power", "威力", 0));
+  paramsRow.appendChild(buildSkillSelectInline(combo, "target", "対象", [{ value: "single", label: "単体（現在のターゲット）" }, { value: "all", label: "全体" }]));
+  paramsRow.appendChild(buildSkillNumberInline(combo, "hitCount", "命中回数", 1));
+  paramsRow.appendChild(buildSkillSelectInline(combo, "atkType", "参照する攻撃力", [{ value: "physical", label: "物理攻撃力" }, { value: "magical", label: "魔法攻撃力" }]));
+  fixedWrap.appendChild(paramsRow);
+
+  const details = document.createElement("details");
+  details.className = "scenariobuild-skill-details";
+  const summary = document.createElement("summary");
+  summary.textContent = "効果の詳細（状態異常・自己強化）";
+  details.appendChild(summary);
+  details.appendChild(buildSkillEffectGroup(combo, "状態異常①（例：やけど）", "statusEffectKind", "statusEffectChance", "statusEffectDuration", "statusEffectPower", getSkillStatusKindOptions()));
+  details.appendChild(buildSkillEffectGroup(combo, "状態異常②", "statusEffect2Kind", "statusEffect2Chance", "statusEffect2Duration", "statusEffect2Power", getSkillStatusKindOptions()));
+  const selfBuffRow = document.createElement("div");
+  selfBuffRow.className = "scenariobuild-condition-row";
+  selfBuffRow.appendChild(labelSpan("自己強化：" ));
+  selfBuffRow.appendChild(buildSkillSelectInline(combo, "selfBuffKind", "", getSkillSelfBuffKindOptions()));
+  selfBuffRow.appendChild(buildSkillNumberInline(combo, "selfBuffDuration", "ターン数", 1));
+  selfBuffRow.appendChild(buildSkillSelectInline(combo, "selfBuffMode", "上昇方法", [{ value: "add", label: "加算" }, { value: "multiply", label: "乗算（効果量%）" }]));
+  selfBuffRow.appendChild(buildSkillNumberInline(combo, "selfBuffPower", "効果量", 0));
+  details.appendChild(selfBuffRow);
+  fixedWrap.appendChild(details);
+  infoEl.appendChild(fixedWrap);
+  row.appendChild(infoEl);
+
+  const buttonsEl = document.createElement("div");
+  buttonsEl.className = "scenariobuild-chapter-buttons";
+  const moveBtn = (text, disabled, delta) => {
+    const b = document.createElement("button");
+    b.className = "devmode-btn";
+    b.textContent = text; b.disabled = disabled;
+    b.onclick = (event) => {
+      event.stopPropagation();
+      pushUndoSnapshot();
+      [list[index + delta], list[index]] = [list[index], list[index + delta]];
+      persist(); renderScenarioBuildPanel();
+    };
+    buttonsEl.appendChild(b);
+  };
+  moveBtn("↑ 上へ", index === 0, -1);
+  moveBtn("↓ 下へ", index === list.length - 1, 1);
+  const delBtn = document.createElement("button");
+  delBtn.className = "devmode-btn devmode-btn-danger";
+  delBtn.textContent = "削除";
+  delBtn.onclick = async (event) => {
+    event.stopPropagation();
+    const ok = await showGameConfirm(`コンボスキル「${combo.name || "名無し"}」を削除しますか？`);
+    if (!ok) return;
+    pushUndoSnapshot();
+    list.splice(index, 1);
+    persist(); renderScenarioBuildPanel();
+  };
+  buttonsEl.appendChild(delBtn);
+  row.appendChild(buttonsEl);
+  return row;
 }
 
 // ===== メイン画面：特殊スキルのブロック編集（専用全画面。scenarioBuildMainView === "skillBlockEditor"） =====
@@ -7397,7 +7744,7 @@ function renderSkillBlockEditor(container) {
   
   const backBtn = document.createElement("button");
   backBtn.className = "devmode-btn";
-  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : "← スキル管理に戻る";
+  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : (scenarioBuildSubView === "combos" ? "← コンボスキルに戻る" : "← スキル管理に戻る");
   backBtn.onclick = (event) => {
     event.stopPropagation();
     scenarioBuildSkillInsertMenuTarget = null;
@@ -12140,6 +12487,7 @@ function exportGameSettingsAsJsFile() {
     randomNamePool: scenarioProject.randomNamePool, // ★要望対応：ランダム名前管理タブ
     elementDefs: scenarioProject.elementDefs, // ★要望対応：属性管理タブ
     elementMatchups: scenarioProject.elementMatchups,
+    comboSkills: scenarioProject.comboSkills, // ★要望対応：コンボスキル
     bgmTracks: scenarioProject.bgmTracks,
     mapAreas: scenarioProject.mapAreas,
     mapEdges: scenarioProject.mapEdges,

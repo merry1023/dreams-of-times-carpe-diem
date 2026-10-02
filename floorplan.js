@@ -28,6 +28,7 @@ function makeNewFloorPlanRoom(x, y) {
     roomType: "", // ★要望対応：部屋の種類（"" or "toilet"）
     brightness: 4, // ★要望対応：部屋の明るさ（0〜30。既定はかなり暗め）
     doors: { north: false, south: false, east: false, west: false },
+    outsideDoors: { north: false, south: false, east: false, west: false }, // ★要望対応：「外に出る扉」。部屋・方角ごとに何ヶ所でも設定できる
     doorStyle: {}, // ★要望対応：ドアごとの表示位置・色（{ north: { position, color }, ... }、未設定なら中央・茶色）
     fixedItems: [] // ★要望対応：「さらに細かく編集する」で置く、間取り自体に含まれる固定設置物（階段・動かせない家具等）
   };
@@ -67,7 +68,27 @@ function ensureFloorPlan(area, floor) {
   if (!floorPlan.startRoomId || !floorPlan.rooms.some(r => r.id === floorPlan.startRoomId)) {
     floorPlan.startRoomId = floorPlan.rooms[0].id;
   }
+  // ★古いセーブ・シナリオデータ用の移行処理：部屋ごとのoutsideDoorsが無ければ用意する
+  floorPlan.rooms.forEach(r => {
+    if (!r.outsideDoors || typeof r.outsideDoors !== "object") r.outsideDoors = { north: false, south: false, east: false, west: false };
+  });
   return floorPlan;
+}
+
+// ★要望対応：外に出る扉は、家の中で何ヶ所でも自由に設置できる
+function isRoomOutsideDoor(room, direction) {
+  return !!(room.outsideDoors && room.outsideDoors[direction]);
+}
+
+function getRoomOutsideDoorDirections(room) {
+  if (!room.outsideDoors) return [];
+  return Object.keys(FLOORPLAN_DIRECTIONS).filter(d => room.outsideDoors[d]);
+}
+
+// ★要望対応：方角ごとに「外に出る扉」のON/OFFを切り替える（間取り編集のモード切替ボタン用）
+function toggleRoomOutsideDoor(room, direction) {
+  if (!room.outsideDoors) room.outsideDoors = { north: false, south: false, east: false, west: false };
+  room.outsideDoors[direction] = !room.outsideDoors[direction];
 }
 
 // ★シナリオエディタの間取り編集で「他に何階まであるか」を一覧するための一覧（0階は常に含む）
@@ -114,6 +135,8 @@ function addFloorPlanRoom(floorPlan, fromRoomId, direction) {
   if (findFloorPlanRoomAt(floorPlan, nx, ny)) return null;
   const newRoom = makeNewFloorPlanRoom(nx, ny);
   floorPlan.rooms.push(newRoom);
+  // ★その方向がちょうど「外に出る扉」に設定されていた場合、外壁ではなくなる（隣が部屋になる）ので設定を解除する
+  if (isRoomOutsideDoor(fromRoom, direction)) fromRoom.outsideDoors[direction] = false;
   return newRoom;
 }
 
@@ -373,7 +396,7 @@ function buildFloorPlanRoomDetail(area, floorPlan, room, persist) {
   
   const doorNote = document.createElement("p");
   doorNote.className = "devmode-note scenariobuild-condition";
-  doorNote.textContent = "ドア（隣に部屋がある方向にだけ設置できます。設置した方向にのみ、隣の部屋へ移動できるようになります。位置・色は本編プレイ画面での見た目です）：";
+  doorNote.textContent = "ドア（隣に部屋がある方向にだけ設置できます。設置した方向にのみ、隣の部屋へ移動できるようになります。位置・色は本編プレイ画面での見た目です）。隣に部屋が無い方向（外壁）は、代わりに「外に出る扉」に切り替えられます（いくつでも設置できます）：";
   infoEl.appendChild(doorNote);
   
   Object.keys(FLOORPLAN_DIRECTIONS).forEach(dirKey => {
@@ -381,15 +404,34 @@ function buildFloorPlanRoomDetail(area, floorPlan, room, persist) {
     const neighbor = findFloorPlanRoomAt(floorPlan, room.x + dir.dx, room.y + dir.dy);
     const doorRow = document.createElement("div");
     doorRow.className = "scenariobuild-condition-row";
+    
+    if (!neighbor) {
+      // ★要望対応：外壁の方向は、通常のドアの代わりに「外に出る扉」に切り替えられる（モード切替ボタン。いくつでも設置可）
+      const isOutside = isRoomOutsideDoor(room, dirKey);
+      doorRow.appendChild(labelSpan(`${dir.label}：`));
+      const modeBtn = document.createElement("button");
+      modeBtn.className = "devmode-btn" + (isOutside ? " scenariobuild-filter-active" : "");
+      modeBtn.textContent = isOutside ? "外に出る扉にしている（クリックで解除）" : "外に出る扉にする";
+      modeBtn.onclick = (event) => { event.stopPropagation(); toggleRoomOutsideDoor(room, dirKey); persist(); };
+      doorRow.appendChild(modeBtn);
+      if (isOutside) {
+        const note = document.createElement("span");
+        note.className = "devmode-note";
+        note.textContent = "　この方向へ進むと「外に出ますか？」と聞かれ、はいでマップ画面が開きます";
+        doorRow.appendChild(note);
+      }
+      infoEl.appendChild(doorRow);
+      return;
+    }
+    
     const checkboxLabel = document.createElement("label");
-    checkboxLabel.style.cursor = neighbor ? "pointer" : "default";
+    checkboxLabel.style.cursor = "pointer";
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = !!room.doors[dirKey];
-    checkbox.disabled = !neighbor;
     checkbox.onchange = () => { toggleFloorPlanDoor(floorPlan, room.id, dirKey); persist(); };
     checkboxLabel.appendChild(checkbox);
-    checkboxLabel.appendChild(document.createTextNode(` ${dir.label}のドア` + (neighbor ? `（${neighbor.name || "部屋"}へ）` : "（隣に部屋がありません）")));
+    checkboxLabel.appendChild(document.createTextNode(` ${dir.label}のドア（${neighbor.name || "部屋"}へ）`));
     doorRow.appendChild(checkboxLabel);
     
     if (room.doors[dirKey]) {
@@ -643,8 +685,12 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     
     function describeDoorHint() {
       const openDirs = Object.keys(FLOORPLAN_DIRECTIONS).filter(d => room.doors[d]);
-      if (openDirs.length === 0) return "この部屋にはドアが無いようだ。";
-      return "ドア：" + openDirs.map(d => FLOORPLAN_DIRECTIONS[d].label).join("・");
+      const outsideDirs = getRoomOutsideDoorDirections(room); // ★要望対応：外に出る扉は何ヶ所でもあり得るので、すべて案内する
+      const parts = [];
+      if (openDirs.length > 0) parts.push("ドア：" + openDirs.map(d => FLOORPLAN_DIRECTIONS[d].label).join("・"));
+      if (outsideDirs.length > 0) parts.push("外に出る扉：" + outsideDirs.map(d => FLOORPLAN_DIRECTIONS[d].label).join("・"));
+      if (parts.length === 0) return "この部屋にはドアが無いようだ。";
+      return parts.join("／");
     }
     
     function currentUiState() {
@@ -658,6 +704,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
           legend: placing.fixedItem ? ["↑↓←→：移動", "Z：ここに確定", "X：やめる（元に戻す）"] : ["↑↓←→：移動", "R：90度回転", "Z：ここに確定", "X：やめる（元に戻す）"],
           cursor,
           placing: { def: placing.def, rotation: placing.rotation, excludeInstanceId: placing.instance ? placing.instance.instanceId : null, excludeFixedItemId: placing.fixedItem ? placing.fixedItem.id : null, isCeiling, valid },
+          onDirection: handleDirection,
           hint: `横${size.w}×縦${size.h}マス${valid ? "" : "（この位置には置けません）"}`
         };
       }
@@ -665,10 +712,11 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         return {
           mode: "cursor",
           modeLabel: "カーソルモード",
-          legend: ["↑↓←→：カーソル移動", "Z：家具を選ぶ／空きマスなら新しく置く", "G：モード切替（次は天井選択）", "X：家を出る"],
+          legend: ["↑↓←→：カーソル移動", "Z：家具を選ぶ／空きマスなら新しく置く", "G：モード切替（次は天井選択）", "L：家中の天井照明を点ける", "X：家を出る"],
           cursor,
           onToggleMode: toggleMode,
           onLeave: leaveHouse,
+          onDirection: handleDirection,
           hint: `${room.name || "部屋"}にいる。`
         };
       }
@@ -677,26 +725,69 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         return {
           mode: "ceiling",
           modeLabel: "天井選択モード",
-          legend: ["↑↓←→：カーソル移動", "Z：天井の家具を選ぶ／空きマスなら新しく置く", "G：モード切替（次は部屋移動）", "X：家を出る"],
+          legend: ["↑↓←→：カーソル移動", "Z：天井の家具を選ぶ／空きマスなら新しく置く", "G：モード切替（次は部屋移動）", "L：家中の天井照明を点ける", "X：家を出る"],
           cursor,
           onToggleMode: toggleMode,
           onLeave: leaveHouse,
+          onDirection: handleDirection,
           hint: `${room.name || "部屋"}の天井を見ている。`
         };
       }
       return {
         mode: "move",
         modeLabel: "部屋移動モード",
-        legend: ["↑↓←→：ドアの方向へ移動", "G：モード切替（次はカーソルモード）", "X：家を出る"],
+        legend: ["↑↓←→：ドアの方向へ移動", "G：モード切替（次はカーソルモード）", "L：家中の天井照明を点ける", "X：家を出る"],
         onToggleMode: toggleMode,
         onLeave: leaveHouse,
+        onDirection: handleDirection,
         hint: `${room.name || "部屋"}にいる。${describeDoorHint()}`
       };
+    }
+    
+    // ★要望対応：矢印キーだけでなく、画面上の矢印ボタンからも同じ操作ができるよう、方向の処理を1つにまとめた
+    //   （dirKeyは"up"/"down"/"left"/"right"。モードに応じて「ドア移動」「カーソル移動」「家具の移動」に振り分ける）
+    function handleDirection(dirKey) {
+      if (placing) {
+        if (dirKey === "up") movePlacing(0, -1);
+        else if (dirKey === "down") movePlacing(0, 1);
+        else if (dirKey === "left") movePlacing(-1, 0);
+        else if (dirKey === "right") movePlacing(1, 0);
+        return;
+      }
+      if (mode === "move") {
+        const doorDir = { up: "north", down: "south", left: "west", right: "east" }[dirKey];
+        moveDoorDirection(doorDir);
+        return;
+      }
+      // cursor / ceiling
+      if (dirKey === "up") moveCursor(0, -1);
+      else if (dirKey === "down") moveCursor(0, 1);
+      else if (dirKey === "left") moveCursor(-1, 0);
+      else if (dirKey === "right") moveCursor(1, 0);
     }
     
     function render() {
       if (typeof hideMessageWindow === "function") hideMessageWindow(); // ★要望対応：カーソル操作中はメッセージウィンドウが邪魔なので隠す
       if (typeof renderRoomView === "function") renderRoomView(room, currentUiState(), floorPlan); // furniture.js
+    }
+    
+    // ★要望対応：Lキーで、この家（area）の全ての階・全ての部屋にある「天井の照明」を一斉に点ける
+    function turnOnAllCeilingLights() {
+      const floors = (area.floorPlans && typeof area.floorPlans === "object") ? Object.values(area.floorPlans) : [floorPlan];
+      floors.forEach(fp => {
+        if (!fp || !Array.isArray(fp.rooms)) return;
+        fp.rooms.forEach(r => {
+          getRoomPlacedFurniture(r.id).forEach(inst => { // furniture.js
+            const def = findFurnitureDef(inst.furnitureId);
+            if (def && def.type === "lighting" && def.isCeiling) inst.lightOn = true;
+          });
+          (Array.isArray(r.fixedItems) ? r.fixedItems : []).forEach(item => {
+            if (item.kind !== "furniture") return;
+            const def = findFurnitureDef(item.furnitureId);
+            if (def && def.type === "lighting" && def.isCeiling) item.lightOn = true;
+          });
+        });
+      });
     }
     
     function toggleMode() {
@@ -712,12 +803,30 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
     }
     
     function moveDoorDirection(dirKey) {
-      if (!room.doors[dirKey]) return;
-      const dir = FLOORPLAN_DIRECTIONS[dirKey];
-      const neighbor = findFloorPlanRoomAt(floorPlan, room.x + dir.dx, room.y + dir.dy);
-      if (!neighbor) return;
-      room = neighbor;
-      render();
+      if (room.doors[dirKey]) {
+        const dir = FLOORPLAN_DIRECTIONS[dirKey];
+        const neighbor = findFloorPlanRoomAt(floorPlan, room.x + dir.dx, room.y + dir.dy);
+        if (neighbor) { room = neighbor; render(); return; }
+      }
+      // ★要望対応：間取り編集で設定した「外に出る扉」の方向へ進もうとしたら、確認の上で外に出られるようにする
+      if (isRoomOutsideDoor(room, dirKey)) confirmGoOutside();
+    }
+    
+    // ★要望対応：「外に出る扉」の方向へ進んだ時の確認。以前のように決まった村（カリの村）へ戻すのではなく、
+    //   「冒険に出る」と同じマップ画面（adventuremap.js）を開き、行き先をプレイヤー自身に選んでもらう。
+    //   マップを開かずに閉じた場合は、この部屋にそのまま戻ってこられるようにする
+    async function confirmGoOutside() {
+      pauseKeys();
+      const yes = (typeof showGameConfirm === "function") ? await showGameConfirm("外に出ますか？") : true; // mainfunc.js（小さいはい/いいえダイアログ）
+      if (!yes) { resumeKeys(); return; }
+      if (typeof hideRoomView === "function") hideRoomView(); // furniture.js
+      if (typeof showMessageWindow === "function") showMessageWindow(); // ★家の中の表示を終え、通常の画面に戻すため
+      resolve(); // ★この部屋画面はここで終了する（goBackは呼ばず、代わりにマップ画面を開く）
+      if (typeof openAdventureMap === "function") {
+        openAdventureMap(() => showFloorPlanRoomScreen(area, floorPlan, room.id, goBack)); // adventuremap.js：行き先を選ばず閉じたらこの部屋に戻る
+      } else {
+        goBack(); // ★万一マップ機能が読み込まれていない場合のフォールバック
+      }
     }
     
     function moveCursor(dx, dy) {
@@ -963,10 +1072,10 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
       
       if (placing) {
-        if (event.key === "ArrowUp") { event.preventDefault(); movePlacing(0, -1); }
-        else if (event.key === "ArrowDown") { event.preventDefault(); movePlacing(0, 1); }
-        else if (event.key === "ArrowLeft") { event.preventDefault(); movePlacing(-1, 0); }
-        else if (event.key === "ArrowRight") { event.preventDefault(); movePlacing(1, 0); }
+        if (event.key === "ArrowUp") { event.preventDefault(); handleDirection("up"); }
+        else if (event.key === "ArrowDown") { event.preventDefault(); handleDirection("down"); }
+        else if (event.key === "ArrowLeft") { event.preventDefault(); handleDirection("left"); }
+        else if (event.key === "ArrowRight") { event.preventDefault(); handleDirection("right"); }
         else if (event.key === "r" || event.key === "R") { event.preventDefault(); rotatePlacing(); }
         else if (event.key === "z" || event.key === "Z" || event.key === " ") { event.preventDefault(); confirmPlacing(); }
         else if (event.key === "x" || event.key === "X" || event.key === "Escape") { event.preventDefault(); cancelPlacing(); }
@@ -974,20 +1083,21 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       }
       
       if (event.key === "g" || event.key === "G") { event.preventDefault(); toggleMode(); return; }
+      if (event.key === "l" || event.key === "L") { event.preventDefault(); turnOnAllCeilingLights(); render(); return; } // ★要望対応：Lキーで、この家の全部屋の天井の照明を一斉に点ける
       
       if (mode === "move") {
-        if (event.key === "ArrowUp") { event.preventDefault(); moveDoorDirection("north"); }
-        else if (event.key === "ArrowDown") { event.preventDefault(); moveDoorDirection("south"); }
-        else if (event.key === "ArrowLeft") { event.preventDefault(); moveDoorDirection("west"); }
-        else if (event.key === "ArrowRight") { event.preventDefault(); moveDoorDirection("east"); }
+        if (event.key === "ArrowUp") { event.preventDefault(); handleDirection("up"); }
+        else if (event.key === "ArrowDown") { event.preventDefault(); handleDirection("down"); }
+        else if (event.key === "ArrowLeft") { event.preventDefault(); handleDirection("left"); }
+        else if (event.key === "ArrowRight") { event.preventDefault(); handleDirection("right"); }
         return;
       }
       
       // mode === "cursor" or "ceiling"
-      if (event.key === "ArrowUp") { event.preventDefault(); moveCursor(0, -1); }
-      else if (event.key === "ArrowDown") { event.preventDefault(); moveCursor(0, 1); }
-      else if (event.key === "ArrowLeft") { event.preventDefault(); moveCursor(-1, 0); }
-      else if (event.key === "ArrowRight") { event.preventDefault(); moveCursor(1, 0); }
+      if (event.key === "ArrowUp") { event.preventDefault(); handleDirection("up"); }
+      else if (event.key === "ArrowDown") { event.preventDefault(); handleDirection("down"); }
+      else if (event.key === "ArrowLeft") { event.preventDefault(); handleDirection("left"); }
+      else if (event.key === "ArrowRight") { event.preventDefault(); handleDirection("right"); }
       else if (event.key === "z" || event.key === "Z" || event.key === " ") {
         event.preventDefault();
         const isCeiling = mode === "ceiling";
