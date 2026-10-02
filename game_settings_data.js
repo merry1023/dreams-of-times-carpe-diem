@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1790748888930,
+  "version": 1790960127274,
   "enemies": [
     {
       "id": "goblin",
@@ -2631,6 +2631,16 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "rank": "C",
       "listedPrice": 500,
       "trueValue": 500,
+      "builtin": true
+    },
+    {
+      "id": "book_muscle_swordsman",
+      "name": "しがないおっさん、剣と筋肉で英雄になる",
+      "category": "book",
+      "description": "取り柄の無い中年男が、来る日も来る日も筋トレと素振りを続け、やがて伝説の冒険者と呼ばれるまでになる物語。町の道場に必ず一冊は置いてあるという。",
+      "rank": "E",
+      "listedPrice": 160,
+      "trueValue": 160,
       "builtin": true
     }
   ],
@@ -8557,6 +8567,43 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "variables": {},
       "useBlocks": true
+    },
+    {
+      "id": "skill_1790959900867_10",
+      "className": "暗殺者",
+      "skillId": "",
+      "name": "無口な光",
+      "description": "ぼんやりとした薄い紫色の光が獲物を襲う",
+      "type": "attack",
+      "element": "element_1789993536302_4",
+      "spCost": 25,
+      "unlockLevel": 17,
+      "power": 16,
+      "target": "single",
+      "hitCount": 1,
+      "atkType": "magical",
+      "gauge": "",
+      "cleanse": false,
+      "passiveId": "",
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "heal_up",
+      "selfBuffDuration": 2,
+      "selfBuffPower": 13,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "builtin": false,
+      "blocks": [],
+      "variables": {}
     }
   ],
   "statusAilments": [
@@ -9250,6 +9297,34 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "rewardGold": 0,
       "rewardExp": 800,
       "rewardItemId": "item_1788268842982_4",
+      "rewardItemQty": 1
+    },
+    {
+      "id": "quest_1790959160350_7",
+      "rank": "S",
+      "title": "新しい依頼",
+      "description": "",
+      "type": "hunt",
+      "targetMonsterKey": "",
+      "targetItemId": "",
+      "targetCount": 1,
+      "rewardGold": 0,
+      "rewardExp": 0,
+      "rewardItemId": "",
+      "rewardItemQty": 1
+    },
+    {
+      "id": "quest_1790959165381_8",
+      "rank": "AA",
+      "title": "主を倒して見せてくれ",
+      "description": "ただなんとなく、洞窟の主を倒せるようなやつがどれだけいるか知りたくなっただけさ。5体倒してきてくれ。",
+      "type": "hunt",
+      "targetMonsterKey": "cave_boss",
+      "targetItemId": "",
+      "targetCount": 5,
+      "rewardGold": 2000,
+      "rewardExp": 3300,
+      "rewardItemId": "",
       "rewardItemQty": 1
     }
   ],
@@ -11693,8 +11768,81 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     "element_1789993543337_6>element_1789993538636_5": "advantage",
     "element_1789993533981_3>element_1789993543337_6": "advantage",
     "element_1789993543337_6>element_1789993536302_4": "advantage",
-    "element_1789993499387_1>element_1789993533981_3": "resist"
+    "element_1789993499387_1>element_1789993533981_3": "resist",
+    "element_1789993499387_1>element_1790419127202_4": "advantage",
+    "element_1789993514120_2>element_1790419127202_4": "resist",
+    "element_1790419127202_4>element_1789993533981_3": "advantage",
+    "element_1790419127202_4>element_1789993536302_4": "advantage",
+    "element_1789993538636_5>element_1790419127202_4": "resist",
+    "element_1789993499387_1>element_1790419127202_5": "advantage",
+    "element_1789993514120_2>element_1790419127202_5": "resist",
+    "element_1790419127202_4>element_1790419127202_5": "resist",
+    "element_1789993533981_3>element_1790419127202_6": "advantage",
+    "element_1789993514120_2>element_1790419127202_6": "advantage",
+    "element_1789993572395_7>element_1790419127202_6": "advantage"
   },
+  "comboSkills": [
+    {
+      "id": "combo_1790958968359_2",
+      "name": "裏表ブレイク",
+      "description": "",
+      "enabled": true,
+      "elements": [
+        "element_1789993533981_3",
+        "element_1789993536302_4"
+      ],
+      "cutInText": "裏表ブレイク",
+      "requiredChapterId": "custom_1787801187995_1",
+      "requiredRank": null,
+      "requiredProgress": null,
+      "requiredDays": null,
+      "requiredFlag": null,
+      "requiredSkillNames": [],
+      "type": "attack",
+      "element": "無",
+      "power": 20,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "magical",
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 3,
+      "statusEffectPower": 3,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "useBlocks": false,
+      "blocks": [
+        {
+          "id": "skillblock_1790959119263_5",
+          "type": "damage",
+          "target": "random",
+          "powerMultiplier": "13",
+          "atkType": "magical"
+        },
+        {
+          "id": "skillblock_1790959077765_3",
+          "type": "applyStatus",
+          "targetSide": "enemy",
+          "target": "random",
+          "statusId": "great_darkness",
+          "duration": "3",
+          "power": "30",
+          "chance": "1"
+        },
+        {
+          "id": "skillblock_1790959140776_6",
+          "type": "end"
+        }
+      ],
+      "variables": {}
+    }
+  ],
   "bgmTracks": [
     {
       "id": "town",
@@ -12433,9 +12581,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "facility_1788247863308_16",
         "facility_1788244866711_1",
         "facility_1788134408511_1",
-        "facility_1790066599554_7",
-        "facility_1790162305310_6",
-        "facility_1790162454135_7"
+        "facility_1790066599554_7"
       ],
       "mapNodeSize": 7,
       "upTarget": "custom_area_1788854418149_4",
@@ -12486,7 +12632,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "facility_1789648540174_1",
         "facility_1790077753643_1",
         "facility_1790126744988_5",
-        "facility_1790532213468_9"
+        "facility_1790532213468_9",
+        "facility_1790162305310_6",
+        "facility_1790162454135_7"
       ],
       "mapNodeSize": 20,
       "leftTarget": "custom_area_1788853853599_1",
@@ -12944,7 +13092,13 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                   "color": "#6b4226"
                 }
               },
-              "fixedItems": []
+              "fixedItems": [],
+              "outsideDoors": {
+                "north": false,
+                "south": true,
+                "east": false,
+                "west": false
+              }
             },
             {
               "id": "room_1790162154157_3",
@@ -12977,7 +13131,13 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                   "color": "#6b4226"
                 }
               },
-              "fixedItems": []
+              "fixedItems": [],
+              "outsideDoors": {
+                "north": false,
+                "south": false,
+                "east": false,
+                "west": false
+              }
             },
             {
               "id": "room_1790162185741_4",
@@ -13077,7 +13237,13 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                   "h": 1,
                   "locked": false
                 }
-              ]
+              ],
+              "outsideDoors": {
+                "north": false,
+                "south": false,
+                "east": false,
+                "west": false
+              }
             },
             {
               "id": "room_1790162249419_5",
@@ -13092,7 +13258,13 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                 "east": false,
                 "west": true
               },
-              "floorColor": "#7d5b45"
+              "floorColor": "#7d5b45",
+              "outsideDoors": {
+                "north": false,
+                "south": false,
+                "east": false,
+                "west": false
+              }
             },
             {
               "id": "room_1790504193636_1",
@@ -13113,7 +13285,13 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                   "color": "#6b4226"
                 }
               },
-              "brightness": 6
+              "brightness": 6,
+              "outsideDoors": {
+                "north": false,
+                "south": false,
+                "east": false,
+                "west": false
+              }
             },
             {
               "id": "room_1790504228173_2",
@@ -13126,6 +13304,12 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                 "north": false,
                 "south": false,
                 "east": true,
+                "west": false
+              },
+              "outsideDoors": {
+                "north": false,
+                "south": false,
+                "east": false,
                 "west": false
               }
             },
@@ -13148,6 +13332,12 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                   "position": 1,
                   "color": "#6b4226"
                 }
+              },
+              "outsideDoors": {
+                "north": false,
+                "south": false,
+                "east": false,
+                "west": false
               }
             }
           ],
@@ -13172,8 +13362,19 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                 "east": false,
                 "west": true
               },
-              "doorStyle": {},
-              "fixedItems": []
+              "doorStyle": {
+                "west": {
+                  "position": 4,
+                  "color": "#6b4226"
+                }
+              },
+              "fixedItems": [],
+              "outsideDoors": {
+                "north": false,
+                "south": false,
+                "east": false,
+                "west": false
+              }
             },
             {
               "id": "room_1790748618696_1",
@@ -13196,7 +13397,13 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                   "color": "#6b4226"
                 }
               },
-              "fixedItems": []
+              "fixedItems": [],
+              "outsideDoors": {
+                "north": false,
+                "south": false,
+                "east": false,
+                "west": false
+              }
             }
           ],
           "startRoomId": "room_1790720403372_1"
