@@ -7709,3 +7709,124 @@ html, body {
   font-size: 12px;
   color: #bbb;
 }
+
+/* ★要望対応：ステータスパネルタブ（育成用のマス目の盤） */
+.statuspanel-root {
+  padding: 8px;
+  overflow-y: auto;
+  height: 100%;
+  box-sizing: border-box;
+}
+.statuspanel-owner-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.statuspanel-owner-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #ddd;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.statuspanel-owner-btn.active {
+  color: #ffd27a;
+  border-color: #ffb84d;
+  background: rgba(255, 140, 30, 0.2);
+}
+.statuspanel-info {
+  margin: 6px 0 2px;
+  font-size: 12px;
+  color: #bbb;
+}
+.statuspanel-empty {
+  margin: 16px 0;
+  text-align: center;
+  color: #999;
+}
+.statuspanel-grid {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 2px;
+  margin: 6px 0;
+}
+.statuspanel-cell {
+  aspect-ratio: 1 / 1;
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  line-height: 1.1;
+  color: #eee;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.statuspanel-cell.empty {
+  background: transparent;
+  border-color: transparent;
+}
+.statuspanel-cell.locked {
+  color: #888;
+  background: rgba(0, 0, 0, 0.35);
+}
+.statuspanel-cell.available {
+  border-color: #ffb84d;
+  background: rgba(255, 140, 30, 0.18);
+}
+.statuspanel-cell.unlocked {
+  color: #fff;
+  background: rgba(255, 170, 40, 0.5);
+  border-color: #ffd27a;
+}
+.statuspanel-cell.center {
+  border-width: 2px;
+}
+.statuspanel-cell.cursor {
+  outline: 2px solid #fff;
+  outline-offset: 0;
+  z-index: 1;
+}
+.statuspanel-cell-top {
+  font-weight: bold;
+}
+.statuspanel-detail {
+  margin-top: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 180, 60, 0.45);
+  border-radius: 6px;
+}
+.statuspanel-detail-title {
+  font-weight: bold;
+  color: #ffd27a;
+  margin-bottom: 2px;
+}
+.statuspanel-detail-cost {
+  margin-top: 4px;
+  color: #ccc;
+}
+.statuspanel-unlock-btn {
+  margin-top: 6px;
+  width: 100%;
+  padding: 6px;
+  color: #fff;
+  background: rgba(255, 140, 30, 0.35);
+  border: 1px solid #ffb84d;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.statuspanel-unlock-btn:disabled {
+  color: #999;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  cursor: default;
+}

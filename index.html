@@ -330,6 +330,7 @@
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-companions')">仲間</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-companionchat')">会話</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-strength')">強さ</button>
+        <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-statuspanel')">パネル</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-equipment')">装備</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-convenience')">便利</button>
         <button class="tab-btn" onclick="event.stopPropagation(); switchTab('tab-log')">ログ</button>
@@ -439,6 +440,10 @@
 
         <div id="tab-strength" class="tab-content">
           <div class="strength-list" id="strength-list"></div>
+        </div>
+
+        <div id="tab-statuspanel" class="tab-content">
+          <div id="statuspanel-root" class="statuspanel-root"></div>
         </div>
 
         <div id="tab-equipment" class="tab-content">
@@ -558,6 +563,7 @@
 <script src="items.js"></script>
 <script src="inventory.js"></script>
 <script src="player.js"></script>
+  <script src="statuspanel.js"></script> <!-- ★要望対応：ステータスパネル -->
 <script src="appraisal.js"></script>
 <script src="bgm.js"></script>
 <script src="mainfunc.js"></script>
