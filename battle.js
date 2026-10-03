@@ -2181,6 +2181,13 @@ async function applyMonsterAttackStatusInflictions(inflictions) {
     if (Math.random() < (infliction.chance != null ? infliction.chance : 1)) {
       // ★ハイ・ディスシプリナ「大いなる光芒状態」中は、状態異常の付与そのものを無効化する
       if (battleState.playerStatusImmuneTurns > 0) continue;
+      // ★ステータスパネルの「状態異常耐性」：その確率で、状態異常を跳ね返す
+      const panelResist = (typeof getPlayerPanelStatusResist === "function") ? getPlayerPanelStatusResist() : 0;
+      if (panelResist > 0 && Math.random() * 100 < panelResist) {
+        changeSpeaker("");
+        await displayMessage(`${(def && def.label) || STATUS_EFFECT_LABELS[infliction.kind] || infliction.kind}を跳ね返した！`);
+        continue;
+      }
       applyPlayerStatusAilment(mechanic, infliction.duration || 3, infliction.power || 0); // player.js
       changeSpeaker("");
       await displayMessage(`${(def && def.label) || STATUS_EFFECT_LABELS[infliction.kind] || infliction.kind}状態になってしまった……！`);
