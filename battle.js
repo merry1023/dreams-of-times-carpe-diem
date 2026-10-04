@@ -983,6 +983,23 @@ function createElementIconEl(elementId, extraClass) {
   return el;
 }
 
+// ★技の選択肢の左上に付ける「属性のバッジ」（アイコン＋属性名）。属性なし（無）の技には付けない
+function createElementBadgeEl(elementId) {
+  if (!elementId || elementId === "無") return null;
+  const def = getElementDefById(elementId);
+  const name = (def && def.name) || elementId;
+  const badge = document.createElement("span");
+  badge.className = "element-badge";
+  badge.title = `${name}属性`;
+  // ★アイコン（画像・絵文字）が設定されている時だけアイコンを付ける。未設定だと名前の1文字目が重複して「自自然」のようになるため
+  if (def && (def.iconPath || def.iconEmoji)) badge.appendChild(createElementIconEl(elementId));
+  const nameEl = document.createElement("span");
+  nameEl.className = "element-badge-name";
+  nameEl.textContent = name;
+  badge.appendChild(nameEl);
+  return badge;
+}
+
 // ★敵が持つ属性（魔物ごとの設定。player.jsのgetCompanion…と同様、MONSTER_MASTER優先）
 function getBattleEnemyElements(enemy) {
   if (!enemy) return [];
@@ -1096,7 +1113,7 @@ async function handleItemMenuInBattle() {
   
   const itemChoices = [
     ...healableEntries.map(entry => ({ text: `${entry.master.name} ×${entry.slot.quantity}`, next: `heal:${entry.master.name}` })),
-    ...battleSkillEntries.map(entry => ({ text: `${entry.master.name}【${entry.master.battleSkill.name}】`, next: `skill:${entry.master.name}` })),
+    ...battleSkillEntries.map(entry => ({ text: `${entry.master.name}【${entry.master.battleSkill.name}】`, next: `skill:${entry.master.name}`, elementId: entry.master.battleSkill.element })),
     ...invincibilityBreakEntries.map(entry => ({ text: `${entry.master.name}を使う`, next: `break:${entry.itemId}` }))
   ];
   itemChoices.push({ text: "戻る", next: "back", isBack: true });
@@ -1542,7 +1559,7 @@ async function performCompanionSkillMenu(companion) {
     return;
   }
   
-  const choices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description }));
+  const choices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description, elementId: s.element })); // ★elementId：選択肢の左上に属性バッジを出す（mainfunc.js renderChoiceBox）
   choices.push({ text: "戻る", next: "back", isBack: true });
   const picked = await displayChoices(choices);
   if (picked.next === "back") {
@@ -3145,7 +3162,7 @@ async function handleSkillMenu() {
     return false;
   }
   
-  const skillChoices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description }));
+  const skillChoices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description, elementId: s.element })); // ★elementId：選択肢の左上に属性バッジを出す（mainfunc.js renderChoiceBox）
   skillChoices.push({ text: "戻る", next: "back", isBack: true });
   
   const picked = await displayChoices(skillChoices);
