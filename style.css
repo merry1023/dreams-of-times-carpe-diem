@@ -7822,11 +7822,32 @@ html, body {
 }
 
 /* ★要望対応：ステータスパネルタブ（育成用のマス目の盤） */
+/* ★タブ内で「盤だけスクロール・説明は下に固定」にするため、他のタブ(#tab-strengthなど)と同じ縦flexにする。
+   以前は高さが内容まかせで、画面が低いと下のマスの説明が画面の外にはみ出して見えなかった */
+#tab-statuspanel.active {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .statuspanel-root {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: 8px;
-  overflow-y: auto;
-  height: 100%;
   box-sizing: border-box;
+}
+.statuspanel-owner-row,
+.statuspanel-info {
+  flex-shrink: 0;
+}
+.statuspanel-grid-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .statuspanel-owner-row {
   display: flex;
@@ -7909,6 +7930,9 @@ html, body {
   font-weight: bold;
 }
 .statuspanel-detail {
+  flex-shrink: 0;
+  max-height: 45%;
+  overflow-y: auto;
   margin-top: 6px;
   padding: 8px 10px;
   font-size: 13px;
