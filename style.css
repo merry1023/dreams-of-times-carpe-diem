@@ -4493,6 +4493,76 @@ html, body {
   white-space: nowrap;
 }
 
+/* ★要望対応：敵の属性と特攻属性のアイコン（小さく表示） */
+.battle-enemy-unit-elements {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 2px;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: #ddd;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.battle-element-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.battle-element-weak-label {
+  color: #ffb84d;
+  font-size: 9px;
+}
+.element-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  line-height: 1;
+  font-size: 13px;
+}
+.element-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.element-icon-text {
+  color: #fff;
+}
+
+/* ★要望対応：戦闘中の技の選択肢の左上に付ける、属性のバッジ（アイコン＋属性名） */
+.choice-box button.choice-has-element {
+  position: relative;
+  padding-top: 16px;
+  padding-bottom: 8px;
+}
+.element-badge {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px 0 2px;
+  font-size: 9px;
+  font-weight: normal;
+  line-height: 12px;
+  color: #ffd27a;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 180, 60, 0.6);
+  border-radius: 8px;
+  pointer-events: none;
+}
+.element-badge .element-icon {
+  width: 12px;
+  height: 12px;
+  font-size: 10px;
+}
+
 /* ★画像が用意されていない敵でも、名前とHPバーの色だけで「今狙っている相手」がわかるようにする。
    ★HPバーの中身（減った分）が赤なので、ターゲット表示は金色にして見分けやすくしている */
 .battle-enemy-unit.targeted .battle-enemy-unit-name {
@@ -7695,11 +7765,27 @@ html, body {
   gap: 4px;
 }
 .element-combo-chip {
-  padding: 2px 8px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 34px;
+  padding: 2px 6px;
   background: rgba(255, 140, 30, 0.25);
   border: 1px solid rgba(255, 180, 60, 0.7);
   border-radius: 10px;
   font-size: 13px;
+}
+.element-combo-chip-name {
+  font-size: 9px;
+  line-height: 1.1;
+  color: #ffd27a;
+  white-space: nowrap;
+}
+.element-combo-chip .element-icon {
+  width: 22px;
+  height: 22px;
+  font-size: 18px;
 }
 .element-combo-arrow {
   color: #ffb84d;

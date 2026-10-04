@@ -954,6 +954,106 @@ function getElementalDamageMultiplier(attackElementId, target) {
   return multiplier;
 }
 
+// ===== 属性アイコン（要望対応） =====
+//   属性ごとのアイコンは、シナリオエディタの「属性管理」タブで設定する（elementDefs[].iconPath＝画像のパス／iconEmoji＝絵文字）。
+//   画像があれば画像、無ければ絵文字、どちらも無ければ属性名の1文字目を表示する。画像が読み込めない時は絵文字（無ければ1文字目）に切り替える
+function getElementDefById(elementId) {
+  const defs = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.elementDefs)) ? scenarioProject.elementDefs : [];
+  return defs.find(e => e.id === elementId) || null;
+}
+
+function createElementIconEl(elementId, extraClass) {
+  const def = getElementDefById(elementId);
+  const name = (def && def.name) || elementId || "？";
+  const el = document.createElement("span");
+  el.className = "element-icon" + (extraClass ? " " + extraClass : "");
+  el.title = name;
+  const fallbackText = (def && def.iconEmoji) || Array.from(name)[0] || "？";
+  if (def && def.iconPath) {
+    const img = document.createElement("img");
+    img.className = "element-icon-img";
+    img.alt = name;
+    img.src = def.iconPath;
+    img.onerror = () => { el.textContent = fallbackText; el.classList.add("element-icon-text"); };
+    el.appendChild(img);
+  } else {
+    el.textContent = fallbackText;
+    el.classList.add("element-icon-text");
+  }
+  return el;
+}
+
+// ★技の選択肢の左上に付ける「属性のバッジ」（アイコン＋属性名）。属性なし（無）の技には付けない
+function createElementBadgeEl(elementId) {
+  if (!elementId || elementId === "無") return null;
+  const def = getElementDefById(elementId);
+  const name = (def && def.name) || elementId;
+  const badge = document.createElement("span");
+  badge.className = "element-badge";
+  badge.title = `${name}属性`;
+  // ★アイコン（画像・絵文字）が設定されている時だけアイコンを付ける。未設定だと名前の1文字目が重複して「自自然」のようになるため
+  if (def && (def.iconPath || def.iconEmoji)) badge.appendChild(createElementIconEl(elementId));
+  const nameEl = document.createElement("span");
+  nameEl.className = "element-badge-name";
+  nameEl.textContent = name;
+  badge.appendChild(nameEl);
+  return badge;
+}
+
+// ★敵が持つ属性（魔物ごとの設定。player.jsのgetCompanion…と同様、MONSTER_MASTER優先）
+function getBattleEnemyElements(enemy) {
+  if (!enemy) return [];
+  const master = (typeof MONSTER_MASTER !== "undefined" && enemy.monsterKey) ? MONSTER_MASTER[enemy.monsterKey] : null;
+  if (master && Array.isArray(master.elements)) return master.elements.filter(Boolean);
+  return Array.isArray(enemy.elements) ? enemy.elements.filter(Boolean) : [];
+}
+
+// ★その敵に特攻（ダメージ増）になる属性。実際のダメージ計算（getElementalDamageMultiplier）と同じ判定を使うので、表示と実際の効きが必ず一致する
+function getEnemyWeakElementIds(enemy) {
+  const defs = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.elementDefs)) ? scenarioProject.elementDefs : [];
+  if (getBattleEnemyElements(enemy).length === 0) return [];
+  return defs.filter(def => getElementalDamageMultiplier(def.id, enemy) > 1).map(def => def.id);
+}
+
+// ★敵ユニットの下に出す「属性アイコン ／ 弱点アイコン」の行。属性が無い敵には何も出さない。
+//   形態切り替えで属性が変わることがあるので、中身が変わった時だけ作り直す
+function updateBattleEnemyElementRow(unitEl, enemy) {
+  let rowEl = unitEl.querySelector(".battle-enemy-unit-elements");
+  const elements = getBattleEnemyElements(enemy);
+  if (elements.length === 0) {
+    if (rowEl) rowEl.remove();
+    return;
+  }
+  const weak = getEnemyWeakElementIds(enemy);
+  const sigDefs = [...elements, ...weak].map(id => { const d = getElementDefById(id); return id + ":" + ((d && (d.iconPath || "") + "|" + (d.iconEmoji || "") + "|" + (d.name || "")) || ""); }).join(",");
+  const signature = `${elements.join("+")}>${weak.join("+")}>${sigDefs}`;
+  if (rowEl && rowEl.dataset.signature === signature) return;
+  if (!rowEl) {
+    rowEl = document.createElement("div");
+    rowEl.className = "battle-enemy-unit-elements";
+    const nameEl = unitEl.querySelector(".battle-enemy-unit-name");
+    if (nameEl && nameEl.nextSibling) unitEl.insertBefore(rowEl, nameEl.nextSibling); else unitEl.appendChild(rowEl);
+  }
+  rowEl.dataset.signature = signature;
+  rowEl.innerHTML = "";
+  const ownGroup = document.createElement("span");
+  ownGroup.className = "battle-element-group";
+  ownGroup.title = "この敵の属性";
+  elements.forEach(id => ownGroup.appendChild(createElementIconEl(id)));
+  rowEl.appendChild(ownGroup);
+  if (weak.length > 0) {
+    const label = document.createElement("span");
+    label.className = "battle-element-weak-label";
+    label.textContent = "弱点";
+    rowEl.appendChild(label);
+    const weakGroup = document.createElement("span");
+    weakGroup.className = "battle-element-group battle-element-group-weak";
+    weakGroup.title = "特攻（ダメージが増える）属性";
+    weak.forEach(id => weakGroup.appendChild(createElementIconEl(id)));
+    rowEl.appendChild(weakGroup);
+  }
+}
+
 function resolveDamageForTarget(target, rawDamage, attackElementId) {
   if (target && target.invincibilityBreakItemId && !target.invincibilityBroken) {
     return { damage: 0, blocked: true };
@@ -1013,7 +1113,7 @@ async function handleItemMenuInBattle() {
   
   const itemChoices = [
     ...healableEntries.map(entry => ({ text: `${entry.master.name} ×${entry.slot.quantity}`, next: `heal:${entry.master.name}` })),
-    ...battleSkillEntries.map(entry => ({ text: `${entry.master.name}【${entry.master.battleSkill.name}】`, next: `skill:${entry.master.name}` })),
+    ...battleSkillEntries.map(entry => ({ text: `${entry.master.name}【${entry.master.battleSkill.name}】`, next: `skill:${entry.master.name}`, elementId: entry.master.battleSkill.element })),
     ...invincibilityBreakEntries.map(entry => ({ text: `${entry.master.name}を使う`, next: `break:${entry.itemId}` }))
   ];
   itemChoices.push({ text: "戻る", next: "back", isBack: true });
@@ -1459,7 +1559,7 @@ async function performCompanionSkillMenu(companion) {
     return;
   }
   
-  const choices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description }));
+  const choices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description, elementId: s.element })); // ★elementId：選択肢の左上に属性バッジを出す（mainfunc.js renderChoiceBox）
   choices.push({ text: "戻る", next: "back", isBack: true });
   const picked = await displayChoices(choices);
   if (picked.next === "back") {
@@ -3069,7 +3169,7 @@ async function handleSkillMenu() {
     return false;
   }
   
-  const skillChoices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description }));
+  const skillChoices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description, elementId: s.element })); // ★elementId：選択肢の左上に属性バッジを出す（mainfunc.js renderChoiceBox）
   skillChoices.push({ text: "戻る", next: "back", isBack: true });
   
   const picked = await displayChoices(skillChoices);
@@ -3857,6 +3957,7 @@ function renderBattleEnemies() {
     
     const nameEl = unitEl.querySelector(".battle-enemy-unit-name");
     if (nameEl) nameEl.textContent = enemy.displayName; // ★要望対応：形態切り替えで名前が変わることがあるので毎回反映する
+    updateBattleEnemyElementRow(unitEl, enemy); // ★要望対応：敵の属性と、特攻になる属性をアイコンで小さく表示する
     
     const fillEl = unitEl.querySelector(".battle-enemy-unit-hp-fill");
     if (fillEl) {

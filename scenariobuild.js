@@ -6250,7 +6250,7 @@ function renderRandomNameManager(container) {
 function renderElementManager(container) {
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
-  introEl.textContent = "スキルや敵に設定する「属性」（火・氷など）を登録し、属性同士の相性（特攻・耐性・通常）を決められます。特攻＝ダメージ増、耐性＝ダメージ減、通常＝変化なし。敵が複数の属性を持つ場合、各属性との相性が掛け合わさって最終的なダメージ倍率になります。";
+  introEl.textContent = "スキルや敵に設定する「属性」（火・氷など）を登録し、属性同士の相性（特攻・耐性・通常）を決められます。特攻＝ダメージ増、耐性＝ダメージ減、通常＝変化なし。敵が複数の属性を持つ場合、各属性との相性が掛け合わさって最終的なダメージ倍率になります。属性ごとにアイコン（画像のパス、無ければ絵文字）も設定でき、戦闘中の敵の属性・弱点の表示に使われます。";
   container.appendChild(introEl);
   
   const listHeading = document.createElement("h4");
@@ -6279,7 +6279,48 @@ function renderElementManager(container) {
       if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
       renderScenarioBuildPanel(); // ★相性表・見出しの表示名にも反映する
     };
+    // ★要望対応：属性ごとのアイコン。画像のパスがあれば画像、無ければ絵文字を使う（戦闘画面の敵の属性表示などに出る）
+    row.style.flexWrap = "wrap";
+    const previewEl = document.createElement("span");
+    previewEl.style.cssText = "display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;font-size:20px;";
+    const refreshPreview = () => {
+      previewEl.innerHTML = "";
+      if (typeof createElementIconEl === "function" && el.id) {
+        const icon = createElementIconEl(el.id);
+        icon.style.width = "24px"; icon.style.height = "24px"; icon.style.fontSize = "20px";
+        previewEl.appendChild(icon);
+      }
+    };
+    refreshPreview();
+    row.appendChild(previewEl);
     row.appendChild(nameInput);
+    const pathInput = document.createElement("input");
+    pathInput.type = "text";
+    pathInput.className = "scenariobuild-title-input";
+    pathInput.value = el.iconPath || "";
+    pathInput.placeholder = "アイコン画像のパス（例：img/属性/炎.png）";
+    pathInput.onchange = () => {
+      el.iconPath = pathInput.value.trim();
+      if (!el.iconPath) delete el.iconPath;
+      markScenarioBuildDirty();
+      refreshPreview();
+    };
+    row.appendChild(pathInput);
+    const emojiInput = document.createElement("input");
+    emojiInput.type = "text";
+    emojiInput.className = "scenariobuild-title-input";
+    emojiInput.style.maxWidth = "110px";
+    emojiInput.maxLength = 8;
+    emojiInput.value = el.iconEmoji || "";
+    emojiInput.placeholder = "絵文字（例：🔥）";
+    emojiInput.title = "画像のパスが無い（または読み込めない）時に使う絵文字";
+    emojiInput.onchange = () => {
+      el.iconEmoji = emojiInput.value.trim();
+      if (!el.iconEmoji) delete el.iconEmoji;
+      markScenarioBuildDirty();
+      refreshPreview();
+    };
+    row.appendChild(emojiInput);
     
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "devmode-btn devmode-btn-danger";

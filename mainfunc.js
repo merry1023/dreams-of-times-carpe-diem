@@ -1099,6 +1099,15 @@ function renderChoiceBox() {
       + (choice.loops && showHints ? " choice-loop" : "")
       + (showHint ? " choice-correct-hint" : "");
     
+    // ★要望対応：選択肢にelementIdが付いていれば（戦闘中の技など）、左上に属性のバッジを付ける
+    if (choice.elementId && typeof createElementBadgeEl === "function") { // battle.js
+      const badgeEl = createElementBadgeEl(choice.elementId);
+      if (badgeEl) {
+        button.appendChild(badgeEl);
+        button.classList.add("choice-has-element");
+      }
+    }
+    
     // ★このクリックが他の反応（テキスト送りなど）に伝わらないようにする
     button.onclick = (event) => {
       event.stopPropagation();
