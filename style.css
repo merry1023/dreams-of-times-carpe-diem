@@ -7619,6 +7619,11 @@ html, body {
   z-index: 2;
 }
 
+/* ★要望対応：外に出る扉は、普通の扉と同じ見た目に白枠を重ねてハイライトする */
+.room-view-door-outside {
+  box-shadow: 0 0 0 2px #ffffff, 0 0 4px 1px rgba(255, 255, 255, 0.8);
+}
+
 /* ★要望対応：調理魔家電より大きくて使えない料理道具 */
 .cooking-tool-card.cooking-tool-too-big {
   opacity: 0.45;
