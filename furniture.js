@@ -336,6 +336,37 @@ function renderRoomView(room, uiState, floorPlan) {
     });
   }
   
+  // ★要望対応：外に出る扉も、普通のドアと同じ見た目で壁に描き、白枠でハイライトして見分けられるようにする
+  //   （位置調整の項目は無いので、壁の中央に固定で表示する）
+  if (room.outsideDoors && typeof FLOORPLAN_DIRECTIONS === "object") {
+    Object.keys(FLOORPLAN_DIRECTIONS).forEach(dirKey => {
+      if (!room.outsideDoors[dirKey]) return;
+      if (room.doors && room.doors[dirKey]) return; // ★通常ドアと重複設定されていた場合は、通常ドアの表示を優先する
+      const isHorizontalWall = dirKey === "north" || dirKey === "south";
+      const wallLengthCells = isHorizontalWall ? roomW : roomH;
+      const maxPos = Math.max(0, wallLengthCells - 1);
+      const position = Math.floor(maxPos / 2);
+      
+      const doorEl = document.createElement("div");
+      doorEl.className = "room-view-door room-view-door-outside";
+      doorEl.style.backgroundColor = "#6b4226";
+      const thickness = Math.max(4, Math.floor(cellPx * 0.2));
+      const doorSpanPx = Math.max(6, Math.floor(cellPx * 0.7));
+      if (isHorizontalWall) {
+        doorEl.style.width = doorSpanPx + "px";
+        doorEl.style.height = thickness + "px";
+        doorEl.style.left = (position * cellPx + (cellPx - doorSpanPx) / 2) + "px";
+        doorEl.style[dirKey === "north" ? "top" : "bottom"] = -(thickness / 2) + "px";
+      } else {
+        doorEl.style.height = doorSpanPx + "px";
+        doorEl.style.width = thickness + "px";
+        doorEl.style.top = (position * cellPx + (cellPx - doorSpanPx) / 2) + "px";
+        doorEl.style[dirKey === "west" ? "left" : "right"] = -(thickness / 2) + "px";
+      }
+      grid.appendChild(doorEl);
+    });
+  }
+  
   const excludeInstanceId = uiState && uiState.placing ? uiState.placing.excludeInstanceId : null;
   const excludeFixedItemId = uiState && uiState.placing ? uiState.placing.excludeFixedItemId : null;
   // ★要望対応：天井選択モードでは天井の家具だけ、それ以外（床のカーソルモード・移動モード）では床の家具だけを描く。
