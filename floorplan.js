@@ -922,14 +922,29 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         //   HP・SPは現在値が最大の半分に届いていなければ半分まで引き上げ、眠気・疲労度は現在値が最大の半分を超えていれば半分まで下げる
         //   （既に半分より良い状態なら、悪化させないようそのまま）
         const g = player.gauges || {};
+        const before = {
+          hp: g.hp ? g.hp.current : null,
+          sp: g.sp ? g.sp.current : null,
+          fatigue: g.fatigue ? g.fatigue.current : null,
+          sleepiness: g.sleepiness ? g.sleepiness.current : null
+        };
         if (g.hp) g.hp.current = Math.max(g.hp.current, Math.floor(g.hp.max / 2));
         if (g.sp) g.sp.current = Math.max(g.sp.current, Math.floor(g.sp.max / 2));
         if (g.fatigue) g.fatigue.current = Math.min(g.fatigue.current, Math.floor(g.fatigue.max / 2));
         if (g.sleepiness) g.sleepiness.current = Math.min(g.sleepiness.current, Math.floor(g.sleepiness.max / 2));
         if (typeof advanceGameTime === "function") advanceGameTime(8); // player.js
         if (typeof renderStatusHUD === "function") renderStatusHUD();
+        
+        // ★要望対応：回復したことが一目で分かるよう、実際に変化した量をメッセージにそのまま出す
+        const changeParts = [];
+        if (g.hp && g.hp.current > before.hp) changeParts.push(`HPが${g.hp.current - before.hp}回復した`);
+        if (g.sp && g.sp.current > before.sp) changeParts.push(`SPが${g.sp.current - before.sp}回復した`);
+        if (g.fatigue && g.fatigue.current < before.fatigue) changeParts.push(`疲労度が${before.fatigue - g.fatigue.current}減った`);
+        if (g.sleepiness && g.sleepiness.current < before.sleepiness) changeParts.push(`眠気が${before.sleepiness - g.sleepiness.current}減った`);
+        const changeSummary = changeParts.length > 0 ? changeParts.join("。") + "。" : "もう十分に回復していたようで、特に変化は無かった。";
+        
         changeSpeaker("");
-        await displayMessage((def.useMessage) || "ぐっすりと眠った。8時間が経過し、体力も気力も半分ほどまで回復した。");
+        await displayMessage(`${(def.useMessage) || "ぐっすりと眠った。8時間が経過した。"}\n${changeSummary}`);
       } else {
         await displayMessage((def && def.useMessage) || "特に変わったことは無いようだ。");
       }

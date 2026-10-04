@@ -1172,7 +1172,9 @@ function getHealTargetChoices(caster, includeAllOption = true) {
     const isCaster = u === caster;
     let label;
     if (u === player) {
-      label = isCaster ? "自分" : "田中治郎"; // ★要望対応：仲間が回復技を使う時、主人公自身は「主人公」ではなく名前で表示する（casterではないので「自分」ではない）
+      // ★要望対応：アイテム使用時の対象選択は、実際の使用者（主人公／仲間のどちらか）を区別せずこの関数を呼んでいるため、
+      //   「自分」のままだと仲間がアイテムを使う時に紛らわしい。主人公の枠は常に名前（田中治郎）で表示する
+      label = "田中治郎";
     } else {
       const m = getCompanionMaster(u);
       const name = m ? m.name : u.companionId;
