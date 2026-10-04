@@ -29,6 +29,7 @@ let scenarioProject = {
   enemies: [],    // [{ id, name, maxHp, atk, exp, level }, ...] ★levelを設定すると、そのエリアではプレイヤーLvに関わらず固定の強さで出る
   bosses: [],     // [{ id, name, maxHp, atk, exp, level, bgmTrack, bgmFinalTrack, bgmCrisisTrack, invincibilityItemId }, ...]
   items: [],      // [{ id, name, category, description, rank, listedPrice, trueValue }, ...]
+  statusPanels: { classes: {}, companions: {} }, // ★要望対応：ステータスパネル（職業ごと・仲間ごとの9×9の盤）。statuspanel.js参照
   comboSkills: [], // ★要望対応：コンボスキル（属性の順番で発動する追加効果）。[{ id, name, elements:[属性id...], requiredSkillNames:[...], requiredChapterId... }, ...]
   skills: [],     // [{ id, className, skillId, name, description, type, element, spCost, unlockLevel, power, target, hitCount, statusEffectKind... }, ...]
                   // ★将来的に「特殊スキル編集」ボタンから、話のブロックエディタと同じ要領で技の動作を
@@ -243,6 +244,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   if (Array.isArray(data.randomNamePool)) scenarioProject.randomNamePool = data.randomNamePool; // ★要望対応：ランダム名前管理タブ
   if (Array.isArray(data.elementDefs)) scenarioProject.elementDefs = data.elementDefs; // ★要望対応：属性管理タブ
   if (Array.isArray(data.comboSkills)) scenarioProject.comboSkills = data.comboSkills; // ★要望対応：コンボスキル
+  if (data.statusPanels && typeof data.statusPanels === "object") scenarioProject.statusPanels = data.statusPanels; // ★要望対応：ステータスパネル
   if (data.elementMatchups && typeof data.elementMatchups === "object") scenarioProject.elementMatchups = data.elementMatchups;
   scenarioProject.bgmTracks = data.bgmTracks || [];
   scenarioProject.mapAreas = data.mapAreas || [];
@@ -450,6 +452,9 @@ function normalizeScenarioProject() {
   //   未設定は通常扱い）
   if (!Array.isArray(scenarioProject.elementDefs)) scenarioProject.elementDefs = []; // [{ id, name }, ...]
   if (!Array.isArray(scenarioProject.comboSkills)) scenarioProject.comboSkills = []; // ★要望対応：コンボスキル
+  if (!scenarioProject.statusPanels || typeof scenarioProject.statusPanels !== "object") scenarioProject.statusPanels = { classes: {}, companions: {} }; // ★要望対応：ステータスパネル
+  if (!scenarioProject.statusPanels.classes) scenarioProject.statusPanels.classes = {};
+  if (!scenarioProject.statusPanels.companions) scenarioProject.statusPanels.companions = {};
   if (!scenarioProject.elementMatchups || typeof scenarioProject.elementMatchups !== "object") scenarioProject.elementMatchups = {};
   // ★バグ修正：以前スキルの「属性」は直接入力（自由記述の文字列）だったが、属性管理タブ＋
   //   リスト選択方式に変わった際、既存データの生の値（例：「火」）が新しい属性一覧（{id, name}）の
@@ -1529,6 +1534,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "tutorials", label: "チュートリアル管理" },
   { view: "skills", label: "スキル管理" },
   { view: "combos", label: "コンボスキル" }, // ★要望対応：属性の順番で発動する追加効果の技
+  { view: "statuspanels", label: "ステータスパネル" }, // ★要望対応：職業・仲間ごとの育成用マス目の盤
   { view: "statuses", label: "状態管理" },
   { view: "flags", label: "フラグ管理" },
   { view: "gamevars", label: "ゲーム変数管理" }, // ★要望対応：話ブロックのifで参照できる数値変数の管理タブ（システム変数一覧の「変数一覧」とは別物）
@@ -1676,6 +1682,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
   else if (scenarioBuildSubView === "combos") renderComboSkillManager(bodyEl); // ★要望対応：コンボスキル
+  else if (scenarioBuildSubView === "statuspanels") renderStatusPanelManager(bodyEl); // ★要望対応：ステータスパネル
   else if (scenarioBuildSubView === "statuses") renderStatusManager(bodyEl);
   else if (scenarioBuildSubView === "flags") renderFlagManager(bodyEl);
   else if (scenarioBuildSubView === "gamevars") renderVariableManager(bodyEl);
@@ -7389,6 +7396,232 @@ function getEditingSkill() {
     || (scenarioProject.comboSkills || []).find(s => s.id === scenarioBuildEditingSkillId) || null;
 }
 
+// ===== ステータスパネル管理（要望対応） =====
+//   職業ごと・仲間ごとに、9×9のマス目の盤を作る。中心マスが「基本パネル」（最初から解放済み）。
+//   マスをクリックして選び、「マスを置く／消す」で盤を形作り、効果とコスト（経験値・アイテム）を設定する。
+//   プレイ側の仕組みは statuspanel.js
+let scenarioBuildStatusPanelOwner = ""; // "class:職業名" または "companion:仲間id"
+let scenarioBuildStatusPanelCell = "4,4"; // 選択中のマス（"行,列"）
+
+function getStatusPanelOwnerOptions() {
+  const options = [];
+  Object.keys(typeof CLASS_MASTER !== "undefined" ? CLASS_MASTER : {}).forEach(name => options.push({ value: `class:${name}`, label: `職業：${name}` }));
+  Object.keys(typeof COMPANION_MASTER !== "undefined" ? COMPANION_MASTER : {}).forEach(id => {
+    const m = COMPANION_MASTER[id];
+    options.push({ value: `companion:${id}`, label: `仲間：${(m && m.name) || id}` });
+  });
+  return options;
+}
+
+function getEditingStatusPanelDef(createIfMissing) {
+  const [type, key] = (scenarioBuildStatusPanelOwner || "").split(/:(.*)/s);
+  if (!type || !key) return null;
+  const root = scenarioProject.statusPanels;
+  const bucket = type === "class" ? root.classes : root.companions;
+  if (!bucket[key] && createIfMissing) bucket[key] = { cells: {} };
+  return bucket[key] || null;
+}
+
+function createNewStatusPanelCell() {
+  return { label: "", effects: [], costExp: 0, costItems: [] };
+}
+
+function renderStatusPanelManager(container) {
+  const intro = document.createElement("p");
+  intro.className = "devmode-note";
+  intro.textContent = "職業（主人公）ごと・仲間ごとの、育成用のマス目の盤（9×9）を作ります。中心マスが基本パネルで、最初から解放済みです。他のマスは、解放済みのマスに斜めを含む8方向で隣接していれば、コスト（アイテム・経験値）を払って解放できます。マスを置いていない場所は壁になります。";
+  container.appendChild(intro);
+
+  const owners = getStatusPanelOwnerOptions();
+  if (!scenarioBuildStatusPanelOwner || !owners.some(o => o.value === scenarioBuildStatusPanelOwner)) {
+    scenarioBuildStatusPanelOwner = owners.length ? owners[0].value : "";
+  }
+  const ownerRow = document.createElement("div");
+  ownerRow.className = "scenariobuild-condition-row";
+  ownerRow.appendChild(labelSpan("編集する盤："));
+  const ownerSelect = document.createElement("select");
+  ownerSelect.className = "scenariobuild-jump-select";
+  owners.forEach(o => {
+    const opt = document.createElement("option");
+    opt.value = o.value; opt.textContent = o.label;
+    ownerSelect.appendChild(opt);
+  });
+  ownerSelect.value = scenarioBuildStatusPanelOwner;
+  ownerSelect.onchange = () => {
+    scenarioBuildStatusPanelOwner = ownerSelect.value;
+    scenarioBuildStatusPanelCell = "4,4";
+    renderScenarioBuildPanel();
+  };
+  ownerRow.appendChild(ownerSelect);
+  container.appendChild(ownerRow);
+  if (!scenarioBuildStatusPanelOwner) return;
+
+  const def = getEditingStatusPanelDef(false);
+  const cells = (def && def.cells) || {};
+
+  // 盤（9×9）。マスがある所は設定の要約を表示し、選択中のマスは枠で示す
+  const grid = document.createElement("div");
+  grid.style.cssText = "display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:2px;max-width:420px;margin:8px 0;";
+  for (let r = 0; r < STATUS_PANEL_SIZE; r++) {
+    for (let c = 0; c < STATUS_PANEL_SIZE; c++) {
+      const key = `${r},${c}`;
+      const cell = cells[key];
+      const btn = document.createElement("button");
+      btn.style.cssText = "aspect-ratio:1/1;min-width:0;padding:0;font-size:9px;line-height:1.1;cursor:pointer;border-radius:3px;overflow:hidden;"
+        + `border:${key === scenarioBuildStatusPanelCell ? "2px solid #fff" : "1px solid rgba(255,255,255,0.25)"};`
+        + `background:${cell ? (key === STATUS_PANEL_CENTER_KEY ? "rgba(255,170,40,0.55)" : "rgba(255,140,30,0.25)") : "rgba(0,0,0,0.35)"};color:#eee;`;
+      if (cell) {
+        const summary = summarizePanelCell(cell);
+        btn.textContent = (key === STATUS_PANEL_CENTER_KEY && !cell.label && (cell.effects || []).length === 0) ? "基本" : (summary.top + (summary.bottom ? "\n" + summary.bottom : ""));
+        btn.style.whiteSpace = "pre-line";
+      }
+      btn.onclick = () => { scenarioBuildStatusPanelCell = key; renderScenarioBuildPanel(); };
+      grid.appendChild(btn);
+    }
+  }
+  container.appendChild(grid);
+  container.appendChild(buildStatusPanelCellEditor(def));
+}
+
+function buildStatusPanelCellEditor(def) {
+  const key = scenarioBuildStatusPanelCell;
+  const cell = def && def.cells ? def.cells[key] : null;
+  const isCenter = key === STATUS_PANEL_CENTER_KEY;
+  const box = document.createElement("div");
+  box.className = "scenariobuild-condition-multi";
+  box.appendChild(labelSpan(`選択中のマス：${isCenter ? "中心（基本パネル）" : `${key.split(",")[0] * 1 + 1}行${key.split(",")[1] * 1 + 1}列`}`));
+
+  const toggleBtn = document.createElement("button");
+  toggleBtn.className = "devmode-btn" + (cell ? " devmode-btn-danger" : "");
+  toggleBtn.textContent = cell ? "このマスを消す（壁にする）" : "このマスを置く";
+  toggleBtn.onclick = () => {
+    pushUndoSnapshot();
+    const d = getEditingStatusPanelDef(true);
+    if (cell) delete d.cells[key]; else d.cells[key] = createNewStatusPanelCell();
+    markScenarioBuildDirty();
+    renderScenarioBuildPanel();
+  };
+  box.appendChild(toggleBtn);
+  if (!cell) return box;
+  if (!Array.isArray(cell.effects)) cell.effects = [];
+  if (!Array.isArray(cell.costItems)) cell.costItems = [];
+  const persist = () => markScenarioBuildDirty();
+
+  const labelRow = document.createElement("div");
+  labelRow.className = "scenariobuild-condition-row";
+  buildSkillTextInput(cell, "label", "マスに表示する文字（空なら効果から自動）", labelRow);
+  box.appendChild(labelRow);
+
+  // ★効果の一覧
+  box.appendChild(labelSpan("効果："));
+  cell.effects.forEach((effect, i) => {
+    const row = document.createElement("div");
+    row.className = "scenariobuild-condition-row";
+    row.style.flexWrap = "wrap";
+    const kindSelect = document.createElement("select");
+    kindSelect.className = "scenariobuild-jump-select";
+    [["stat", "ステータスアップ"], ["skill", "新しい技を習得"], ["statusResist", "状態異常耐性"], ["elementResist", "属性耐性"]].forEach(([v, l]) => {
+      const o = document.createElement("option"); o.value = v; o.textContent = l; kindSelect.appendChild(o);
+    });
+    kindSelect.value = effect.kind || "stat";
+    kindSelect.onchange = () => {
+      const kind = kindSelect.value;
+      cell.effects[i] = kind === "stat" ? { kind, stat: "atk", mode: "percent", value: 2 }
+        : kind === "skill" ? { kind, className: "", skillName: "" }
+        : kind === "elementResist" ? { kind, element: (scenarioProject.elementDefs[0] || {}).id || "", value: 10 }
+        : { kind, value: 10 };
+      persist(); renderScenarioBuildPanel();
+    };
+    row.appendChild(kindSelect);
+
+    if (effect.kind === "stat") {
+      row.appendChild(buildSkillSelectInline(effect, "stat", "", STATUS_PANEL_STAT_DEFS.map(d => ({ value: d.key, label: d.label }))));
+      row.appendChild(buildSkillSelectInline(effect, "mode", "", [{ value: "percent", label: "基礎値の％" }, { value: "flat", label: "固定値" }]));
+      row.appendChild(buildSkillNumberInline(effect, "value", "値", 0));
+    } else if (effect.kind === "skill") {
+      const skillSelect = document.createElement("select");
+      skillSelect.className = "scenariobuild-jump-select";
+      const none = document.createElement("option"); none.value = ""; none.textContent = "（技を選ぶ）"; skillSelect.appendChild(none);
+      Object.keys(typeof CLASS_SKILLS !== "undefined" ? CLASS_SKILLS : {}).forEach(className => {
+        (CLASS_SKILLS[className] || []).forEach(sk => {
+          if (!sk.name) return;
+          const o = document.createElement("option");
+          o.value = `${className}\u0000${sk.name}`;
+          o.textContent = `${className}／${sk.name}`;
+          skillSelect.appendChild(o);
+        });
+      });
+      skillSelect.value = effect.skillName ? `${effect.className}\u0000${effect.skillName}` : "";
+      skillSelect.onchange = () => {
+        const [className, skillName] = skillSelect.value.split("\u0000");
+        effect.className = className || ""; effect.skillName = skillName || "";
+        persist();
+      };
+      row.appendChild(skillSelect);
+    } else if (effect.kind === "statusResist") {
+      row.appendChild(buildSkillNumberInline(effect, "value", "耐性（％。かかる確率がこの分下がる）", 0));
+    } else if (effect.kind === "elementResist") {
+      row.appendChild(buildSkillSelectInline(effect, "element", "敵の属性", scenarioProject.elementDefs.map(el => ({ value: el.id, label: el.name || "（無名）" }))));
+      row.appendChild(buildSkillNumberInline(effect, "value", "軽減（％。その属性の敵から受けるダメージがこの分減る）", 0));
+    }
+    const delBtn = document.createElement("button");
+    delBtn.className = "devmode-btn devmode-btn-danger";
+    delBtn.textContent = "✕";
+    delBtn.onclick = () => { pushUndoSnapshot(); cell.effects.splice(i, 1); persist(); renderScenarioBuildPanel(); };
+    row.appendChild(delBtn);
+    box.appendChild(row);
+  });
+  const addEffectBtn = document.createElement("button");
+  addEffectBtn.className = "devmode-btn";
+  addEffectBtn.textContent = "＋効果を追加";
+  addEffectBtn.onclick = () => {
+    pushUndoSnapshot();
+    cell.effects.push({ kind: "stat", stat: "atk", mode: "percent", value: 2 });
+    persist(); renderScenarioBuildPanel();
+  };
+  box.appendChild(addEffectBtn);
+
+  // ★コスト（基本パネルは最初から解放済みなので、コストは使われない）
+  if (isCenter) {
+    const note = document.createElement("p");
+    note.className = "devmode-note";
+    note.textContent = "基本パネルは最初から解放済みなので、コストは使われません。";
+    box.appendChild(note);
+    return box;
+  }
+  box.appendChild(labelSpan("コスト："));
+  const expRow = document.createElement("div");
+  expRow.className = "scenariobuild-condition-row";
+  expRow.appendChild(buildSkillNumberInline(cell, "costExp", "経験値（払うとレベルも下がる）", 0));
+  box.appendChild(expRow);
+  cell.costItems.forEach((entry, i) => {
+    const row = document.createElement("div");
+    row.className = "scenariobuild-condition-row";
+    const itemSelect = document.createElement("select");
+    itemSelect.className = "scenariobuild-jump-select";
+    const none = document.createElement("option"); none.value = ""; none.textContent = "（アイテムを選ぶ）"; itemSelect.appendChild(none);
+    Object.keys(typeof ITEM_MASTER !== "undefined" ? ITEM_MASTER : {}).forEach(id => {
+      const o = document.createElement("option"); o.value = id; o.textContent = (ITEM_MASTER[id] && ITEM_MASTER[id].name) || id; itemSelect.appendChild(o);
+    });
+    itemSelect.value = entry.itemId || "";
+    itemSelect.onchange = () => { entry.itemId = itemSelect.value; persist(); };
+    row.appendChild(itemSelect);
+    row.appendChild(buildSkillNumberInline(entry, "count", "個数", 1));
+    const delBtn = document.createElement("button");
+    delBtn.className = "devmode-btn devmode-btn-danger";
+    delBtn.textContent = "✕";
+    delBtn.onclick = () => { pushUndoSnapshot(); cell.costItems.splice(i, 1); persist(); renderScenarioBuildPanel(); };
+    row.appendChild(delBtn);
+    box.appendChild(row);
+  });
+  const addItemBtn = document.createElement("button");
+  addItemBtn.className = "devmode-btn";
+  addItemBtn.textContent = "＋コストのアイテムを追加";
+  addItemBtn.onclick = () => { pushUndoSnapshot(); cell.costItems.push({ itemId: "", count: 1 }); persist(); renderScenarioBuildPanel(); };
+  box.appendChild(addItemBtn);
+  return box;
+}
+
 // ===== コンボスキル管理（要望対応） =====
 //   属性技を決まった順番で撃つと発動する追加効果の技。1件の中身はスキル管理の技とほぼ同じ編集方法で、
 //   違いは「属性の順番」を指定できること。履歴はパーティ共有で、敵のターンに入るとリセットされる（battle.js）。
@@ -12488,6 +12721,7 @@ function exportGameSettingsAsJsFile() {
     elementDefs: scenarioProject.elementDefs, // ★要望対応：属性管理タブ
     elementMatchups: scenarioProject.elementMatchups,
     comboSkills: scenarioProject.comboSkills, // ★要望対応：コンボスキル
+    statusPanels: scenarioProject.statusPanels, // ★要望対応：ステータスパネル
     bgmTracks: scenarioProject.bgmTracks,
     mapAreas: scenarioProject.mapAreas,
     mapEdges: scenarioProject.mapEdges,
