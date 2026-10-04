@@ -7520,7 +7520,7 @@ function buildStatusPanelCellEditor(def) {
     row.style.flexWrap = "wrap";
     const kindSelect = document.createElement("select");
     kindSelect.className = "scenariobuild-jump-select";
-    [["stat", "ステータスアップ"], ["skill", "新しい技を習得"], ["statusResist", "状態異常耐性"]].forEach(([v, l]) => {
+    [["stat", "ステータスアップ"], ["skill", "新しい技を習得"], ["statusResist", "状態異常耐性"], ["elementResist", "属性耐性"]].forEach(([v, l]) => {
       const o = document.createElement("option"); o.value = v; o.textContent = l; kindSelect.appendChild(o);
     });
     kindSelect.value = effect.kind || "stat";
@@ -7528,6 +7528,7 @@ function buildStatusPanelCellEditor(def) {
       const kind = kindSelect.value;
       cell.effects[i] = kind === "stat" ? { kind, stat: "atk", mode: "percent", value: 2 }
         : kind === "skill" ? { kind, className: "", skillName: "" }
+        : kind === "elementResist" ? { kind, element: (scenarioProject.elementDefs[0] || {}).id || "", value: 10 }
         : { kind, value: 10 };
       persist(); renderScenarioBuildPanel();
     };
@@ -7559,6 +7560,9 @@ function buildStatusPanelCellEditor(def) {
       row.appendChild(skillSelect);
     } else if (effect.kind === "statusResist") {
       row.appendChild(buildSkillNumberInline(effect, "value", "耐性（％。かかる確率がこの分下がる）", 0));
+    } else if (effect.kind === "elementResist") {
+      row.appendChild(buildSkillSelectInline(effect, "element", "敵の属性", scenarioProject.elementDefs.map(el => ({ value: el.id, label: el.name || "（無名）" }))));
+      row.appendChild(buildSkillNumberInline(effect, "value", "軽減（％。その属性の敵から受けるダメージがこの分減る）", 0));
     }
     const delBtn = document.createElement("button");
     delBtn.className = "devmode-btn devmode-btn-danger";

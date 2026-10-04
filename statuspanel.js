@@ -48,7 +48,7 @@ function ensurePanelUnlockedListFor(unit, ownerType) {
 
 // ★解放済みのマス全部の効果を合計する（中心の基本パネルは常に解放済み扱い）
 function computePanelTotalsFor(unit, ownerType) {
-  const totals = { flat: {}, pct: {}, skillRefs: [], statusResist: 0 };
+  const totals = { flat: {}, pct: {}, skillRefs: [], statusResist: 0, elementResist: {} };
   const def = getStatusPanelDefFor(unit, ownerType);
   if (!def || !def.cells) return totals;
   const keys = new Set(getPanelUnlockedListFor(unit, ownerType));
@@ -65,6 +65,8 @@ function computePanelTotalsFor(unit, ownerType) {
         totals.skillRefs.push({ className: effect.className, skillName: effect.skillName });
       } else if (effect.kind === "statusResist") {
         totals.statusResist += Number(effect.value) || 0;
+      } else if (effect.kind === "elementResist" && effect.element) {
+        totals.elementResist[effect.element] = (totals.elementResist[effect.element] || 0) + (Number(effect.value) || 0);
       }
     });
   });
@@ -96,6 +98,31 @@ function getPanelBonusFor(unit, ownerType) {
     result[key] = (totals.flat[key] || 0) + Math.round((base[key] || 0) * (totals.pct[key] || 0) / 100);
   });
   return result;
+}
+
+// ★属性耐性：敵自身が持つ属性（MONSTER_MASTERのelements）と同じ属性の耐性ぶん、その敵から受けるダメージが減る。
+//   敵が複数の属性を持つ場合は、一致した属性の耐性を合計する（上限100%。ただしダメージは最低1は通る）
+function getEnemyElementIds(enemy) {
+  if (!enemy) return [];
+  const master = (typeof MONSTER_MASTER !== "undefined" && enemy.monsterKey) ? MONSTER_MASTER[enemy.monsterKey] : null;
+  if (master && Array.isArray(master.elements)) return master.elements;
+  return Array.isArray(enemy.elements) ? enemy.elements : [];
+}
+
+function getPanelElementResistPercent(unit, ownerType, enemy) {
+  const elements = getEnemyElementIds(enemy);
+  if (elements.length === 0) return 0;
+  const resist = computePanelTotalsFor(unit, ownerType).elementResist;
+  let sum = 0;
+  elements.forEach(id => { sum += resist[id] || 0; });
+  return Math.max(0, Math.min(100, sum));
+}
+
+function applyPanelElementResistToDamage(unit, ownerType, enemy, damage) {
+  if (!unit || !(damage > 0)) return damage;
+  const percent = getPanelElementResistPercent(unit, ownerType, enemy);
+  if (percent <= 0) return damage;
+  return Math.max(1, Math.round(damage * (100 - percent) / 100));
 }
 
 function getPlayerPanelStatusResist() {
@@ -257,6 +284,11 @@ function unlockPanelCell(unit, ownerType, row, col) {
 }
 
 // ===== 表示用の文章 =====
+function getPanelElementName(elementId) {
+  const def = (typeof scenarioProject !== "undefined" && scenarioProject.elementDefs || []).find(e => e.id === elementId);
+  return (def && def.name) || elementId || "？";
+}
+
 function describePanelEffect(effect) {
   if (!effect) return "";
   if (effect.kind === "stat") {
@@ -266,6 +298,7 @@ function describePanelEffect(effect) {
   }
   if (effect.kind === "skill") return `新しい技「${effect.skillName}」を習得`;
   if (effect.kind === "statusResist") return `状態異常耐性 +${effect.value}%（かかる確率が下がる）`;
+  if (effect.kind === "elementResist") return `${getPanelElementName(effect.element)}属性の敵から受けるダメージ -${effect.value}%`;
   return "";
 }
 
@@ -282,7 +315,9 @@ function summarizePanelCell(cell) {
   } else if (first.kind === "skill") {
     top = "技"; bottom = "";
   } else if (first.kind === "statusResist") {
-    top = "耐性"; bottom = `+${first.value}%`;
+    top = "状耐"; bottom = `+${first.value}%`;
+  } else if (first.kind === "elementResist") {
+    top = `${getPanelElementName(first.element)}耐`; bottom = `+${first.value}%`;
   }
   if (effects.length > 1) bottom = bottom ? `${bottom}…` : "…";
   return { top, bottom };
