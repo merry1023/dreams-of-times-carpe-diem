@@ -4493,6 +4493,47 @@ html, body {
   white-space: nowrap;
 }
 
+/* ★要望対応：敵の属性と特攻属性のアイコン（小さく表示） */
+.battle-enemy-unit-elements {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 2px;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: #ddd;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.battle-element-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.battle-element-weak-label {
+  color: #ffb84d;
+  font-size: 9px;
+}
+.element-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  line-height: 1;
+  font-size: 13px;
+}
+.element-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.element-icon-text {
+  color: #fff;
+}
+
 /* ★画像が用意されていない敵でも、名前とHPバーの色だけで「今狙っている相手」がわかるようにする。
    ★HPバーの中身（減った分）が赤なので、ターゲット表示は金色にして見分けやすくしている */
 .battle-enemy-unit.targeted .battle-enemy-unit-name {
