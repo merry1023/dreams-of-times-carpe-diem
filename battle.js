@@ -522,66 +522,103 @@ async function tryFriendlyMonsterAssist() {
   }
 }
 
+// ★要望対応：行動可能回数の仕組みのため、主人公の「1回分の行動選択〜実行」を切り出した。
+//   戻り値："acted"（実際に行動した＝回数を1消費）／"cancelled"（サブメニューから「戻る」で抜けた＝回数を消費せずもう一度）／
+//   "ended"（勝利・敗北・逃走成功などで戦闘自体が終わった＝呼び出し元はreturnする）
+async function runHeroActionPhase() {
+  updateBattleHud();
+  
+  // ★ニートの「後でやろう」：カウントダウンが0になったら、行動選択の前に自動で「本気状態」が発動する
+  const yaruKiMessage = checkYaruKiNashiActivation();
+  if (yaruKiMessage) {
+    changeSpeaker("");
+    await displayMessage(yaruKiMessage);
+    renderStatusHUD();
+  }
+  
+  // ★バグ修正：主人公のHPが0でも、仲間が誰か生きていればパーティ全滅（isPartyDefeated）にはならず
+  //   戦闘が続く仕様になった（要望対応）が、それに対応する「主人公自身は戦闘不能で動けない」処理が
+  //   無かったため、HPが0のまま普通にコマンドを選んで行動できてしまっていた
+  const playerIsDown = player.gauges.hp.current <= 0;
+  
+  // ★スタン・麻痺・混乱にかかっていると、コマンドを選ぶ前にその場で行動を潰されてしまう
+  const statusBlockedBy = typeof checkPlayerStatusPreventsAction === "function" ? checkPlayerStatusPreventsAction() : null; // player.js
+  let turnEnded = false;
+  if (playerIsDown) {
+    changeSpeaker("");
+    await displayMessage("倒れていて、動くことができない……");
+    turnEnded = true;
+  } else if (statusBlockedBy) {
+    changeSpeaker("");
+    const blockMessages = { stun: "スタンしてしまい、動けなかった！", paralyze: "麻痺していて、体が動かなかった！", confuse: "混乱していて、まともに行動できなかった！" };
+    await displayMessage(blockMessages[statusBlockedBy] || "行動できなかった……");
+    turnEnded = true;
+  } else {
+    // ★要望対応：装備している武器・防具に「常時発動」のスキルがあれば、行動選択の前に自動で発動する
+    await triggerPassiveEquipmentSkills(player, true);
+    if (!battleState) return "ended"; // ★常時発動スキルの効果で戦闘が終了した場合はここで打ち切る
+    if (isPartyDefeated()) {
+      await handleBattleDefeat();
+      return "ended";
+    }
+    
+    const action = await displayChoices([
+      { text: "たたかう", next: "fight" },
+      { text: "こうどう", next: "action" },
+      { text: "逃げる", next: "flee" }
+    ]);
+    
+    if (action.next === "fight") {
+      turnEnded = await handleFightMenu();
+    } else if (action.next === "action") {
+      turnEnded = await handleActionMenu();
+    } else if (action.next === "flee") {
+      const fled = await attemptFlee();
+      if (fled) return "ended"; // 逃げ切った：戦闘終了
+      turnEnded = true;  // 逃げ損なった：相手のターンへ
+    }
+  }
+  
+  if (!turnEnded) return "cancelled"; // 「戻る」でサブメニューから抜けただけ：行動回数を消費せずもう一度
+  return "acted";
+}
+
 async function battleLoop() {
   while (battleState) {
-    updateBattleHud();
+    // ★要望対応：1ラウンドあたりの主人公側（主人公＋仲間）の行動可能回数は、パーティ人数（主人公＋生存中の仲間）と同じ。
+    //   仲間が行動をパスすると、その分の行動回数は主人公や他の仲間の追加行動に回せる。
+    //   最後の仲間が行動／パスし終えた時点でまだ回数が残っていれば、主人公の行動選択に戻る。
+    //   逆に、途中で回数が尽きたら（最後の仲間の行動でなくても）残りの仲間は行動させず、すぐ敵のターンへ進む
+    let actionsRemaining = 1 + (player.companions ? player.companions.filter(c => c.alive).length : 0);
+    let nextIsHero = true;
     
-    // ★ニートの「後でやろう」：カウントダウンが0になったら、行動選択の前に自動で「本気状態」が発動する
-    const yaruKiMessage = checkYaruKiNashiActivation();
-    if (yaruKiMessage) {
-      changeSpeaker("");
-      await displayMessage(yaruKiMessage);
-      renderStatusHUD();
+    while (battleState && actionsRemaining > 0) {
+      if (nextIsHero) {
+        const heroResult = await runHeroActionPhase();
+        if (heroResult === "ended") return;
+        if (heroResult === "cancelled") continue; // ★サブメニューから「戻る」で抜けただけ：回数を消費せずもう一度主人公の選択へ
+        // ★主人公の行動（このターンのダメージ・状態異常等）で前の形態のHPが0になっていたら、
+        //   仲間や敵のターンを待たず、ここですぐ形態移行の演出・メッセージを出す
+        if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
+        if (!battleState) return;
+        if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
+        actionsRemaining--; // heroResult === "acted"
+        nextIsHero = false; // 行動した後は仲間の番（回数が残っていれば）
+      } else {
+        if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
+        const companionResult = await runCompanionPhaseWithPass(actionsRemaining);
+        actionsRemaining = companionResult.remaining;
+        if (!battleState) return;
+        if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
+        if (companionResult.allDone && actionsRemaining > 0) { nextIsHero = true; continue; } // ★要望対応：回数が残っていれば主人公の行動選択に戻る
+        break; // ★行動回数が尽きた（途中でも、全員分やりきってでも）→ 敵のターンへ
+      }
     }
+    if (!battleState) return;
     
-    let turnEnded = false;
-    
-    // ★バグ修正：主人公のHPが0でも、仲間が誰か生きていればパーティ全滅（isPartyDefeated）にはならず
-    //   戦闘が続く仕様になった（要望対応）が、それに対応する「主人公自身は戦闘不能で動けない」処理が
-    //   無かったため、HPが0のまま普通にコマンドを選んで行動できてしまっていた
+    // ★要望対応：主人公が戦闘不能で、このラウンド中一度も動けなかった場合は、疲労の蓄積や毒・火傷の
+    //   ダメージ処理もスキップする（既に0のHPからさらに削れて変な表示になるのも防ぐ）
     const playerIsDown = player.gauges.hp.current <= 0;
-    
-    // ★スタン・麻痺・混乱にかかっていると、コマンドを選ぶ前にその場で行動を潰されてしまう
-    const statusBlockedBy = typeof checkPlayerStatusPreventsAction === "function" ? checkPlayerStatusPreventsAction() : null; // player.js
-    if (playerIsDown) {
-      changeSpeaker("");
-      await displayMessage("倒れていて、動くことができない……");
-      turnEnded = true;
-    } else if (statusBlockedBy) {
-      changeSpeaker("");
-      const blockMessages = { stun: "スタンしてしまい、動けなかった！", paralyze: "麻痺していて、体が動かなかった！", confuse: "混乱していて、まともに行動できなかった！" };
-      await displayMessage(blockMessages[statusBlockedBy] || "行動できなかった……");
-      turnEnded = true;
-    } else {
-      // ★要望対応：装備している武器・防具に「常時発動」のスキルがあれば、行動選択の前に自動で発動する
-      await triggerPassiveEquipmentSkills(player, true);
-      if (!battleState) return; // ★常時発動スキルの効果で戦闘が終了した場合はここで打ち切る
-      if (isPartyDefeated()) {
-        await handleBattleDefeat();
-        return;
-      }
-      
-      const action = await displayChoices([
-        { text: "たたかう", next: "fight" },
-        { text: "こうどう", next: "action" },
-        { text: "逃げる", next: "flee" }
-      ]);
-      
-      if (action.next === "fight") {
-        turnEnded = await handleFightMenu();
-      } else if (action.next === "action") {
-        turnEnded = await handleActionMenu();
-      } else if (action.next === "flee") {
-        const fled = await attemptFlee();
-        if (fled) return; // 逃げ切った：戦闘終了
-        turnEnded = true;  // 逃げ損なった：相手のターンへ
-      }
-    }
-    
-    if (!turnEnded) continue; // 「戻る」でサブメニューから抜けただけ：ターンを消費しない
-    
-    // ★要望対応：主人公が戦闘不能で動けなかったターンは、本人は何もしていないので、
-    //   疲労の蓄積や毒・火傷のダメージ処理もスキップする（既に0のHPからさらに削れて変な表示になるのも防ぐ）
     if (!playerIsDown) {
       // ★戦闘で1ターン行動するたびに疲労度が溜まっていく。疲弊状態（7割超）だとHPも少し削られる
       const fatigueResult = applyActionFatigue(2); // player.js
@@ -631,16 +668,7 @@ async function battleLoop() {
       return;
     }
     
-    // ★仲間のターン：主人公の直後、仲間1→仲間2……の順で、生きている仲間全員が行動する
-    await companionTeamTurn();
-    if (!battleState) return;
-    // ★要望対応：仲間の攻撃で前の形態のHPが0になっていたら、ボスの番を待たずすぐに演出を出す
-    await announcePendingBossFormChanges();
-    if (!battleState) return;
-    if (getAliveEnemies().length === 0) {
-      await resolveBattleVictory();
-      return;
-    }
+    // ★仲間のターンは、上の行動可能回数ループの中（パス対応版）で主人公の後に既に行われている
     
     // ★友好的になった魔物が、稀に助っ人として乱入してくる（要望対応）
     await tryFriendlyMonsterAssist();
@@ -1359,17 +1387,24 @@ function getCompanionDisplayName(companion) {
   return master ? master.name : "仲間";
 }
 
-async function companionTeamTurn() {
-  if (!player || !player.companions || player.companions.length === 0) return;
+// ★要望対応：仲間のターンに「パス」を追加したことに伴い、行動可能回数（actionsRemaining）の仕組みに対応。
+//   実際に行動した仲間の分だけactionsRemainingを1消費し、0になった時点で残りの仲間を待たず打ち切る
+//   （呼び出し元はその場合、敵のターンへ進む）。パスはactionsRemainingを消費しない。
+//   戻り値のallDoneは「生きている仲間全員が行動／パスし終えた（行動回数切れで打ち切ったのではない）」かどうか
+async function runCompanionPhaseWithPass(actionsRemaining) {
+  if (!player || !player.companions || player.companions.length === 0) return { remaining: actionsRemaining, allDone: true };
   for (const companion of player.companions) {
-    if (!battleState) return; // ★途中で戦闘が終わっていたら中断
+    if (!battleState) return { remaining: actionsRemaining, allDone: false };
     if (!companion.alive) continue;
     if (getAliveEnemies().length === 0) break; // ★既に全滅していたら、残りの仲間は行動させない
-    await performCompanionAction(companion);
+    if (actionsRemaining <= 0) return { remaining: actionsRemaining, allDone: false }; // ★要望対応：行動回数が尽きたら、途中でも残りの仲間は行動させず打ち切る
+    const acted = await performCompanionAction(companion);
     // ★要望対応：この仲間の攻撃で前の形態のHPが0になっていたら、他の仲間やボスの番を待たず、
     //   すぐに形態移行の演出を出す（最後の仲間の行動ターンになるまで待たせない）
     if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
+    if (acted) actionsRemaining--;
   }
+  return { remaining: actionsRemaining, allDone: true };
 }
 
 // ★仲間の行動は、主人公と同じく「たたかう／スキル」から選んで、対象を選んで発動する
@@ -1525,17 +1560,23 @@ async function performCompanionAction(companion) {
   ];
   if (activeWeaponSkills.length > 0) actionChoices.push({ text: "武器スキル", next: "weaponskill" });
   if (!battleState.isColosseum) actionChoices.push({ text: "道具", next: "item" }); // ★要望対応：以前は主人公のターンでしか道具を使えなかったが、仲間の行動選択でも使えるようにする（コロシアムはアイテム使用禁止）
+  actionChoices.push({ text: "パス", next: "pass" }); // ★要望対応：この仲間の行動をパスできるようにする。パスすると行動回数を消費せず次の仲間へ進む
   
   const action = await displayChoices(actionChoices);
   
-  if (action.next === "fight") {
+  // ★戻り値：true＝実際に行動した（行動回数を1消費）／false＝パスした（行動回数を消費しない）
+  if (action.next === "pass") {
+    changeSpeaker("");
+    await displayMessage(`${name}は行動をパスした。`);
+    return false;
+  } else if (action.next === "fight") {
     await performCompanionNormalAttack(companion);
   } else if (action.next === "item") {
     const used = await handleItemMenuInBattle(); // battle.js（対象は自分・他の仲間・全員から選べる。既存の道具選択と共通）
-    if (!used) { await performCompanionAction(companion); return; } // ★何も使わず「戻る」を選んだ場合は、行動選択からやり直す
+    if (!used) return await performCompanionAction(companion); // ★何も使わず「戻る」を選んだ場合は、行動選択からやり直す
   } else if (action.next === "weaponskill") {
     const success = await performCompanionWeaponSkillMenu(companion, activeWeaponSkills);
-    if (!success) { await performCompanionAction(companion); return; } // ★対象選択をキャンセル／戻るを選んだ場合は、行動選択からやり直す
+    if (!success) return await performCompanionAction(companion); // ★対象選択をキャンセル／戻るを選んだ場合は、行動選択からやり直す
   } else {
     if (battleState) battleState.lastCompanionSkill = null;
     await performCompanionSkillMenu(companion);
@@ -1545,6 +1586,7 @@ async function performCompanionAction(companion) {
       await recordSkillElementForCombo(usedSkill); // ★要望対応：コンボ履歴はパーティ共有
     }
   }
+  return true;
 }
 
 // ★要望対応：装備している武器・防具の「任意発動」スキルを選んで発動する（仲間側）

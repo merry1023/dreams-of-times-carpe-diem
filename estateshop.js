@@ -59,8 +59,12 @@ function runEstateShopSalesForOneDay(shop, area) {
   shop.shelves.forEach(slot => {
     if (slot.quantity <= 0) return;
     const master = typeof ITEM_MASTER !== "undefined" ? ITEM_MASTER[slot.itemId] : null;
-    const trueValue = (master && master.trueValue) || 1;
-    const isOverpriced = slot.price > trueValue * ESTATE_SHOP_OVERPRICE_RATIO;
+    // ★バグ修正：以前はtrueValue（鑑定前の「真価」。buyPriceの半分前後しかないことが多い隠しパラメータ）を基準に
+    //   「値付けが高すぎるか」を判定していたため、商品棚の値付け画面で案内している「普通の価格の目安」通りに
+    //   （buyPriceに近い額で）値付けしても、ほぼ必ず「割高」扱いになり、売れ行きが常にかなり悪くなっていた。
+    //   プレイヤーに見せている目安と同じ基準（buyPrice。無ければtrueValue）で判定するよう修正
+    const referencePrice = (master && (master.buyPrice || master.trueValue)) || 1;
+    const isOverpriced = slot.price > referencePrice * ESTATE_SHOP_OVERPRICE_RATIO;
     // ★真価+15%以内なら普通の客がよく買う。それを超えると、稀に来る富裕層の客だけが買う
     const baseChance = isOverpriced ? 0.08 : 0.5;
     const employeeBonus = (avgGrade / 100) * 0.2; // ★バイトのグレードが高いほど少し売れやすくなる
