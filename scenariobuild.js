@@ -7577,7 +7577,7 @@ function buildStatusPanelCellEditor(def) {
 
     if (effect.kind === "stat") {
       row.appendChild(buildSkillSelectInline(effect, "stat", "", STATUS_PANEL_STAT_DEFS.map(d => ({ value: d.key, label: d.label }))));
-      row.appendChild(buildSkillSelectInline(effect, "mode", "", [{ value: "percent", label: "基礎値の％" }, { value: "flat", label: "固定値" }]));
+      row.appendChild(buildSkillSelectInline(effect, "mode", "", [{ value: "percent", label: "％（100レベル時の2/3が基準）" }, { value: "flat", label: "固定値" }]));
       row.appendChild(buildSkillNumberInline(effect, "value", "値", 0));
     } else if (effect.kind === "skill") {
       const skillSelect = document.createElement("select");
