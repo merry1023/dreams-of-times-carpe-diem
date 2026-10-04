@@ -4565,6 +4565,13 @@ html, body {
   height: 18px;
   font-size: 15px;
 }
+/* ★アイテム詳細など、文章の中に置く時は絶対配置にしない */
+.element-badge.element-badge-inline {
+  position: static;
+  vertical-align: middle;
+  font-size: 11px;
+  line-height: 14px;
+}
 
 /* ★画像が用意されていない敵でも、名前とHPバーの色だけで「今狙っている相手」がわかるようにする。
    ★HPバーの中身（減った分）が赤なので、ターゲット表示は金色にして見分けやすくしている */

@@ -631,6 +631,44 @@ function getEquipmentBonus() {
   return getEquipmentBonusFor(player ? player.equipment : null);
 }
 
+// ===== 装備の属性（要望対応） =====
+//   武器・防具・盾に属性（ITEM_MASTER[...].element＝属性管理タブの属性id）を持たせられる。
+//   ・武器の属性＝通常攻撃の属性（敵の属性との相性で、特攻×1.5／耐性×0.5がかかる）
+//   ・防具(胴)・盾の属性＝敵の攻撃を受けた時の相性。敵の攻撃の属性（敵自身の属性、職業技ならその技の属性）が
+//     「防具の属性」に対して特攻なら×1.5、耐性なら×0.5のダメージを受ける（相性表の「攻撃側>防御側」の値をそのまま使う）。
+//     防具と盾の両方に属性があれば、それぞれの相性が掛け合わさる
+function getEquippedElementFor(equipmentObj, slotKey) {
+  const data = getEquippedItemDataFor(equipmentObj, slotKey);
+  const element = data && data.master ? data.master.element : null;
+  return (element && element !== "無") ? element : null;
+}
+
+function getEquippedWeaponElementFor(equipmentObj) {
+  return getEquippedElementFor(equipmentObj, "武器");
+}
+
+function getArmorElementDamageMultiplierFor(equipmentObj, attackElementIds) {
+  if (!equipmentObj || !Array.isArray(attackElementIds) || attackElementIds.length === 0) return 1;
+  const matchups = (typeof scenarioProject !== "undefined" && scenarioProject.elementMatchups) || {};
+  let multiplier = 1;
+  ["胴", "盾"].forEach(slotKey => {
+    const armorElement = getEquippedElementFor(equipmentObj, slotKey);
+    if (!armorElement) return;
+    attackElementIds.forEach(attackElement => {
+      const relation = matchups[`${attackElement}>${armorElement}`];
+      if (relation === "advantage") multiplier *= 1.5;
+      else if (relation === "resist") multiplier *= 0.5;
+    });
+  });
+  return multiplier;
+}
+
+function applyArmorElementToDamageFor(equipmentObj, attackElementIds, damage) {
+  if (!(damage > 0)) return damage;
+  const multiplier = getArmorElementDamageMultiplierFor(equipmentObj, attackElementIds);
+  return multiplier === 1 ? damage : Math.max(1, Math.round(damage * multiplier));
+}
+
 // ★疲労度が上限の7割を超えている「疲弊状態」かどうか
 const FATIGUE_EXHAUSTED_RATIO = 0.7;
 function isPlayerExhausted() {

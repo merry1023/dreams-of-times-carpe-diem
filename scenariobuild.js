@@ -1178,6 +1178,8 @@ function ensureCustomItemsRegistered() {
       // ★要望対応：インベントリでのスタック可否（装備以外）。未指定ならカテゴリ既定値にお任せするため、
       //   明示的にtrue/falseが設定されている時だけ上書きする
       stackable: (typeof item.stackable === "boolean") ? item.stackable : existing.stackable,
+      // ★要望対応：武器・防具の属性（属性管理タブの属性id。空＝属性なし）。武器＝通常攻撃の属性、防具・盾＝受けるダメージの相性に使う
+      element: (typeof item.element === "string") ? item.element : existing.element,
       // ★要望対応：武器・防具に持たせる専用スキル（特殊スキル編集と同じブロック形式で組める）。
       //   scenarioProject.items側ではitem.blocks/item.variablesという名前（特殊スキル編集の画面をそのまま使い回すため）
       //   だが、battle.js側から見て紛らわしくないよう、ここでskillBlocks/skillVariablesという名前に変えて渡す。
@@ -10874,6 +10876,34 @@ function buildItemSkillEditor(item, persist) {
   return wrap;
 }
 
+// ★要望対応：武器・防具の属性を選ぶ（属性管理タブで登録した属性から）。
+//   武器＝通常攻撃の属性。防具(胴)・盾＝敵の攻撃を受けた時の相性（敵の攻撃の属性が、この属性に対して特攻ならダメージ増・耐性ならダメージ減）
+function buildItemElementEditor(item, persist) {
+  const wrap = document.createElement("div");
+  const noteEl = document.createElement("p");
+  noteEl.className = "devmode-note scenariobuild-condition";
+  noteEl.textContent = "属性：武器は「通常攻撃の属性」になり、敵の属性との相性（特攻・耐性）がかかります。防具・盾は「受けるダメージの相性」に使われ、敵の攻撃の属性（敵自身の属性、職業技ならその技の属性）が、この属性に対して特攻ならダメージ増・耐性ならダメージ減になります（相性表の「攻撃側→防御側」の値をそのまま使います）。";
+  wrap.appendChild(noteEl);
+  const row = document.createElement("div");
+  row.className = "scenariobuild-condition-row";
+  row.appendChild(labelSpan("属性："));
+  const select = document.createElement("select");
+  select.className = "scenariobuild-jump-select";
+  const noneOpt = document.createElement("option");
+  noneOpt.value = ""; noneOpt.textContent = "（属性なし）";
+  select.appendChild(noneOpt);
+  scenarioProject.elementDefs.forEach(el => {
+    const opt = document.createElement("option");
+    opt.value = el.id; opt.textContent = el.name || "（無名）";
+    select.appendChild(opt);
+  });
+  select.value = item.element || "";
+  select.onchange = () => { item.element = select.value; persist(); };
+  row.appendChild(select);
+  wrap.appendChild(row);
+  return wrap;
+}
+
 function buildItemStatBonusRangeEditor(item, persist) {
   const wrap = document.createElement("div");
   const noteEl = document.createElement("p");
@@ -12015,6 +12045,7 @@ function renderEntityDetailEditor(container) {
       fieldsWrap.appendChild(buildItemCuresStatusEditor(entity, persist));
     }
     if (entity.category === "weapon" || entity.category === "armor") {
+      fieldsWrap.appendChild(buildItemElementEditor(entity, persist)); // ★要望対応：装備の属性
       fieldsWrap.appendChild(buildItemStatBonusRangeEditor(entity, persist));
       fieldsWrap.appendChild(buildRustySeriesEditor(entity, persist));
       fieldsWrap.appendChild(buildItemSkillEditor(entity, persist));
