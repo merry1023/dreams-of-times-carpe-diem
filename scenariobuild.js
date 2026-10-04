@@ -6294,6 +6294,14 @@ function renderElementManager(container) {
     refreshPreview();
     row.appendChild(previewEl);
     row.appendChild(nameInput);
+    // ★要望対応：属性の色（戦闘中にはじけるダメージ数字の色）。未設定なら既定の色（getElementColor）をそのまま表示する
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.title = "属性の色（ダメージ数字の色）";
+    colorInput.value = (typeof getElementColor === "function" ? getElementColor(el.id) : "#ffffff");
+    if (!/^#[0-9a-fA-F]{6}$/.test(colorInput.value)) colorInput.value = "#ffffff"; // hsl()の既定色はピッカーに入らないので白から始める
+    colorInput.onchange = () => { el.color = colorInput.value; markScenarioBuildDirty(); };
+    row.appendChild(colorInput);
     const pathInput = document.createElement("input");
     pathInput.type = "text";
     pathInput.className = "scenariobuild-title-input";

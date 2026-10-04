@@ -962,6 +962,48 @@ function getElementDefById(elementId) {
   return defs.find(e => e.id === elementId) || null;
 }
 
+// ===== 属性の色・ダメージ数字（要望対応） =====
+//   属性の色は、シナリオエディタの「属性管理」タブで設定する（elementDefs[].color＝"#rrggbb"）。未設定なら、よくある属性名には
+//   既定の色を使い、それ以外は属性idから決めた色にする。属性なし（無属性の通常攻撃など）は白に近い色
+const ELEMENT_DEFAULT_COLORS_BY_NAME = {
+  "炎": "#ff7a3d", "火": "#ff7a3d", "雷": "#ffd23f", "自然": "#6fdc6f", "闇": "#a47bff", "光": "#fff3a8",
+  "混沌": "#ff6bd6", "裂": "#ff5a5a", "性": "#ff8fc7", "無": "#cfd8dc", "物理": "#e0c9a6",
+  "水": "#4db8ff", "氷": "#9be8ff", "風": "#8ff0c0", "土": "#c19a6b"
+};
+const ELEMENT_NO_ELEMENT_COLOR = "#f2f2f2";
+
+function getElementColor(elementId) {
+  if (!elementId || elementId === "無") return ELEMENT_NO_ELEMENT_COLOR;
+  const def = getElementDefById(elementId);
+  if (def && typeof def.color === "string" && /^#[0-9a-fA-F]{6}$/.test(def.color)) return def.color;
+  if (def && ELEMENT_DEFAULT_COLORS_BY_NAME[def.name]) return ELEMENT_DEFAULT_COLORS_BY_NAME[def.name];
+  let hash = 0;
+  Array.from(String(elementId)).forEach(ch => { hash = (hash * 31 + ch.codePointAt(0)) % 360; });
+  return `hsl(${hash}, 75%, 65%)`;
+}
+
+// ★敵にダメージを与えた時、その敵から小さな数字（属性の色）がはじける。弱点（特攻）をついた時は白い枠でハイライトする。
+//   敵ユニットのフィルタ・透明度（倒れた時の暗転など）の影響を受けないよう、敵一覧のコンテナに直接置く
+function showEnemyDamagePopup(enemy, damage, elementId, isWeak) {
+  if (!battleState || !(damage > 0)) return;
+  const container = document.getElementById("battle-enemies");
+  if (!container) return;
+  const index = battleState.enemies.indexOf(enemy);
+  const unitEl = index >= 0 ? container.querySelectorAll(".battle-enemy-unit")[index] : null;
+  if (!unitEl) return;
+  const imgEl = unitEl.querySelector(".battle-enemy-unit-image");
+  const popup = document.createElement("span");
+  popup.className = "damage-popup" + (isWeak ? " damage-popup-weak" : "");
+  popup.textContent = String(damage);
+  popup.style.color = getElementColor(elementId);
+  popup.style.left = `${unitEl.offsetLeft + unitEl.offsetWidth / 2 + (Math.random() * 20 - 10)}px`;
+  popup.style.top = `${unitEl.offsetTop + (imgEl ? imgEl.offsetHeight : 60) * 0.4}px`;
+  popup.style.setProperty("--dx", `${Math.round(Math.random() * 100 - 50)}px`);
+  popup.style.setProperty("--dy", `${-Math.round(32 + Math.random() * 34)}px`);
+  container.appendChild(popup);
+  setTimeout(() => popup.remove(), 1000);
+}
+
 function createElementIconEl(elementId, extraClass) {
   const def = getElementDefById(elementId);
   const name = (def && def.name) || elementId || "？";
@@ -1066,6 +1108,7 @@ function resolveDamageForTarget(target, rawDamage, attackElementId) {
   // ★要望対応：属性相性による倍率を反映する
   const elementalMultiplier = getElementalDamageMultiplier(attackElementId, target);
   if (elementalMultiplier !== 1) damage = Math.max(1, Math.round(damage * elementalMultiplier));
+  showEnemyDamagePopup(target, damage, attackElementId, elementalMultiplier > 1); // ★ダメージの数字を属性の色ではじけさせる（弱点なら白枠）
   // ★実績システム用：ここを通る対象は常に敵（主人公・仲間が与えるダメージ）なので、そのまま累計する（要望対応）
   if (typeof player !== "undefined" && player && damage > 0) {
     player.totalDamageDealt = (player.totalDamageDealt || 0) + damage;
