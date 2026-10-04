@@ -867,7 +867,8 @@ async function playerNormalAttack() {
   }
   
   const damage = calculatePlayerDamage();
-  const result = resolveDamageForTarget(target, damage);
+  const weaponElement = getEquippedWeaponElementFor(player.equipment) || undefined; // ★装備の属性：武器の属性が通常攻撃の属性になる
+  const result = resolveDamageForTarget(target, damage, weaponElement);
   target.hp = Math.max(0, target.hp - result.damage);
   changeSpeaker("");
   if (result.blocked) {
@@ -878,7 +879,7 @@ async function playerNormalAttack() {
     await displayMessage(`攻撃した！ ${target.displayName}に${result.damage}のダメージ！`);
   }
   updateBattleHud();
-  await maybeApplyChainAttack(target, () => calculatePlayerDamage());
+  await maybeApplyChainAttack(target, () => calculatePlayerDamage(), weaponElement);
   return true;
 }
 
@@ -1278,6 +1279,18 @@ function checkZetsurinAutoRecover() {
 //   1ターン分の被弾ごとに残りターン数を1つ減らし、0になったら効果を解除する
 // ★「不屈の闘志」「九死一生」等：本来なら戦闘不能になるはずの一撃だけを、HP1で耐え抜く。
 //   「無敵(immune)」とは違い、致命傷にならない通常の一撃は普通に食らう
+// ★敵の攻撃の属性：職業技など属性つきの技ならその属性、そうでなければ敵自身の属性（装備の属性との相性に使う）
+function getEnemyAttackElementIds(enemy, skillElement) {
+  if (skillElement && skillElement !== "無") return [skillElement];
+  return getBattleEnemyElements(enemy);
+}
+
+// ★敵の攻撃ダメージに、ステータスパネルの属性耐性と、防具・盾の属性との相性をまとめて反映する
+function applyEnemyAttackElementEffects(unit, ownerType, enemy, damage, skillElement) {
+  const afterPanel = applyPanelElementResistToDamage(unit, ownerType, enemy, damage);
+  return applyArmorElementToDamageFor(unit.equipment, getEnemyAttackElementIds(enemy, skillElement), afterPanel);
+}
+
 function applyPlayerDamageReduction(rawDamage) {
   if (battleState.playerImmuneTurns > 0) {
     battleState.playerImmuneTurns--;
@@ -1533,7 +1546,8 @@ async function performCompanionNormalAttack(companion) {
   const variance = Math.floor(Math.random() * 7) - 3; // -3〜+3の揺らぎ（主人公の通常攻撃と統一）
   const raw = Math.max(1, applyCompanionAtkBonus(companion, stats.atk) + variance);
   getCompanionBuffState(companion).attackCount++; // ★血闘の刻印用のカウント（通常攻撃も数える）
-  const result = resolveDamageForTarget(target, raw);
+  const weaponElement = getEquippedWeaponElementFor(companion.equipment) || undefined; // ★装備の属性：武器の属性が通常攻撃の属性になる
+  const result = resolveDamageForTarget(target, raw, weaponElement);
   target.hp = Math.max(0, target.hp - result.damage);
   
   changeSpeaker("");
@@ -1541,7 +1555,7 @@ async function performCompanionNormalAttack(companion) {
   renderStatusHUD();
   updateBattleHud();
   await maybeApplyBloodDanceOnAttack(companion); // ★血華の演舞：発動中なら攻撃力が積み上がり、代わりに少しダメージを受ける
-  await maybeApplyCompanionChainAttack(companion, target, () => Math.max(1, applyCompanionAtkBonus(companion, stats.atk) + (Math.floor(Math.random() * 7) - 3)));
+  await maybeApplyCompanionChainAttack(companion, target, () => Math.max(1, applyCompanionAtkBonus(companion, stats.atk) + (Math.floor(Math.random() * 7) - 3)), weaponElement);
 }
 
 async function performCompanionSkillMenu(companion) {
@@ -2224,7 +2238,7 @@ async function runSingleEnemyTurn(enemy) {
   if (!attackTarget.isPlayer) {
     // ★仲間を狙った場合：仲間のHPを直接削る（今のところ、被ダメ軽減バフ・状態異常の付与は主人公限定）
     const companion = attackTarget.companion;
-    const damage = applyPanelElementResistToDamage(companion, "companion", enemy, Math.max(1, enemyAtk + variance)); // ★ステータスパネルの属性耐性
+    const damage = applyEnemyAttackElementEffects(companion, "companion", enemy, Math.max(1, enemyAtk + variance)); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性
     companion.gauges.hp.current = Math.max(0, companion.gauges.hp.current - damage);
     player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
     renderStatusHUD();
@@ -2237,7 +2251,7 @@ async function runSingleEnemyTurn(enemy) {
     return;
   }
   
-  let damage = applyPlayerDamageReduction(applyPanelElementResistToDamage(player, "class", enemy, Math.max(1, enemyAtk + variance))); // ★ステータスパネルの属性耐性 // ★防御力システム廃止のため、こちらの防御力による減算は無し（代わりに最大HPで受け止める）＋「静かなる権威」の軽減を反映
+  let damage = applyPlayerDamageReduction(applyEnemyAttackElementEffects(player, "class", enemy, Math.max(1, enemyAtk + variance))); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性 // ★防御力システム廃止のため、こちらの防御力による減算は無し（代わりに最大HPで受け止める）＋「静かなる権威」の軽減を反映
   
   // ★状態異常「防御力低下」を受けている間は、受けるダメージが割増しになる
   const playerDefDown = player.statusAilments && player.statusAilments.defDown;
@@ -2333,7 +2347,7 @@ async function executeMonsterUniqueSkill(enemy, skill) {
       const variance = Math.floor(Math.random() * 3) - 1;
       const atkPerHit = Math.round(classSkillEnemyAtk * 0.7) / Math.max(1, hitCount);
       const raw = Math.max(1, Math.round(levelMultiplier * (classSkill.power || 0)) + Math.round(atkPerHit) + variance);
-      const hitDamage = applyPlayerDamageReduction(applyPanelElementResistToDamage(player, "class", enemy, raw)); // ★ステータスパネルの属性耐性
+      const hitDamage = applyPlayerDamageReduction(applyEnemyAttackElementEffects(player, "class", enemy, raw, classSkill.element)); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性（職業技ならその技の属性）
       changeGauge("hp", -hitDamage);
       totalDamage += hitDamage;
     }
@@ -2350,7 +2364,7 @@ async function executeMonsterUniqueSkill(enemy, skill) {
   
   const atkUpBonus = (enemy.status && enemy.status.atkUp && enemy.status.atkUp.turns > 0) ? enemy.status.atkUp.power : 0;
   const enemyAtk = enemy.atk + enemy.enemyAtkBonus + atkUpBonus;
-  const damage = applyPlayerDamageReduction(applyPanelElementResistToDamage(player, "class", enemy, Math.max(1, Math.round(enemyAtk * (skill.multiplier || 1))))); // ★ステータスパネルの属性耐性
+  const damage = applyPlayerDamageReduction(applyEnemyAttackElementEffects(player, "class", enemy, Math.max(1, Math.round(enemyAtk * (skill.multiplier || 1))))); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性
   changeGauge("hp", -damage);
   player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
   if (typeof triggerCameraShake === "function") triggerCameraShake(); // mainfunc.js

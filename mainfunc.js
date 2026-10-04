@@ -3162,6 +3162,19 @@ function showItemDetail(slot) {
   descEl.textContent = master.description;
   panel.appendChild(descEl);
   
+  // ★要望対応：武器・防具の属性（あれば）をバッジで表示する
+  if (master.element && master.element !== "無" && typeof createElementBadgeEl === "function") { // battle.js
+    const elementRow = document.createElement("p");
+    elementRow.className = "item-detail-element";
+    elementRow.appendChild(document.createTextNode("属性："));
+    const badgeEl = createElementBadgeEl(master.element);
+    if (badgeEl) {
+      badgeEl.classList.add("element-badge-inline");
+      elementRow.appendChild(badgeEl);
+    }
+    panel.appendChild(elementRow);
+  }
+  
   const pricesEl = document.createElement("div");
   pricesEl.className = "item-detail-prices";
   const listedEl = document.createElement("p");
