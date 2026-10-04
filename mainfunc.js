@@ -1099,6 +1099,15 @@ function renderChoiceBox() {
       + (choice.loops && showHints ? " choice-loop" : "")
       + (showHint ? " choice-correct-hint" : "");
     
+    // ★要望対応：選択肢にelementIdが付いていれば（戦闘中の技など）、左上に属性のバッジを付ける
+    if (choice.elementId && typeof createElementBadgeEl === "function") { // battle.js
+      const badgeEl = createElementBadgeEl(choice.elementId);
+      if (badgeEl) {
+        button.appendChild(badgeEl);
+        button.classList.add("choice-has-element");
+      }
+    }
+    
     // ★このクリックが他の反応（テキスト送りなど）に伝わらないようにする
     button.onclick = (event) => {
       event.stopPropagation();
@@ -1417,6 +1426,11 @@ function switchTab(tabId) {
   // 強さタブに切り替えたら、ステータス一覧を描画し直す
   if (tabId === 'tab-strength') {
     renderStrengthTab();
+  }
+  
+  // ★要望対応：ステータスパネルタブに切り替えたら、盤を描画し直す
+  if (tabId === 'tab-statuspanel' && typeof renderStatusPanelTab === "function") {
+    renderStatusPanelTab(); // statuspanel.js
   }
   
   // 装備タブに切り替えたら、カーソルをリセットして描画し直す
@@ -2327,7 +2341,7 @@ function buildCompanionTabCard(companion, isCursor) {
   skillTitle.textContent = "スキル";
   card.appendChild(skillTitle);
   
-  const allSkills = (master && typeof CLASS_SKILLS !== "undefined") ? (CLASS_SKILLS[master.class] || []) : [];
+  const allSkills = (master && typeof CLASS_SKILLS !== "undefined") ? getCompanionAllSkills(companion) : []; // ★ステータスパネルで習得した技も含める
   const skillListEl = document.createElement("div");
   skillListEl.className = "companion-skill-list";
   if (allSkills.length === 0) {
@@ -2337,7 +2351,7 @@ function buildCompanionTabCard(companion, isCursor) {
     skillListEl.appendChild(noneEl);
   } else {
     allSkills.forEach(skill => {
-      const unlocked = companion.level >= skill.unlockLevel;
+      const unlocked = isCompanionSkillUnlocked(companion, skill); // ★ステータスパネルで習得した技も含める
       const itemEl = document.createElement("div");
       const skillIndex = cfCounter++;
       itemEl.dataset.cfIndex = String(skillIndex);
@@ -2571,7 +2585,7 @@ function renderSkills() {
   if (skillCursorIndex < 0) skillCursorIndex = 0;
   
   skills.forEach((skill, i) => {
-    const unlocked = player.level >= skill.unlockLevel;
+    const unlocked = isPlayerSkillUnlocked(skill); // ★ステータスパネルで習得した技も含める
     
     const item = document.createElement("div");
     item.className = "skill-item" + (unlocked ? "" : " locked") + (i === skillCursorIndex ? " cursor" : "");
@@ -2681,7 +2695,7 @@ window.addEventListener("keydown", (event) => {
     
     event.preventDefault();
     const skill = skills[skillCursorIndex];
-    if (player.level >= skill.unlockLevel) {
+    if (isPlayerSkillUnlocked(skill)) {
       if (skill.type === "passive") {
         togglePassiveSkill(skill.passiveId); // player.js
         renderSkills();

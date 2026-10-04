@@ -323,7 +323,7 @@ function buildCompanionChatContext(companionId) {
     epithet: ccs.protagonistEpithet || "",
     level: player.level,
     className: player.class,
-    skills: (typeof getPlayerSkills === "function" ? getPlayerSkills() : []).filter(s => player.level >= (s.unlockLevel || 1)).map(s => ({ name: s.name, description: s.description || "" }))
+    skills: (typeof getPlayerSkills === "function" ? getPlayerSkills() : []).filter(s => isPlayerSkillUnlocked(s) || player.level >= (s.unlockLevel || 1)).map(s => ({ name: s.name, description: s.description || "" }))
   });
   player.companions.forEach(c => {
     const m = typeof getCompanionMaster === "function" ? getCompanionMaster(c) : null;

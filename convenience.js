@@ -486,7 +486,14 @@ function renderElementComboPanel() {
       }
       const chip = document.createElement("span");
       chip.className = "element-combo-chip";
-      chip.textContent = elementName(elId);
+      // ★要望対応：アイコンの上に、小さく属性名を表示する
+      const chipNameEl = document.createElement("span");
+      chipNameEl.className = "element-combo-chip-name";
+      chipNameEl.textContent = elementName(elId);
+      chip.appendChild(chipNameEl);
+      if (typeof createElementIconEl === "function") { // battle.js
+        chip.appendChild(createElementIconEl(elId));
+      }
       orderEl.appendChild(chip);
     });
     item.appendChild(orderEl);
