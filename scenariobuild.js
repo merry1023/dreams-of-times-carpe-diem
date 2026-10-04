@@ -29,6 +29,8 @@ let scenarioProject = {
   enemies: [],    // [{ id, name, maxHp, atk, exp, level }, ...] ★levelを設定すると、そのエリアではプレイヤーLvに関わらず固定の強さで出る
   bosses: [],     // [{ id, name, maxHp, atk, exp, level, bgmTrack, bgmFinalTrack, bgmCrisisTrack, invincibilityItemId }, ...]
   items: [],      // [{ id, name, category, description, rank, listedPrice, trueValue }, ...]
+  statusPanels: { classes: {}, companions: {} }, // ★要望対応：ステータスパネル（職業ごと・仲間ごとの9×9の盤）。statuspanel.js参照
+  comboSkills: [], // ★要望対応：コンボスキル（属性の順番で発動する追加効果）。[{ id, name, elements:[属性id...], requiredSkillNames:[...], requiredChapterId... }, ...]
   skills: [],     // [{ id, className, skillId, name, description, type, element, spCost, unlockLevel, power, target, hitCount, statusEffectKind... }, ...]
                   // ★将来的に「特殊スキル編集」ボタンから、話のブロックエディタと同じ要領で技の動作を
                   //   ブロックで組めるようにする予定。その時はここに blocks:[...] を追加する想定
@@ -241,6 +243,8 @@ function applyImportedSettingsFileIfUpdated(force) {
   scenarioProject.recipes = data.recipes || [];
   if (Array.isArray(data.randomNamePool)) scenarioProject.randomNamePool = data.randomNamePool; // ★要望対応：ランダム名前管理タブ
   if (Array.isArray(data.elementDefs)) scenarioProject.elementDefs = data.elementDefs; // ★要望対応：属性管理タブ
+  if (Array.isArray(data.comboSkills)) scenarioProject.comboSkills = data.comboSkills; // ★要望対応：コンボスキル
+  if (data.statusPanels && typeof data.statusPanels === "object") scenarioProject.statusPanels = data.statusPanels; // ★要望対応：ステータスパネル
   if (data.elementMatchups && typeof data.elementMatchups === "object") scenarioProject.elementMatchups = data.elementMatchups;
   scenarioProject.bgmTracks = data.bgmTracks || [];
   scenarioProject.mapAreas = data.mapAreas || [];
@@ -447,6 +451,10 @@ function normalizeScenarioProject() {
   //   （scenarioProject.elementMatchups[攻撃側属性id + ">" + 受ける側属性id] = "advantage"|"resist"、
   //   未設定は通常扱い）
   if (!Array.isArray(scenarioProject.elementDefs)) scenarioProject.elementDefs = []; // [{ id, name }, ...]
+  if (!Array.isArray(scenarioProject.comboSkills)) scenarioProject.comboSkills = []; // ★要望対応：コンボスキル
+  if (!scenarioProject.statusPanels || typeof scenarioProject.statusPanels !== "object") scenarioProject.statusPanels = { classes: {}, companions: {} }; // ★要望対応：ステータスパネル
+  if (!scenarioProject.statusPanels.classes) scenarioProject.statusPanels.classes = {};
+  if (!scenarioProject.statusPanels.companions) scenarioProject.statusPanels.companions = {};
   if (!scenarioProject.elementMatchups || typeof scenarioProject.elementMatchups !== "object") scenarioProject.elementMatchups = {};
   // ★バグ修正：以前スキルの「属性」は直接入力（自由記述の文字列）だったが、属性管理タブ＋
   //   リスト選択方式に変わった際、既存データの生の値（例：「火」）が新しい属性一覧（{id, name}）の
@@ -1170,6 +1178,8 @@ function ensureCustomItemsRegistered() {
       // ★要望対応：インベントリでのスタック可否（装備以外）。未指定ならカテゴリ既定値にお任せするため、
       //   明示的にtrue/falseが設定されている時だけ上書きする
       stackable: (typeof item.stackable === "boolean") ? item.stackable : existing.stackable,
+      // ★要望対応：武器・防具の属性（属性管理タブの属性id。空＝属性なし）。武器＝通常攻撃の属性、防具・盾＝受けるダメージの相性に使う
+      element: (typeof item.element === "string") ? item.element : existing.element,
       // ★要望対応：武器・防具に持たせる専用スキル（特殊スキル編集と同じブロック形式で組める）。
       //   scenarioProject.items側ではitem.blocks/item.variablesという名前（特殊スキル編集の画面をそのまま使い回すため）
       //   だが、battle.js側から見て紛らわしくないよう、ここでskillBlocks/skillVariablesという名前に変えて渡す。
@@ -1525,6 +1535,8 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
   { view: "tutorials", label: "チュートリアル管理" },
   { view: "skills", label: "スキル管理" },
+  { view: "combos", label: "コンボスキル" }, // ★要望対応：属性の順番で発動する追加効果の技
+  { view: "statuspanels", label: "ステータスパネル" }, // ★要望対応：職業・仲間ごとの育成用マス目の盤
   { view: "statuses", label: "状態管理" },
   { view: "flags", label: "フラグ管理" },
   { view: "gamevars", label: "ゲーム変数管理" }, // ★要望対応：話ブロックのifで参照できる数値変数の管理タブ（システム変数一覧の「変数一覧」とは別物）
@@ -1671,6 +1683,8 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "achievements") renderEntityManager(bodyEl, getAchievementManagerConfig());
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
+  else if (scenarioBuildSubView === "combos") renderComboSkillManager(bodyEl); // ★要望対応：コンボスキル
+  else if (scenarioBuildSubView === "statuspanels") renderStatusPanelManager(bodyEl); // ★要望対応：ステータスパネル
   else if (scenarioBuildSubView === "statuses") renderStatusManager(bodyEl);
   else if (scenarioBuildSubView === "flags") renderFlagManager(bodyEl);
   else if (scenarioBuildSubView === "gamevars") renderVariableManager(bodyEl);
@@ -6238,7 +6252,7 @@ function renderRandomNameManager(container) {
 function renderElementManager(container) {
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
-  introEl.textContent = "スキルや敵に設定する「属性」（火・氷など）を登録し、属性同士の相性（特攻・耐性・通常）を決められます。特攻＝ダメージ増、耐性＝ダメージ減、通常＝変化なし。敵が複数の属性を持つ場合、各属性との相性が掛け合わさって最終的なダメージ倍率になります。";
+  introEl.textContent = "スキルや敵に設定する「属性」（火・氷など）を登録し、属性同士の相性（特攻・耐性・通常）を決められます。特攻＝ダメージ増、耐性＝ダメージ減、通常＝変化なし。敵が複数の属性を持つ場合、各属性との相性が掛け合わさって最終的なダメージ倍率になります。属性ごとにアイコン（画像のパス、無ければ絵文字）も設定でき、戦闘中の敵の属性・弱点の表示に使われます。";
   container.appendChild(introEl);
   
   const listHeading = document.createElement("h4");
@@ -6267,7 +6281,56 @@ function renderElementManager(container) {
       if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
       renderScenarioBuildPanel(); // ★相性表・見出しの表示名にも反映する
     };
+    // ★要望対応：属性ごとのアイコン。画像のパスがあれば画像、無ければ絵文字を使う（戦闘画面の敵の属性表示などに出る）
+    row.style.flexWrap = "wrap";
+    const previewEl = document.createElement("span");
+    previewEl.style.cssText = "display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;font-size:20px;";
+    const refreshPreview = () => {
+      previewEl.innerHTML = "";
+      if (typeof createElementIconEl === "function" && el.id) {
+        const icon = createElementIconEl(el.id);
+        icon.style.width = "24px"; icon.style.height = "24px"; icon.style.fontSize = "20px";
+        previewEl.appendChild(icon);
+      }
+    };
+    refreshPreview();
+    row.appendChild(previewEl);
     row.appendChild(nameInput);
+    // ★要望対応：属性の色（戦闘中にはじけるダメージ数字の色）。未設定なら既定の色（getElementColor）をそのまま表示する
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.title = "属性の色（ダメージ数字の色）";
+    colorInput.value = (typeof getElementColor === "function" ? getElementColor(el.id) : "#ffffff");
+    if (!/^#[0-9a-fA-F]{6}$/.test(colorInput.value)) colorInput.value = "#ffffff"; // hsl()の既定色はピッカーに入らないので白から始める
+    colorInput.onchange = () => { el.color = colorInput.value; markScenarioBuildDirty(); };
+    row.appendChild(colorInput);
+    const pathInput = document.createElement("input");
+    pathInput.type = "text";
+    pathInput.className = "scenariobuild-title-input";
+    pathInput.value = el.iconPath || "";
+    pathInput.placeholder = "アイコン画像のパス（例：img/属性/炎.png）";
+    pathInput.onchange = () => {
+      el.iconPath = pathInput.value.trim();
+      if (!el.iconPath) delete el.iconPath;
+      markScenarioBuildDirty();
+      refreshPreview();
+    };
+    row.appendChild(pathInput);
+    const emojiInput = document.createElement("input");
+    emojiInput.type = "text";
+    emojiInput.className = "scenariobuild-title-input";
+    emojiInput.style.maxWidth = "110px";
+    emojiInput.maxLength = 8;
+    emojiInput.value = el.iconEmoji || "";
+    emojiInput.placeholder = "絵文字（例：🔥）";
+    emojiInput.title = "画像のパスが無い（または読み込めない）時に使う絵文字";
+    emojiInput.onchange = () => {
+      el.iconEmoji = emojiInput.value.trim();
+      if (!el.iconEmoji) delete el.iconEmoji;
+      markScenarioBuildDirty();
+      refreshPreview();
+    };
+    row.appendChild(emojiInput);
     
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "devmode-btn devmode-btn-danger";
@@ -7379,7 +7442,574 @@ function getEditingSkill() {
   if (scenarioBuildEditingItemSkillId) {
     return scenarioProject.items.find(i => i.id === scenarioBuildEditingItemSkillId) || null;
   }
-  return scenarioProject.skills.find(s => s.id === scenarioBuildEditingSkillId) || null;
+  // ★要望対応：コンボスキルも「特殊スキル編集」のブロックエディタをそのまま使い回す（idで技→コンボの順に探す）
+  return scenarioProject.skills.find(s => s.id === scenarioBuildEditingSkillId)
+    || (scenarioProject.comboSkills || []).find(s => s.id === scenarioBuildEditingSkillId) || null;
+}
+
+// ===== ステータスパネル管理（要望対応） =====
+//   職業ごと・仲間ごとに、9×9のマス目の盤を作る。中心マスが「基本パネル」（最初から解放済み）。
+//   マスをクリックして選び、「マスを置く／消す」で盤を形作り、効果とコスト（経験値・アイテム）を設定する。
+//   プレイ側の仕組みは statuspanel.js
+let scenarioBuildStatusPanelOwner = ""; // "class:職業名" または "companion:仲間id"
+let scenarioBuildStatusPanelCell = "4,4"; // 選択中のマス（"行,列"）
+
+function getStatusPanelOwnerOptions() {
+  const options = [];
+  Object.keys(typeof CLASS_MASTER !== "undefined" ? CLASS_MASTER : {}).forEach(name => options.push({ value: `class:${name}`, label: `職業：${name}` }));
+  Object.keys(typeof COMPANION_MASTER !== "undefined" ? COMPANION_MASTER : {}).forEach(id => {
+    const m = COMPANION_MASTER[id];
+    options.push({ value: `companion:${id}`, label: `仲間：${(m && m.name) || id}` });
+  });
+  return options;
+}
+
+function getEditingStatusPanelDef(createIfMissing) {
+  const [type, key] = (scenarioBuildStatusPanelOwner || "").split(/:(.*)/s);
+  if (!type || !key) return null;
+  const root = scenarioProject.statusPanels;
+  const bucket = type === "class" ? root.classes : root.companions;
+  if (!bucket[key] && createIfMissing) bucket[key] = { cells: {} };
+  return bucket[key] || null;
+}
+
+function createNewStatusPanelCell() {
+  return { label: "", effects: [], costExp: 0, costItems: [] };
+}
+
+function renderStatusPanelManager(container) {
+  const intro = document.createElement("p");
+  intro.className = "devmode-note";
+  intro.textContent = "職業（主人公）ごと・仲間ごとの、育成用のマス目の盤（9×9）を作ります。中心マスが基本パネルで、最初から解放済みです。他のマスは、解放済みのマスに斜めを含む8方向で隣接していれば、コスト（アイテム・経験値）を払って解放できます。マスを置いていない場所は壁になります。";
+  container.appendChild(intro);
+
+  const owners = getStatusPanelOwnerOptions();
+  if (!scenarioBuildStatusPanelOwner || !owners.some(o => o.value === scenarioBuildStatusPanelOwner)) {
+    scenarioBuildStatusPanelOwner = owners.length ? owners[0].value : "";
+  }
+  const ownerRow = document.createElement("div");
+  ownerRow.className = "scenariobuild-condition-row";
+  ownerRow.appendChild(labelSpan("編集する盤："));
+  const ownerSelect = document.createElement("select");
+  ownerSelect.className = "scenariobuild-jump-select";
+  owners.forEach(o => {
+    const opt = document.createElement("option");
+    opt.value = o.value; opt.textContent = o.label;
+    ownerSelect.appendChild(opt);
+  });
+  ownerSelect.value = scenarioBuildStatusPanelOwner;
+  ownerSelect.onchange = () => {
+    scenarioBuildStatusPanelOwner = ownerSelect.value;
+    scenarioBuildStatusPanelCell = "4,4";
+    renderScenarioBuildPanel();
+  };
+  ownerRow.appendChild(ownerSelect);
+  container.appendChild(ownerRow);
+  if (!scenarioBuildStatusPanelOwner) return;
+
+  const def = getEditingStatusPanelDef(false);
+  const cells = (def && def.cells) || {};
+
+  // 盤（9×9）。マスがある所は設定の要約を表示し、選択中のマスは枠で示す
+  const grid = document.createElement("div");
+  grid.style.cssText = "display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:2px;max-width:420px;margin:8px 0;";
+  for (let r = 0; r < STATUS_PANEL_SIZE; r++) {
+    for (let c = 0; c < STATUS_PANEL_SIZE; c++) {
+      const key = `${r},${c}`;
+      const cell = cells[key];
+      const btn = document.createElement("button");
+      btn.style.cssText = "aspect-ratio:1/1;min-width:0;padding:0;font-size:9px;line-height:1.1;cursor:pointer;border-radius:3px;overflow:hidden;"
+        + `border:${key === scenarioBuildStatusPanelCell ? "2px solid #fff" : "1px solid rgba(255,255,255,0.25)"};`
+        + `background:${cell ? (key === STATUS_PANEL_CENTER_KEY ? "rgba(255,170,40,0.55)" : "rgba(255,140,30,0.25)") : "rgba(0,0,0,0.35)"};color:#eee;`;
+      if (cell) {
+        const summary = summarizePanelCell(cell);
+        btn.textContent = (key === STATUS_PANEL_CENTER_KEY && !cell.label && (cell.effects || []).length === 0) ? "基本" : (summary.top + (summary.bottom ? "\n" + summary.bottom : ""));
+        btn.style.whiteSpace = "pre-line";
+      }
+      btn.onclick = () => { scenarioBuildStatusPanelCell = key; renderScenarioBuildPanel(); };
+      grid.appendChild(btn);
+    }
+  }
+  container.appendChild(grid);
+  container.appendChild(buildStatusPanelCellEditor(def));
+}
+
+function buildStatusPanelCellEditor(def) {
+  const key = scenarioBuildStatusPanelCell;
+  const cell = def && def.cells ? def.cells[key] : null;
+  const isCenter = key === STATUS_PANEL_CENTER_KEY;
+  const box = document.createElement("div");
+  box.className = "scenariobuild-condition-multi";
+  box.appendChild(labelSpan(`選択中のマス：${isCenter ? "中心（基本パネル）" : `${key.split(",")[0] * 1 + 1}行${key.split(",")[1] * 1 + 1}列`}`));
+
+  const toggleBtn = document.createElement("button");
+  toggleBtn.className = "devmode-btn" + (cell ? " devmode-btn-danger" : "");
+  toggleBtn.textContent = cell ? "このマスを消す（壁にする）" : "このマスを置く";
+  toggleBtn.onclick = () => {
+    pushUndoSnapshot();
+    const d = getEditingStatusPanelDef(true);
+    if (cell) delete d.cells[key]; else d.cells[key] = createNewStatusPanelCell();
+    markScenarioBuildDirty();
+    renderScenarioBuildPanel();
+  };
+  box.appendChild(toggleBtn);
+  if (!cell) return box;
+  if (!Array.isArray(cell.effects)) cell.effects = [];
+  if (!Array.isArray(cell.costItems)) cell.costItems = [];
+  const persist = () => markScenarioBuildDirty();
+
+  const labelRow = document.createElement("div");
+  labelRow.className = "scenariobuild-condition-row";
+  buildSkillTextInput(cell, "label", "マスに表示する文字（空なら効果から自動）", labelRow);
+  box.appendChild(labelRow);
+
+  // ★効果の一覧
+  box.appendChild(labelSpan("効果："));
+  cell.effects.forEach((effect, i) => {
+    const row = document.createElement("div");
+    row.className = "scenariobuild-condition-row";
+    row.style.flexWrap = "wrap";
+    const kindSelect = document.createElement("select");
+    kindSelect.className = "scenariobuild-jump-select";
+    [["stat", "ステータスアップ"], ["skill", "新しい技を習得"], ["statusResist", "状態異常耐性"], ["elementResist", "属性耐性"]].forEach(([v, l]) => {
+      const o = document.createElement("option"); o.value = v; o.textContent = l; kindSelect.appendChild(o);
+    });
+    kindSelect.value = effect.kind || "stat";
+    kindSelect.onchange = () => {
+      const kind = kindSelect.value;
+      cell.effects[i] = kind === "stat" ? { kind, stat: "atk", mode: "percent", value: 2 }
+        : kind === "skill" ? { kind, className: "", skillName: "" }
+        : kind === "elementResist" ? { kind, element: (scenarioProject.elementDefs[0] || {}).id || "", value: 10 }
+        : { kind, value: 10 };
+      persist(); renderScenarioBuildPanel();
+    };
+    row.appendChild(kindSelect);
+
+    if (effect.kind === "stat") {
+      row.appendChild(buildSkillSelectInline(effect, "stat", "", STATUS_PANEL_STAT_DEFS.map(d => ({ value: d.key, label: d.label }))));
+      row.appendChild(buildSkillSelectInline(effect, "mode", "", [{ value: "percent", label: "％（100レベル時の2/3が基準）" }, { value: "flat", label: "固定値" }]));
+      row.appendChild(buildSkillNumberInline(effect, "value", "値", 0));
+    } else if (effect.kind === "skill") {
+      const skillSelect = document.createElement("select");
+      skillSelect.className = "scenariobuild-jump-select";
+      const none = document.createElement("option"); none.value = ""; none.textContent = "（技を選ぶ）"; skillSelect.appendChild(none);
+      Object.keys(typeof CLASS_SKILLS !== "undefined" ? CLASS_SKILLS : {}).forEach(className => {
+        (CLASS_SKILLS[className] || []).forEach(sk => {
+          if (!sk.name) return;
+          const o = document.createElement("option");
+          o.value = `${className}\u0000${sk.name}`;
+          o.textContent = `${className}／${sk.name}`;
+          skillSelect.appendChild(o);
+        });
+      });
+      skillSelect.value = effect.skillName ? `${effect.className}\u0000${effect.skillName}` : "";
+      skillSelect.onchange = () => {
+        const [className, skillName] = skillSelect.value.split("\u0000");
+        effect.className = className || ""; effect.skillName = skillName || "";
+        persist();
+      };
+      row.appendChild(skillSelect);
+    } else if (effect.kind === "statusResist") {
+      row.appendChild(buildSkillNumberInline(effect, "value", "耐性（％。かかる確率がこの分下がる）", 0));
+    } else if (effect.kind === "elementResist") {
+      row.appendChild(buildSkillSelectInline(effect, "element", "敵の属性", scenarioProject.elementDefs.map(el => ({ value: el.id, label: el.name || "（無名）" }))));
+      row.appendChild(buildSkillNumberInline(effect, "value", "軽減（％。その属性の敵から受けるダメージがこの分減る）", 0));
+    }
+    const delBtn = document.createElement("button");
+    delBtn.className = "devmode-btn devmode-btn-danger";
+    delBtn.textContent = "✕";
+    delBtn.onclick = () => { pushUndoSnapshot(); cell.effects.splice(i, 1); persist(); renderScenarioBuildPanel(); };
+    row.appendChild(delBtn);
+    box.appendChild(row);
+  });
+  const addEffectBtn = document.createElement("button");
+  addEffectBtn.className = "devmode-btn";
+  addEffectBtn.textContent = "＋効果を追加";
+  addEffectBtn.onclick = () => {
+    pushUndoSnapshot();
+    cell.effects.push({ kind: "stat", stat: "atk", mode: "percent", value: 2 });
+    persist(); renderScenarioBuildPanel();
+  };
+  box.appendChild(addEffectBtn);
+
+  // ★コスト（基本パネルは最初から解放済みなので、コストは使われない）
+  if (isCenter) {
+    const note = document.createElement("p");
+    note.className = "devmode-note";
+    note.textContent = "基本パネルは最初から解放済みなので、コストは使われません。";
+    box.appendChild(note);
+    return box;
+  }
+  box.appendChild(labelSpan("コスト："));
+  const expRow = document.createElement("div");
+  expRow.className = "scenariobuild-condition-row";
+  expRow.appendChild(buildSkillNumberInline(cell, "costExp", "経験値（払うとレベルも下がる）", 0));
+  box.appendChild(expRow);
+  cell.costItems.forEach((entry, i) => {
+    const row = document.createElement("div");
+    row.className = "scenariobuild-condition-row";
+    const itemSelect = document.createElement("select");
+    itemSelect.className = "scenariobuild-jump-select";
+    const none = document.createElement("option"); none.value = ""; none.textContent = "（アイテムを選ぶ）"; itemSelect.appendChild(none);
+    Object.keys(typeof ITEM_MASTER !== "undefined" ? ITEM_MASTER : {}).forEach(id => {
+      const o = document.createElement("option"); o.value = id; o.textContent = (ITEM_MASTER[id] && ITEM_MASTER[id].name) || id; itemSelect.appendChild(o);
+    });
+    itemSelect.value = entry.itemId || "";
+    itemSelect.onchange = () => { entry.itemId = itemSelect.value; persist(); };
+    row.appendChild(itemSelect);
+    row.appendChild(buildSkillNumberInline(entry, "count", "個数", 1));
+    const delBtn = document.createElement("button");
+    delBtn.className = "devmode-btn devmode-btn-danger";
+    delBtn.textContent = "✕";
+    delBtn.onclick = () => { pushUndoSnapshot(); cell.costItems.splice(i, 1); persist(); renderScenarioBuildPanel(); };
+    row.appendChild(delBtn);
+    box.appendChild(row);
+  });
+  const addItemBtn = document.createElement("button");
+  addItemBtn.className = "devmode-btn";
+  addItemBtn.textContent = "＋コストのアイテムを追加";
+  addItemBtn.onclick = () => { pushUndoSnapshot(); cell.costItems.push({ itemId: "", count: 1 }); persist(); renderScenarioBuildPanel(); };
+  box.appendChild(addItemBtn);
+  return box;
+}
+
+// ===== コンボスキル管理（要望対応） =====
+//   属性技を決まった順番で撃つと発動する追加効果の技。1件の中身はスキル管理の技とほぼ同じ編集方法で、
+//   違いは「属性の順番」を指定できること。履歴はパーティ共有で、敵のターンに入るとリセットされる（battle.js）。
+//   解禁条件＝「話の解禁方法（話の編集と同じ条件）」＋「指定した技を習得済み（複数選択可）」
+function createNewComboSkill() {
+  return {
+    id: generateId("combo"), name: "新しいコンボ", description: "", enabled: true,
+    elements: [], cutInText: "",
+    requiredChapterId: null, requiredRank: null, requiredProgress: null, requiredDays: null, requiredFlag: null,
+    requiredSkillNames: [],
+    type: "attack", element: "無", power: 20, target: "all", hitCount: 1, atkType: "magical",
+    statusEffectKind: "", statusEffectChance: 1, statusEffectDuration: 3, statusEffectPower: 3,
+    statusEffect2Kind: "", statusEffect2Chance: 1, statusEffect2Duration: 1, statusEffect2Power: 0,
+    selfBuffKind: "", selfBuffDuration: 1, selfBuffPower: 0, selfBuffMode: "add",
+    useBlocks: false, blocks: [], variables: {}
+  };
+}
+
+function renderComboSkillManager(container) {
+  if (!Array.isArray(scenarioProject.comboSkills)) scenarioProject.comboSkills = [];
+  const introEl = document.createElement("p");
+  introEl.className = "devmode-note";
+  introEl.textContent = "属性技を決まった順番で撃つと、追加効果（コンボスキル）が発動します。履歴はパーティ全員で共有され、敵のターンに入るとリセットされます。属性なしの技は履歴に影響しません。コンボはSPを消費せず、3手目などの最後の技のあとに続けて発動します。";
+  container.appendChild(introEl);
+
+  if (scenarioProject.elementDefs.length === 0) {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note";
+    noteEl.textContent = "先に「属性管理」タブで属性（炎・雷など）を登録してください。";
+    container.appendChild(noteEl);
+  }
+
+  const addBtn = document.createElement("button");
+  addBtn.className = "devmode-btn";
+  addBtn.textContent = "＋コンボスキルを追加";
+  addBtn.onclick = () => {
+    pushUndoSnapshot();
+    scenarioProject.comboSkills.push(createNewComboSkill());
+    markScenarioBuildDirty();
+    renderScenarioBuildPanel();
+  };
+  container.appendChild(addBtn);
+
+  scenarioProject.comboSkills.forEach((combo, index) => container.appendChild(buildComboSkillRow(combo, index)));
+}
+
+function buildComboSkillRow(combo, index) {
+  const list = scenarioProject.comboSkills;
+  if (!Array.isArray(combo.elements)) combo.elements = [];
+  if (!Array.isArray(combo.requiredSkillNames)) combo.requiredSkillNames = [];
+  const persist = () => markScenarioBuildDirty();
+
+  const row = document.createElement("div");
+  row.className = "scenariobuild-chapter-row";
+  const idEl = document.createElement("span");
+  idEl.className = "scenariobuild-chapter-number";
+  idEl.textContent = `#${index + 1}`;
+  row.appendChild(idEl);
+
+  const infoEl = document.createElement("div");
+  infoEl.className = "scenariobuild-chapter-info";
+
+  const basicRow = document.createElement("div");
+  basicRow.className = "scenariobuild-condition-row";
+  buildSkillTextInput(combo, "name", "技名", basicRow);
+  infoEl.appendChild(basicRow);
+  const descRow = document.createElement("div");
+  descRow.className = "scenariobuild-condition-row";
+  buildSkillTextInput(combo, "description", "説明", descRow);
+  infoEl.appendChild(descRow);
+  const cutRow = document.createElement("div");
+  cutRow.className = "scenariobuild-condition-row";
+  buildSkillTextInput(combo, "cutInText", "カットインの文字（空なら技名）", cutRow);
+  infoEl.appendChild(cutRow);
+
+  const enabledRow = document.createElement("label");
+  enabledRow.className = "scenariobuild-condition-row";
+  enabledRow.style.cursor = "pointer";
+  const enabledCheckbox = document.createElement("input");
+  enabledCheckbox.type = "checkbox";
+  enabledCheckbox.checked = combo.enabled !== false;
+  enabledCheckbox.onchange = () => { combo.enabled = enabledCheckbox.checked; persist(); };
+  enabledRow.appendChild(enabledCheckbox);
+  enabledRow.appendChild(document.createTextNode(" 実装済み（オフ＝編集中。実際のプレイでは発動しない）"));
+  infoEl.appendChild(enabledRow);
+
+  // ★属性の順番（コンボスキルだけの項目）
+  const orderBox = document.createElement("div");
+  orderBox.className = "scenariobuild-condition-multi";
+  orderBox.appendChild(labelSpan("属性の順番（上から順に撃つ）："));
+  const elementOptions = scenarioProject.elementDefs.map(el => ({ value: el.id, label: el.name || "（無名）" }));
+  combo.elements.forEach((elId, i) => {
+    const line = document.createElement("div");
+    line.className = "scenariobuild-condition-row";
+    line.appendChild(labelSpan(`${i + 1}手目：`));
+    const select = document.createElement("select");
+    select.className = "scenariobuild-jump-select";
+    const emptyOpt = document.createElement("option");
+    emptyOpt.value = ""; emptyOpt.textContent = "（未選択）";
+    select.appendChild(emptyOpt);
+    elementOptions.forEach(opt => {
+      const o = document.createElement("option");
+      o.value = opt.value; o.textContent = opt.label;
+      select.appendChild(o);
+    });
+    select.value = elId || "";
+    select.onchange = () => { combo.elements[i] = select.value; persist(); };
+    line.appendChild(select);
+    const mkBtn = (text, disabled, handler, danger) => {
+      const b = document.createElement("button");
+      b.className = "devmode-btn" + (danger ? " devmode-btn-danger" : "");
+      b.textContent = text; b.disabled = disabled;
+      b.onclick = (event) => { event.stopPropagation(); pushUndoSnapshot(); handler(); persist(); renderScenarioBuildPanel(); };
+      line.appendChild(b);
+    };
+    mkBtn("↑", i === 0, () => { [combo.elements[i - 1], combo.elements[i]] = [combo.elements[i], combo.elements[i - 1]]; });
+    mkBtn("↓", i === combo.elements.length - 1, () => { [combo.elements[i + 1], combo.elements[i]] = [combo.elements[i], combo.elements[i + 1]]; });
+    mkBtn("✕", false, () => { combo.elements.splice(i, 1); }, true);
+    orderBox.appendChild(line);
+  });
+  const addElBtn = document.createElement("button");
+  addElBtn.className = "devmode-btn";
+  addElBtn.textContent = "＋手を追加";
+  addElBtn.onclick = (event) => { event.stopPropagation(); pushUndoSnapshot(); combo.elements.push(""); persist(); renderScenarioBuildPanel(); };
+  orderBox.appendChild(addElBtn);
+  if (combo.elements.filter(Boolean).length < 2) {
+    const warn = document.createElement("p");
+    warn.className = "devmode-note";
+    warn.style.margin = "0";
+    warn.textContent = "⚠ 属性は2手以上指定しないと発動しません。";
+    orderBox.appendChild(warn);
+  }
+  infoEl.appendChild(orderBox);
+
+  // ★解禁条件①：話の解禁方法（話の編集と同じ条件。evaluateChapterUnlockConditions をそのまま使う）
+  const condDetails = document.createElement("details");
+  condDetails.className = "scenariobuild-skill-details";
+  const condSummary = document.createElement("summary");
+  condSummary.textContent = "解禁条件（話の解禁方法 ＋ 習得済みの技）";
+  condDetails.appendChild(condSummary);
+
+  const addCondRow = (label, el) => {
+    const r = document.createElement("div");
+    r.className = "scenariobuild-condition-row";
+    r.appendChild(labelSpan(label));
+    r.appendChild(el);
+    condDetails.appendChild(r);
+  };
+  const chapterSelect = document.createElement("select");
+  chapterSelect.className = "scenariobuild-jump-select";
+  const noneOpt = document.createElement("option");
+  noneOpt.value = ""; noneOpt.textContent = "（条件なし）";
+  chapterSelect.appendChild(noneOpt);
+  scenarioProject.chapters.forEach(c => {
+    const o = document.createElement("option");
+    o.value = c.id; o.textContent = c.title;
+    chapterSelect.appendChild(o);
+  });
+  chapterSelect.value = combo.requiredChapterId || "";
+  chapterSelect.onchange = () => { combo.requiredChapterId = chapterSelect.value || null; persist(); };
+  addCondRow("この話をクリア：", chapterSelect);
+
+  const rankSelect = document.createElement("select");
+  rankSelect.className = "scenariobuild-jump-select";
+  const rankNone = document.createElement("option");
+  rankNone.value = ""; rankNone.textContent = "（条件なし）";
+  rankSelect.appendChild(rankNone);
+  (typeof RANK_ORDER !== "undefined" ? RANK_ORDER : ["F", "E", "D", "C", "B", "A", "S"]).forEach(rank => {
+    const o = document.createElement("option");
+    o.value = rank; o.textContent = rank;
+    rankSelect.appendChild(o);
+  });
+  rankSelect.value = combo.requiredRank || "";
+  rankSelect.onchange = () => { combo.requiredRank = rankSelect.value || null; persist(); };
+  addCondRow("ランクが以上：", rankSelect);
+
+  const makeNumInput = (key) => {
+    const input = document.createElement("input");
+    input.type = "number"; input.min = "0";
+    input.className = "scenariobuild-condition-input";
+    input.placeholder = "なし";
+    input.value = combo[key] || "";
+    input.onchange = () => { const v = parseInt(input.value, 10); combo[key] = (!v || v <= 0) ? null : v; persist(); };
+    return input;
+  };
+  addCondRow("進行度が以上：", makeNumInput("requiredProgress"));
+  addCondRow("経過日数が以上：", makeNumInput("requiredDays"));
+
+  const flagInput = document.createElement("input");
+  flagInput.type = "text";
+  flagInput.className = "scenariobuild-title-input";
+  flagInput.placeholder = "なし";
+  flagInput.value = combo.requiredFlag || "";
+  flagInput.onchange = () => { combo.requiredFlag = flagInput.value.trim() || null; persist(); };
+  addCondRow("フラグが立っている：", flagInput);
+
+  // ★解禁条件②：指定した技を習得済み（複数選択可。全部習得していることが条件）
+  const skillBox = document.createElement("div");
+  skillBox.className = "scenariobuild-condition-multi";
+  skillBox.appendChild(labelSpan(`習得済みであること（複数選択可・全て必要）：現在${combo.requiredSkillNames.length}件`));
+  const byClass = {};
+  scenarioProject.skills.forEach(sk => {
+    if (!sk.name) return;
+    (byClass[sk.className || "（職業なし）"] = byClass[sk.className || "（職業なし）"] || []).push(sk);
+  });
+  Object.keys(byClass).forEach(className => {
+    const clsDetails = document.createElement("details");
+    clsDetails.className = "scenariobuild-skill-details";
+    const clsSummary = document.createElement("summary");
+    const selectedCount = byClass[className].filter(sk => combo.requiredSkillNames.includes(sk.name)).length;
+    clsSummary.textContent = `${className}の技${selectedCount ? `（${selectedCount}件選択中）` : ""}`;
+    clsDetails.appendChild(clsSummary);
+    byClass[className].slice().sort((a, b) => (a.unlockLevel || 0) - (b.unlockLevel || 0)).forEach(sk => {
+      const label = document.createElement("label");
+      label.className = "scenariobuild-condition-row";
+      label.style.cursor = "pointer";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = combo.requiredSkillNames.includes(sk.name);
+      cb.onchange = () => {
+        const idx = combo.requiredSkillNames.indexOf(sk.name);
+        if (cb.checked && idx < 0) combo.requiredSkillNames.push(sk.name);
+        if (!cb.checked && idx >= 0) combo.requiredSkillNames.splice(idx, 1);
+        persist();
+      };
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(` Lv.${sk.unlockLevel || "?"} ${sk.name}`));
+      clsDetails.appendChild(label);
+    });
+    skillBox.appendChild(clsDetails);
+  });
+  condDetails.appendChild(skillBox);
+  infoEl.appendChild(condDetails);
+
+  // ★動作（スキル管理と同じ：固定フィールド or 特殊スキル編集のブロック）
+  const hasBlocks = Array.isArray(combo.blocks) && combo.blocks.length > 0;
+  const isBlockMode = combo.useBlocks === true || (combo.useBlocks == null && hasBlocks);
+  const modeRow = document.createElement("div");
+  modeRow.className = "scenariobuild-condition-row";
+  modeRow.appendChild(labelSpan("この技の動作："));
+  const modeSelect = document.createElement("select");
+  modeSelect.className = "scenariobuild-jump-select";
+  [["fixed", "固定フィールド（下の威力・種類などの設定欄）"], ["blocks", "ブロックで組む（特殊スキル編集）"]].forEach(([value, label]) => {
+    const o = document.createElement("option");
+    o.value = value; o.textContent = label;
+    modeSelect.appendChild(o);
+  });
+  modeSelect.value = isBlockMode ? "blocks" : "fixed";
+  modeSelect.onchange = () => { combo.useBlocks = modeSelect.value === "blocks"; persist(); renderScenarioBuildPanel(); };
+  modeRow.appendChild(modeSelect);
+  infoEl.appendChild(modeRow);
+
+  const blockRow = document.createElement("div");
+  blockRow.className = "scenariobuild-condition-row";
+  const blockEditBtn = document.createElement("button");
+  blockEditBtn.className = "devmode-btn";
+  blockEditBtn.textContent = "⚡ 特殊スキル編集";
+  blockEditBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioBuildEditingSkillId = combo.id;
+    scenarioBuildMainView = "skillBlockEditor";
+    renderScenarioBuildPanel();
+  };
+  blockRow.appendChild(blockEditBtn);
+  if (isBlockMode) {
+    const badge = document.createElement("span");
+    badge.className = "devmode-note";
+    badge.style.margin = "0";
+    badge.textContent = `⚡ブロックで動作中（${(combo.blocks || []).length}件）：下の固定フィールドは無視されます`;
+    blockRow.appendChild(badge);
+  }
+  infoEl.appendChild(blockRow);
+
+  const fixedWrap = document.createElement("div");
+  fixedWrap.className = isBlockMode ? "scenariobuild-skill-fixed-fields-disabled" : "";
+  const paramsRow = document.createElement("div");
+  paramsRow.className = "scenariobuild-condition-row";
+  paramsRow.style.flexWrap = "wrap";
+  paramsRow.appendChild(buildSkillSelectInline(combo, "type", "種類", [
+    { value: "attack", label: "攻撃" }, { value: "heal", label: "回復" }, { value: "buff", label: "自己強化" }
+  ]));
+  paramsRow.appendChild(buildSkillSelectInline(combo, "element", "ダメージの属性", [{ value: "無", label: "無" }, ...elementOptions]));
+  paramsRow.appendChild(buildSkillNumberInline(combo, "power", "威力", 0));
+  paramsRow.appendChild(buildSkillSelectInline(combo, "target", "対象", [{ value: "single", label: "単体（現在のターゲット）" }, { value: "all", label: "全体" }]));
+  paramsRow.appendChild(buildSkillNumberInline(combo, "hitCount", "命中回数", 1));
+  paramsRow.appendChild(buildSkillSelectInline(combo, "atkType", "参照する攻撃力", [{ value: "physical", label: "物理攻撃力" }, { value: "magical", label: "魔法攻撃力" }]));
+  fixedWrap.appendChild(paramsRow);
+
+  const details = document.createElement("details");
+  details.className = "scenariobuild-skill-details";
+  const summary = document.createElement("summary");
+  summary.textContent = "効果の詳細（状態異常・自己強化）";
+  details.appendChild(summary);
+  details.appendChild(buildSkillEffectGroup(combo, "状態異常①（例：やけど）", "statusEffectKind", "statusEffectChance", "statusEffectDuration", "statusEffectPower", getSkillStatusKindOptions()));
+  details.appendChild(buildSkillEffectGroup(combo, "状態異常②", "statusEffect2Kind", "statusEffect2Chance", "statusEffect2Duration", "statusEffect2Power", getSkillStatusKindOptions()));
+  const selfBuffRow = document.createElement("div");
+  selfBuffRow.className = "scenariobuild-condition-row";
+  selfBuffRow.appendChild(labelSpan("自己強化：" ));
+  selfBuffRow.appendChild(buildSkillSelectInline(combo, "selfBuffKind", "", getSkillSelfBuffKindOptions()));
+  selfBuffRow.appendChild(buildSkillNumberInline(combo, "selfBuffDuration", "ターン数", 1));
+  selfBuffRow.appendChild(buildSkillSelectInline(combo, "selfBuffMode", "上昇方法", [{ value: "add", label: "加算" }, { value: "multiply", label: "乗算（効果量%）" }]));
+  selfBuffRow.appendChild(buildSkillNumberInline(combo, "selfBuffPower", "効果量", 0));
+  details.appendChild(selfBuffRow);
+  fixedWrap.appendChild(details);
+  infoEl.appendChild(fixedWrap);
+  row.appendChild(infoEl);
+
+  const buttonsEl = document.createElement("div");
+  buttonsEl.className = "scenariobuild-chapter-buttons";
+  const moveBtn = (text, disabled, delta) => {
+    const b = document.createElement("button");
+    b.className = "devmode-btn";
+    b.textContent = text; b.disabled = disabled;
+    b.onclick = (event) => {
+      event.stopPropagation();
+      pushUndoSnapshot();
+      [list[index + delta], list[index]] = [list[index], list[index + delta]];
+      persist(); renderScenarioBuildPanel();
+    };
+    buttonsEl.appendChild(b);
+  };
+  moveBtn("↑ 上へ", index === 0, -1);
+  moveBtn("↓ 下へ", index === list.length - 1, 1);
+  const delBtn = document.createElement("button");
+  delBtn.className = "devmode-btn devmode-btn-danger";
+  delBtn.textContent = "削除";
+  delBtn.onclick = async (event) => {
+    event.stopPropagation();
+    const ok = await showGameConfirm(`コンボスキル「${combo.name || "名無し"}」を削除しますか？`);
+    if (!ok) return;
+    pushUndoSnapshot();
+    list.splice(index, 1);
+    persist(); renderScenarioBuildPanel();
+  };
+  buttonsEl.appendChild(delBtn);
+  row.appendChild(buttonsEl);
+  return row;
 }
 
 // ===== メイン画面：特殊スキルのブロック編集（専用全画面。scenarioBuildMainView === "skillBlockEditor"） =====
@@ -7398,7 +8028,7 @@ function renderSkillBlockEditor(container) {
   
   const backBtn = document.createElement("button");
   backBtn.className = "devmode-btn";
-  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : "← スキル管理に戻る";
+  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : (scenarioBuildSubView === "combos" ? "← コンボスキルに戻る" : "← スキル管理に戻る");
   backBtn.onclick = (event) => {
     event.stopPropagation();
     scenarioBuildSkillInsertMenuTarget = null;
@@ -10254,6 +10884,34 @@ function buildItemSkillEditor(item, persist) {
   return wrap;
 }
 
+// ★要望対応：武器・防具の属性を選ぶ（属性管理タブで登録した属性から）。
+//   武器＝通常攻撃の属性。防具(胴)・盾＝敵の攻撃を受けた時の相性（敵の攻撃の属性が、この属性に対して特攻ならダメージ増・耐性ならダメージ減）
+function buildItemElementEditor(item, persist) {
+  const wrap = document.createElement("div");
+  const noteEl = document.createElement("p");
+  noteEl.className = "devmode-note scenariobuild-condition";
+  noteEl.textContent = "属性：武器は「通常攻撃の属性」になり、敵の属性との相性（特攻・耐性）がかかります。防具・盾は「受けるダメージの相性」に使われ、敵の攻撃の属性（敵自身の属性、職業技ならその技の属性）が、この属性に対して特攻ならダメージ増・耐性ならダメージ減になります（相性表の「攻撃側→防御側」の値をそのまま使います）。";
+  wrap.appendChild(noteEl);
+  const row = document.createElement("div");
+  row.className = "scenariobuild-condition-row";
+  row.appendChild(labelSpan("属性："));
+  const select = document.createElement("select");
+  select.className = "scenariobuild-jump-select";
+  const noneOpt = document.createElement("option");
+  noneOpt.value = ""; noneOpt.textContent = "（属性なし）";
+  select.appendChild(noneOpt);
+  scenarioProject.elementDefs.forEach(el => {
+    const opt = document.createElement("option");
+    opt.value = el.id; opt.textContent = el.name || "（無名）";
+    select.appendChild(opt);
+  });
+  select.value = item.element || "";
+  select.onchange = () => { item.element = select.value; persist(); };
+  row.appendChild(select);
+  wrap.appendChild(row);
+  return wrap;
+}
+
 function buildItemStatBonusRangeEditor(item, persist) {
   const wrap = document.createElement("div");
   const noteEl = document.createElement("p");
@@ -11395,6 +12053,7 @@ function renderEntityDetailEditor(container) {
       fieldsWrap.appendChild(buildItemCuresStatusEditor(entity, persist));
     }
     if (entity.category === "weapon" || entity.category === "armor") {
+      fieldsWrap.appendChild(buildItemElementEditor(entity, persist)); // ★要望対応：装備の属性
       fieldsWrap.appendChild(buildItemStatBonusRangeEditor(entity, persist));
       fieldsWrap.appendChild(buildRustySeriesEditor(entity, persist));
       fieldsWrap.appendChild(buildItemSkillEditor(entity, persist));
@@ -12141,6 +12800,8 @@ function exportGameSettingsAsJsFile() {
     randomNamePool: scenarioProject.randomNamePool, // ★要望対応：ランダム名前管理タブ
     elementDefs: scenarioProject.elementDefs, // ★要望対応：属性管理タブ
     elementMatchups: scenarioProject.elementMatchups,
+    comboSkills: scenarioProject.comboSkills, // ★要望対応：コンボスキル
+    statusPanels: scenarioProject.statusPanels, // ★要望対応：ステータスパネル
     bgmTracks: scenarioProject.bgmTracks,
     mapAreas: scenarioProject.mapAreas,
     mapEdges: scenarioProject.mapEdges,

@@ -741,7 +741,15 @@ async function handleFightMenu() {
   }
   
   if (choice.next === "skill") {
-    return await handleSkillMenu();
+    if (battleState) battleState.lastPlayerSkill = null;
+    const done = await handleSkillMenu();
+    // ★要望対応：コンボスキル。実際に技を撃ったターンだけ、その属性を履歴に積んで発動判定をする
+    if (done && battleState && battleState.lastPlayerSkill) {
+      const usedSkill = battleState.lastPlayerSkill;
+      battleState.lastPlayerSkill = null;
+      await recordSkillElementForCombo(usedSkill);
+    }
+    return done;
   }
   
   if (choice.next === "weaponskill") {
@@ -859,7 +867,8 @@ async function playerNormalAttack() {
   }
   
   const damage = calculatePlayerDamage();
-  const result = resolveDamageForTarget(target, damage);
+  const weaponElement = getEquippedWeaponElementFor(player.equipment) || undefined; // ★装備の属性：武器の属性が通常攻撃の属性になる
+  const result = resolveDamageForTarget(target, damage, weaponElement);
   target.hp = Math.max(0, target.hp - result.damage);
   changeSpeaker("");
   if (result.blocked) {
@@ -870,7 +879,7 @@ async function playerNormalAttack() {
     await displayMessage(`攻撃した！ ${target.displayName}に${result.damage}のダメージ！`);
   }
   updateBattleHud();
-  await maybeApplyChainAttack(target, () => calculatePlayerDamage());
+  await maybeApplyChainAttack(target, () => calculatePlayerDamage(), weaponElement);
   return true;
 }
 
@@ -946,6 +955,148 @@ function getElementalDamageMultiplier(attackElementId, target) {
   return multiplier;
 }
 
+// ===== 属性アイコン（要望対応） =====
+//   属性ごとのアイコンは、シナリオエディタの「属性管理」タブで設定する（elementDefs[].iconPath＝画像のパス／iconEmoji＝絵文字）。
+//   画像があれば画像、無ければ絵文字、どちらも無ければ属性名の1文字目を表示する。画像が読み込めない時は絵文字（無ければ1文字目）に切り替える
+function getElementDefById(elementId) {
+  const defs = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.elementDefs)) ? scenarioProject.elementDefs : [];
+  return defs.find(e => e.id === elementId) || null;
+}
+
+// ===== 属性の色・ダメージ数字（要望対応） =====
+//   属性の色は、シナリオエディタの「属性管理」タブで設定する（elementDefs[].color＝"#rrggbb"）。未設定なら、よくある属性名には
+//   既定の色を使い、それ以外は属性idから決めた色にする。属性なし（無属性の通常攻撃など）は白に近い色
+const ELEMENT_DEFAULT_COLORS_BY_NAME = {
+  "炎": "#ff7a3d", "火": "#ff7a3d", "雷": "#ffd23f", "自然": "#6fdc6f", "闇": "#a47bff", "光": "#fff3a8",
+  "混沌": "#ff6bd6", "裂": "#ff5a5a", "性": "#ff8fc7", "無": "#cfd8dc", "物理": "#e0c9a6",
+  "水": "#4db8ff", "氷": "#9be8ff", "風": "#8ff0c0", "土": "#c19a6b"
+};
+const ELEMENT_NO_ELEMENT_COLOR = "#f2f2f2";
+
+function getElementColor(elementId) {
+  if (!elementId || elementId === "無") return ELEMENT_NO_ELEMENT_COLOR;
+  const def = getElementDefById(elementId);
+  if (def && typeof def.color === "string" && /^#[0-9a-fA-F]{6}$/.test(def.color)) return def.color;
+  if (def && ELEMENT_DEFAULT_COLORS_BY_NAME[def.name]) return ELEMENT_DEFAULT_COLORS_BY_NAME[def.name];
+  let hash = 0;
+  Array.from(String(elementId)).forEach(ch => { hash = (hash * 31 + ch.codePointAt(0)) % 360; });
+  return `hsl(${hash}, 75%, 65%)`;
+}
+
+// ★敵にダメージを与えた時、その敵から小さな数字（属性の色）がはじける。弱点（特攻）をついた時は白い枠でハイライトする。
+//   敵ユニットのフィルタ・透明度（倒れた時の暗転など）の影響を受けないよう、敵一覧のコンテナに直接置く
+function showEnemyDamagePopup(enemy, damage, elementId, isWeak) {
+  if (!battleState || !(damage > 0)) return;
+  const container = document.getElementById("battle-enemies");
+  if (!container) return;
+  const index = battleState.enemies.indexOf(enemy);
+  const unitEl = index >= 0 ? container.querySelectorAll(".battle-enemy-unit")[index] : null;
+  if (!unitEl) return;
+  const imgEl = unitEl.querySelector(".battle-enemy-unit-image");
+  const popup = document.createElement("span");
+  popup.className = "damage-popup" + (isWeak ? " damage-popup-weak" : "");
+  popup.textContent = String(damage);
+  popup.style.color = getElementColor(elementId);
+  popup.style.left = `${unitEl.offsetLeft + unitEl.offsetWidth / 2 + (Math.random() * 20 - 10)}px`;
+  popup.style.top = `${unitEl.offsetTop + (imgEl ? imgEl.offsetHeight : 60) * 0.4}px`;
+  popup.style.setProperty("--dx", `${Math.round(Math.random() * 100 - 50)}px`);
+  popup.style.setProperty("--dy", `${-Math.round(32 + Math.random() * 34)}px`);
+  container.appendChild(popup);
+  setTimeout(() => popup.remove(), 1000);
+}
+
+function createElementIconEl(elementId, extraClass) {
+  const def = getElementDefById(elementId);
+  const name = (def && def.name) || elementId || "？";
+  const el = document.createElement("span");
+  el.className = "element-icon" + (extraClass ? " " + extraClass : "");
+  el.title = name;
+  const fallbackText = (def && def.iconEmoji) || Array.from(name)[0] || "？";
+  if (def && def.iconPath) {
+    const img = document.createElement("img");
+    img.className = "element-icon-img";
+    img.alt = name;
+    img.src = def.iconPath;
+    img.onerror = () => { el.textContent = fallbackText; el.classList.add("element-icon-text"); };
+    el.appendChild(img);
+  } else {
+    el.textContent = fallbackText;
+    el.classList.add("element-icon-text");
+  }
+  return el;
+}
+
+// ★技の選択肢の左上に付ける「属性のバッジ」（アイコン＋属性名）。属性なし（無）の技には付けない
+function createElementBadgeEl(elementId) {
+  if (!elementId || elementId === "無") return null;
+  const def = getElementDefById(elementId);
+  const name = (def && def.name) || elementId;
+  const badge = document.createElement("span");
+  badge.className = "element-badge";
+  badge.title = `${name}属性`;
+  // ★アイコン（画像・絵文字）が設定されている時だけアイコンを付ける。未設定だと名前の1文字目が重複して「自自然」のようになるため
+  if (def && (def.iconPath || def.iconEmoji)) badge.appendChild(createElementIconEl(elementId));
+  const nameEl = document.createElement("span");
+  nameEl.className = "element-badge-name";
+  nameEl.textContent = name;
+  badge.appendChild(nameEl);
+  return badge;
+}
+
+// ★敵が持つ属性（魔物ごとの設定。player.jsのgetCompanion…と同様、MONSTER_MASTER優先）
+function getBattleEnemyElements(enemy) {
+  if (!enemy) return [];
+  const master = (typeof MONSTER_MASTER !== "undefined" && enemy.monsterKey) ? MONSTER_MASTER[enemy.monsterKey] : null;
+  if (master && Array.isArray(master.elements)) return master.elements.filter(Boolean);
+  return Array.isArray(enemy.elements) ? enemy.elements.filter(Boolean) : [];
+}
+
+// ★その敵に特攻（ダメージ増）になる属性。実際のダメージ計算（getElementalDamageMultiplier）と同じ判定を使うので、表示と実際の効きが必ず一致する
+function getEnemyWeakElementIds(enemy) {
+  const defs = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.elementDefs)) ? scenarioProject.elementDefs : [];
+  if (getBattleEnemyElements(enemy).length === 0) return [];
+  return defs.filter(def => getElementalDamageMultiplier(def.id, enemy) > 1).map(def => def.id);
+}
+
+// ★敵ユニットの下に出す「属性アイコン ／ 弱点アイコン」の行。属性が無い敵には何も出さない。
+//   形態切り替えで属性が変わることがあるので、中身が変わった時だけ作り直す
+function updateBattleEnemyElementRow(unitEl, enemy) {
+  let rowEl = unitEl.querySelector(".battle-enemy-unit-elements");
+  const elements = getBattleEnemyElements(enemy);
+  if (elements.length === 0) {
+    if (rowEl) rowEl.remove();
+    return;
+  }
+  const weak = getEnemyWeakElementIds(enemy);
+  const sigDefs = [...elements, ...weak].map(id => { const d = getElementDefById(id); return id + ":" + ((d && (d.iconPath || "") + "|" + (d.iconEmoji || "") + "|" + (d.name || "")) || ""); }).join(",");
+  const signature = `${elements.join("+")}>${weak.join("+")}>${sigDefs}`;
+  if (rowEl && rowEl.dataset.signature === signature) return;
+  if (!rowEl) {
+    rowEl = document.createElement("div");
+    rowEl.className = "battle-enemy-unit-elements";
+    const nameEl = unitEl.querySelector(".battle-enemy-unit-name");
+    if (nameEl && nameEl.nextSibling) unitEl.insertBefore(rowEl, nameEl.nextSibling); else unitEl.appendChild(rowEl);
+  }
+  rowEl.dataset.signature = signature;
+  rowEl.innerHTML = "";
+  const ownGroup = document.createElement("span");
+  ownGroup.className = "battle-element-group";
+  ownGroup.title = "この敵の属性";
+  elements.forEach(id => ownGroup.appendChild(createElementIconEl(id)));
+  rowEl.appendChild(ownGroup);
+  if (weak.length > 0) {
+    const label = document.createElement("span");
+    label.className = "battle-element-weak-label";
+    label.textContent = "弱点";
+    rowEl.appendChild(label);
+    const weakGroup = document.createElement("span");
+    weakGroup.className = "battle-element-group battle-element-group-weak";
+    weakGroup.title = "特攻（ダメージが増える）属性";
+    weak.forEach(id => weakGroup.appendChild(createElementIconEl(id)));
+    rowEl.appendChild(weakGroup);
+  }
+}
+
 function resolveDamageForTarget(target, rawDamage, attackElementId) {
   if (target && target.invincibilityBreakItemId && !target.invincibilityBroken) {
     return { damage: 0, blocked: true };
@@ -958,6 +1109,7 @@ function resolveDamageForTarget(target, rawDamage, attackElementId) {
   // ★要望対応：属性相性による倍率を反映する
   const elementalMultiplier = getElementalDamageMultiplier(attackElementId, target);
   if (elementalMultiplier !== 1) damage = Math.max(1, Math.round(damage * elementalMultiplier));
+  showEnemyDamagePopup(target, damage, attackElementId, elementalMultiplier > 1); // ★ダメージの数字を属性の色ではじけさせる（弱点なら白枠）
   // ★実績システム用：ここを通る対象は常に敵（主人公・仲間が与えるダメージ）なので、そのまま累計する（要望対応）
   if (typeof player !== "undefined" && player && damage > 0) {
     player.totalDamageDealt = (player.totalDamageDealt || 0) + damage;
@@ -1005,7 +1157,7 @@ async function handleItemMenuInBattle() {
   
   const itemChoices = [
     ...healableEntries.map(entry => ({ text: `${entry.master.name} ×${entry.slot.quantity}`, next: `heal:${entry.master.name}` })),
-    ...battleSkillEntries.map(entry => ({ text: `${entry.master.name}【${entry.master.battleSkill.name}】`, next: `skill:${entry.master.name}` })),
+    ...battleSkillEntries.map(entry => ({ text: `${entry.master.name}【${entry.master.battleSkill.name}】`, next: `skill:${entry.master.name}`, elementId: entry.master.battleSkill.element })),
     ...invincibilityBreakEntries.map(entry => ({ text: `${entry.master.name}を使う`, next: `break:${entry.itemId}` }))
   ];
   itemChoices.push({ text: "戻る", next: "back", isBack: true });
@@ -1170,6 +1322,18 @@ function checkZetsurinAutoRecover() {
 //   1ターン分の被弾ごとに残りターン数を1つ減らし、0になったら効果を解除する
 // ★「不屈の闘志」「九死一生」等：本来なら戦闘不能になるはずの一撃だけを、HP1で耐え抜く。
 //   「無敵(immune)」とは違い、致命傷にならない通常の一撃は普通に食らう
+// ★敵の攻撃の属性：職業技など属性つきの技ならその属性、そうでなければ敵自身の属性（装備の属性との相性に使う）
+function getEnemyAttackElementIds(enemy, skillElement) {
+  if (skillElement && skillElement !== "無") return [skillElement];
+  return getBattleEnemyElements(enemy);
+}
+
+// ★敵の攻撃ダメージに、ステータスパネルの属性耐性と、防具・盾の属性との相性をまとめて反映する
+function applyEnemyAttackElementEffects(unit, ownerType, enemy, damage, skillElement) {
+  const afterPanel = applyPanelElementResistToDamage(unit, ownerType, enemy, damage);
+  return applyArmorElementToDamageFor(unit.equipment, getEnemyAttackElementIds(enemy, skillElement), afterPanel);
+}
+
 function applyPlayerDamageReduction(rawDamage) {
   if (battleState.playerImmuneTurns > 0) {
     battleState.playerImmuneTurns--;
@@ -1373,7 +1537,13 @@ async function performCompanionAction(companion) {
     const success = await performCompanionWeaponSkillMenu(companion, activeWeaponSkills);
     if (!success) { await performCompanionAction(companion); return; } // ★対象選択をキャンセル／戻るを選んだ場合は、行動選択からやり直す
   } else {
+    if (battleState) battleState.lastCompanionSkill = null;
     await performCompanionSkillMenu(companion);
+    if (battleState && battleState.lastCompanionSkill) {
+      const usedSkill = battleState.lastCompanionSkill;
+      battleState.lastCompanionSkill = null;
+      await recordSkillElementForCombo(usedSkill); // ★要望対応：コンボ履歴はパーティ共有
+    }
   }
 }
 
@@ -1419,7 +1589,8 @@ async function performCompanionNormalAttack(companion) {
   const variance = Math.floor(Math.random() * 7) - 3; // -3〜+3の揺らぎ（主人公の通常攻撃と統一）
   const raw = Math.max(1, applyCompanionAtkBonus(companion, stats.atk) + variance);
   getCompanionBuffState(companion).attackCount++; // ★血闘の刻印用のカウント（通常攻撃も数える）
-  const result = resolveDamageForTarget(target, raw);
+  const weaponElement = getEquippedWeaponElementFor(companion.equipment) || undefined; // ★装備の属性：武器の属性が通常攻撃の属性になる
+  const result = resolveDamageForTarget(target, raw, weaponElement);
   target.hp = Math.max(0, target.hp - result.damage);
   
   changeSpeaker("");
@@ -1427,7 +1598,7 @@ async function performCompanionNormalAttack(companion) {
   renderStatusHUD();
   updateBattleHud();
   await maybeApplyBloodDanceOnAttack(companion); // ★血華の演舞：発動中なら攻撃力が積み上がり、代わりに少しダメージを受ける
-  await maybeApplyCompanionChainAttack(companion, target, () => Math.max(1, applyCompanionAtkBonus(companion, stats.atk) + (Math.floor(Math.random() * 7) - 3)));
+  await maybeApplyCompanionChainAttack(companion, target, () => Math.max(1, applyCompanionAtkBonus(companion, stats.atk) + (Math.floor(Math.random() * 7) - 3)), weaponElement);
 }
 
 async function performCompanionSkillMenu(companion) {
@@ -1445,7 +1616,7 @@ async function performCompanionSkillMenu(companion) {
     return;
   }
   
-  const choices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description }));
+  const choices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description, elementId: s.element })); // ★elementId：選択肢の左上に属性バッジを出す（mainfunc.js renderChoiceBox）
   choices.push({ text: "戻る", next: "back", isBack: true });
   const picked = await displayChoices(choices);
   if (picked.next === "back") {
@@ -1462,6 +1633,7 @@ async function performCompanionSkillMenu(companion) {
   }
   
   companion.gauges.sp.current -= skill.spCost;
+  if (battleState) battleState.lastCompanionSkill = skill; // ★コンボスキル用：仲間が撃った技
   changeSpeaker("");
   
   // ★バグ修正：スキル管理タブでブロック編集した技（狂戦士の技など）は、主人公と同じく
@@ -1469,7 +1641,7 @@ async function performCompanionSkillMenu(companion) {
   if (Array.isArray(skill.blocks) && skill.blocks.length > 0) {
     const success = await runSkillBlocksForCompanionTurn(companion, skill);
     if (!success) {
-      companion.gauges.sp.current += skill.spCost; // ★対象選択をキャンセルしたので、消費したSPを返す
+      companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★対象選択をキャンセルしたので、消費したSPを返す
       renderStatusHUD();
       await performCompanionSkillMenu(companion);
       return;
@@ -1519,7 +1691,7 @@ async function performCompanionSkillMenu(companion) {
         choices.push({ text: "やめる", next: "cancel", isBack: true });
         const picked = await displayChoices(choices);
         if (picked.next === "cancel") {
-          companion.gauges.sp.current += skill.spCost; // ★やめたので、消費したSPを返す
+          companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★やめたので、消費したSPを返す
           renderStatusHUD();
           await performCompanionSkillMenu(companion);
           return;
@@ -1556,7 +1728,7 @@ async function performCompanionSkillMenu(companion) {
   const aliveEnemies = getAliveEnemies();
   const targets = skill.target === "all" ? aliveEnemies : [await selectEnemyTarget()];
   if (!targets[0]) {
-    companion.gauges.sp.current += skill.spCost; // ★狙う相手を選ぶ前にキャンセルしたので、消費したSPを返す
+    companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★狙う相手を選ぶ前にキャンセルしたので、消費したSPを返す
     renderStatusHUD();
     await performCompanionSkillMenu(companion); // ★スキル選択からやり直す
     return;
@@ -1641,7 +1813,138 @@ async function performCompanionSkillMenu(companion) {
   updateBattleHud();
 }
 
+// ===== コンボスキル（要望対応） =====
+//   属性技を決まった順番で撃つと追加効果が発動する。履歴（battleState.comboHistory）は主人公と仲間で共有し、
+//   敵のターンに入るとリセットされる。属性なし（"無"）の技は履歴に影響しない。
+//   定義はシナリオエディタの「コンボスキル」タブ（scenarioProject.comboSkills）
+function isComboSkillLearned(requiredNames) {
+  if (!Array.isArray(requiredNames) || requiredNames.length === 0) return true;
+  const learned = new Set();
+  if (typeof getUnlockedSkills === "function") getUnlockedSkills().forEach(s => learned.add(s.name));
+  if (typeof player !== "undefined" && player && Array.isArray(player.companions) && typeof getCompanionSkills === "function") {
+    player.companions.forEach(c => { try { getCompanionSkills(c).forEach(s => learned.add(s.name)); } catch (e) { /* 無視 */ } });
+  }
+  return requiredNames.every(name => learned.has(name));
+}
+
+function isComboSkillUnlocked(combo) {
+  if (!combo || combo.enabled === false) return false;
+  // ★話の解禁方法は、話の編集と同じ条件（前の話・ランク・進行度・日数・フラグ）をそのまま使う
+  if (typeof evaluateChapterUnlockConditions === "function" && !evaluateChapterUnlockConditions(combo)) return false;
+  return isComboSkillLearned(combo.requiredSkillNames);
+}
+
+function findMatchingComboSkill() {
+  const history = (battleState && battleState.comboHistory) || [];
+  const combos = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.comboSkills)) ? scenarioProject.comboSkills : [];
+  let best = null;
+  combos.forEach(combo => {
+    const seq = (combo.elements || []).filter(Boolean);
+    if (seq.length < 2 || seq.length > history.length) return;
+    const tail = history.slice(history.length - seq.length);
+    if (!seq.every((el, i) => el === tail[i])) return;
+    if (!isComboSkillUnlocked(combo)) return;
+    if (!best || seq.length > best.seqLength) best = { combo, seqLength: seq.length }; // ★複数一致したら、長い手順のコンボを優先
+  });
+  return best ? best.combo : null;
+}
+
+async function recordSkillElementForCombo(skill) {
+  if (!battleState || !skill) return;
+  const element = skill.element;
+  if (!element || element === "無") return;
+  if (!Array.isArray(battleState.comboHistory)) battleState.comboHistory = [];
+  battleState.comboHistory.push(element);
+  if (battleState.comboHistory.length > 8) battleState.comboHistory.shift();
+  if (getAliveEnemies().length === 0) return;
+  const combo = findMatchingComboSkill();
+  if (!combo) return;
+  battleState.comboHistory = []; // ★発動したら履歴を空に戻す
+  await executeComboSkill(combo);
+}
+
+// ★画面中央に帯線と文字を出すカットイン（style.cssの.combo-cutin）。表示が終わるまで待つ
+function showComboCutIn(text) {
+  return new Promise(resolve => {
+    // ★右のサイドパネルまで覆わないよう、敵やメッセージウィンドウが入っているメイン画面の中に出す
+    const enemiesEl = document.getElementById("battle-enemies");
+    const host = (enemiesEl && enemiesEl.parentElement) || document.querySelector(".game-container") || document.body;
+    const el = document.createElement("div");
+    el.className = "combo-cutin";
+    const band = document.createElement("div");
+    band.className = "combo-cutin-band";
+    const label = document.createElement("span");
+    label.className = "combo-cutin-label";
+    label.textContent = "COMBO";
+    const main = document.createElement("span");
+    main.className = "combo-cutin-text";
+    main.textContent = text;
+    band.appendChild(label);
+    band.appendChild(main);
+    el.appendChild(band);
+    host.appendChild(el);
+    setTimeout(() => el.classList.add("combo-cutin-out"), 1500);
+    setTimeout(() => { el.remove(); resolve(); }, 1900);
+  });
+}
+
+function buildComboRuntimeSkill(c) {
+  const skill = {
+    name: c.name || "名無しのコンボ", description: c.description || "", type: c.type || "attack",
+    element: c.element || "無", power: Number(c.power) || 0, target: c.target === "all" ? "all" : "single",
+    hitCount: Math.max(1, Number(c.hitCount) || 1), atkType: c.atkType === "physical" ? "physical" : "magical"
+  };
+  if (c.statusEffectKind) skill.statusEffect = { kind: c.statusEffectKind, chance: Number(c.statusEffectChance) || 1, duration: Number(c.statusEffectDuration) || 1, power: Number(c.statusEffectPower) || 0 };
+  if (c.statusEffect2Kind) skill.statusEffect2 = { kind: c.statusEffect2Kind, chance: Number(c.statusEffect2Chance) || 1, duration: Number(c.statusEffect2Duration) || 1, power: Number(c.statusEffect2Power) || 0 };
+  if (c.selfBuffKind) skill.selfBuff = { kind: c.selfBuffKind, duration: Number(c.selfBuffDuration) || 1, power: Number(c.selfBuffPower) || 0, mode: c.selfBuffMode === "multiply" ? "multiply" : "add" };
+  const useBlockMode = c.useBlocks === true || (c.useBlocks == null && Array.isArray(c.blocks) && c.blocks.length > 0);
+  if (useBlockMode && Array.isArray(c.blocks) && c.blocks.length > 0) {
+    skill.blocks = c.blocks;
+    skill.variables = (c.variables && typeof c.variables === "object") ? c.variables : {};
+  }
+  return skill;
+}
+
+async function executeComboSkill(combo) {
+  const skill = buildComboRuntimeSkill(combo);
+  changeSpeaker("");
+  await showComboCutIn(combo.cutInText || skill.name);
+  await displayMessage(`コンボ発動！「${skill.name}」`);
+  const fallbackTarget = getCurrentTarget() || getAliveEnemies()[0] || null;
+  
+  if (skill.blocks && skill.blocks.length > 0) {
+    const context = { variables: { ...(skill.variables || {}) }, target: fallbackTarget, caster: player };
+    await runSkillBlockList(skill.blocks, skill, context);
+  } else if (skill.type === "attack") {
+    const targets = skill.target === "all" ? getAliveEnemies() : (fallbackTarget ? [fallbackTarget] : []);
+    for (const target of targets) {
+      for (let hit = 0; hit < skill.hitCount; hit++) {
+        if (target.hp <= 0) break;
+        const damage = calculateSkillDamage(skill, skill.hitCount);
+        const result = resolveDamageForTarget(target, damage, skill.element);
+        target.hp = Math.max(0, target.hp - result.damage);
+        await displayMessage(result.blocked ? `${target.displayName}には効いていないようだッ！` : `${target.displayName}に${result.damage}のダメージ！`);
+      }
+      for (const effect of [skill.statusEffect, skill.statusEffect2]) {
+        if (!effect || target.hp <= 0 || Math.random() >= effect.chance) continue;
+        const applied = applyEnemyStatusEffectFromSkill(target, effect);
+        if (applied) await displayMessage(`${target.displayName}は${applied}状態になった！`);
+      }
+    }
+  } else if (skill.type === "heal") {
+    const healed = applyHealToUnit(player, "hp", skill.power, false, false); // player.js
+    await displayMessage(`HPが${healed}回復した！`);
+  }
+  if (skill.selfBuff) {
+    const appliedSelf = applySelfBuffFromSkill(skill.selfBuff);
+    if (appliedSelf) await displayMessage(`自分は${appliedSelf}状態になった！`);
+  }
+  renderStatusHUD();
+  updateBattleHud();
+}
+
 async function enemyTeamTurn() {
+  if (battleState) battleState.comboHistory = []; // ★要望対応：敵のターンに入ったらコンボの属性履歴をリセットする
   const alive = getAliveEnemies();
   for (const enemy of alive) {
     if (!battleState) return; // ★途中で戦闘が終わっていたら中断
@@ -1978,7 +2281,7 @@ async function runSingleEnemyTurn(enemy) {
   if (!attackTarget.isPlayer) {
     // ★仲間を狙った場合：仲間のHPを直接削る（今のところ、被ダメ軽減バフ・状態異常の付与は主人公限定）
     const companion = attackTarget.companion;
-    const damage = Math.max(1, enemyAtk + variance);
+    const damage = applyEnemyAttackElementEffects(companion, "companion", enemy, Math.max(1, enemyAtk + variance)); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性
     companion.gauges.hp.current = Math.max(0, companion.gauges.hp.current - damage);
     player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
     renderStatusHUD();
@@ -1991,7 +2294,7 @@ async function runSingleEnemyTurn(enemy) {
     return;
   }
   
-  let damage = applyPlayerDamageReduction(Math.max(1, enemyAtk + variance)); // ★防御力システム廃止のため、こちらの防御力による減算は無し（代わりに最大HPで受け止める）＋「静かなる権威」の軽減を反映
+  let damage = applyPlayerDamageReduction(applyEnemyAttackElementEffects(player, "class", enemy, Math.max(1, enemyAtk + variance))); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性 // ★防御力システム廃止のため、こちらの防御力による減算は無し（代わりに最大HPで受け止める）＋「静かなる権威」の軽減を反映
   
   // ★状態異常「防御力低下」を受けている間は、受けるダメージが割増しになる
   const playerDefDown = player.statusAilments && player.statusAilments.defDown;
@@ -2035,6 +2338,13 @@ async function applyMonsterAttackStatusInflictions(inflictions) {
     if (Math.random() < (infliction.chance != null ? infliction.chance : 1)) {
       // ★ハイ・ディスシプリナ「大いなる光芒状態」中は、状態異常の付与そのものを無効化する
       if (battleState.playerStatusImmuneTurns > 0) continue;
+      // ★ステータスパネルの「状態異常耐性」：その確率で、状態異常を跳ね返す
+      const panelResist = (typeof getPlayerPanelStatusResist === "function") ? getPlayerPanelStatusResist() : 0;
+      if (panelResist > 0 && Math.random() * 100 < panelResist) {
+        changeSpeaker("");
+        await displayMessage(`${(def && def.label) || STATUS_EFFECT_LABELS[infliction.kind] || infliction.kind}を跳ね返した！`);
+        continue;
+      }
       applyPlayerStatusAilment(mechanic, infliction.duration || 3, infliction.power || 0); // player.js
       changeSpeaker("");
       await displayMessage(`${(def && def.label) || STATUS_EFFECT_LABELS[infliction.kind] || infliction.kind}状態になってしまった……！`);
@@ -2080,7 +2390,7 @@ async function executeMonsterUniqueSkill(enemy, skill) {
       const variance = Math.floor(Math.random() * 3) - 1;
       const atkPerHit = Math.round(classSkillEnemyAtk * 0.7) / Math.max(1, hitCount);
       const raw = Math.max(1, Math.round(levelMultiplier * (classSkill.power || 0)) + Math.round(atkPerHit) + variance);
-      const hitDamage = applyPlayerDamageReduction(raw);
+      const hitDamage = applyPlayerDamageReduction(applyEnemyAttackElementEffects(player, "class", enemy, raw, classSkill.element)); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性（職業技ならその技の属性）
       changeGauge("hp", -hitDamage);
       totalDamage += hitDamage;
     }
@@ -2097,7 +2407,7 @@ async function executeMonsterUniqueSkill(enemy, skill) {
   
   const atkUpBonus = (enemy.status && enemy.status.atkUp && enemy.status.atkUp.turns > 0) ? enemy.status.atkUp.power : 0;
   const enemyAtk = enemy.atk + enemy.enemyAtkBonus + atkUpBonus;
-  const damage = applyPlayerDamageReduction(Math.max(1, Math.round(enemyAtk * (skill.multiplier || 1))));
+  const damage = applyPlayerDamageReduction(applyEnemyAttackElementEffects(player, "class", enemy, Math.max(1, Math.round(enemyAtk * (skill.multiplier || 1))))); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性
   changeGauge("hp", -damage);
   player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
   if (typeof triggerCameraShake === "function") triggerCameraShake(); // mainfunc.js
@@ -2916,7 +3226,7 @@ async function handleSkillMenu() {
     return false;
   }
   
-  const skillChoices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description }));
+  const skillChoices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description, elementId: s.element })); // ★elementId：選択肢の左上に属性バッジを出す（mainfunc.js renderChoiceBox）
   skillChoices.push({ text: "戻る", next: "back", isBack: true });
   
   const picked = await displayChoices(skillChoices);
@@ -2950,6 +3260,7 @@ async function handleSkillMenu() {
   }
   
   changeGauge("sp", -skill.spCost);
+  if (battleState) battleState.lastPlayerSkill = skill; // ★コンボスキル用：このターンに撃った技（対象選択キャンセル時は呼び出し元がdone=falseで無視する）
   checkZetsurinAutoRecover(); // ★性騎士の「絶倫」：SPが2割を切ったら自動回復（1戦闘3回まで）
   checkMagicalGirlForcedDetransform(); // ★SPが3割を切ったら変身が強制解除される
   changeSpeaker("");
@@ -3703,6 +4014,7 @@ function renderBattleEnemies() {
     
     const nameEl = unitEl.querySelector(".battle-enemy-unit-name");
     if (nameEl) nameEl.textContent = enemy.displayName; // ★要望対応：形態切り替えで名前が変わることがあるので毎回反映する
+    updateBattleEnemyElementRow(unitEl, enemy); // ★要望対応：敵の属性と、特攻になる属性をアイコンで小さく表示する
     
     const fillEl = unitEl.querySelector(".battle-enemy-unit-hp-fill");
     if (fillEl) {

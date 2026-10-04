@@ -86,6 +86,7 @@ const CONVENIENCE_APPS = [
   { id: "monsterCodex", label: "魔物図鑑", icon: "📖", action: () => openMonsterCodex() },
   { id: "progress", label: "進行度", icon: "📊", action: () => openProgressPanel() },
   { id: "achievements", label: "実績", icon: "🏆", action: () => openAchievementsPanel() },
+  { id: "elementCombo", label: "属性コンボ", icon: "⚡", action: () => openElementComboPanel() }, // ★要望対応：今使えるコンボと属性の順番の一覧
   { id: "tutorial", label: "チュートリアル", icon: "❓", action: () => openTutorialPanel() },
   { id: "credits", label: "クレジット", icon: "📜", action: () => openCredits() }
 ];
@@ -114,9 +115,11 @@ function closeAllConvenienceSubPanels() {
   const panel = document.getElementById("saveload-panel");
   const codexPanel = document.getElementById("monster-codex-panel");
   const creditsPanel = document.getElementById("credits-panel");
+  const comboPanel = document.getElementById("element-combo-panel");
   const progressPanel = document.getElementById("progress-panel");
   const tutorialPanel = document.getElementById("tutorial-panel");
   const achievementsPanel = document.getElementById("achievements-panel");
+  window.removeEventListener("keydown", handleElementComboKeyDown);
   window.removeEventListener("keydown", handleSaveLoadKeyDown);
   window.removeEventListener("keydown", handleMonsterCodexKeyDown);
   window.removeEventListener("keydown", handleCreditsKeyDown);
@@ -126,6 +129,7 @@ function closeAllConvenienceSubPanels() {
   if (panel) panel.classList.add("hidden");
   if (codexPanel) codexPanel.classList.add("hidden"); // ★これが抜けていて、図鑑を閉じても下半分に残り続けるバグの原因だった
   if (creditsPanel) creditsPanel.classList.add("hidden"); // ★クレジットも同様に、閉じ忘れると下半分に残ってしまう
+  if (comboPanel) comboPanel.classList.add("hidden");
   if (progressPanel) progressPanel.classList.add("hidden");
   if (tutorialPanel) tutorialPanel.classList.add("hidden");
   if (achievementsPanel) achievementsPanel.classList.add("hidden");
@@ -410,6 +414,114 @@ function handleCreditsKeyDown(event) {
   if (KEY_CONFIG.cancelKeys.includes(event.key)) {
     event.preventDefault();
     closeCredits();
+  }
+}
+
+// ===== 属性コンボ画面（要望対応） =====
+//   今のプレイヤーが使えるコンボスキル（解禁条件を満たしたもの）だけを一覧にして、属性の順番を表示する。
+//   判定は戦闘と同じ isComboSkillUnlocked（battle.js）を使うので、一覧に出る＝戦闘で発動できる
+function openElementComboPanel() {
+  const grid = document.getElementById("convenience-icon-grid");
+  if (grid) grid.classList.add("hidden");
+  closeAllConvenienceSubPanels(); // ★他のサブ画面を確実に閉じてから開く（リスナー・表示の残りを防ぐ）
+  renderElementComboPanel();
+  window.removeEventListener("keydown", handleElementComboKeyDown); // 二重登録防止
+  window.addEventListener("keydown", handleElementComboKeyDown);
+}
+
+function closeElementComboPanel() {
+  window.removeEventListener("keydown", handleElementComboKeyDown);
+  renderConvenienceIcons();
+}
+
+// ★現在使えるコンボの一覧（属性が2手以上指定されているものだけ）
+function getAvailableElementCombos() {
+  const list = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.comboSkills)) ? scenarioProject.comboSkills : [];
+  if (typeof isComboSkillUnlocked !== "function") return [];
+  return list.filter(combo => (combo.elements || []).filter(Boolean).length >= 2 && isComboSkillUnlocked(combo));
+}
+
+function renderElementComboPanel() {
+  const panel = document.getElementById("element-combo-panel");
+  if (!panel) return;
+  panel.classList.remove("hidden");
+  panel.innerHTML = "";
+
+  const title = document.createElement("h3");
+  title.className = "monster-codex-title";
+  title.textContent = "属性コンボ";
+  panel.appendChild(title);
+
+  const noteEl = document.createElement("p");
+  noteEl.className = "element-combo-note";
+  noteEl.textContent = "属性技を下の順番で撃つと発動します（敵のターンになるとリセット）。";
+  panel.appendChild(noteEl);
+
+  const elementName = (id) => {
+    const def = (scenarioProject.elementDefs || []).find(e => e.id === id);
+    return (def && def.name) || id;
+  };
+  const combos = getAvailableElementCombos();
+  if (combos.length === 0) {
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "element-combo-empty";
+    emptyEl.textContent = "まだ使えるコンボはありません。";
+    panel.appendChild(emptyEl);
+  }
+  combos.forEach(combo => {
+    const item = document.createElement("div");
+    item.className = "element-combo-item";
+    const nameEl = document.createElement("div");
+    nameEl.className = "element-combo-name";
+    nameEl.textContent = combo.name || "名無しのコンボ";
+    item.appendChild(nameEl);
+    const orderEl = document.createElement("div");
+    orderEl.className = "element-combo-order";
+    combo.elements.filter(Boolean).forEach((elId, i) => {
+      if (i > 0) {
+        const arrow = document.createElement("span");
+        arrow.className = "element-combo-arrow";
+        arrow.textContent = "→";
+        orderEl.appendChild(arrow);
+      }
+      const chip = document.createElement("span");
+      chip.className = "element-combo-chip";
+      // ★要望対応：アイコンの上に、小さく属性名を表示する
+      const chipNameEl = document.createElement("span");
+      chipNameEl.className = "element-combo-chip-name";
+      chipNameEl.textContent = elementName(elId);
+      chip.appendChild(chipNameEl);
+      if (typeof createElementIconEl === "function") { // battle.js
+        chip.appendChild(createElementIconEl(elId));
+      }
+      orderEl.appendChild(chip);
+    });
+    item.appendChild(orderEl);
+    if (combo.description) {
+      const descEl = document.createElement("div");
+      descEl.className = "element-combo-desc";
+      descEl.textContent = combo.description;
+      item.appendChild(descEl);
+    }
+    panel.appendChild(item);
+  });
+
+  const backBtn = document.createElement("button");
+  backBtn.className = "monster-codex-back-btn";
+  backBtn.textContent = "◀ 戻る";
+  backBtn.onclick = (event) => { event.stopPropagation(); closeElementComboPanel(); };
+  panel.appendChild(backBtn);
+}
+
+function handleElementComboKeyDown(event) {
+  if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // シナリオエディタ表示中は本編を操作させない
+  if (controlFocus !== "sub") return;
+  if (isGameDialogOpen) return;
+  const activeTab = document.querySelector('.tab-content.active');
+  if (!activeTab || activeTab.id !== 'tab-convenience') return;
+  if (KEY_CONFIG.cancelKeys.includes(event.key)) {
+    event.preventDefault();
+    closeElementComboPanel();
   }
 }
 

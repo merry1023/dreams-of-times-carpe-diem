@@ -297,6 +297,7 @@ function sanitizeLoadedPlayer(loadedPlayer) {
     const { level, exp } = calcLevelFromTotalExp(loadedPlayer.classTotalExp[loadedPlayer.class], expNeededForLevel);
     const mismatch = (level !== loadedPlayer.level) || (Math.round(exp) !== Math.round(Number(loadedPlayer.exp) || 0));
     if (mismatch) {
+      loadedPlayer.panelGaugeApplied = { maxHp: 0, maxSp: 0 }; // ★ステータスパネル：この後で最大HP/SPを作り直すので、上乗せ済みの記録も0に戻す（最後にsyncPanelGaugesで乗せ直す）
       loadedPlayer.level = level;
       loadedPlayer.exp = exp;
       loadedPlayer.classLevels[loadedPlayer.class] = level;
@@ -406,6 +407,7 @@ function sanitizeLoadedPlayer(loadedPlayer) {
     const mismatch = (level !== companion.level) || (Math.round(exp) !== Math.round(Number(companion.exp) || 0));
     if (!mismatch) return;
     
+    companion.panelGaugeApplied = { maxHp: 0, maxSp: 0 }; // ★ステータスパネル：最大HP/SPを作り直すので上乗せ済みの記録も0に戻す
     companion.level = level;
     companion.exp = exp;
     const correctStats = getCompanionStatsAtLevel(master, level);
@@ -421,6 +423,13 @@ function sanitizeLoadedPlayer(loadedPlayer) {
       companion.gauges.sp.current = Math.min(companion.gauges.sp.current, correctStats.maxSp);
     }
   });
+  // ★ステータスパネル：解放済みマスによる最大HP/SPの上乗せを、ロード後の最大値に反映する（何度呼んでも結果は同じ）
+  if (typeof syncPanelGauges === "function") {
+    syncPanelGauges(loadedPlayer, "class");
+    [...loadedPlayer.companions, ...loadedPlayer.benchedCompanions].forEach((companion) => {
+      if (companion && companion.companionId && COMPANION_MASTER[companion.companionId]) syncPanelGauges(companion, "companion");
+    });
+  }
   if (!loadedPlayer.baseClass) loadedPlayer.baseClass = loadedPlayer.class; // ★旧セーブとの互換用（基本職の記録が無ければ今の職業を基本職とみなす）
   // ★要望対応：古いセーブデータ（lastVisitedBaseKey導入前）には、今の現在地（拠点にいるはず）から補う。
   //   拠点以外（施設の中など）にいた場合は、無理に推測せず村を既定値にしておく
@@ -622,6 +631,44 @@ function getEquipmentBonus() {
   return getEquipmentBonusFor(player ? player.equipment : null);
 }
 
+// ===== 装備の属性（要望対応） =====
+//   武器・防具・盾に属性（ITEM_MASTER[...].element＝属性管理タブの属性id）を持たせられる。
+//   ・武器の属性＝通常攻撃の属性（敵の属性との相性で、特攻×1.5／耐性×0.5がかかる）
+//   ・防具(胴)・盾の属性＝敵の攻撃を受けた時の相性。敵の攻撃の属性（敵自身の属性、職業技ならその技の属性）が
+//     「防具の属性」に対して特攻なら×1.5、耐性なら×0.5のダメージを受ける（相性表の「攻撃側>防御側」の値をそのまま使う）。
+//     防具と盾の両方に属性があれば、それぞれの相性が掛け合わさる
+function getEquippedElementFor(equipmentObj, slotKey) {
+  const data = getEquippedItemDataFor(equipmentObj, slotKey);
+  const element = data && data.master ? data.master.element : null;
+  return (element && element !== "無") ? element : null;
+}
+
+function getEquippedWeaponElementFor(equipmentObj) {
+  return getEquippedElementFor(equipmentObj, "武器");
+}
+
+function getArmorElementDamageMultiplierFor(equipmentObj, attackElementIds) {
+  if (!equipmentObj || !Array.isArray(attackElementIds) || attackElementIds.length === 0) return 1;
+  const matchups = (typeof scenarioProject !== "undefined" && scenarioProject.elementMatchups) || {};
+  let multiplier = 1;
+  ["胴", "盾"].forEach(slotKey => {
+    const armorElement = getEquippedElementFor(equipmentObj, slotKey);
+    if (!armorElement) return;
+    attackElementIds.forEach(attackElement => {
+      const relation = matchups[`${attackElement}>${armorElement}`];
+      if (relation === "advantage") multiplier *= 1.5;
+      else if (relation === "resist") multiplier *= 0.5;
+    });
+  });
+  return multiplier;
+}
+
+function applyArmorElementToDamageFor(equipmentObj, attackElementIds, damage) {
+  if (!(damage > 0)) return damage;
+  const multiplier = getArmorElementDamageMultiplierFor(equipmentObj, attackElementIds);
+  return multiplier === 1 ? damage : Math.max(1, Math.round(damage * multiplier));
+}
+
 // ★疲労度が上限の7割を超えている「疲弊状態」かどうか
 const FATIGUE_EXHAUSTED_RATIO = 0.7;
 function isPlayerExhausted() {
@@ -640,8 +687,9 @@ function isPlayerExhausted() {
 function getEffectiveStats() {
   if (!player) return { atk: 0, agi: 0, skillPower: 0, luck: 0, charm: 0 };
   const bonus = getEquipmentBonus();
-  let atk = player.stats.atk + bonus.atk; // ★物理攻撃力
-  let skillPower = player.stats.skillPower + bonus.skillPower; // ★魔法攻撃力（武器・防具の「魔力」ぶんも上乗せ）
+  const panel = (typeof getPanelBonusFor === "function") ? getPanelBonusFor(player, "class") : { atk: 0, agi: 0, skillPower: 0, luck: 0, charm: 0 }; // ★ステータスパネルの上乗せ
+  let atk = player.stats.atk + bonus.atk + panel.atk; // ★物理攻撃力
+  let skillPower = player.stats.skillPower + bonus.skillPower + panel.skillPower; // ★魔法攻撃力（武器・防具の「魔力」ぶんも上乗せ）
   
   // ★疲労度7割超え（疲弊状態）だと、物理・魔法どちらの攻撃力も少し下がる
   if (isPlayerExhausted()) {
@@ -658,10 +706,10 @@ function getEffectiveStats() {
   
   return {
     atk: atk,
-    agi: player.stats.agi,
+    agi: player.stats.agi + panel.agi,
     skillPower: skillPower,
-    luck: player.stats.luck,
-    charm: player.stats.charm
+    luck: player.stats.luck + panel.luck,
+    charm: player.stats.charm + panel.charm
   };
 }
 
@@ -887,19 +935,32 @@ function getCompanionEffectiveStats(companion) {
   if (!master) return { atk: 0, agi: 0, skillPower: 0, luck: 0, charm: 0, maxHp: 1, maxSp: 0 };
   const base = getCompanionStatsAtLevel(master, companion.level);
   const bonus = getEquipmentBonusFor(companion.equipment);
+  const panel = (typeof getPanelBonusFor === "function") ? getPanelBonusFor(companion, "companion") : { atk: 0, agi: 0, skillPower: 0, luck: 0, charm: 0, maxHp: 0, maxSp: 0 }; // ★ステータスパネルの上乗せ
   return {
-    atk: base.atk + bonus.atk,
-    agi: base.agi, skillPower: base.skillPower, luck: base.luck, charm: base.charm,
-    maxHp: base.maxHp, maxSp: base.maxSp
+    atk: base.atk + bonus.atk + panel.atk,
+    agi: base.agi + panel.agi, skillPower: base.skillPower + panel.skillPower, luck: base.luck + panel.luck, charm: base.charm + panel.charm,
+    maxHp: base.maxHp + panel.maxHp, maxSp: base.maxSp + panel.maxSp
   };
 }
 
 // ★仲間の職業（COMPANION_MASTER.class）のスキルのうち、今のレベルで使えるものだけを返す
 function getCompanionSkills(companion) {
+  return getCompanionAllSkills(companion).filter(s => isCompanionSkillUnlocked(companion, s));
+}
+
+// ★ステータスパネル：仲間の職業のスキル一覧に、パネルで習得できる技（他の職業の技でも可）を加えたもの
+function getCompanionAllSkills(companion) {
   const master = getCompanionMaster(companion);
   if (!master || typeof CLASS_SKILLS === "undefined") return [];
-  const skills = CLASS_SKILLS[master.class] || [];
-  return skills.filter(s => companion.level >= s.unlockLevel);
+  const base = CLASS_SKILLS[master.class] || [];
+  const extra = (typeof getPanelGrantedSkills === "function") ? getPanelGrantedSkills(companion, "companion").filter(s => !base.includes(s)) : [];
+  return extra.length ? base.concat(extra) : base;
+}
+
+// ★レベルで習得済み、またはステータスパネルで習得した技か
+function isCompanionSkillUnlocked(companion, skill) {
+  if (companion.level >= skill.unlockLevel) return true;
+  return typeof isPanelGrantedSkill === "function" && isPanelGrantedSkill(companion, "companion", skill);
 }
 
 // ★仲間に装備させる（主人公のequipItem()と同じロジックだが、対象がcompanion.equipmentになる）
@@ -1275,7 +1336,17 @@ function advanceGameTime(hours) {
  */
 function getPlayerSkills() {
   if (!player) return [];
-  return CLASS_SKILLS[player.class] || [];
+  const base = CLASS_SKILLS[player.class] || [];
+  // ★ステータスパネル：パネルで習得した技（他の職業の技でも可）も一覧に加える
+  const extra = (typeof getPanelGrantedSkills === "function") ? getPanelGrantedSkills(player, "class").filter(s => !base.includes(s)) : [];
+  return extra.length ? base.concat(extra) : base;
+}
+
+// ★レベルで習得済み、またはステータスパネルで習得した技か（レベルが下がっても、パネルで習得した技は残る）
+function isPlayerSkillUnlocked(skill) {
+  if (!player) return false;
+  if (player.level >= skill.unlockLevel) return true;
+  return typeof isPanelGrantedSkill === "function" && isPanelGrantedSkill(player, "class", skill);
 }
 
 /**
@@ -1290,7 +1361,7 @@ function isMagicalGirlTransformed() {
  */
 function getUnlockedSkills() {
   if (!player) return [];
-  return getPlayerSkills().filter(skill => player.level >= skill.unlockLevel);
+  return getPlayerSkills().filter(skill => isPlayerSkillUnlocked(skill));
 }
 
 // ★常に発動している「パッシブ」スキル（掘り出し物・算盤高き目利き 等）を、そのidで習得済みか判定する。
@@ -1457,6 +1528,9 @@ function switchPlayerClass(newClassName) {
   player.gauges.sleepiness.current = Math.min(player.gauges.sleepiness.current, newMaxSleepiness); // ★上限が下がった場合に備えて、現在値もはみ出さないようにする
   player.gauges.fatigue = { current: 0, max: newMaxFatigue };
   player.classLevels[newClassName] = targetLevel;
+  // ★ステータスパネル：最大HP/SPを新しい職業の素の値から組み直したので、上乗せ済みの記録を0に戻してから、新しい職業のパネル分を乗せる
+  player.panelGaugeApplied = { maxHp: 0, maxSp: 0 };
+  if (typeof syncPanelGauges === "function") syncPanelGauges(player, "class");
   
   // ★要望対応：以前この職業だった時に装備していた物（lockedToClassで職業専用ロックされている物）は、
   //   その職業に戻ってきたタイミングで自動的に着け直す。装備できない理由（別の職業制限や、
@@ -1562,6 +1636,8 @@ function addExp(amount) {
       }
     }
   });
+  
+  if (typeof syncAllPanelGauges === "function") syncAllPanelGauges(); // ★ステータスパネル：割合アップの基礎値がレベルで変わるので、最大HP/SPの上乗せを更新する
   
   return { leveledUp, previousLevel, newLevel: player.level, newSkills };
 }

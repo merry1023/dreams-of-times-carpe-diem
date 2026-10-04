@@ -1099,6 +1099,15 @@ function renderChoiceBox() {
       + (choice.loops && showHints ? " choice-loop" : "")
       + (showHint ? " choice-correct-hint" : "");
     
+    // ★要望対応：選択肢にelementIdが付いていれば（戦闘中の技など）、左上に属性のバッジを付ける
+    if (choice.elementId && typeof createElementBadgeEl === "function") { // battle.js
+      const badgeEl = createElementBadgeEl(choice.elementId);
+      if (badgeEl) {
+        button.appendChild(badgeEl);
+        button.classList.add("choice-has-element");
+      }
+    }
+    
     // ★このクリックが他の反応（テキスト送りなど）に伝わらないようにする
     button.onclick = (event) => {
       event.stopPropagation();
@@ -1417,6 +1426,11 @@ function switchTab(tabId) {
   // 強さタブに切り替えたら、ステータス一覧を描画し直す
   if (tabId === 'tab-strength') {
     renderStrengthTab();
+  }
+  
+  // ★要望対応：ステータスパネルタブに切り替えたら、盤を描画し直す
+  if (tabId === 'tab-statuspanel' && typeof renderStatusPanelTab === "function") {
+    renderStatusPanelTab(); // statuspanel.js
   }
   
   // 装備タブに切り替えたら、カーソルをリセットして描画し直す
@@ -2327,7 +2341,7 @@ function buildCompanionTabCard(companion, isCursor) {
   skillTitle.textContent = "スキル";
   card.appendChild(skillTitle);
   
-  const allSkills = (master && typeof CLASS_SKILLS !== "undefined") ? (CLASS_SKILLS[master.class] || []) : [];
+  const allSkills = (master && typeof CLASS_SKILLS !== "undefined") ? getCompanionAllSkills(companion) : []; // ★ステータスパネルで習得した技も含める
   const skillListEl = document.createElement("div");
   skillListEl.className = "companion-skill-list";
   if (allSkills.length === 0) {
@@ -2337,7 +2351,7 @@ function buildCompanionTabCard(companion, isCursor) {
     skillListEl.appendChild(noneEl);
   } else {
     allSkills.forEach(skill => {
-      const unlocked = companion.level >= skill.unlockLevel;
+      const unlocked = isCompanionSkillUnlocked(companion, skill); // ★ステータスパネルで習得した技も含める
       const itemEl = document.createElement("div");
       const skillIndex = cfCounter++;
       itemEl.dataset.cfIndex = String(skillIndex);
@@ -2571,7 +2585,7 @@ function renderSkills() {
   if (skillCursorIndex < 0) skillCursorIndex = 0;
   
   skills.forEach((skill, i) => {
-    const unlocked = player.level >= skill.unlockLevel;
+    const unlocked = isPlayerSkillUnlocked(skill); // ★ステータスパネルで習得した技も含める
     
     const item = document.createElement("div");
     item.className = "skill-item" + (unlocked ? "" : " locked") + (i === skillCursorIndex ? " cursor" : "");
@@ -2598,7 +2612,15 @@ function renderSkills() {
     if (unlocked && skill.element) {
       const elementEl = document.createElement("span");
       elementEl.className = "skill-element-tag";
-      elementEl.textContent = `属性：${skill.element}`;
+      // ★バグ修正：属性管理タブ導入後、skill.elementには属性の「id」が入るようになったが、
+      //   ここではそのidをそのまま表示してしまっていたため、スキルタブの属性欄がidの文字列
+      //   （例："element_xxxxx"）のまま表示されてしまっていた。scenarioProject.elementDefs
+      //   からidに対応する属性名を引いて表示するようにする（旧データ等でidに一致する属性が
+      //   見つからない場合は、これまで通りその値をそのまま表示する）
+      const elementDefs = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.elementDefs)) ? scenarioProject.elementDefs : [];
+      const matchedElementDef = elementDefs.find(el => el.id === skill.element);
+      const elementDisplayName = matchedElementDef ? (matchedElementDef.name || skill.element) : skill.element;
+      elementEl.textContent = `属性：${elementDisplayName}`;
       infoRow.appendChild(elementEl);
     }
     
@@ -2673,7 +2695,7 @@ window.addEventListener("keydown", (event) => {
     
     event.preventDefault();
     const skill = skills[skillCursorIndex];
-    if (player.level >= skill.unlockLevel) {
+    if (isPlayerSkillUnlocked(skill)) {
       if (skill.type === "passive") {
         togglePassiveSkill(skill.passiveId); // player.js
         renderSkills();
@@ -3139,6 +3161,19 @@ function showItemDetail(slot) {
   descEl.className = "item-detail-description";
   descEl.textContent = master.description;
   panel.appendChild(descEl);
+  
+  // ★要望対応：武器・防具の属性（あれば）をバッジで表示する
+  if (master.element && master.element !== "無" && typeof createElementBadgeEl === "function") { // battle.js
+    const elementRow = document.createElement("p");
+    elementRow.className = "item-detail-element";
+    elementRow.appendChild(document.createTextNode("属性："));
+    const badgeEl = createElementBadgeEl(master.element);
+    if (badgeEl) {
+      badgeEl.classList.add("element-badge-inline");
+      elementRow.appendChild(badgeEl);
+    }
+    panel.appendChild(elementRow);
+  }
   
   const pricesEl = document.createElement("div");
   pricesEl.className = "item-detail-prices";

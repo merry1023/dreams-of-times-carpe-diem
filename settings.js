@@ -31,6 +31,7 @@ const PLAY_SCREEN_TAB_DEFS = [
   { id: "tab-companions", label: "仲間", enabledByDefault: true },
   { id: "tab-companionchat", label: "会話", enabledByDefault: false },
   { id: "tab-strength", label: "強さ", enabledByDefault: true },
+  { id: "tab-statuspanel", label: "パネル", enabledByDefault: true }, // ★要望対応：ステータスパネル（育成用のスキルツリー）
   { id: "tab-equipment", label: "装備", enabledByDefault: true },
   { id: "tab-convenience", label: "便利", enabledByDefault: true },
   { id: "tab-log", label: "ログ", enabledByDefault: true },
