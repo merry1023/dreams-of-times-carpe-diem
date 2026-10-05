@@ -103,13 +103,14 @@ async function startDiceGame() {
   showCasinoMenu();
 }
 
-// ===== ②スロット（3リール・滑らかに回り続けるジャグラー風UI） =====
+// ===== ②スロット（3リール・滑らかに回り続けるスロット風UI） =====
+// ★要望対応：777（seven）以外の倍率をすべて今の1/2にした
 const CASINO_SLOT_SYMBOLS = [
-  { key: "grape", emoji: "🍇", weight: 35, payout: 2 },
-  { key: "bell",  emoji: "🔔", weight: 25, payout: 4 },
-  { key: "star",  emoji: "⭐", weight: 20, payout: 6 },
-  { key: "gem",   emoji: "💎", weight: 12, payout: 10 },
-  { key: "seven", emoji: "7",  weight: 8,  payout: 20 }
+  { key: "grape", emoji: "🍇", weight: 35, payout: 1 },
+  { key: "bell",  emoji: "🔔", weight: 25, payout: 2 },
+  { key: "star",  emoji: "⭐", weight: 20, payout: 3 },
+  { key: "gem",   emoji: "💎", weight: 12, payout: 5 },
+  { key: "seven", emoji: "7",  weight: 8,  payout: 20 } // ★777はそのままの倍率
 ];
 
 const CASINO_SLOT_LINES = [

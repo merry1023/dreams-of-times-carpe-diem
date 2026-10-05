@@ -4485,6 +4485,33 @@ html, body {
   transform: translateY(-6px);
 }
 
+/* ★要望対応：敵にダメージを与えた時にはじける小さな数字（色は属性の色。弱点なら白枠でハイライト） */
+.damage-popup {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000, 0 0 4px rgba(0, 0, 0, 0.8);
+  transform: translate(-50%, -50%);
+  animation: damage-popup-burst 0.95s ease-out forwards;
+}
+.damage-popup-weak {
+  padding: 0 4px;
+  border: 2px solid #fff;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+}
+@keyframes damage-popup-burst {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  15% { transform: translate(-50%, -50%) scale(1.35); opacity: 1; }
+  45% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx) * 1.4), calc(-50% + var(--dy) + 28px)) scale(0.9); opacity: 0; }
+}
+
 .battle-enemy-unit-name {
   margin: 4px 0 0 0;
   color: white;
@@ -4493,37 +4520,40 @@ html, body {
   white-space: nowrap;
 }
 
-/* ★要望対応：敵の属性と特攻属性のアイコン（小さく表示） */
+/* ★要望対応：敵の属性と特攻属性のアイコン。以前は16px/font13pxと小さすぎて見えなかったため拡大。
+   さらに、この行は.main-screen内（スマホ縦画面でzoom:0.75がかかる）にあり、.sub-screen内にある
+   技選択肢の属性バッジ（zoomの影響を受けない）と並べると大きさが揃わなかったため、
+   ここのサイズは「zoom:0.75適用後に他と揃う」ことを見越して基準値そのものを大きめにしてある */
 .battle-enemy-unit-elements {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  margin-top: 2px;
-  padding: 1px 6px;
-  font-size: 10px;
+  gap: 6px;
+  margin-top: 3px;
+  padding: 2px 9px;
+  font-size: 15px;
   color: #ddd;
   background: rgba(0, 0, 0, 0.5);
-  border-radius: 8px;
+  border-radius: 10px;
   white-space: nowrap;
 }
 .battle-element-group {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
 }
 .battle-element-weak-label {
   color: #ffb84d;
-  font-size: 9px;
+  font-size: 13px;
 }
 .element-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 26px;
+  height: 26px;
   line-height: 1;
-  font-size: 13px;
+  font-size: 20px;
 }
 .element-icon-img {
   width: 100%;
@@ -4534,33 +4564,40 @@ html, body {
   color: #fff;
 }
 
-/* ★要望対応：戦闘中の技の選択肢の左上に付ける、属性のバッジ（アイコン＋属性名） */
+/* ★要望対応：戦闘中の技の選択肢の左上に付ける、属性のバッジ（アイコン＋属性名）。以前は小さすぎたため拡大 */
 .choice-box button.choice-has-element {
   position: relative;
-  padding-top: 16px;
+  padding-top: 24px;
   padding-bottom: 8px;
 }
 .element-badge {
   position: absolute;
-  top: 2px;
-  left: 4px;
+  top: 3px;
+  left: 5px;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 0 6px 0 2px;
-  font-size: 9px;
+  gap: 3px;
+  padding: 1px 8px 1px 3px;
+  font-size: 12px;
   font-weight: normal;
-  line-height: 12px;
+  line-height: 18px;
   color: #ffd27a;
   background: rgba(0, 0, 0, 0.55);
   border: 1px solid rgba(255, 180, 60, 0.6);
-  border-radius: 8px;
+  border-radius: 10px;
   pointer-events: none;
 }
 .element-badge .element-icon {
-  width: 12px;
-  height: 12px;
-  font-size: 10px;
+  width: 18px;
+  height: 18px;
+  font-size: 15px;
+}
+/* ★アイテム詳細など、文章の中に置く時は絶対配置にしない */
+.element-badge.element-badge-inline {
+  position: static;
+  vertical-align: middle;
+  font-size: 11px;
+  line-height: 14px;
 }
 
 /* ★画像が用意されていない敵でも、名前とHPバーの色だけで「今狙っている相手」がわかるようにする。
@@ -6788,6 +6825,28 @@ html, body {
     zoom: 0.75;
   }
   
+  /* ★敵の属性アイコン（.battle-enemy-unit-elements）はこの.main-screen内にあり、上のzoom:0.75の
+     影響をそのまま受けて縮む。一方、技選択肢の属性バッジ・属性コンボ画面のアイコンは.sub-screen側に
+     あってzoomの影響を受けないため、そのままだとこの行だけ他より小さく見えてしまう。
+     zoomで縮む分（0.75）をあらかじめ差し引いた大きさ（×約1.33）を基準値にして、見た目の大きさを揃える */
+  .battle-enemy-unit-elements {
+    gap: 8px;
+    padding: 3px 12px;
+    font-size: 20px;
+    border-radius: 13px;
+  }
+  .battle-element-group {
+    gap: 4px;
+  }
+  .battle-element-weak-label {
+    font-size: 17px;
+  }
+  .battle-enemy-unit-elements .element-icon {
+    width: 35px;
+    height: 35px;
+    font-size: 27px;
+  }
+  
   /* ★元々は横長画面向けに大きく上に余白を取っていたので、縦画面の半分の高さに収まるよう詰める。
      ★justify-content:centerのままだと、余白が少ない縦画面ではメッセージウィンドウが画面のど真ん中に
        浮いて見えてしまっていたので、下寄せに変更して見た目の位置を下げる */
@@ -7560,6 +7619,11 @@ html, body {
   z-index: 2;
 }
 
+/* ★要望対応：外に出る扉は、普通の扉と同じ見た目に白枠を重ねてハイライトする */
+.room-view-door-outside {
+  box-shadow: 0 0 0 2px #ffffff, 0 0 4px 1px rgba(255, 255, 255, 0.8);
+}
+
 /* ★要望対応：調理魔家電より大きくて使えない料理道具 */
 .cooking-tool-card.cooking-tool-too-big {
   opacity: 0.45;
@@ -7768,24 +7832,24 @@ html, body {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
-  min-width: 34px;
-  padding: 2px 6px;
+  gap: 2px;
+  min-width: 48px;
+  padding: 3px 8px;
   background: rgba(255, 140, 30, 0.25);
   border: 1px solid rgba(255, 180, 60, 0.7);
   border-radius: 10px;
   font-size: 13px;
 }
 .element-combo-chip-name {
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.1;
   color: #ffd27a;
   white-space: nowrap;
 }
 .element-combo-chip .element-icon {
-  width: 22px;
-  height: 22px;
-  font-size: 18px;
+  width: 34px;
+  height: 34px;
+  font-size: 26px;
 }
 .element-combo-arrow {
   color: #ffb84d;
@@ -7797,11 +7861,32 @@ html, body {
 }
 
 /* ★要望対応：ステータスパネルタブ（育成用のマス目の盤） */
+/* ★タブ内で「盤だけスクロール・説明は下に固定」にするため、他のタブ(#tab-strengthなど)と同じ縦flexにする。
+   以前は高さが内容まかせで、画面が低いと下のマスの説明が画面の外にはみ出して見えなかった */
+#tab-statuspanel.active {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .statuspanel-root {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: 8px;
-  overflow-y: auto;
-  height: 100%;
   box-sizing: border-box;
+}
+.statuspanel-owner-row,
+.statuspanel-info {
+  flex-shrink: 0;
+}
+.statuspanel-grid-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .statuspanel-owner-row {
   display: flex;
@@ -7835,10 +7920,18 @@ html, body {
 .statuspanel-grid {
   display: grid;
   grid-template-columns: repeat(9, minmax(0, 1fr));
-  gap: 2px;
+  gap: 1px;
   margin: 6px 0;
+  padding: 2px;
 }
+/* ★要望対応：マスは八角形（蜂の巣のように隙間なく並べる）。枠線はclip-pathで切れてしまうので、
+   「枠の色で塗った八角形」の上に「一回り小さい中身の八角形(::before)」を重ねて枠に見せる。
+   解放の判定は今まで通り、斜めを含む8方向の隣接（八角形は4辺＋4つの角で隣のマスと接する） */
 .statuspanel-cell {
+  --cell-bg: #1c1c1c;
+  --cell-border: #3a3a3a;
+  --octagon: polygon(29% 0, 71% 0, 100% 29%, 100% 71%, 71% 100%, 29% 100%, 0 71%, 0 29%);
+  position: relative;
   aspect-ratio: 1 / 1;
   min-width: 0;
   padding: 0;
@@ -7848,42 +7941,59 @@ html, body {
   justify-content: center;
   font-size: 9px;
   line-height: 1.1;
-  color: #eee;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 3px;
+  color: #888;
+  background: var(--cell-border);
+  border: none;
+  clip-path: var(--octagon);
   cursor: pointer;
   overflow: hidden;
 }
+.statuspanel-cell::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  background: var(--cell-bg);
+  clip-path: var(--octagon);
+  z-index: 0;
+}
+.statuspanel-cell > span {
+  position: relative;
+  z-index: 1;
+}
 .statuspanel-cell.empty {
   background: transparent;
-  border-color: transparent;
+  cursor: default;
 }
-.statuspanel-cell.locked {
-  color: #888;
-  background: rgba(0, 0, 0, 0.35);
+.statuspanel-cell.empty::before {
+  display: none;
 }
 .statuspanel-cell.available {
-  border-color: #ffb84d;
-  background: rgba(255, 140, 30, 0.18);
+  --cell-bg: #4a3418;
+  --cell-border: #ffb84d;
+  color: #ffe2b0;
 }
 .statuspanel-cell.unlocked {
+  --cell-bg: #b8781c;
+  --cell-border: #ffd27a;
   color: #fff;
-  background: rgba(255, 170, 40, 0.5);
-  border-color: #ffd27a;
 }
-.statuspanel-cell.center {
-  border-width: 2px;
+.statuspanel-cell.center::before {
+  inset: 3px;
 }
 .statuspanel-cell.cursor {
-  outline: 2px solid #fff;
-  outline-offset: 0;
+  --cell-border: #fff;
   z-index: 1;
+}
+.statuspanel-cell.cursor::before {
+  inset: 3px;
 }
 .statuspanel-cell-top {
   font-weight: bold;
 }
 .statuspanel-detail {
+  flex-shrink: 0;
+  max-height: 45%;
+  overflow-y: auto;
   margin-top: 6px;
   padding: 8px 10px;
   font-size: 13px;

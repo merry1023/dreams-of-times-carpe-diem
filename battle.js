@@ -522,66 +522,112 @@ async function tryFriendlyMonsterAssist() {
   }
 }
 
+// ★要望対応：行動可能回数の仕組みのため、主人公の「1回分の行動選択〜実行」を切り出した。
+//   戻り値："acted"（実際に行動した＝回数を1消費）／"cancelled"（サブメニューから「戻る」で抜けた＝回数を消費せずもう一度）／
+//   "ended"（勝利・敗北・逃走成功などで戦闘自体が終わった＝呼び出し元はreturnする）
+async function runHeroActionPhase() {
+  updateBattleHud();
+  
+  // ★ニートの「後でやろう」：カウントダウンが0になったら、行動選択の前に自動で「本気状態」が発動する
+  const yaruKiMessage = checkYaruKiNashiActivation();
+  if (yaruKiMessage) {
+    changeSpeaker("");
+    await displayMessage(yaruKiMessage);
+    renderStatusHUD();
+  }
+  
+  // ★バグ修正：主人公のHPが0でも、仲間が誰か生きていればパーティ全滅（isPartyDefeated）にはならず
+  //   戦闘が続く仕様になった（要望対応）が、それに対応する「主人公自身は戦闘不能で動けない」処理が
+  //   無かったため、HPが0のまま普通にコマンドを選んで行動できてしまっていた
+  const playerIsDown = player.gauges.hp.current <= 0;
+  
+  // ★スタン・麻痺・混乱にかかっていると、コマンドを選ぶ前にその場で行動を潰されてしまう
+  const statusBlockedBy = typeof checkPlayerStatusPreventsAction === "function" ? checkPlayerStatusPreventsAction() : null; // player.js
+  let turnEnded = false;
+  if (playerIsDown) {
+    changeSpeaker("");
+    await displayMessage("倒れていて、動くことができない……");
+    turnEnded = true;
+  } else if (statusBlockedBy) {
+    changeSpeaker("");
+    const blockMessages = { stun: "スタンしてしまい、動けなかった！", paralyze: "麻痺していて、体が動かなかった！", confuse: "混乱していて、まともに行動できなかった！" };
+    await displayMessage(blockMessages[statusBlockedBy] || "行動できなかった……");
+    turnEnded = true;
+  } else {
+    // ★要望対応：装備している武器・防具に「常時発動」のスキルがあれば、行動選択の前に自動で発動する
+    await triggerPassiveEquipmentSkills(player, true);
+    if (!battleState) return "ended"; // ★常時発動スキルの効果で戦闘が終了した場合はここで打ち切る
+    if (isPartyDefeated()) {
+      await handleBattleDefeat();
+      return "ended";
+    }
+    
+    const action = await displayChoices([
+      { text: "たたかう", next: "fight" },
+      { text: "こうどう", next: "action" },
+      { text: "逃げる", next: "flee" }
+    ]);
+    
+    if (action.next === "fight") {
+      turnEnded = await handleFightMenu();
+    } else if (action.next === "action") {
+      turnEnded = await handleActionMenu();
+    } else if (action.next === "flee") {
+      const fled = await attemptFlee();
+      if (fled) return "ended"; // 逃げ切った：戦闘終了
+      turnEnded = true;  // 逃げ損なった：相手のターンへ
+    }
+  }
+  
+  if (!turnEnded) return "cancelled"; // 「戻る」でサブメニューから抜けただけ：行動回数を消費せずもう一度
+  return "acted";
+}
+
 async function battleLoop() {
   while (battleState) {
-    updateBattleHud();
+    // ★要望対応：1ラウンドあたりの主人公側（主人公＋仲間）の行動可能回数は、パーティ人数（主人公＋生存中の仲間）と同じ。
+    //   仲間が行動をパスすると、その分の行動回数は主人公や他の仲間の追加行動に回せる。
+    //   最後の仲間が行動／パスし終えた時点でまだ回数が残っていれば、主人公の行動選択に戻る。
+    //   逆に、途中で回数が尽きたら（最後の仲間の行動でなくても）残りの仲間は行動させず、すぐ敵のターンへ進む
+    let actionsRemaining = 1 + (player.companions ? player.companions.filter(c => c.alive).length : 0);
+    let nextIsHero = true;
+    // ★バグ修正：パスで浮いた回数を主人公の追加行動に回した後、再び仲間の番になった時に
+    //   runCompanionPhaseWithPassが毎回「全員」をループし直していたため、既にこのラウンドで
+    //   行動／パス済みの仲間まで重複して行動選択を聞かれてしまい（二重行動）、さらにその結果
+    //   actionsRemainingが0になるタイミング次第では、本来はまだ主人公の行動に回せる回数が
+    //   残っているにもかかわらず「allDone=false」としてすぐ敵のターンに進んでしまい、
+    //   せっかく積み上げた属性のコンボ履歴が途中で失われてしまっていた（要望対応：パスで
+    //   コンボ履歴がリセットされる不具合）。ラウンドの最初にこの集合をリセットし、
+    //   1人の仲間がこのラウンド中に行動選択を聞かれるのは1回だけになるようにする
+    if (battleState) battleState.companionsActedThisRound = new Set();
     
-    // ★ニートの「後でやろう」：カウントダウンが0になったら、行動選択の前に自動で「本気状態」が発動する
-    const yaruKiMessage = checkYaruKiNashiActivation();
-    if (yaruKiMessage) {
-      changeSpeaker("");
-      await displayMessage(yaruKiMessage);
-      renderStatusHUD();
+    while (battleState && actionsRemaining > 0) {
+      if (nextIsHero) {
+        const heroResult = await runHeroActionPhase();
+        if (heroResult === "ended") return;
+        if (heroResult === "cancelled") continue; // ★サブメニューから「戻る」で抜けただけ：回数を消費せずもう一度主人公の選択へ
+        // ★主人公の行動（このターンのダメージ・状態異常等）で前の形態のHPが0になっていたら、
+        //   仲間や敵のターンを待たず、ここですぐ形態移行の演出・メッセージを出す
+        if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
+        if (!battleState) return;
+        if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
+        actionsRemaining--; // heroResult === "acted"
+        nextIsHero = false; // 行動した後は仲間の番（回数が残っていれば）
+      } else {
+        if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
+        const companionResult = await runCompanionPhaseWithPass(actionsRemaining);
+        actionsRemaining = companionResult.remaining;
+        if (!battleState) return;
+        if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
+        if (companionResult.allDone && actionsRemaining > 0) { nextIsHero = true; continue; } // ★要望対応：回数が残っていれば主人公の行動選択に戻る
+        break; // ★行動回数が尽きた（途中でも、全員分やりきってでも）→ 敵のターンへ
+      }
     }
+    if (!battleState) return;
     
-    let turnEnded = false;
-    
-    // ★バグ修正：主人公のHPが0でも、仲間が誰か生きていればパーティ全滅（isPartyDefeated）にはならず
-    //   戦闘が続く仕様になった（要望対応）が、それに対応する「主人公自身は戦闘不能で動けない」処理が
-    //   無かったため、HPが0のまま普通にコマンドを選んで行動できてしまっていた
+    // ★要望対応：主人公が戦闘不能で、このラウンド中一度も動けなかった場合は、疲労の蓄積や毒・火傷の
+    //   ダメージ処理もスキップする（既に0のHPからさらに削れて変な表示になるのも防ぐ）
     const playerIsDown = player.gauges.hp.current <= 0;
-    
-    // ★スタン・麻痺・混乱にかかっていると、コマンドを選ぶ前にその場で行動を潰されてしまう
-    const statusBlockedBy = typeof checkPlayerStatusPreventsAction === "function" ? checkPlayerStatusPreventsAction() : null; // player.js
-    if (playerIsDown) {
-      changeSpeaker("");
-      await displayMessage("倒れていて、動くことができない……");
-      turnEnded = true;
-    } else if (statusBlockedBy) {
-      changeSpeaker("");
-      const blockMessages = { stun: "スタンしてしまい、動けなかった！", paralyze: "麻痺していて、体が動かなかった！", confuse: "混乱していて、まともに行動できなかった！" };
-      await displayMessage(blockMessages[statusBlockedBy] || "行動できなかった……");
-      turnEnded = true;
-    } else {
-      // ★要望対応：装備している武器・防具に「常時発動」のスキルがあれば、行動選択の前に自動で発動する
-      await triggerPassiveEquipmentSkills(player, true);
-      if (!battleState) return; // ★常時発動スキルの効果で戦闘が終了した場合はここで打ち切る
-      if (isPartyDefeated()) {
-        await handleBattleDefeat();
-        return;
-      }
-      
-      const action = await displayChoices([
-        { text: "たたかう", next: "fight" },
-        { text: "こうどう", next: "action" },
-        { text: "逃げる", next: "flee" }
-      ]);
-      
-      if (action.next === "fight") {
-        turnEnded = await handleFightMenu();
-      } else if (action.next === "action") {
-        turnEnded = await handleActionMenu();
-      } else if (action.next === "flee") {
-        const fled = await attemptFlee();
-        if (fled) return; // 逃げ切った：戦闘終了
-        turnEnded = true;  // 逃げ損なった：相手のターンへ
-      }
-    }
-    
-    if (!turnEnded) continue; // 「戻る」でサブメニューから抜けただけ：ターンを消費しない
-    
-    // ★要望対応：主人公が戦闘不能で動けなかったターンは、本人は何もしていないので、
-    //   疲労の蓄積や毒・火傷のダメージ処理もスキップする（既に0のHPからさらに削れて変な表示になるのも防ぐ）
     if (!playerIsDown) {
       // ★戦闘で1ターン行動するたびに疲労度が溜まっていく。疲弊状態（7割超）だとHPも少し削られる
       const fatigueResult = applyActionFatigue(2); // player.js
@@ -631,16 +677,7 @@ async function battleLoop() {
       return;
     }
     
-    // ★仲間のターン：主人公の直後、仲間1→仲間2……の順で、生きている仲間全員が行動する
-    await companionTeamTurn();
-    if (!battleState) return;
-    // ★要望対応：仲間の攻撃で前の形態のHPが0になっていたら、ボスの番を待たずすぐに演出を出す
-    await announcePendingBossFormChanges();
-    if (!battleState) return;
-    if (getAliveEnemies().length === 0) {
-      await resolveBattleVictory();
-      return;
-    }
+    // ★仲間のターンは、上の行動可能回数ループの中（パス対応版）で主人公の後に既に行われている
     
     // ★友好的になった魔物が、稀に助っ人として乱入してくる（要望対応）
     await tryFriendlyMonsterAssist();
@@ -867,7 +904,8 @@ async function playerNormalAttack() {
   }
   
   const damage = calculatePlayerDamage();
-  const result = resolveDamageForTarget(target, damage);
+  const weaponElement = getEquippedWeaponElementFor(player.equipment) || undefined; // ★装備の属性：武器の属性が通常攻撃の属性になる
+  const result = resolveDamageForTarget(target, damage, weaponElement);
   target.hp = Math.max(0, target.hp - result.damage);
   changeSpeaker("");
   if (result.blocked) {
@@ -878,7 +916,7 @@ async function playerNormalAttack() {
     await displayMessage(`攻撃した！ ${target.displayName}に${result.damage}のダメージ！`);
   }
   updateBattleHud();
-  await maybeApplyChainAttack(target, () => calculatePlayerDamage());
+  await maybeApplyChainAttack(target, () => calculatePlayerDamage(), weaponElement);
   return true;
 }
 
@@ -960,6 +998,48 @@ function getElementalDamageMultiplier(attackElementId, target) {
 function getElementDefById(elementId) {
   const defs = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.elementDefs)) ? scenarioProject.elementDefs : [];
   return defs.find(e => e.id === elementId) || null;
+}
+
+// ===== 属性の色・ダメージ数字（要望対応） =====
+//   属性の色は、シナリオエディタの「属性管理」タブで設定する（elementDefs[].color＝"#rrggbb"）。未設定なら、よくある属性名には
+//   既定の色を使い、それ以外は属性idから決めた色にする。属性なし（無属性の通常攻撃など）は白に近い色
+const ELEMENT_DEFAULT_COLORS_BY_NAME = {
+  "炎": "#ff7a3d", "火": "#ff7a3d", "雷": "#ffd23f", "自然": "#6fdc6f", "闇": "#a47bff", "光": "#fff3a8",
+  "混沌": "#ff6bd6", "裂": "#ff5a5a", "性": "#ff8fc7", "無": "#cfd8dc", "物理": "#e0c9a6",
+  "水": "#4db8ff", "氷": "#9be8ff", "風": "#8ff0c0", "土": "#c19a6b"
+};
+const ELEMENT_NO_ELEMENT_COLOR = "#f2f2f2";
+
+function getElementColor(elementId) {
+  if (!elementId || elementId === "無") return ELEMENT_NO_ELEMENT_COLOR;
+  const def = getElementDefById(elementId);
+  if (def && typeof def.color === "string" && /^#[0-9a-fA-F]{6}$/.test(def.color)) return def.color;
+  if (def && ELEMENT_DEFAULT_COLORS_BY_NAME[def.name]) return ELEMENT_DEFAULT_COLORS_BY_NAME[def.name];
+  let hash = 0;
+  Array.from(String(elementId)).forEach(ch => { hash = (hash * 31 + ch.codePointAt(0)) % 360; });
+  return `hsl(${hash}, 75%, 65%)`;
+}
+
+// ★敵にダメージを与えた時、その敵から小さな数字（属性の色）がはじける。弱点（特攻）をついた時は白い枠でハイライトする。
+//   敵ユニットのフィルタ・透明度（倒れた時の暗転など）の影響を受けないよう、敵一覧のコンテナに直接置く
+function showEnemyDamagePopup(enemy, damage, elementId, isWeak) {
+  if (!battleState || !(damage > 0)) return;
+  const container = document.getElementById("battle-enemies");
+  if (!container) return;
+  const index = battleState.enemies.indexOf(enemy);
+  const unitEl = index >= 0 ? container.querySelectorAll(".battle-enemy-unit")[index] : null;
+  if (!unitEl) return;
+  const imgEl = unitEl.querySelector(".battle-enemy-unit-image");
+  const popup = document.createElement("span");
+  popup.className = "damage-popup" + (isWeak ? " damage-popup-weak" : "");
+  popup.textContent = String(damage);
+  popup.style.color = getElementColor(elementId);
+  popup.style.left = `${unitEl.offsetLeft + unitEl.offsetWidth / 2 + (Math.random() * 20 - 10)}px`;
+  popup.style.top = `${unitEl.offsetTop + (imgEl ? imgEl.offsetHeight : 60) * 0.4}px`;
+  popup.style.setProperty("--dx", `${Math.round(Math.random() * 100 - 50)}px`);
+  popup.style.setProperty("--dy", `${-Math.round(32 + Math.random() * 34)}px`);
+  container.appendChild(popup);
+  setTimeout(() => popup.remove(), 1000);
 }
 
 function createElementIconEl(elementId, extraClass) {
@@ -1066,6 +1146,7 @@ function resolveDamageForTarget(target, rawDamage, attackElementId) {
   // ★要望対応：属性相性による倍率を反映する
   const elementalMultiplier = getElementalDamageMultiplier(attackElementId, target);
   if (elementalMultiplier !== 1) damage = Math.max(1, Math.round(damage * elementalMultiplier));
+  showEnemyDamagePopup(target, damage, attackElementId, elementalMultiplier > 1); // ★ダメージの数字を属性の色ではじけさせる（弱点なら白枠）
   // ★実績システム用：ここを通る対象は常に敵（主人公・仲間が与えるダメージ）なので、そのまま累計する（要望対応）
   if (typeof player !== "undefined" && player && damage > 0) {
     player.totalDamageDealt = (player.totalDamageDealt || 0) + damage;
@@ -1278,6 +1359,18 @@ function checkZetsurinAutoRecover() {
 //   1ターン分の被弾ごとに残りターン数を1つ減らし、0になったら効果を解除する
 // ★「不屈の闘志」「九死一生」等：本来なら戦闘不能になるはずの一撃だけを、HP1で耐え抜く。
 //   「無敵(immune)」とは違い、致命傷にならない通常の一撃は普通に食らう
+// ★敵の攻撃の属性：職業技など属性つきの技ならその属性、そうでなければ敵自身の属性（装備の属性との相性に使う）
+function getEnemyAttackElementIds(enemy, skillElement) {
+  if (skillElement && skillElement !== "無") return [skillElement];
+  return getBattleEnemyElements(enemy);
+}
+
+// ★敵の攻撃ダメージに、ステータスパネルの属性耐性と、防具・盾の属性との相性をまとめて反映する
+function applyEnemyAttackElementEffects(unit, ownerType, enemy, damage, skillElement) {
+  const afterPanel = applyPanelElementResistToDamage(unit, ownerType, enemy, damage);
+  return applyArmorElementToDamageFor(unit.equipment, getEnemyAttackElementIds(enemy, skillElement), afterPanel);
+}
+
 function applyPlayerDamageReduction(rawDamage) {
   if (battleState.playerImmuneTurns > 0) {
     battleState.playerImmuneTurns--;
@@ -1303,17 +1396,29 @@ function getCompanionDisplayName(companion) {
   return master ? master.name : "仲間";
 }
 
-async function companionTeamTurn() {
-  if (!player || !player.companions || player.companions.length === 0) return;
+// ★要望対応：仲間のターンに「パス」を追加したことに伴い、行動可能回数（actionsRemaining）の仕組みに対応。
+//   実際に行動した仲間の分だけactionsRemainingを1消費し、0になった時点で残りの仲間を待たず打ち切る
+//   （呼び出し元はその場合、敵のターンへ進む）。パスはactionsRemainingを消費しない。
+//   戻り値のallDoneは「生きている仲間全員が行動／パスし終えた（行動回数切れで打ち切ったのではない）」かどうか
+async function runCompanionPhaseWithPass(actionsRemaining) {
+  if (!player || !player.companions || player.companions.length === 0) return { remaining: actionsRemaining, allDone: true };
+  if (!battleState.companionsActedThisRound) battleState.companionsActedThisRound = new Set(); // ★保険：万一未初期化でもここで用意する
   for (const companion of player.companions) {
-    if (!battleState) return; // ★途中で戦闘が終わっていたら中断
+    if (!battleState) return { remaining: actionsRemaining, allDone: false };
     if (!companion.alive) continue;
+    if (battleState.companionsActedThisRound.has(companion)) continue; // ★バグ修正：このラウンドで既に行動／パス済みの仲間には、重複して行動選択を聞かない
     if (getAliveEnemies().length === 0) break; // ★既に全滅していたら、残りの仲間は行動させない
-    await performCompanionAction(companion);
+    if (actionsRemaining <= 0) return { remaining: actionsRemaining, allDone: false }; // ★要望対応：行動回数が尽きたら、途中でも残りの仲間は行動させず打ち切る
+    const acted = await performCompanionAction(companion);
+    battleState.companionsActedThisRound.add(companion); // ★このラウンドでの行動選択は済んだものとして記録する（行動した場合もパスした場合も）
     // ★要望対応：この仲間の攻撃で前の形態のHPが0になっていたら、他の仲間やボスの番を待たず、
     //   すぐに形態移行の演出を出す（最後の仲間の行動ターンになるまで待たせない）
     if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
+    if (acted) actionsRemaining--;
   }
+  // ★全員がこのラウンドで行動／パス済みになっていれば、途中でこの関数に何度呼ばれても「完了」として扱う
+  const allCompanionsDone = player.companions.every(c => !c.alive || battleState.companionsActedThisRound.has(c));
+  return { remaining: actionsRemaining, allDone: allCompanionsDone };
 }
 
 // ★仲間の行動は、主人公と同じく「たたかう／スキル」から選んで、対象を選んで発動する
@@ -1469,17 +1574,23 @@ async function performCompanionAction(companion) {
   ];
   if (activeWeaponSkills.length > 0) actionChoices.push({ text: "武器スキル", next: "weaponskill" });
   if (!battleState.isColosseum) actionChoices.push({ text: "道具", next: "item" }); // ★要望対応：以前は主人公のターンでしか道具を使えなかったが、仲間の行動選択でも使えるようにする（コロシアムはアイテム使用禁止）
+  actionChoices.push({ text: "パス", next: "pass" }); // ★要望対応：この仲間の行動をパスできるようにする。パスすると行動回数を消費せず次の仲間へ進む
   
   const action = await displayChoices(actionChoices);
   
-  if (action.next === "fight") {
+  // ★戻り値：true＝実際に行動した（行動回数を1消費）／false＝パスした（行動回数を消費しない）
+  if (action.next === "pass") {
+    changeSpeaker("");
+    await displayMessage(`${name}は行動をパスした。`);
+    return false;
+  } else if (action.next === "fight") {
     await performCompanionNormalAttack(companion);
   } else if (action.next === "item") {
     const used = await handleItemMenuInBattle(); // battle.js（対象は自分・他の仲間・全員から選べる。既存の道具選択と共通）
-    if (!used) { await performCompanionAction(companion); return; } // ★何も使わず「戻る」を選んだ場合は、行動選択からやり直す
+    if (!used) return await performCompanionAction(companion); // ★何も使わず「戻る」を選んだ場合は、行動選択からやり直す
   } else if (action.next === "weaponskill") {
     const success = await performCompanionWeaponSkillMenu(companion, activeWeaponSkills);
-    if (!success) { await performCompanionAction(companion); return; } // ★対象選択をキャンセル／戻るを選んだ場合は、行動選択からやり直す
+    if (!success) return await performCompanionAction(companion); // ★対象選択をキャンセル／戻るを選んだ場合は、行動選択からやり直す
   } else {
     if (battleState) battleState.lastCompanionSkill = null;
     await performCompanionSkillMenu(companion);
@@ -1489,6 +1600,7 @@ async function performCompanionAction(companion) {
       await recordSkillElementForCombo(usedSkill); // ★要望対応：コンボ履歴はパーティ共有
     }
   }
+  return true;
 }
 
 // ★要望対応：装備している武器・防具の「任意発動」スキルを選んで発動する（仲間側）
@@ -1533,7 +1645,8 @@ async function performCompanionNormalAttack(companion) {
   const variance = Math.floor(Math.random() * 7) - 3; // -3〜+3の揺らぎ（主人公の通常攻撃と統一）
   const raw = Math.max(1, applyCompanionAtkBonus(companion, stats.atk) + variance);
   getCompanionBuffState(companion).attackCount++; // ★血闘の刻印用のカウント（通常攻撃も数える）
-  const result = resolveDamageForTarget(target, raw);
+  const weaponElement = getEquippedWeaponElementFor(companion.equipment) || undefined; // ★装備の属性：武器の属性が通常攻撃の属性になる
+  const result = resolveDamageForTarget(target, raw, weaponElement);
   target.hp = Math.max(0, target.hp - result.damage);
   
   changeSpeaker("");
@@ -1541,7 +1654,7 @@ async function performCompanionNormalAttack(companion) {
   renderStatusHUD();
   updateBattleHud();
   await maybeApplyBloodDanceOnAttack(companion); // ★血華の演舞：発動中なら攻撃力が積み上がり、代わりに少しダメージを受ける
-  await maybeApplyCompanionChainAttack(companion, target, () => Math.max(1, applyCompanionAtkBonus(companion, stats.atk) + (Math.floor(Math.random() * 7) - 3)));
+  await maybeApplyCompanionChainAttack(companion, target, () => Math.max(1, applyCompanionAtkBonus(companion, stats.atk) + (Math.floor(Math.random() * 7) - 3)), weaponElement);
 }
 
 async function performCompanionSkillMenu(companion) {
@@ -1758,7 +1871,8 @@ async function performCompanionSkillMenu(companion) {
 
 // ===== コンボスキル（要望対応） =====
 //   属性技を決まった順番で撃つと追加効果が発動する。履歴（battleState.comboHistory）は主人公と仲間で共有し、
-//   敵のターンに入るとリセットされる。属性なし（"無"）の技は履歴に影響しない。
+//   敵のターンに入るとリセットされる。属性が設定されていない技（element自体が未設定の支援技など）だけが
+//   履歴に影響しない。
 //   定義はシナリオエディタの「コンボスキル」タブ（scenarioProject.comboSkills）
 function isComboSkillLearned(requiredNames) {
   if (!Array.isArray(requiredNames) || requiredNames.length === 0) return true;
@@ -1795,7 +1909,11 @@ function findMatchingComboSkill() {
 async function recordSkillElementForCombo(skill) {
   if (!battleState || !skill) return;
   const element = skill.element;
-  if (!element || element === "無") return;
+  // ★バグ修正：以前は「無」(無属性)を特別扱いしてコンボ履歴から除外していたが、無属性も
+  //   属性管理タブで設定できる立派な属性の一つであり、コンボの手順に無属性を組み込みたい
+  //   場合もあるため、無属性だからという理由では除外しないようにする。
+  //   除外するのはelementそのものが未設定（支援技など、そもそも属性を持たない技）の場合だけにする
+  if (!element) return;
   if (!Array.isArray(battleState.comboHistory)) battleState.comboHistory = [];
   battleState.comboHistory.push(element);
   if (battleState.comboHistory.length > 8) battleState.comboHistory.shift();
@@ -2224,7 +2342,7 @@ async function runSingleEnemyTurn(enemy) {
   if (!attackTarget.isPlayer) {
     // ★仲間を狙った場合：仲間のHPを直接削る（今のところ、被ダメ軽減バフ・状態異常の付与は主人公限定）
     const companion = attackTarget.companion;
-    const damage = applyPanelElementResistToDamage(companion, "companion", enemy, Math.max(1, enemyAtk + variance)); // ★ステータスパネルの属性耐性
+    const damage = applyEnemyAttackElementEffects(companion, "companion", enemy, Math.max(1, enemyAtk + variance)); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性
     companion.gauges.hp.current = Math.max(0, companion.gauges.hp.current - damage);
     player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
     renderStatusHUD();
@@ -2237,7 +2355,7 @@ async function runSingleEnemyTurn(enemy) {
     return;
   }
   
-  let damage = applyPlayerDamageReduction(applyPanelElementResistToDamage(player, "class", enemy, Math.max(1, enemyAtk + variance))); // ★ステータスパネルの属性耐性 // ★防御力システム廃止のため、こちらの防御力による減算は無し（代わりに最大HPで受け止める）＋「静かなる権威」の軽減を反映
+  let damage = applyPlayerDamageReduction(applyEnemyAttackElementEffects(player, "class", enemy, Math.max(1, enemyAtk + variance))); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性 // ★防御力システム廃止のため、こちらの防御力による減算は無し（代わりに最大HPで受け止める）＋「静かなる権威」の軽減を反映
   
   // ★状態異常「防御力低下」を受けている間は、受けるダメージが割増しになる
   const playerDefDown = player.statusAilments && player.statusAilments.defDown;
@@ -2333,7 +2451,7 @@ async function executeMonsterUniqueSkill(enemy, skill) {
       const variance = Math.floor(Math.random() * 3) - 1;
       const atkPerHit = Math.round(classSkillEnemyAtk * 0.7) / Math.max(1, hitCount);
       const raw = Math.max(1, Math.round(levelMultiplier * (classSkill.power || 0)) + Math.round(atkPerHit) + variance);
-      const hitDamage = applyPlayerDamageReduction(applyPanelElementResistToDamage(player, "class", enemy, raw)); // ★ステータスパネルの属性耐性
+      const hitDamage = applyPlayerDamageReduction(applyEnemyAttackElementEffects(player, "class", enemy, raw, classSkill.element)); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性（職業技ならその技の属性）
       changeGauge("hp", -hitDamage);
       totalDamage += hitDamage;
     }
@@ -2350,7 +2468,7 @@ async function executeMonsterUniqueSkill(enemy, skill) {
   
   const atkUpBonus = (enemy.status && enemy.status.atkUp && enemy.status.atkUp.turns > 0) ? enemy.status.atkUp.power : 0;
   const enemyAtk = enemy.atk + enemy.enemyAtkBonus + atkUpBonus;
-  const damage = applyPlayerDamageReduction(applyPanelElementResistToDamage(player, "class", enemy, Math.max(1, Math.round(enemyAtk * (skill.multiplier || 1))))); // ★ステータスパネルの属性耐性
+  const damage = applyPlayerDamageReduction(applyEnemyAttackElementEffects(player, "class", enemy, Math.max(1, Math.round(enemyAtk * (skill.multiplier || 1))))); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性
   changeGauge("hp", -damage);
   player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
   if (typeof triggerCameraShake === "function") triggerCameraShake(); // mainfunc.js

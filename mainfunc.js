@@ -1658,6 +1658,7 @@ async function showSpecialScene(text, allowSubFocus = false) {
 // メイン画面左上のステータスHUD（レベル・経過日数・ゲージ・所持金）を今のplayerの中身で更新する
 function renderStatusHUD() {
   if (!player) return;
+  if (typeof refreshStatusPanelTabVisibility === "function") refreshStatusPanelTabVisibility(); // ★要望対応：パネルタブは30レベルに到達するまで隠す（statuspanel.js）
   
   // ★パラメータ表示ブロック（#status-hud-wrapper）が、設定通りの場所（メインタブ内 or 常時左上）に
   //   ちゃんと置かれているか、呼ばれるたびに軽く確認しておく（既に正しい場所ならappendChildしても
@@ -3161,6 +3162,19 @@ function showItemDetail(slot) {
   descEl.className = "item-detail-description";
   descEl.textContent = master.description;
   panel.appendChild(descEl);
+  
+  // ★要望対応：武器・防具の属性（あれば）をバッジで表示する
+  if (master.element && master.element !== "無" && typeof createElementBadgeEl === "function") { // battle.js
+    const elementRow = document.createElement("p");
+    elementRow.className = "item-detail-element";
+    elementRow.appendChild(document.createTextNode("属性："));
+    const badgeEl = createElementBadgeEl(master.element);
+    if (badgeEl) {
+      badgeEl.classList.add("element-badge-inline");
+      elementRow.appendChild(badgeEl);
+    }
+    panel.appendChild(elementRow);
+  }
   
   const pricesEl = document.createElement("div");
   pricesEl.className = "item-detail-prices";

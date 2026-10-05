@@ -1178,6 +1178,8 @@ function ensureCustomItemsRegistered() {
       // ★要望対応：インベントリでのスタック可否（装備以外）。未指定ならカテゴリ既定値にお任せするため、
       //   明示的にtrue/falseが設定されている時だけ上書きする
       stackable: (typeof item.stackable === "boolean") ? item.stackable : existing.stackable,
+      // ★要望対応：武器・防具の属性（属性管理タブの属性id。空＝属性なし）。武器＝通常攻撃の属性、防具・盾＝受けるダメージの相性に使う
+      element: (typeof item.element === "string") ? item.element : existing.element,
       // ★要望対応：武器・防具に持たせる専用スキル（特殊スキル編集と同じブロック形式で組める）。
       //   scenarioProject.items側ではitem.blocks/item.variablesという名前（特殊スキル編集の画面をそのまま使い回すため）
       //   だが、battle.js側から見て紛らわしくないよう、ここでskillBlocks/skillVariablesという名前に変えて渡す。
@@ -6294,6 +6296,14 @@ function renderElementManager(container) {
     refreshPreview();
     row.appendChild(previewEl);
     row.appendChild(nameInput);
+    // ★要望対応：属性の色（戦闘中にはじけるダメージ数字の色）。未設定なら既定の色（getElementColor）をそのまま表示する
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.title = "属性の色（ダメージ数字の色）";
+    colorInput.value = (typeof getElementColor === "function" ? getElementColor(el.id) : "#ffffff");
+    if (!/^#[0-9a-fA-F]{6}$/.test(colorInput.value)) colorInput.value = "#ffffff"; // hsl()の既定色はピッカーに入らないので白から始める
+    colorInput.onchange = () => { el.color = colorInput.value; markScenarioBuildDirty(); };
+    row.appendChild(colorInput);
     const pathInput = document.createElement("input");
     pathInput.type = "text";
     pathInput.className = "scenariobuild-title-input";
@@ -7502,19 +7512,22 @@ function renderStatusPanelManager(container) {
 
   // 盤（9×9）。マスがある所は設定の要約を表示し、選択中のマスは枠で示す
   const grid = document.createElement("div");
-  grid.style.cssText = "display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:2px;max-width:420px;margin:8px 0;";
+  grid.style.cssText = "display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:1px;max-width:420px;margin:8px 0;";
   for (let r = 0; r < STATUS_PANEL_SIZE; r++) {
     for (let c = 0; c < STATUS_PANEL_SIZE; c++) {
       const key = `${r},${c}`;
       const cell = cells[key];
       const btn = document.createElement("button");
-      btn.style.cssText = "aspect-ratio:1/1;min-width:0;padding:0;font-size:9px;line-height:1.1;cursor:pointer;border-radius:3px;overflow:hidden;"
-        + `border:${key === scenarioBuildStatusPanelCell ? "2px solid #fff" : "1px solid rgba(255,255,255,0.25)"};`
-        + `background:${cell ? (key === STATUS_PANEL_CENTER_KEY ? "rgba(255,170,40,0.55)" : "rgba(255,140,30,0.25)") : "rgba(0,0,0,0.35)"};color:#eee;`;
+      // ★マスはゲーム側と同じ八角形（style.cssの.statuspanel-cell）。置いたマス＝水色系、中心＝解放済みの色、空き＝暗い八角形
+      btn.className = "statuspanel-cell " + (cell ? (key === STATUS_PANEL_CENTER_KEY ? "unlocked center" : "available") : "locked")
+        + (key === scenarioBuildStatusPanelCell ? " cursor" : "");
       if (cell) {
         const summary = summarizePanelCell(cell);
-        btn.textContent = (key === STATUS_PANEL_CENTER_KEY && !cell.label && (cell.effects || []).length === 0) ? "基本" : (summary.top + (summary.bottom ? "\n" + summary.bottom : ""));
-        btn.style.whiteSpace = "pre-line";
+        const textEl = document.createElement("span");
+        textEl.className = "statuspanel-cell-top";
+        textEl.style.whiteSpace = "pre-line";
+        textEl.textContent = (key === STATUS_PANEL_CENTER_KEY && !cell.label && (cell.effects || []).length === 0) ? "基本" : (summary.top + (summary.bottom ? "\n" + summary.bottom : ""));
+        btn.appendChild(textEl);
       }
       btn.onclick = () => { scenarioBuildStatusPanelCell = key; renderScenarioBuildPanel(); };
       grid.appendChild(btn);
@@ -7577,7 +7590,7 @@ function buildStatusPanelCellEditor(def) {
 
     if (effect.kind === "stat") {
       row.appendChild(buildSkillSelectInline(effect, "stat", "", STATUS_PANEL_STAT_DEFS.map(d => ({ value: d.key, label: d.label }))));
-      row.appendChild(buildSkillSelectInline(effect, "mode", "", [{ value: "percent", label: "基礎値の％" }, { value: "flat", label: "固定値" }]));
+      row.appendChild(buildSkillSelectInline(effect, "mode", "", [{ value: "percent", label: "％（100レベル時の2/3が基準）" }, { value: "flat", label: "固定値" }]));
       row.appendChild(buildSkillNumberInline(effect, "value", "値", 0));
     } else if (effect.kind === "skill") {
       const skillSelect = document.createElement("select");
@@ -10874,6 +10887,34 @@ function buildItemSkillEditor(item, persist) {
   return wrap;
 }
 
+// ★要望対応：武器・防具の属性を選ぶ（属性管理タブで登録した属性から）。
+//   武器＝通常攻撃の属性。防具(胴)・盾＝敵の攻撃を受けた時の相性（敵の攻撃の属性が、この属性に対して特攻ならダメージ増・耐性ならダメージ減）
+function buildItemElementEditor(item, persist) {
+  const wrap = document.createElement("div");
+  const noteEl = document.createElement("p");
+  noteEl.className = "devmode-note scenariobuild-condition";
+  noteEl.textContent = "属性：武器は「通常攻撃の属性」になり、敵の属性との相性（特攻・耐性）がかかります。防具・盾は「受けるダメージの相性」に使われ、敵の攻撃の属性（敵自身の属性、職業技ならその技の属性）が、この属性に対して特攻ならダメージ増・耐性ならダメージ減になります（相性表の「攻撃側→防御側」の値をそのまま使います）。";
+  wrap.appendChild(noteEl);
+  const row = document.createElement("div");
+  row.className = "scenariobuild-condition-row";
+  row.appendChild(labelSpan("属性："));
+  const select = document.createElement("select");
+  select.className = "scenariobuild-jump-select";
+  const noneOpt = document.createElement("option");
+  noneOpt.value = ""; noneOpt.textContent = "（属性なし）";
+  select.appendChild(noneOpt);
+  scenarioProject.elementDefs.forEach(el => {
+    const opt = document.createElement("option");
+    opt.value = el.id; opt.textContent = el.name || "（無名）";
+    select.appendChild(opt);
+  });
+  select.value = item.element || "";
+  select.onchange = () => { item.element = select.value; persist(); };
+  row.appendChild(select);
+  wrap.appendChild(row);
+  return wrap;
+}
+
 function buildItemStatBonusRangeEditor(item, persist) {
   const wrap = document.createElement("div");
   const noteEl = document.createElement("p");
@@ -12015,6 +12056,7 @@ function renderEntityDetailEditor(container) {
       fieldsWrap.appendChild(buildItemCuresStatusEditor(entity, persist));
     }
     if (entity.category === "weapon" || entity.category === "armor") {
+      fieldsWrap.appendChild(buildItemElementEditor(entity, persist)); // ★要望対応：装備の属性
       fieldsWrap.appendChild(buildItemStatBonusRangeEditor(entity, persist));
       fieldsWrap.appendChild(buildRustySeriesEditor(entity, persist));
       fieldsWrap.appendChild(buildItemSkillEditor(entity, persist));

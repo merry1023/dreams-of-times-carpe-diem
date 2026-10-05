@@ -2,6 +2,7 @@
 //   職業ごと（主人公）・仲間ごとに用意された9×9のマス目の盤。中心の「基本パネル」から、斜めを含む8方向に
 //   隣接したマスだけを、コスト（アイテム・経験値）を払って順に解放していく。
 //   マスの効果＝ステータスの割合/固定値アップ・新しい技の習得・状態異常耐性。
+//   ★割合アップは「100レベル時のステータスの三分の二」に％をかけた値を加算する（レベルに左右されない固定の上乗せ量）
 //   ★経験値をコストにすると経験値が減り、それに応じてレベル・ステータスも下がる。
 //     解放したマスの効果は解放した瞬間から有効で、同じレベルに戻ると、その分だけ上乗せされた状態になる。
 //   盤の中身は、シナリオエディタの「ステータスパネル」タブ（scenarioProject.statusPanels）で作る：
@@ -21,6 +22,30 @@ const STATUS_PANEL_STAT_DEFS = [
   { key: "maxHp", label: "最大HP", short: "HP" },
   { key: "maxSp", label: "最大SP", short: "SP" }
 ];
+
+// ===== パネルタブの解放（要望対応） =====
+//   パネルタブは、主人公が30レベルに到達するまで隠す。経験値をコストに払うとレベルが下がるので、
+//   一度30レベルに到達したら（player.statusPanelUnlocked）、その後レベルが下がっても隠さない
+const STATUS_PANEL_TAB_UNLOCK_LEVEL = 30;
+let statusPanelTabUnlockedApplied = null;
+
+function isStatusPanelTabUnlocked() {
+  if (typeof player === "undefined" || !player) return false;
+  if (player.statusPanelUnlocked) return true;
+  if (player.level >= STATUS_PANEL_TAB_UNLOCK_LEVEL) {
+    player.statusPanelUnlocked = true;
+    return true;
+  }
+  return false;
+}
+
+// ★タブの表示状態が変わった時だけ、タブの表示を更新する（HUDの更新のたび＝レベルアップ・ロード・ニューゲームの後に呼ぶ）
+function refreshStatusPanelTabVisibility() {
+  const unlocked = isStatusPanelTabUnlocked();
+  if (unlocked === statusPanelTabUnlockedApplied) return;
+  statusPanelTabUnlockedApplied = unlocked;
+  if (typeof applyPlayTabVisibility === "function") applyPlayTabVisibility(); // mainfunc.js
+}
 
 // ===== データ参照 =====
 function getStatusPanelDefFor(unit, ownerType) {
@@ -73,26 +98,35 @@ function computePanelTotalsFor(unit, ownerType) {
   return totals;
 }
 
-// ★ステータスへの上乗せ量。割合アップは「基礎値（レベルで決まる素の値）の％を加算」
+// ★割合アップの基準値＝「100レベル時のステータス」の三分の二。レベルが低くても高くても、同じ％なら同じ量が乗る
+const PANEL_PERCENT_BASE_LEVEL = 100;
+const PANEL_PERCENT_BASE_RATIO = 2 / 3;
+
+function getPanelPercentBaseFor(unit, ownerType) {
+  const base = {};
+  if (ownerType === "class") {
+    const cls = (typeof CLASS_MASTER !== "undefined") ? CLASS_MASTER[unit.class] : null;
+    const growth = (cls && cls.growthPerLevel) || {};
+    STATUS_PANEL_STAT_DEFS.forEach(def => {
+      base[def.key] = ((cls && cls.baseStats && cls.baseStats[def.key]) || 0) + getCumulativeGrowth(growth, PANEL_PERCENT_BASE_LEVEL, def.key);
+    });
+  } else {
+    const master = getCompanionMaster(unit);
+    const at100 = master ? getCompanionStatsAtLevel(master, PANEL_PERCENT_BASE_LEVEL) : {};
+    STATUS_PANEL_STAT_DEFS.forEach(def => { base[def.key] = at100[def.key] || 0; });
+  }
+  STATUS_PANEL_STAT_DEFS.forEach(def => { base[def.key] = base[def.key] * PANEL_PERCENT_BASE_RATIO; });
+  return base;
+}
+
+// ★ステータスへの上乗せ量。割合アップは「100レベル時のステータスの三分の二」の％を加算
 function getPanelBonusFor(unit, ownerType) {
   const result = { atk: 0, agi: 0, skillPower: 0, luck: 0, charm: 0, maxHp: 0, maxSp: 0 };
   if (!unit) return result;
   const totals = computePanelTotalsFor(unit, ownerType);
   const hasAny = Object.keys(totals.flat).length > 0 || Object.keys(totals.pct).length > 0;
   if (!hasAny) return result;
-  let base = {};
-  if (ownerType === "class") {
-    const cls = (typeof CLASS_MASTER !== "undefined") ? CLASS_MASTER[unit.class] : null;
-    const growth = (cls && cls.growthPerLevel) || {};
-    base = {
-      atk: unit.stats.atk, agi: unit.stats.agi, skillPower: unit.stats.skillPower, luck: unit.stats.luck, charm: unit.stats.charm,
-      maxHp: ((cls && cls.baseStats.maxHp) || 0) + getCumulativeGrowth(growth, unit.level, "maxHp"),
-      maxSp: ((cls && cls.baseStats.maxSp) || 0) + getCumulativeGrowth(growth, unit.level, "maxSp")
-    };
-  } else {
-    const master = getCompanionMaster(unit);
-    base = master ? getCompanionStatsAtLevel(master, unit.level) : {};
-  }
+  const base = getPanelPercentBaseFor(unit, ownerType);
   STATUS_PANEL_STAT_DEFS.forEach(def => {
     const key = def.key;
     result[key] = (totals.flat[key] || 0) + Math.round((base[key] || 0) * (totals.pct[key] || 0) / 100);
@@ -294,7 +328,7 @@ function describePanelEffect(effect) {
   if (effect.kind === "stat") {
     const def = STATUS_PANEL_STAT_DEFS.find(d => d.key === effect.stat);
     const name = def ? def.label : effect.stat;
-    return effect.mode === "percent" ? `${name} +${effect.value}%（基礎値に対して）` : `${name} +${effect.value}`;
+    return effect.mode === "percent" ? `${name} +${effect.value}%（100レベル時の能力の2/3が基準）` : `${name} +${effect.value}`;
   }
   if (effect.kind === "skill") return `新しい技「${effect.skillName}」を習得`;
   if (effect.kind === "statusResist") return `状態異常耐性 +${effect.value}%（かかる確率が下がる）`;
@@ -341,6 +375,8 @@ function getStatusPanelOwners() {
 function renderStatusPanelTab() {
   const root = document.getElementById("statuspanel-root");
   if (!root) return;
+  const prevWrap = root.querySelector(".statuspanel-grid-wrap");
+  const prevGridScroll = prevWrap ? prevWrap.scrollTop : 0;
   root.innerHTML = "";
   const owners = getStatusPanelOwners();
   if (owners.length === 0) return;
@@ -381,6 +417,8 @@ function renderStatusPanelTab() {
     return;
   }
 
+  const gridWrap = document.createElement("div");
+  gridWrap.className = "statuspanel-grid-wrap"; // ★盤だけをスクロールさせ、下のマスの説明は常に画面内に固定する
   const grid = document.createElement("div");
   grid.className = "statuspanel-grid";
   for (let r = 0; r < STATUS_PANEL_SIZE; r++) {
@@ -419,9 +457,18 @@ function renderStatusPanelTab() {
       grid.appendChild(el);
     }
   }
-  root.appendChild(grid);
-
+  gridWrap.appendChild(grid);
+  root.appendChild(gridWrap);
   root.appendChild(buildStatusPanelDetail(owner, def));
+
+  // ★描き直してもスクロール位置が先頭に戻らないようにし、カーソルのマスが見える位置まで動かす（scrollIntoViewは使わず直接計算）
+  gridWrap.scrollTop = prevGridScroll;
+  const cursorEl = grid.querySelector(".statuspanel-cell.cursor");
+  if (cursorEl) {
+    const top = cursorEl.offsetTop, bottom = top + cursorEl.offsetHeight;
+    if (top < gridWrap.scrollTop) gridWrap.scrollTop = top;
+    else if (bottom > gridWrap.scrollTop + gridWrap.clientHeight) gridWrap.scrollTop = bottom - gridWrap.clientHeight;
+  }
 }
 
 function buildStatusPanelDetail(owner, def) {
