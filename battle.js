@@ -591,6 +591,15 @@ async function battleLoop() {
     //   逆に、途中で回数が尽きたら（最後の仲間の行動でなくても）残りの仲間は行動させず、すぐ敵のターンへ進む
     let actionsRemaining = 1 + (player.companions ? player.companions.filter(c => c.alive).length : 0);
     let nextIsHero = true;
+    // ★バグ修正：パスで浮いた回数を主人公の追加行動に回した後、再び仲間の番になった時に
+    //   runCompanionPhaseWithPassが毎回「全員」をループし直していたため、既にこのラウンドで
+    //   行動／パス済みの仲間まで重複して行動選択を聞かれてしまい（二重行動）、さらにその結果
+    //   actionsRemainingが0になるタイミング次第では、本来はまだ主人公の行動に回せる回数が
+    //   残っているにもかかわらず「allDone=false」としてすぐ敵のターンに進んでしまい、
+    //   せっかく積み上げた属性のコンボ履歴が途中で失われてしまっていた（要望対応：パスで
+    //   コンボ履歴がリセットされる不具合）。ラウンドの最初にこの集合をリセットし、
+    //   1人の仲間がこのラウンド中に行動選択を聞かれるのは1回だけになるようにする
+    if (battleState) battleState.companionsActedThisRound = new Set();
     
     while (battleState && actionsRemaining > 0) {
       if (nextIsHero) {
@@ -1393,18 +1402,23 @@ function getCompanionDisplayName(companion) {
 //   戻り値のallDoneは「生きている仲間全員が行動／パスし終えた（行動回数切れで打ち切ったのではない）」かどうか
 async function runCompanionPhaseWithPass(actionsRemaining) {
   if (!player || !player.companions || player.companions.length === 0) return { remaining: actionsRemaining, allDone: true };
+  if (!battleState.companionsActedThisRound) battleState.companionsActedThisRound = new Set(); // ★保険：万一未初期化でもここで用意する
   for (const companion of player.companions) {
     if (!battleState) return { remaining: actionsRemaining, allDone: false };
     if (!companion.alive) continue;
+    if (battleState.companionsActedThisRound.has(companion)) continue; // ★バグ修正：このラウンドで既に行動／パス済みの仲間には、重複して行動選択を聞かない
     if (getAliveEnemies().length === 0) break; // ★既に全滅していたら、残りの仲間は行動させない
     if (actionsRemaining <= 0) return { remaining: actionsRemaining, allDone: false }; // ★要望対応：行動回数が尽きたら、途中でも残りの仲間は行動させず打ち切る
     const acted = await performCompanionAction(companion);
+    battleState.companionsActedThisRound.add(companion); // ★このラウンドでの行動選択は済んだものとして記録する（行動した場合もパスした場合も）
     // ★要望対応：この仲間の攻撃で前の形態のHPが0になっていたら、他の仲間やボスの番を待たず、
     //   すぐに形態移行の演出を出す（最後の仲間の行動ターンになるまで待たせない）
     if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
     if (acted) actionsRemaining--;
   }
-  return { remaining: actionsRemaining, allDone: true };
+  // ★全員がこのラウンドで行動／パス済みになっていれば、途中でこの関数に何度呼ばれても「完了」として扱う
+  const allCompanionsDone = player.companions.every(c => !c.alive || battleState.companionsActedThisRound.has(c));
+  return { remaining: actionsRemaining, allDone: allCompanionsDone };
 }
 
 // ★仲間の行動は、主人公と同じく「たたかう／スキル」から選んで、対象を選んで発動する
@@ -1857,7 +1871,8 @@ async function performCompanionSkillMenu(companion) {
 
 // ===== コンボスキル（要望対応） =====
 //   属性技を決まった順番で撃つと追加効果が発動する。履歴（battleState.comboHistory）は主人公と仲間で共有し、
-//   敵のターンに入るとリセットされる。属性なし（"無"）の技は履歴に影響しない。
+//   敵のターンに入るとリセットされる。属性が設定されていない技（element自体が未設定の支援技など）だけが
+//   履歴に影響しない。
 //   定義はシナリオエディタの「コンボスキル」タブ（scenarioProject.comboSkills）
 function isComboSkillLearned(requiredNames) {
   if (!Array.isArray(requiredNames) || requiredNames.length === 0) return true;
@@ -1894,7 +1909,11 @@ function findMatchingComboSkill() {
 async function recordSkillElementForCombo(skill) {
   if (!battleState || !skill) return;
   const element = skill.element;
-  if (!element || element === "無") return;
+  // ★バグ修正：以前は「無」(無属性)を特別扱いしてコンボ履歴から除外していたが、無属性も
+  //   属性管理タブで設定できる立派な属性の一つであり、コンボの手順に無属性を組み込みたい
+  //   場合もあるため、無属性だからという理由では除外しないようにする。
+  //   除外するのはelementそのものが未設定（支援技など、そもそも属性を持たない技）の場合だけにする
+  if (!element) return;
   if (!Array.isArray(battleState.comboHistory)) battleState.comboHistory = [];
   battleState.comboHistory.push(element);
   if (battleState.comboHistory.length > 8) battleState.comboHistory.shift();
