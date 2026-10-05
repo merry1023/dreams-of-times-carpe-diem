@@ -30,6 +30,7 @@ let scenarioProject = {
   bosses: [],     // [{ id, name, maxHp, atk, exp, level, bgmTrack, bgmFinalTrack, bgmCrisisTrack, invincibilityItemId }, ...]
   items: [],      // [{ id, name, category, description, rank, listedPrice, trueValue }, ...]
   statusPanels: { classes: {}, companions: {} }, // ★要望対応：ステータスパネル（職業ごと・仲間ごとの9×9の盤）。statuspanel.js参照
+  upperSkills: [], // ★要望対応：上位スキル（ステータスパネルで習得する、職業技とは別枠の技）。[{ id, name, type, element, spCost, power, ... }, ...]
   comboSkills: [], // ★要望対応：コンボスキル（属性の順番で発動する追加効果）。[{ id, name, elements:[属性id...], requiredSkillNames:[...], requiredChapterId... }, ...]
   skills: [],     // [{ id, className, skillId, name, description, type, element, spCost, unlockLevel, power, target, hitCount, statusEffectKind... }, ...]
                   // ★将来的に「特殊スキル編集」ボタンから、話のブロックエディタと同じ要領で技の動作を
@@ -244,6 +245,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   if (Array.isArray(data.randomNamePool)) scenarioProject.randomNamePool = data.randomNamePool; // ★要望対応：ランダム名前管理タブ
   if (Array.isArray(data.elementDefs)) scenarioProject.elementDefs = data.elementDefs; // ★要望対応：属性管理タブ
   if (Array.isArray(data.comboSkills)) scenarioProject.comboSkills = data.comboSkills; // ★要望対応：コンボスキル
+  if (Array.isArray(data.upperSkills)) scenarioProject.upperSkills = data.upperSkills; // ★要望対応：上位スキル
   if (data.statusPanels && typeof data.statusPanels === "object") scenarioProject.statusPanels = data.statusPanels; // ★要望対応：ステータスパネル
   if (data.elementMatchups && typeof data.elementMatchups === "object") scenarioProject.elementMatchups = data.elementMatchups;
   scenarioProject.bgmTracks = data.bgmTracks || [];
@@ -452,6 +454,7 @@ function normalizeScenarioProject() {
   //   未設定は通常扱い）
   if (!Array.isArray(scenarioProject.elementDefs)) scenarioProject.elementDefs = []; // [{ id, name }, ...]
   if (!Array.isArray(scenarioProject.comboSkills)) scenarioProject.comboSkills = []; // ★要望対応：コンボスキル
+  if (!Array.isArray(scenarioProject.upperSkills)) scenarioProject.upperSkills = []; // ★要望対応：上位スキル
   if (!scenarioProject.statusPanels || typeof scenarioProject.statusPanels !== "object") scenarioProject.statusPanels = { classes: {}, companions: {} }; // ★要望対応：ステータスパネル
   if (!scenarioProject.statusPanels.classes) scenarioProject.statusPanels.classes = {};
   if (!scenarioProject.statusPanels.companions) scenarioProject.statusPanels.companions = {};
@@ -1269,6 +1272,57 @@ function ensureCustomFishRegistered() {
 // ★スキル管理タブで追加・編集・並び替え・削除した技（scenarioProject.skills）を、
 //   実際にゲームが参照するCLASS_SKILLSへ組み直す。フラットに持っている項目から
 //   statusEffect/statusEffect2/selfBuffの入れ子オブジェクトを再構築する
+// ★スキル編集の1件（scenarioProject.skills／upperSkillsの要素）を、戦闘が参照する技のオブジェクトに変換する。
+//   職業技（CLASS_SKILLS）と上位スキルの両方で共通に使う
+function buildRuntimeSkillFromSkillEntry(s) {
+    const skill = {
+      name: s.name || "名無しの技",
+      description: s.description || "",
+      type: s.type || "attack",
+      element: s.element || "無",
+      spCost: Number(s.spCost) || 0,
+      unlockLevel: Number(s.unlockLevel) || 1,
+      power: Number(s.power) || 0
+    };
+    if (s.type === "attack") skill.atkType = s.atkType === "magical" ? "magical" : "physical"; // ★参照する攻撃力（物理／魔法）
+    if (s.skillId) skill.id = s.skillId;
+    if (s.target === "all") skill.target = "all";
+    if (Number(s.hitCount) > 1) skill.hitCount = Number(s.hitCount);
+    if (s.gauge) skill.gauge = s.gauge;
+    if (s.cleanse) skill.cleanse = true;
+    if (s.passiveId) skill.passiveId = s.passiveId;
+    if (s.randomTarget) skill.randomTarget = true; // ★狙う相手を選ばせず、生きている敵の中からランダムに選ぶ（例：ニート「一か八か」）
+    if (s.wideVariance) skill.wideVariance = true; // ★ダメージの揺らぎ幅を大きくする「賭け」の技（例：ニート「一か八か」）
+    if (s.partyWide) skill.partyWide = true; // ★回復技の対象を選ばせず、自分＋生きている仲間全員にする（例：ハイ・ディスシプリナ）
+    if (s.lifestealRatio) skill.lifestealRatio = Number(s.lifestealRatio); // ★与えたダメージの一部をHPに変換する（例：血臭の宴）
+    if (s.revives) skill.revives = true; // ★戦闘不能の仲間を選ぶと蘇生させられる（例：完全支援）
+    if (s.triggerChance != null && Number(s.triggerChance) < 1) skill.triggerChance = Number(s.triggerChance); // ★自己バフ技が、指定した確率でしか発動しない（例：ニート「豹変」）
+    if (s.statusEffectKind) {
+      skill.statusEffect = { kind: s.statusEffectKind, chance: Number(s.statusEffectChance) || 1, duration: Number(s.statusEffectDuration) || 1, power: Number(s.statusEffectPower) || 0 };
+    }
+    if (s.statusEffect2Kind) {
+      skill.statusEffect2 = { kind: s.statusEffect2Kind, chance: Number(s.statusEffect2Chance) || 1, duration: Number(s.statusEffect2Duration) || 1, power: Number(s.statusEffect2Power) || 0 };
+    }
+    if (s.selfBuffKind) {
+      skill.selfBuff = { kind: s.selfBuffKind, duration: Number(s.selfBuffDuration) || 1, power: Number(s.selfBuffPower) || 0, mode: s.selfBuffMode === "multiply" ? "multiply" : "add" };
+    }
+    if (s.selfBuff2Kind) {
+      skill.selfBuff2 = { kind: s.selfBuff2Kind, duration: Number(s.selfBuff2Duration) || 1, power: Number(s.selfBuff2Power) || 0, mode: s.selfBuff2Mode === "multiply" ? "multiply" : "add" };
+    }
+    // ★特殊スキル編集でブロックを組んだ技は、そのブロック列（と専用変数の初期値）をそのまま持たせる。
+    //   battle.js側は skill.blocks.length > 0 を見て、固定フィールドの代わりにこちらを実行する。
+    //   要望対応：以前はブロックを1件でも登録すると自動的にブロックモードへ切り替わり、固定フィールドへ
+    //   二度と戻せなくなっていた。s.useBlocksで明示的にどちらを使うか選べるようにし、falseの時は
+    //   ブロックが残っていても無視して固定フィールドの技として動くようにする（ブロック自体は消さずに
+    //   保持するので、後でまた「ブロックで組む」に戻せば編集内容は失われない）
+    const useBlockMode = s.useBlocks === true || (s.useBlocks == null && Array.isArray(s.blocks) && s.blocks.length > 0);
+    if (useBlockMode && Array.isArray(s.blocks) && s.blocks.length > 0) {
+      skill.blocks = s.blocks;
+      skill.variables = (s.variables && typeof s.variables === "object") ? s.variables : {};
+    }
+    return skill;
+}
+
 function ensureCustomSkillsRegistered() {
   if (typeof CLASS_SKILLS === "undefined") return;
   Object.keys(CLASS_SKILLS).forEach(className => {
@@ -1276,54 +1330,7 @@ function ensureCustomSkillsRegistered() {
       .filter(s => s.className === className)
       .sort((a, b) => a.unlockLevel - b.unlockLevel);
     
-    CLASS_SKILLS[className] = entries.map(s => {
-      const skill = {
-        name: s.name || "名無しの技",
-        description: s.description || "",
-        type: s.type || "attack",
-        element: s.element || "無",
-        spCost: Number(s.spCost) || 0,
-        unlockLevel: Number(s.unlockLevel) || 1,
-        power: Number(s.power) || 0
-      };
-      if (s.type === "attack") skill.atkType = s.atkType === "magical" ? "magical" : "physical"; // ★参照する攻撃力（物理／魔法）
-      if (s.skillId) skill.id = s.skillId;
-      if (s.target === "all") skill.target = "all";
-      if (Number(s.hitCount) > 1) skill.hitCount = Number(s.hitCount);
-      if (s.gauge) skill.gauge = s.gauge;
-      if (s.cleanse) skill.cleanse = true;
-      if (s.passiveId) skill.passiveId = s.passiveId;
-      if (s.randomTarget) skill.randomTarget = true; // ★狙う相手を選ばせず、生きている敵の中からランダムに選ぶ（例：ニート「一か八か」）
-      if (s.wideVariance) skill.wideVariance = true; // ★ダメージの揺らぎ幅を大きくする「賭け」の技（例：ニート「一か八か」）
-      if (s.partyWide) skill.partyWide = true; // ★回復技の対象を選ばせず、自分＋生きている仲間全員にする（例：ハイ・ディスシプリナ）
-      if (s.lifestealRatio) skill.lifestealRatio = Number(s.lifestealRatio); // ★与えたダメージの一部をHPに変換する（例：血臭の宴）
-      if (s.revives) skill.revives = true; // ★戦闘不能の仲間を選ぶと蘇生させられる（例：完全支援）
-      if (s.triggerChance != null && Number(s.triggerChance) < 1) skill.triggerChance = Number(s.triggerChance); // ★自己バフ技が、指定した確率でしか発動しない（例：ニート「豹変」）
-      if (s.statusEffectKind) {
-        skill.statusEffect = { kind: s.statusEffectKind, chance: Number(s.statusEffectChance) || 1, duration: Number(s.statusEffectDuration) || 1, power: Number(s.statusEffectPower) || 0 };
-      }
-      if (s.statusEffect2Kind) {
-        skill.statusEffect2 = { kind: s.statusEffect2Kind, chance: Number(s.statusEffect2Chance) || 1, duration: Number(s.statusEffect2Duration) || 1, power: Number(s.statusEffect2Power) || 0 };
-      }
-      if (s.selfBuffKind) {
-        skill.selfBuff = { kind: s.selfBuffKind, duration: Number(s.selfBuffDuration) || 1, power: Number(s.selfBuffPower) || 0, mode: s.selfBuffMode === "multiply" ? "multiply" : "add" };
-      }
-      if (s.selfBuff2Kind) {
-        skill.selfBuff2 = { kind: s.selfBuff2Kind, duration: Number(s.selfBuff2Duration) || 1, power: Number(s.selfBuff2Power) || 0, mode: s.selfBuff2Mode === "multiply" ? "multiply" : "add" };
-      }
-      // ★特殊スキル編集でブロックを組んだ技は、そのブロック列（と専用変数の初期値）をそのまま持たせる。
-      //   battle.js側は skill.blocks.length > 0 を見て、固定フィールドの代わりにこちらを実行する。
-      //   要望対応：以前はブロックを1件でも登録すると自動的にブロックモードへ切り替わり、固定フィールドへ
-      //   二度と戻せなくなっていた。s.useBlocksで明示的にどちらを使うか選べるようにし、falseの時は
-      //   ブロックが残っていても無視して固定フィールドの技として動くようにする（ブロック自体は消さずに
-      //   保持するので、後でまた「ブロックで組む」に戻せば編集内容は失われない）
-      const useBlockMode = s.useBlocks === true || (s.useBlocks == null && Array.isArray(s.blocks) && s.blocks.length > 0);
-      if (useBlockMode && Array.isArray(s.blocks) && s.blocks.length > 0) {
-        skill.blocks = s.blocks;
-        skill.variables = (s.variables && typeof s.variables === "object") ? s.variables : {};
-      }
-      return skill;
-    });
+    CLASS_SKILLS[className] = entries.map(buildRuntimeSkillFromSkillEntry);
   });
 }
 
@@ -1535,6 +1542,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
   { view: "tutorials", label: "チュートリアル管理" },
   { view: "skills", label: "スキル管理" },
+  { view: "upperskills", label: "上位スキル" }, // ★要望対応：ステータスパネルで習得する、職業技とは別枠の技
   { view: "combos", label: "コンボスキル" }, // ★要望対応：属性の順番で発動する追加効果の技
   { view: "statuspanels", label: "ステータスパネル" }, // ★要望対応：職業・仲間ごとの育成用マス目の盤
   { view: "statuses", label: "状態管理" },
@@ -1684,6 +1692,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
   else if (scenarioBuildSubView === "combos") renderComboSkillManager(bodyEl); // ★要望対応：コンボスキル
+  else if (scenarioBuildSubView === "upperskills") renderUpperSkillManager(bodyEl); // ★要望対応：上位スキル
   else if (scenarioBuildSubView === "statuspanels") renderStatusPanelManager(bodyEl); // ★要望対応：ステータスパネル
   else if (scenarioBuildSubView === "statuses") renderStatusManager(bodyEl);
   else if (scenarioBuildSubView === "flags") renderFlagManager(bodyEl);
@@ -7444,7 +7453,8 @@ function getEditingSkill() {
   }
   // ★要望対応：コンボスキルも「特殊スキル編集」のブロックエディタをそのまま使い回す（idで技→コンボの順に探す）
   return scenarioProject.skills.find(s => s.id === scenarioBuildEditingSkillId)
-    || (scenarioProject.comboSkills || []).find(s => s.id === scenarioBuildEditingSkillId) || null;
+    || (scenarioProject.comboSkills || []).find(s => s.id === scenarioBuildEditingSkillId)
+    || (scenarioProject.upperSkills || []).find(s => s.id === scenarioBuildEditingSkillId) || null;
 }
 
 // ===== ステータスパネル管理（要望対応） =====
@@ -7574,7 +7584,7 @@ function buildStatusPanelCellEditor(def) {
     row.style.flexWrap = "wrap";
     const kindSelect = document.createElement("select");
     kindSelect.className = "scenariobuild-jump-select";
-    [["stat", "ステータスアップ"], ["skill", "新しい技を習得"], ["statusResist", "状態異常耐性"], ["elementResist", "属性耐性"]].forEach(([v, l]) => {
+    [["stat", "ステータスアップ"], ["upperSkill", "上位スキルを習得"], ["skill", "職業技を習得（旧）"], ["statusResist", "状態異常耐性"], ["elementResist", "属性耐性"]].forEach(([v, l]) => {
       const o = document.createElement("option"); o.value = v; o.textContent = l; kindSelect.appendChild(o);
     });
     kindSelect.value = effect.kind || "stat";
@@ -7582,6 +7592,7 @@ function buildStatusPanelCellEditor(def) {
       const kind = kindSelect.value;
       cell.effects[i] = kind === "stat" ? { kind, stat: "atk", mode: "percent", value: 2 }
         : kind === "skill" ? { kind, className: "", skillName: "" }
+        : kind === "upperSkill" ? { kind, upperSkillId: ((scenarioProject.upperSkills || [])[0] || {}).id || "" }
         : kind === "elementResist" ? { kind, element: (scenarioProject.elementDefs[0] || {}).id || "", value: 10 }
         : { kind, value: 10 };
       persist(); renderScenarioBuildPanel();
@@ -7592,6 +7603,17 @@ function buildStatusPanelCellEditor(def) {
       row.appendChild(buildSkillSelectInline(effect, "stat", "", STATUS_PANEL_STAT_DEFS.map(d => ({ value: d.key, label: d.label }))));
       row.appendChild(buildSkillSelectInline(effect, "mode", "", [{ value: "percent", label: "％（100レベル時の2/3が基準）" }, { value: "flat", label: "固定値" }]));
       row.appendChild(buildSkillNumberInline(effect, "value", "値", 0));
+    } else if (effect.kind === "upperSkill") {
+      // ★要望対応：パネルで習得する技は、職業技とは別枠の「上位スキル」から選ぶ
+      const upperSelect = document.createElement("select");
+      upperSelect.className = "scenariobuild-jump-select";
+      const noneOpt = document.createElement("option"); noneOpt.value = ""; noneOpt.textContent = "（上位スキルを選ぶ）"; upperSelect.appendChild(noneOpt);
+      (scenarioProject.upperSkills || []).forEach(sk => {
+        const o = document.createElement("option"); o.value = sk.id; o.textContent = sk.name || "（名無し）"; upperSelect.appendChild(o);
+      });
+      upperSelect.value = effect.upperSkillId || "";
+      upperSelect.onchange = () => { effect.upperSkillId = upperSelect.value; persist(); };
+      row.appendChild(upperSelect);
     } else if (effect.kind === "skill") {
       const skillSelect = document.createElement("select");
       skillSelect.className = "scenariobuild-jump-select";
@@ -7674,6 +7696,236 @@ function buildStatusPanelCellEditor(def) {
   addItemBtn.onclick = () => { pushUndoSnapshot(); cell.costItems.push({ itemId: "", count: 1 }); persist(); renderScenarioBuildPanel(); };
   box.appendChild(addItemBtn);
   return box;
+}
+
+// ===== 上位スキル管理（要望対応） =====
+//   ステータスパネルで習得する、職業技（スキル管理）とは別枠の技。編集のしかたは職業技とほぼ同じ
+//   （固定フィールド or 特殊スキル編集のブロック）で、違いは「職業・習得レベルの枠が無い」こと。
+//   習得のしかたは、ステータスパネルのマスの効果「上位スキルを習得」で指定する。
+//   戦闘中は、通常の「スキル」とは別の「上位スキル」の選択肢から使う（battle.js）
+function createNewUpperSkill() {
+  return {
+    id: generateId("upper"), name: "新しい上位スキル", description: "", type: "attack",
+    element: "無", spCost: 10, power: 20, target: "single", hitCount: 1, atkType: "physical",
+    cleanse: false,
+    statusEffectKind: "", statusEffectChance: 1, statusEffectDuration: 1, statusEffectPower: 0,
+    statusEffect2Kind: "", statusEffect2Chance: 1, statusEffect2Duration: 1, statusEffect2Power: 0,
+    selfBuffKind: "", selfBuffDuration: 1, selfBuffPower: 0, selfBuffMode: "add",
+    selfBuff2Kind: "", selfBuff2Duration: 1, selfBuff2Power: 0, selfBuff2Mode: "add",
+    useBlocks: false, blocks: [], variables: {}
+  };
+}
+
+// ★この上位スキルを習得できるパネルの一覧（読み取り専用の表示用）
+function describeUpperSkillSources(upperId) {
+  const root = scenarioProject.statusPanels || { classes: {}, companions: {} };
+  const sources = [];
+  const scan = (label, def) => {
+    if (!def || !def.cells) return;
+    Object.keys(def.cells).forEach(key => {
+      const cell = def.cells[key];
+      if ((cell.effects || []).some(e => e && e.kind === "upperSkill" && e.upperSkillId === upperId)) {
+        const [r, c] = key.split(",").map(Number);
+        sources.push(`${label}（${r + 1}行${c + 1}列）`);
+      }
+    });
+  };
+  Object.keys(root.classes || {}).forEach(name => scan(`職業：${name}`, root.classes[name]));
+  Object.keys(root.companions || {}).forEach(id => {
+    const m = (typeof COMPANION_MASTER !== "undefined") ? COMPANION_MASTER[id] : null;
+    scan(`仲間：${(m && m.name) || id}`, root.companions[id]);
+  });
+  return sources;
+}
+
+function renderUpperSkillManager(container) {
+  if (!Array.isArray(scenarioProject.upperSkills)) scenarioProject.upperSkills = [];
+  const introEl = document.createElement("p");
+  introEl.className = "devmode-note";
+  introEl.textContent = "ステータスパネルで習得する「上位スキル」を作ります（職業技とは別枠）。編集のしかたは職業技と同じで、固定フィールド、または「特殊スキル編集」のブロックで動作を決めます。習得のしかたは、ステータスパネルタブでマスの効果に「上位スキルを習得」を追加して指定します。戦闘中は、通常の「スキル」とは別の「上位スキル」の選択肢から使えます（習得した人にだけ表示）。";
+  container.appendChild(introEl);
+  const formulaNoteEl = document.createElement("p");
+  formulaNoteEl.className = "devmode-note";
+  formulaNoteEl.textContent = "ダメージ計算式：(1＋自分のレベル×0.1) × 技の威力 ＋ 自分の攻撃力（魔法技なら魔力）×0.7 。";
+  container.appendChild(formulaNoteEl);
+
+  const addBtn = document.createElement("button");
+  addBtn.className = "devmode-btn";
+  addBtn.textContent = "＋上位スキルを追加";
+  addBtn.onclick = () => {
+    pushUndoSnapshot();
+    scenarioProject.upperSkills.push(createNewUpperSkill());
+    markScenarioBuildDirty();
+    renderScenarioBuildPanel();
+  };
+  container.appendChild(addBtn);
+  const listEl = document.createElement("div");
+  listEl.className = "scenariobuild-list";
+  scenarioProject.upperSkills.forEach((entry, index) => listEl.appendChild(buildUpperSkillRow(entry, index)));
+  container.appendChild(listEl);
+}
+
+function buildUpperSkillRow(entry, index) {
+  const list = scenarioProject.upperSkills;
+  const row = document.createElement("div");
+  row.className = "scenariobuild-chapter-row";
+  const idEl = document.createElement("span");
+  idEl.className = "scenariobuild-chapter-number";
+  idEl.textContent = `#${index + 1}`;
+  row.appendChild(idEl);
+  const infoEl = document.createElement("div");
+  infoEl.className = "scenariobuild-chapter-info";
+
+  const basicRow = document.createElement("div");
+  basicRow.className = "scenariobuild-condition-row";
+  buildSkillTextInput(entry, "name", "技名", basicRow);
+  infoEl.appendChild(basicRow);
+  const descRow = document.createElement("div");
+  descRow.className = "scenariobuild-condition-row";
+  buildSkillTextInput(entry, "description", "説明", descRow);
+  infoEl.appendChild(descRow);
+
+  // ★どのパネルで習得できるか（読み取り専用）
+  const sources = describeUpperSkillSources(entry.id);
+  const sourceEl = document.createElement("p");
+  sourceEl.className = "devmode-note";
+  sourceEl.style.margin = "0";
+  sourceEl.textContent = sources.length ? `習得できるパネル：${sources.join("、")}` : "習得できるパネル：まだ無し（ステータスパネルのマスの効果で「上位スキルを習得」を設定してください）";
+  infoEl.appendChild(sourceEl);
+
+  const hasBlocks = Array.isArray(entry.blocks) && entry.blocks.length > 0;
+  const isBlockMode = entry.useBlocks === true || (entry.useBlocks == null && hasBlocks);
+  const modeRow = document.createElement("div");
+  modeRow.className = "scenariobuild-condition-row";
+  modeRow.appendChild(labelSpan("この技の動作："));
+  const modeSelect = document.createElement("select");
+  modeSelect.className = "scenariobuild-jump-select";
+  [["fixed", "固定フィールド（下の威力・種類などの設定欄）"], ["blocks", "ブロックで組む（特殊スキル編集）"]].forEach(([value, label]) => {
+    const o = document.createElement("option"); o.value = value; o.textContent = label; modeSelect.appendChild(o);
+  });
+  modeSelect.value = isBlockMode ? "blocks" : "fixed";
+  modeSelect.onchange = () => { entry.useBlocks = modeSelect.value === "blocks"; markScenarioBuildDirty(); renderScenarioBuildPanel(); };
+  modeRow.appendChild(modeSelect);
+  infoEl.appendChild(modeRow);
+
+  const blockRow = document.createElement("div");
+  blockRow.className = "scenariobuild-condition-row";
+  const blockEditBtn = document.createElement("button");
+  blockEditBtn.className = "devmode-btn";
+  blockEditBtn.textContent = "⚡ 特殊スキル編集";
+  blockEditBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioBuildEditingSkillId = entry.id;
+    scenarioBuildMainView = "skillBlockEditor";
+    renderScenarioBuildPanel();
+  };
+  blockRow.appendChild(blockEditBtn);
+  if (isBlockMode) {
+    const badge = document.createElement("span");
+    badge.className = "devmode-note";
+    badge.style.margin = "0";
+    badge.textContent = `⚡ブロックで動作中（${(entry.blocks || []).length}件）：下の固定フィールドは無視されます`;
+    blockRow.appendChild(badge);
+  }
+  infoEl.appendChild(blockRow);
+
+  // SP消費は、ブロックモードでも無視されないので、固定フィールドの枠の外に置く（職業技と同じ）
+  const spRow = document.createElement("div");
+  spRow.className = "scenariobuild-condition-row";
+  spRow.appendChild(buildSkillNumberInline(entry, "spCost", "SP消費", 0));
+  infoEl.appendChild(spRow);
+
+  const fixedWrap = document.createElement("div");
+  fixedWrap.className = isBlockMode ? "scenariobuild-skill-fixed-fields-disabled" : "";
+  const paramsRow = document.createElement("div");
+  paramsRow.className = "scenariobuild-condition-row";
+  paramsRow.style.flexWrap = "wrap";
+  paramsRow.appendChild(buildSkillSelectInline(entry, "type", "種類", [
+    { value: "attack", label: "攻撃" }, { value: "heal", label: "回復" }, { value: "buff", label: "自己強化" }
+  ]));
+  paramsRow.appendChild(buildSkillSelectInline(entry, "element", "属性", [
+    { value: "無", label: "無" },
+    ...scenarioProject.elementDefs.map(el => ({ value: el.id, label: el.name || "（無名）" })),
+  ]));
+  paramsRow.appendChild(buildSkillNumberInline(entry, "power", "威力", 0));
+  paramsRow.appendChild(buildSkillSelectInline(entry, "target", "対象", [{ value: "single", label: "単体" }, { value: "all", label: "全体" }]));
+  paramsRow.appendChild(buildSkillNumberInline(entry, "hitCount", "命中回数", 1));
+  if (entry.type === "attack") {
+    paramsRow.appendChild(buildSkillSelectInline(entry, "atkType", "参照する攻撃力", [{ value: "physical", label: "物理攻撃力" }, { value: "magical", label: "魔法攻撃力" }]));
+  }
+  fixedWrap.appendChild(paramsRow);
+
+  const details = document.createElement("details");
+  details.className = "scenariobuild-skill-details";
+  const summary = document.createElement("summary");
+  summary.textContent = "効果の詳細（状態異常・自己強化など）";
+  details.appendChild(summary);
+  const flagRow = document.createElement("div");
+  flagRow.className = "scenariobuild-condition-row";
+  flagRow.appendChild(buildSkillCheckboxInline(entry, "cleanse", "状態異常を全解除"));
+  if (entry.type === "attack") {
+    flagRow.appendChild(buildSkillCheckboxInline(entry, "randomTarget", "対象を自分で選ばせずランダムにする"));
+    flagRow.appendChild(buildSkillCheckboxInline(entry, "wideVariance", "ダメージの揺らぎを大きくする"));
+    flagRow.appendChild(buildSkillNumberInline(entry, "lifestealRatio", "与えたダメージのHP変換率(0〜1)", 0));
+  }
+  if (entry.type === "heal") {
+    flagRow.appendChild(buildSkillCheckboxInline(entry, "partyWide", "対象を選ばせず自分＋生きている仲間全員にする"));
+    flagRow.appendChild(buildSkillCheckboxInline(entry, "revives", "戦闘不能の仲間を選ぶと蘇生させられる"));
+  }
+  details.appendChild(flagRow);
+  details.appendChild(buildSkillEffectGroup(entry, "状態異常①", "statusEffectKind", "statusEffectChance", "statusEffectDuration", "statusEffectPower", getSkillStatusKindOptions()));
+  details.appendChild(buildSkillEffectGroup(entry, "状態異常②", "statusEffect2Kind", "statusEffect2Chance", "statusEffect2Duration", "statusEffect2Power", getSkillStatusKindOptions()));
+  const selfBuffRow = document.createElement("div");
+  selfBuffRow.className = "scenariobuild-condition-row";
+  selfBuffRow.appendChild(labelSpan("自己強化①："));
+  selfBuffRow.appendChild(buildSkillSelectInline(entry, "selfBuffKind", "", getSkillSelfBuffKindOptions()));
+  selfBuffRow.appendChild(buildSkillNumberInline(entry, "selfBuffDuration", "ターン数", 1));
+  selfBuffRow.appendChild(buildSkillSelectInline(entry, "selfBuffMode", "上昇方法", [{ value: "add", label: "加算" }, { value: "multiply", label: "乗算（効果量%）" }]));
+  selfBuffRow.appendChild(buildSkillNumberInline(entry, "selfBuffPower", "効果量", 0));
+  selfBuffRow.appendChild(buildSkillNumberInline(entry, "triggerChance", "発動確率（1で必ず発動）", 1));
+  details.appendChild(selfBuffRow);
+  const selfBuff2Row = document.createElement("div");
+  selfBuff2Row.className = "scenariobuild-condition-row";
+  selfBuff2Row.appendChild(labelSpan("自己強化②（任意）："));
+  selfBuff2Row.appendChild(buildSkillSelectInline(entry, "selfBuff2Kind", "", getSkillSelfBuffKindOptions()));
+  selfBuff2Row.appendChild(buildSkillNumberInline(entry, "selfBuff2Duration", "ターン数", 1));
+  selfBuff2Row.appendChild(buildSkillSelectInline(entry, "selfBuff2Mode", "上昇方法", [{ value: "add", label: "加算" }, { value: "multiply", label: "乗算（効果量%）" }]));
+  selfBuff2Row.appendChild(buildSkillNumberInline(entry, "selfBuff2Power", "効果量", 0));
+  details.appendChild(selfBuff2Row);
+  fixedWrap.appendChild(details);
+  infoEl.appendChild(fixedWrap);
+  row.appendChild(infoEl);
+
+  const buttonsEl = document.createElement("div");
+  buttonsEl.className = "scenariobuild-chapter-buttons";
+  const moveBtn = (text, disabled, delta) => {
+    const b = document.createElement("button");
+    b.className = "devmode-btn";
+    b.textContent = text; b.disabled = disabled;
+    b.onclick = (event) => {
+      event.stopPropagation();
+      pushUndoSnapshot();
+      [list[index + delta], list[index]] = [list[index], list[index + delta]];
+      markScenarioBuildDirty(); renderScenarioBuildPanel();
+    };
+    buttonsEl.appendChild(b);
+  };
+  moveBtn("↑ 上へ", index === 0, -1);
+  moveBtn("↓ 下へ", index === list.length - 1, 1);
+  const delBtn = document.createElement("button");
+  delBtn.className = "devmode-btn devmode-btn-danger";
+  delBtn.textContent = "削除";
+  delBtn.onclick = async (event) => {
+    event.stopPropagation();
+    const ok = await showGameConfirm(`上位スキル「${entry.name || "名無し"}」を削除しますか？（パネルの効果に設定していた場合、そのマスは何も習得しなくなります）`);
+    if (!ok) return;
+    pushUndoSnapshot();
+    list.splice(index, 1);
+    markScenarioBuildDirty(); renderScenarioBuildPanel();
+  };
+  buttonsEl.appendChild(delBtn);
+  row.appendChild(buttonsEl);
+  return row;
 }
 
 // ===== コンボスキル管理（要望対応） =====
@@ -8031,7 +8283,7 @@ function renderSkillBlockEditor(container) {
   
   const backBtn = document.createElement("button");
   backBtn.className = "devmode-btn";
-  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : (scenarioBuildSubView === "combos" ? "← コンボスキルに戻る" : "← スキル管理に戻る");
+  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : (scenarioBuildSubView === "combos" ? "← コンボスキルに戻る" : (scenarioBuildSubView === "upperskills" ? "← 上位スキルに戻る" : "← スキル管理に戻る"));
   backBtn.onclick = (event) => {
     event.stopPropagation();
     scenarioBuildSkillInsertMenuTarget = null;
@@ -12804,6 +13056,7 @@ function exportGameSettingsAsJsFile() {
     elementDefs: scenarioProject.elementDefs, // ★要望対応：属性管理タブ
     elementMatchups: scenarioProject.elementMatchups,
     comboSkills: scenarioProject.comboSkills, // ★要望対応：コンボスキル
+    upperSkills: scenarioProject.upperSkills, // ★要望対応：上位スキル
     statusPanels: scenarioProject.statusPanels, // ★要望対応：ステータスパネル
     bgmTracks: scenarioProject.bgmTracks,
     mapAreas: scenarioProject.mapAreas,

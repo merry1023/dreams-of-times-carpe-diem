@@ -766,6 +766,7 @@ async function handleFightMenu() {
     { text: "通常攻撃", next: "normal" },
     { text: "スキル", next: "skill" }
   ];
+  if (typeof getPlayerUpperSkills === "function" && getPlayerUpperSkills().length > 0) fightChoices.push({ text: "上位スキル", next: "upperskill" }); // ★要望対応：パネルで習得した上位スキル専用の選択肢
   if (activeWeaponSkills.length > 0) fightChoices.push({ text: "武器スキル", next: "weaponskill" });
   if (!battleState.isColosseum) fightChoices.push({ text: "道具", next: "item" }); // ★要望対応：コロシアムはアイテム使用禁止
   fightChoices.push({ text: "戻る", next: "back", isBack: true });
@@ -777,9 +778,9 @@ async function handleFightMenu() {
     return await playerNormalAttack();
   }
   
-  if (choice.next === "skill") {
+  if (choice.next === "skill" || choice.next === "upperskill") {
     if (battleState) battleState.lastPlayerSkill = null;
-    const done = await handleSkillMenu();
+    const done = await handleSkillMenu({ upper: choice.next === "upperskill" }); // ★上位スキルも、通常のスキルと同じ発動の流れ（SP消費・属性・コンボ履歴）に乗せる
     // ★要望対応：コンボスキル。実際に技を撃ったターンだけ、その属性を履歴に積んで発動判定をする
     if (done && battleState && battleState.lastPlayerSkill) {
       const usedSkill = battleState.lastPlayerSkill;
@@ -1572,6 +1573,7 @@ async function performCompanionAction(companion) {
     { text: "たたかう", next: "fight" },
     { text: "スキル", next: "skill" }
   ];
+  if (typeof getCompanionUpperSkills === "function" && getCompanionUpperSkills(companion).length > 0) actionChoices.push({ text: "上位スキル", next: "upperskill" }); // ★要望対応：パネルで習得した上位スキル専用の選択肢
   if (activeWeaponSkills.length > 0) actionChoices.push({ text: "武器スキル", next: "weaponskill" });
   if (!battleState.isColosseum) actionChoices.push({ text: "道具", next: "item" }); // ★要望対応：以前は主人公のターンでしか道具を使えなかったが、仲間の行動選択でも使えるようにする（コロシアムはアイテム使用禁止）
   actionChoices.push({ text: "パス", next: "pass" }); // ★要望対応：この仲間の行動をパスできるようにする。パスすると行動回数を消費せず次の仲間へ進む
@@ -1593,7 +1595,7 @@ async function performCompanionAction(companion) {
     if (!success) return await performCompanionAction(companion); // ★対象選択をキャンセル／戻るを選んだ場合は、行動選択からやり直す
   } else {
     if (battleState) battleState.lastCompanionSkill = null;
-    await performCompanionSkillMenu(companion);
+    await performCompanionSkillMenu(companion, { upper: action.next === "upperskill" });
     if (battleState && battleState.lastCompanionSkill) {
       const usedSkill = battleState.lastCompanionSkill;
       battleState.lastCompanionSkill = null;
@@ -1657,13 +1659,15 @@ async function performCompanionNormalAttack(companion) {
   await maybeApplyCompanionChainAttack(companion, target, () => Math.max(1, applyCompanionAtkBonus(companion, stats.atk) + (Math.floor(Math.random() * 7) - 3)), weaponElement);
 }
 
-async function performCompanionSkillMenu(companion) {
+async function performCompanionSkillMenu(companion, options = {}) {
   const name = getCompanionDisplayName(companion);
   // ★バグ修正：スキル管理タブでブロック編集した技は、以前の分類(type)がattack/heal/buff以外
   //   （passive等）のままだと、この絞り込みで弾かれて仲間の技一覧に一切出てこなかった
   //   （例：狂戦士の技をブロック編集してもケツァナが使えるようにならないバグ）。
   //   ブロックが1つでもある技は、type に関わらず使える技として扱う
-  const skills = getCompanionSkills(companion).filter(s => s.type === "attack" || s.type === "heal" || s.type === "buff" || (Array.isArray(s.blocks) && s.blocks.length > 0)); // player.js
+  const skills = options.upper
+    ? getCompanionUpperSkills(companion) // ★要望対応：上位スキル専用のメニュー（statuspanel.js）
+    : getCompanionSkills(companion).filter(s => s.type === "attack" || s.type === "heal" || s.type === "buff" || (Array.isArray(s.blocks) && s.blocks.length > 0)); // player.js
   
   if (skills.length === 0) {
     changeSpeaker("");
@@ -1684,7 +1688,7 @@ async function performCompanionSkillMenu(companion) {
   if (companion.gauges.sp.current < skill.spCost) {
     changeSpeaker("");
     await displayMessage("SPが足りない！");
-    await performCompanionSkillMenu(companion);
+    await performCompanionSkillMenu(companion, options);
     return;
   }
   
@@ -1699,7 +1703,7 @@ async function performCompanionSkillMenu(companion) {
     if (!success) {
       companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★対象選択をキャンセルしたので、消費したSPを返す
       renderStatusHUD();
-      await performCompanionSkillMenu(companion);
+      await performCompanionSkillMenu(companion, options);
       return;
     }
     renderStatusHUD();
@@ -1749,7 +1753,7 @@ async function performCompanionSkillMenu(companion) {
         if (picked.next === "cancel") {
           companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★やめたので、消費したSPを返す
           renderStatusHUD();
-          await performCompanionSkillMenu(companion);
+          await performCompanionSkillMenu(companion, options);
           return;
         }
         targets = resolveHealTargetUnits(picked.next, !!skill.revives, companion); // player.js
@@ -1786,7 +1790,7 @@ async function performCompanionSkillMenu(companion) {
   if (!targets[0]) {
     companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★狙う相手を選ぶ前にキャンセルしたので、消費したSPを返す
     renderStatusHUD();
-    await performCompanionSkillMenu(companion); // ★スキル選択からやり直す
+    await performCompanionSkillMenu(companion, options); // ★スキル選択からやり直す
     return;
   }
   
@@ -3277,9 +3281,12 @@ async function triggerPassiveEquipmentSkills(caster, isPlayer) {
 }
 
 // ★習得済みのスキル（攻撃・回復・自己強化技に加え、魔法少女の「マジカル変身」だけは特殊技だが戦闘中に使うので一覧に含める）を表示し、実際に効果を発動する
-async function handleSkillMenu() {
-  const skills = (typeof getUnlockedSkills === "function" ? getUnlockedSkills() : [])
-    .filter(s => s.type === "attack" || s.type === "heal" || s.type === "buff" || (s.type === "special" && s.id === "magical_transform"));
+async function handleSkillMenu(options = {}) {
+  // ★要望対応：options.upper＝上位スキル専用のメニュー（パネルで習得した技だけ。職業技とは別）
+  const skills = options.upper
+    ? getPlayerUpperSkills() // statuspanel.js
+    : (typeof getUnlockedSkills === "function" ? getUnlockedSkills() : [])
+      .filter(s => s.type === "attack" || s.type === "heal" || s.type === "buff" || (s.type === "special" && s.id === "magical_transform"));
   
   if (skills.length === 0) {
     changeSpeaker("");
@@ -3301,7 +3308,7 @@ async function handleSkillMenu() {
   }
   
   // ★魔法少女は「マジカル変身」中でないと、攻撃・回復の魔法技を使えない（通常攻撃は変身前でも可）
-  if (player.class === "魔法少女" && !isMagicalGirlTransformed()) {
+  if (!options.upper && player.class === "魔法少女" && !isMagicalGirlTransformed()) { // ★上位スキルは、この変身制限の対象外
     changeSpeaker("");
     await displayMessage(`「${skill.name}」は魔法少女に変身しないと使えないようだ。まずは「ケアリー☆キューティー♡マジカル変身」を使おう。`);
     return false;

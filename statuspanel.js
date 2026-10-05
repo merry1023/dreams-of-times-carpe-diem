@@ -73,7 +73,7 @@ function ensurePanelUnlockedListFor(unit, ownerType) {
 
 // ★解放済みのマス全部の効果を合計する（中心の基本パネルは常に解放済み扱い）
 function computePanelTotalsFor(unit, ownerType) {
-  const totals = { flat: {}, pct: {}, skillRefs: [], statusResist: 0, elementResist: {} };
+  const totals = { flat: {}, pct: {}, skillRefs: [], upperSkillIds: [], statusResist: 0, elementResist: {} };
   const def = getStatusPanelDefFor(unit, ownerType);
   if (!def || !def.cells) return totals;
   const keys = new Set(getPanelUnlockedListFor(unit, ownerType));
@@ -86,6 +86,8 @@ function computePanelTotalsFor(unit, ownerType) {
       if (effect.kind === "stat" && effect.stat) {
         const bucket = effect.mode === "percent" ? totals.pct : totals.flat;
         bucket[effect.stat] = (bucket[effect.stat] || 0) + (Number(effect.value) || 0);
+      } else if (effect.kind === "upperSkill" && effect.upperSkillId) {
+        totals.upperSkillIds.push(effect.upperSkillId);
       } else if (effect.kind === "skill" && effect.skillName) {
         totals.skillRefs.push({ className: effect.className, skillName: effect.skillName });
       } else if (effect.kind === "statusResist") {
@@ -188,7 +190,49 @@ function syncAllPanelGauges() {
   (player.companions || []).forEach(c => syncPanelGauges(c, "companion"));
 }
 
-// ===== 新しい技 =====
+// ===== 上位スキル（要望対応） =====
+//   パネルで習得する技は、職業技（CLASS_SKILLS）とは別枠の「上位スキル」（scenarioProject.upperSkills）。
+//   戦闘中は、通常の「スキル」とは別の「上位スキル」の選択肢から使う（battle.js）。
+//   上位スキルのデータは、職業技と同じ変換（buildRuntimeSkillFromSkillEntry）で、戦闘が参照する技にして返す
+function getAllUpperSkills() {
+  const entries = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.upperSkills)) ? scenarioProject.upperSkills : [];
+  if (typeof buildRuntimeSkillFromSkillEntry !== "function") return [];
+  return entries.map(entry => {
+    const skill = buildRuntimeSkillFromSkillEntry(entry);
+    skill.upperId = entry.id;
+    skill.isUpper = true;
+    return skill;
+  });
+}
+
+function getPanelGrantedUpperSkills(unit, ownerType) {
+  if (!unit) return [];
+  const ids = computePanelTotalsFor(unit, ownerType).upperSkillIds;
+  if (ids.length === 0) return [];
+  const all = getAllUpperSkills();
+  const result = [];
+  ids.forEach(id => {
+    const skill = all.find(s => s.upperId === id);
+    if (skill && !result.includes(skill)) result.push(skill);
+  });
+  return result;
+}
+
+// ★戦闘中に使える上位スキル（攻撃・回復・自己強化、またはブロックで組んだ技）
+function isUsableUpperSkill(skill) {
+  return skill.type === "attack" || skill.type === "heal" || skill.type === "buff" || (Array.isArray(skill.blocks) && skill.blocks.length > 0);
+}
+
+function getPlayerUpperSkills() {
+  if (typeof player === "undefined" || !player) return [];
+  return getPanelGrantedUpperSkills(player, "class").filter(isUsableUpperSkill);
+}
+
+function getCompanionUpperSkills(companion) {
+  return getPanelGrantedUpperSkills(companion, "companion").filter(isUsableUpperSkill);
+}
+
+// ===== 新しい技（旧：職業技を習得するタイプ。以前の設定との互換用） =====
 function getPanelGrantedSkills(unit, ownerType) {
   if (typeof CLASS_SKILLS === "undefined") return [];
   const totals = computePanelTotalsFor(unit, ownerType);
@@ -318,6 +362,11 @@ function unlockPanelCell(unit, ownerType, row, col) {
 }
 
 // ===== 表示用の文章 =====
+function getUpperSkillName(upperId) {
+  const entry = (typeof scenarioProject !== "undefined" && scenarioProject.upperSkills || []).find(s => s.id === upperId);
+  return (entry && entry.name) || "？";
+}
+
 function getPanelElementName(elementId) {
   const def = (typeof scenarioProject !== "undefined" && scenarioProject.elementDefs || []).find(e => e.id === elementId);
   return (def && def.name) || elementId || "？";
@@ -330,6 +379,7 @@ function describePanelEffect(effect) {
     const name = def ? def.label : effect.stat;
     return effect.mode === "percent" ? `${name} +${effect.value}%（100レベル時の能力の2/3が基準）` : `${name} +${effect.value}`;
   }
+  if (effect.kind === "upperSkill") return `上位スキル「${getUpperSkillName(effect.upperSkillId)}」を習得`;
   if (effect.kind === "skill") return `新しい技「${effect.skillName}」を習得`;
   if (effect.kind === "statusResist") return `状態異常耐性 +${effect.value}%（かかる確率が下がる）`;
   if (effect.kind === "elementResist") return `${getPanelElementName(effect.element)}属性の敵から受けるダメージ -${effect.value}%`;
@@ -346,6 +396,8 @@ function summarizePanelCell(cell) {
     const def = STATUS_PANEL_STAT_DEFS.find(d => d.key === first.stat);
     top = def ? def.short : first.stat;
     bottom = first.mode === "percent" ? `+${first.value}%` : `+${first.value}`;
+  } else if (first.kind === "upperSkill") {
+    top = "上位"; bottom = getUpperSkillName(first.upperSkillId);
   } else if (first.kind === "skill") {
     top = "技"; bottom = "";
   } else if (first.kind === "statusResist") {
