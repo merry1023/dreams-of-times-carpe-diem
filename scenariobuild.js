@@ -7528,7 +7528,7 @@ function renderStatusPanelManager(container) {
       const key = `${r},${c}`;
       const cell = cells[key];
       const btn = document.createElement("button");
-      // ★マスはゲーム側と同じ八角形（style.cssの.statuspanel-cell）。置いたマス＝水色系、中心＝解放済みの色、空き＝暗い八角形
+      // ★マスはゲーム側と同じ六角形（style.cssの.statuspanel-cell）。置いたマス＝水色系、中心＝解放済みの色、空き＝暗い六角形
       btn.className = "statuspanel-cell " + (cell ? (key === STATUS_PANEL_CENTER_KEY ? "unlocked center" : "available") : "locked")
         + (key === scenarioBuildStatusPanelCell ? " cursor" : "");
       if (cell) {

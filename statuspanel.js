@@ -596,23 +596,55 @@ async function tryUnlockStatusPanelCellWithConfirm() {
   renderStatusPanelTab();
 }
 
+// ★要望対応：矢印キーを同時押し（例：→を押したまま↑も押す）すると、斜めのマスへ移動できるようにする。
+//   今「物理的に押されている」矢印キーの集合を持っておき、押されている方向をすべて足し合わせて
+//   移動先を決める（例：→と↑が同時に押されていれば、右上の斜めマスへ移動）
+const STATUS_PANEL_ARROW_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+const statusPanelHeldArrowKeys = new Set();
+
+function getStatusPanelArrowMoveDelta() {
+  const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+  let dRow = 0, dCol = 0;
+  statusPanelHeldArrowKeys.forEach(key => {
+    const m = moves[key];
+    if (!m) return;
+    dRow += m[0];
+    dCol += m[1];
+  });
+  // ★上下同時・左右同時など、打ち消し合う組み合わせは-1〜1の範囲に丸めて無効化する
+  return [Math.max(-1, Math.min(1, dRow)), Math.max(-1, Math.min(1, dCol))];
+}
+
 window.addEventListener("keydown", (event) => {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
   if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return;
   if (typeof controlFocus !== "undefined" && controlFocus !== "sub") return;
   const activeTab = document.querySelector(".tab-content.active");
   if (!activeTab || activeTab.id !== "tab-statuspanel") return;
-  const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
-  if (moves[event.key]) {
+  if (STATUS_PANEL_ARROW_KEYS.includes(event.key)) {
     event.preventDefault();
     event.stopImmediatePropagation();
-    statusPanelCursorRow = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, statusPanelCursorRow + moves[event.key][0]));
-    statusPanelCursorCol = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, statusPanelCursorCol + moves[event.key][1]));
-    renderStatusPanelTab();
+    statusPanelHeldArrowKeys.add(event.key);
+    const [dRow, dCol] = getStatusPanelArrowMoveDelta();
+    if (dRow !== 0 || dCol !== 0) {
+      statusPanelCursorRow = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, statusPanelCursorRow + dRow));
+      statusPanelCursorCol = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, statusPanelCursorCol + dCol));
+      renderStatusPanelTab();
+    }
   } else if (KEY_CONFIG.decideKeys.includes(event.key)) {
     if (typeof isTextDisplaying !== "undefined" && isTextDisplaying) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     tryUnlockStatusPanelCellWithConfirm();
   }
+});
+
+// ★押されているキーの集合から外す（タブを離れていても、離したキーは常に外しておく）
+window.addEventListener("keyup", (event) => {
+  if (STATUS_PANEL_ARROW_KEYS.includes(event.key)) statusPanelHeldArrowKeys.delete(event.key);
+});
+
+// ★他アプリに切り替える等でウィンドウが非アクティブになった時、押しっぱなし扱いのまま残らないようにする
+window.addEventListener("blur", () => {
+  statusPanelHeldArrowKeys.clear();
 });
