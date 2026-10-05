@@ -23,6 +23,30 @@ const STATUS_PANEL_STAT_DEFS = [
   { key: "maxSp", label: "最大SP", short: "SP" }
 ];
 
+// ===== パネルタブの解放（要望対応） =====
+//   パネルタブは、主人公が30レベルに到達するまで隠す。経験値をコストに払うとレベルが下がるので、
+//   一度30レベルに到達したら（player.statusPanelUnlocked）、その後レベルが下がっても隠さない
+const STATUS_PANEL_TAB_UNLOCK_LEVEL = 30;
+let statusPanelTabUnlockedApplied = null;
+
+function isStatusPanelTabUnlocked() {
+  if (typeof player === "undefined" || !player) return false;
+  if (player.statusPanelUnlocked) return true;
+  if (player.level >= STATUS_PANEL_TAB_UNLOCK_LEVEL) {
+    player.statusPanelUnlocked = true;
+    return true;
+  }
+  return false;
+}
+
+// ★タブの表示状態が変わった時だけ、タブの表示を更新する（HUDの更新のたび＝レベルアップ・ロード・ニューゲームの後に呼ぶ）
+function refreshStatusPanelTabVisibility() {
+  const unlocked = isStatusPanelTabUnlocked();
+  if (unlocked === statusPanelTabUnlockedApplied) return;
+  statusPanelTabUnlockedApplied = unlocked;
+  if (typeof applyPlayTabVisibility === "function") applyPlayTabVisibility(); // mainfunc.js
+}
+
 // ===== データ参照 =====
 function getStatusPanelDefFor(unit, ownerType) {
   if (!unit || typeof scenarioProject === "undefined" || !scenarioProject.statusPanels) return null;

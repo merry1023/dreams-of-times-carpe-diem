@@ -7512,19 +7512,22 @@ function renderStatusPanelManager(container) {
 
   // 盤（9×9）。マスがある所は設定の要約を表示し、選択中のマスは枠で示す
   const grid = document.createElement("div");
-  grid.style.cssText = "display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:2px;max-width:420px;margin:8px 0;";
+  grid.style.cssText = "display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:1px;max-width:420px;margin:8px 0;";
   for (let r = 0; r < STATUS_PANEL_SIZE; r++) {
     for (let c = 0; c < STATUS_PANEL_SIZE; c++) {
       const key = `${r},${c}`;
       const cell = cells[key];
       const btn = document.createElement("button");
-      btn.style.cssText = "aspect-ratio:1/1;min-width:0;padding:0;font-size:9px;line-height:1.1;cursor:pointer;border-radius:3px;overflow:hidden;"
-        + `border:${key === scenarioBuildStatusPanelCell ? "2px solid #fff" : "1px solid rgba(255,255,255,0.25)"};`
-        + `background:${cell ? (key === STATUS_PANEL_CENTER_KEY ? "rgba(255,170,40,0.55)" : "rgba(255,140,30,0.25)") : "rgba(0,0,0,0.35)"};color:#eee;`;
+      // ★マスはゲーム側と同じ八角形（style.cssの.statuspanel-cell）。置いたマス＝水色系、中心＝解放済みの色、空き＝暗い八角形
+      btn.className = "statuspanel-cell " + (cell ? (key === STATUS_PANEL_CENTER_KEY ? "unlocked center" : "available") : "locked")
+        + (key === scenarioBuildStatusPanelCell ? " cursor" : "");
       if (cell) {
         const summary = summarizePanelCell(cell);
-        btn.textContent = (key === STATUS_PANEL_CENTER_KEY && !cell.label && (cell.effects || []).length === 0) ? "基本" : (summary.top + (summary.bottom ? "\n" + summary.bottom : ""));
-        btn.style.whiteSpace = "pre-line";
+        const textEl = document.createElement("span");
+        textEl.className = "statuspanel-cell-top";
+        textEl.style.whiteSpace = "pre-line";
+        textEl.textContent = (key === STATUS_PANEL_CENTER_KEY && !cell.label && (cell.effects || []).length === 0) ? "基本" : (summary.top + (summary.bottom ? "\n" + summary.bottom : ""));
+        btn.appendChild(textEl);
       }
       btn.onclick = () => { scenarioBuildStatusPanelCell = key; renderScenarioBuildPanel(); };
       grid.appendChild(btn);
