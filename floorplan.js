@@ -771,23 +771,43 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       if (typeof renderRoomView === "function") renderRoomView(room, currentUiState(), floorPlan); // furniture.js
     }
     
-    // ★要望対応：Lキーで、この家（area）の全ての階・全ての部屋にある「天井の照明」を一斉に点ける
-    function turnOnAllCeilingLights() {
+    // ★要望対応：Lキーで、この家（area）の全ての階・全ての部屋にある「天井の照明」を一斉に点ける/消す（トグル）
+    function forEachCeilingLightInHouse(callback) {
       const floors = (area.floorPlans && typeof area.floorPlans === "object") ? Object.values(area.floorPlans) : [floorPlan];
       floors.forEach(fp => {
         if (!fp || !Array.isArray(fp.rooms)) return;
         fp.rooms.forEach(r => {
           getRoomPlacedFurniture(r.id).forEach(inst => { // furniture.js
             const def = findFurnitureDef(inst.furnitureId);
-            if (def && def.type === "lighting" && def.isCeiling) inst.lightOn = true;
+            if (def && def.type === "lighting" && def.isCeiling) callback(inst);
           });
           (Array.isArray(r.fixedItems) ? r.fixedItems : []).forEach(item => {
             if (item.kind !== "furniture") return;
             const def = findFurnitureDef(item.furnitureId);
-            if (def && def.type === "lighting" && def.isCeiling) item.lightOn = true;
+            if (def && def.type === "lighting" && def.isCeiling) callback(item);
           });
         });
       });
+    }
+
+    function isAnyCeilingLightOnInHouse() {
+      let anyOn = false;
+      forEachCeilingLightInHouse(obj => { if (obj.lightOn !== false) anyOn = true; });
+      return anyOn;
+    }
+
+    function turnOnAllCeilingLights() {
+      forEachCeilingLightInHouse(obj => { obj.lightOn = true; });
+    }
+
+    function turnOffAllCeilingLights() {
+      forEachCeilingLightInHouse(obj => { obj.lightOn = false; });
+    }
+
+    // ★要望対応：Lキーをもう1回押すと全消灯になるようにトグル化。現在1つでも点いていれば全消灯、全て消えていれば全点灯。
+    function toggleAllCeilingLights() {
+      if (isAnyCeilingLightOnInHouse()) turnOffAllCeilingLights();
+      else turnOnAllCeilingLights();
     }
     
     function toggleMode() {
@@ -1098,7 +1118,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       }
       
       if (event.key === "g" || event.key === "G") { event.preventDefault(); toggleMode(); return; }
-      if (event.key === "l" || event.key === "L") { event.preventDefault(); turnOnAllCeilingLights(); render(); return; } // ★要望対応：Lキーで、この家の全部屋の天井の照明を一斉に点ける
+      if (event.key === "l" || event.key === "L") { event.preventDefault(); toggleAllCeilingLights(); render(); return; } // ★要望対応：Lキーで、この家の全部屋の天井の照明を一斉に点ける/消す（トグル）
       
       if (mode === "move") {
         if (event.key === "ArrowUp") { event.preventDefault(); handleDirection("up"); }
