@@ -7821,6 +7821,10 @@ html, body {
   font-weight: bold;
   color: #ffd27a;
 }
+.element-combo-name .element-icon {
+  vertical-align: middle;
+  margin-right: 2px;
+}
 .element-combo-order {
   margin-top: 4px;
   display: flex;
@@ -7858,6 +7862,27 @@ html, body {
   margin-top: 4px;
   font-size: 12px;
   color: #bbb;
+}
+
+/* ★要望対応：属性表（便利タブ）。.element-combo-chipの見た目を流用し、特攻／耐性で色分けする */
+.element-chart-chip-advantage {
+  background: rgba(255, 90, 90, 0.25);
+  border-color: rgba(255, 120, 120, 0.8);
+}
+.element-chart-chip-resist {
+  background: rgba(90, 160, 255, 0.2);
+  border-color: rgba(120, 170, 255, 0.75);
+}
+.element-chart-chip-kind {
+  font-size: 11px;
+  line-height: 1.1;
+  font-weight: bold;
+}
+.element-chart-chip-advantage .element-chart-chip-kind {
+  color: #ff8f8f;
+}
+.element-chart-chip-resist .element-chart-chip-kind {
+  color: #9ec8ff;
 }
 
 /* ★要望対応：ステータスパネルタブ（育成用のマス目の盤） */
