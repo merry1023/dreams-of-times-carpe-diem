@@ -7942,23 +7942,25 @@ html, body {
   text-align: center;
   color: #999;
 }
+/* ★要望対応：ハニカム構造（蜂の巣）のように、マス同士の隙間に次のマスが食い込んで隙間なく組み合う
+   配置にするため、display:gridではなくposition:relativeの土台にして、各マス(.statuspanel-cell)を
+   position:absoluteで並べる（位置の計算はstatuspanel.js/scenariobuild.jsのlayoutStatusPanelHexCell）。
+   aspect-ratioはJS側でマス数に応じて計算し、インラインstyleで設定する */
 .statuspanel-grid {
-  display: grid;
-  grid-template-columns: repeat(9, minmax(0, 1fr));
-  gap: 1px;
+  position: relative;
+  width: 100%;
   margin: 6px 0;
   padding: 2px;
 }
-/* ★要望対応：マスは六角形（蜂の巣のように隙間なく並べる。以前は八角形だった）。枠線はclip-pathで
-   切れてしまうので、「枠の色で塗った六角形」の上に「一回り小さい中身の六角形(::before)」を重ねて
-   枠に見せる。解放の判定は今まで通り、斜めを含む8方向の隣接（マス自体の見た目を六角形にしても、
+/* ★マスは上下がとがった正六角形（横:縦=√3:2）。枠線はclip-pathで切れてしまうので、
+   「枠の色で塗った六角形」の上に「一回り小さい中身の六角形(::before)」を重ねて枠に見せる。
+   解放の判定は今まで通り、斜めを含む8方向の隣接（マス自体の見た目を六角形にしても、
    移動・解放の当たり判定は従来通りの9×9の縦横斜めマス目のまま） */
 .statuspanel-cell {
   --cell-bg: #1c1c1c;
   --cell-border: #3a3a3a;
-  --hexagon: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
-  position: relative;
-  aspect-ratio: 1 / 1;
+  --hexagon: polygon(0 25%, 50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%);
+  position: absolute;
   min-width: 0;
   padding: 0;
   display: flex;

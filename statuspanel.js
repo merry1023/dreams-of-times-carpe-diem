@@ -13,6 +13,32 @@
 const STATUS_PANEL_SIZE = 9;
 const STATUS_PANEL_CENTER = 4; // 中心マス（行・列とも4）＝基本パネル。最初から解放済み
 const STATUS_PANEL_CENTER_KEY = `${STATUS_PANEL_CENTER},${STATUS_PANEL_CENTER}`;
+
+// ★要望対応：ハニカム構造（蜂の巣）のように、六角形のマス同士が隙間なく組み合う配置の計算。
+//   マスは「上下がとがった正六角形」（横:縦 = √3:2）。奇数行を半マスぶん右へずらし、
+//   行の間隔をマスの高さの75%にすることで、隙間に次の行のマスの先端がぴったり収まる。
+//   .statuspanel-grid（土台）はposition:relative、各.statuspanel-cellはposition:absoluteで
+//   並べるため、土台の縦横比もここから逆算してJSで設定する
+const STATUS_PANEL_HEX_WIDTH_PERCENT = 100 / (STATUS_PANEL_SIZE + 0.5); // ★1マスの横幅（土台の幅に対する%）。末尾の半マスずれの分だけ全体を広めに取っておく
+const STATUS_PANEL_HEX_ROW_UNIT_COUNT = 1 + (STATUS_PANEL_SIZE - 1) * 0.75; // ★縦方向に必要なマスの高さの合計（マスの高さを1とした単位）
+const STATUS_PANEL_HEX_HEIGHT_PERCENT = 100 / STATUS_PANEL_HEX_ROW_UNIT_COUNT; // ★1マスの縦幅（土台の高さに対する%）
+const STATUS_PANEL_HEX_ASPECT_RATIO = (STATUS_PANEL_SIZE + 0.5) / (STATUS_PANEL_HEX_ROW_UNIT_COUNT * (2 / Math.sqrt(3))); // ★土台(.statuspanel-grid)自体の横:縦比
+
+// ★土台となる.statuspanel-grid要素に、マス数から計算した縦横比を設定する
+function applyStatusPanelGridAspectRatio(gridEl) {
+  gridEl.style.aspectRatio = String(STATUS_PANEL_HEX_ASPECT_RATIO);
+}
+
+// ★1マスぶんの.statuspanel-cell要素に、行row・列col（ともに0始まり）に応じた位置・大きさを設定する
+function layoutStatusPanelHexCell(cellEl, row, col) {
+  const leftPercent = (col + (row % 2 === 1 ? 0.5 : 0)) * STATUS_PANEL_HEX_WIDTH_PERCENT;
+  const topPercent = row * 0.75 * STATUS_PANEL_HEX_HEIGHT_PERCENT;
+  cellEl.style.position = "absolute";
+  cellEl.style.left = leftPercent + "%";
+  cellEl.style.top = topPercent + "%";
+  cellEl.style.width = STATUS_PANEL_HEX_WIDTH_PERCENT + "%";
+  cellEl.style.height = STATUS_PANEL_HEX_HEIGHT_PERCENT + "%";
+}
 const STATUS_PANEL_STAT_DEFS = [
   { key: "atk", label: "物理攻撃力", short: "物攻" },
   { key: "skillPower", label: "魔法攻撃力", short: "魔攻" },
@@ -473,6 +499,7 @@ function renderStatusPanelTab() {
   gridWrap.className = "statuspanel-grid-wrap"; // ★盤だけをスクロールさせ、下のマスの説明は常に画面内に固定する
   const grid = document.createElement("div");
   grid.className = "statuspanel-grid";
+  applyStatusPanelGridAspectRatio(grid); // ★要望対応：ハニカム状に組み合う縦横比を設定
   for (let r = 0; r < STATUS_PANEL_SIZE; r++) {
     for (let c = 0; c < STATUS_PANEL_SIZE; c++) {
       const key = `${r},${c}`;
@@ -500,6 +527,7 @@ function renderStatusPanelTab() {
       }
       if (r === statusPanelCursorRow && c === statusPanelCursorCol) cls += " cursor";
       el.className = cls;
+      layoutStatusPanelHexCell(el, r, c); // ★要望対応：ハニカム状に隙間なく並べる位置計算
       el.onclick = (event) => {
         event.stopPropagation();
         statusPanelCursorRow = r;

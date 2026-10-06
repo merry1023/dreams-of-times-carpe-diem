@@ -7522,7 +7522,9 @@ function renderStatusPanelManager(container) {
 
   // 盤（9×9）。マスがある所は設定の要約を表示し、選択中のマスは枠で示す
   const grid = document.createElement("div");
-  grid.style.cssText = "display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:1px;max-width:420px;margin:8px 0;";
+  grid.className = "statuspanel-grid";
+  grid.style.maxWidth = "420px"; // ★エディタ側だけ、本編より少し小さい表示幅に収める
+  applyStatusPanelGridAspectRatio(grid); // ★要望対応：ハニカム状に組み合う縦横比を設定（statuspanel.js）
   for (let r = 0; r < STATUS_PANEL_SIZE; r++) {
     for (let c = 0; c < STATUS_PANEL_SIZE; c++) {
       const key = `${r},${c}`;
@@ -7531,6 +7533,7 @@ function renderStatusPanelManager(container) {
       // ★マスはゲーム側と同じ六角形（style.cssの.statuspanel-cell）。置いたマス＝水色系、中心＝解放済みの色、空き＝暗い六角形
       btn.className = "statuspanel-cell " + (cell ? (key === STATUS_PANEL_CENTER_KEY ? "unlocked center" : "available") : "locked")
         + (key === scenarioBuildStatusPanelCell ? " cursor" : "");
+      layoutStatusPanelHexCell(btn, r, c); // ★要望対応：ハニカム状に隙間なく並べる位置計算（statuspanel.js）
       if (cell) {
         const summary = summarizePanelCell(cell);
         const textEl = document.createElement("span");
