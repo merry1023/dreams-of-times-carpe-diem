@@ -15,14 +15,16 @@ const STATUS_PANEL_CENTER = 4; // 中心マス（行・列とも4）＝基本パ
 const STATUS_PANEL_CENTER_KEY = `${STATUS_PANEL_CENTER},${STATUS_PANEL_CENTER}`;
 
 // ★要望対応：ハニカム構造（蜂の巣）のように、六角形のマス同士が隙間なく組み合う配置の計算。
-//   マスは「上下がとがった正六角形」（横:縦 = √3:2）。奇数行を半マスぶん右へずらし、
-//   行の間隔をマスの高さの75%にすることで、隙間に次の行のマスの先端がぴったり収まる。
+//   マスは「左右がとがった正六角形」（横:縦 = 2:√3。以前は上下がとがった向きだったが90°回転した）。
+//   このマスは縦方向には直接重ねるだけで隙間なく並び（同じ列どうしはずれ無し）、
+//   横方向は奇数列を半マスぶん下へずらし、列の間隔をマスの横幅の75%にすることで、
+//   隙間に隣の列のマスの先端がぴったり収まる。
 //   .statuspanel-grid（土台）はposition:relative、各.statuspanel-cellはposition:absoluteで
 //   並べるため、土台の縦横比もここから逆算してJSで設定する
-const STATUS_PANEL_HEX_WIDTH_PERCENT = 100 / (STATUS_PANEL_SIZE + 0.5); // ★1マスの横幅（土台の幅に対する%）。末尾の半マスずれの分だけ全体を広めに取っておく
-const STATUS_PANEL_HEX_ROW_UNIT_COUNT = 1 + (STATUS_PANEL_SIZE - 1) * 0.75; // ★縦方向に必要なマスの高さの合計（マスの高さを1とした単位）
-const STATUS_PANEL_HEX_HEIGHT_PERCENT = 100 / STATUS_PANEL_HEX_ROW_UNIT_COUNT; // ★1マスの縦幅（土台の高さに対する%）
-const STATUS_PANEL_HEX_ASPECT_RATIO = (STATUS_PANEL_SIZE + 0.5) / (STATUS_PANEL_HEX_ROW_UNIT_COUNT * (2 / Math.sqrt(3))); // ★土台(.statuspanel-grid)自体の横:縦比
+const STATUS_PANEL_HEX_HEIGHT_PERCENT = 100 / (STATUS_PANEL_SIZE + 0.5); // ★1マスの縦幅（土台の高さに対する%）。末尾の半マスずれの分だけ全体を広めに取っておく
+const STATUS_PANEL_HEX_COL_UNIT_COUNT = 1 + (STATUS_PANEL_SIZE - 1) * 0.75; // ★横方向に必要なマスの横幅の合計（マスの横幅を1とした単位）
+const STATUS_PANEL_HEX_WIDTH_PERCENT = 100 / STATUS_PANEL_HEX_COL_UNIT_COUNT; // ★1マスの横幅（土台の幅に対する%）
+const STATUS_PANEL_HEX_ASPECT_RATIO = (STATUS_PANEL_HEX_COL_UNIT_COUNT * (2 / Math.sqrt(3))) / (STATUS_PANEL_SIZE + 0.5); // ★土台(.statuspanel-grid)自体の横:縦比
 
 // ★土台となる.statuspanel-grid要素に、マス数から計算した縦横比を設定する
 function applyStatusPanelGridAspectRatio(gridEl) {
@@ -31,8 +33,8 @@ function applyStatusPanelGridAspectRatio(gridEl) {
 
 // ★1マスぶんの.statuspanel-cell要素に、行row・列col（ともに0始まり）に応じた位置・大きさを設定する
 function layoutStatusPanelHexCell(cellEl, row, col) {
-  const leftPercent = (col + (row % 2 === 1 ? 0.5 : 0)) * STATUS_PANEL_HEX_WIDTH_PERCENT;
-  const topPercent = row * 0.75 * STATUS_PANEL_HEX_HEIGHT_PERCENT;
+  const leftPercent = col * 0.75 * STATUS_PANEL_HEX_WIDTH_PERCENT;
+  const topPercent = (row + (col % 2 === 1 ? 0.5 : 0)) * STATUS_PANEL_HEX_HEIGHT_PERCENT;
   cellEl.style.position = "absolute";
   cellEl.style.left = leftPercent + "%";
   cellEl.style.top = topPercent + "%";
