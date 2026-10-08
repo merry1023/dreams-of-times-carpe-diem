@@ -532,6 +532,7 @@ function renderStatusPanelTab() {
       layoutStatusPanelHexCell(el, r, c); // ★要望対応：ハニカム状に隙間なく並べる位置計算
       el.onclick = (event) => {
         event.stopPropagation();
+        if (!cell) return; // ★バグ修正：マスが無い場所はクリックしても選べないようにする
         statusPanelCursorRow = r;
         statusPanelCursorCol = c;
         renderStatusPanelTab();
@@ -645,6 +646,17 @@ function getStatusPanelArrowMoveDelta() {
   return [Math.max(-1, Math.min(1, dRow)), Math.max(-1, Math.min(1, dCol))];
 }
 
+// ★バグ修正：矢印キーでの移動が、マス自体が置かれていない（def.cellsに無い）場所にも
+//   カーソルを動かせてしまっていたのを直すため、今表示中のパネルのマス一覧を取得する
+function getCurrentStatusPanelCells() {
+  const owners = getStatusPanelOwners();
+  if (owners.length === 0) return {};
+  if (statusPanelOwnerIndex >= owners.length) statusPanelOwnerIndex = 0;
+  const owner = owners[statusPanelOwnerIndex];
+  const def = getStatusPanelDefFor(owner.unit, owner.type);
+  return (def && def.cells) ? def.cells : {};
+}
+
 window.addEventListener("keydown", (event) => {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
   if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return;
@@ -657,9 +669,14 @@ window.addEventListener("keydown", (event) => {
     statusPanelHeldArrowKeys.add(event.key);
     const [dRow, dCol] = getStatusPanelArrowMoveDelta();
     if (dRow !== 0 || dCol !== 0) {
-      statusPanelCursorRow = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, statusPanelCursorRow + dRow));
-      statusPanelCursorCol = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, statusPanelCursorCol + dCol));
-      renderStatusPanelTab();
+      const targetRow = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, statusPanelCursorRow + dRow));
+      const targetCol = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, statusPanelCursorCol + dCol));
+      // ★バグ修正：マスが無い場所には移動しない（置かれているマスの上だけをカーソルが動く）
+      if (getCurrentStatusPanelCells()[`${targetRow},${targetCol}`]) {
+        statusPanelCursorRow = targetRow;
+        statusPanelCursorCol = targetCol;
+        renderStatusPanelTab();
+      }
     }
   } else if (KEY_CONFIG.decideKeys.includes(event.key)) {
     if (typeof isTextDisplaying !== "undefined" && isTextDisplaying) return;
