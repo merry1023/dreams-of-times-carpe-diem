@@ -200,7 +200,7 @@ function renderLogTab() {
       
       const textEl = document.createElement("span");
       textEl.className = "log-text";
-      textEl.innerHTML = entry.text;
+      textEl.innerHTML = convertRubyForDisplay(entry.text); // ★ルビ記法をログにも反映
       row.appendChild(textEl);
     }
     
@@ -1009,7 +1009,7 @@ async function displayMessage(text, options = {}) {
   
   // ★ログ再生中（セーブ地点まで一気に追いつかせている間）は、演出・入力待ちを省略する
   if (isReplayingLog && messageLog.length < replayTargetStep) {
-    textVar.innerHTML = convertLineBreaksForDisplay(text); // ★文中の改行(\n)をゲーム画面でも改行として反映させる
+    textVar.innerHTML = convertTextForDisplay(text); // ★文中の改行(\n)・ルビ記法をゲーム画面でも反映させる
     isTextDisplaying = false;
     return;
   }
@@ -3586,12 +3586,28 @@ function convertLineBreaksForDisplay(text) {
   return text.replace(/\r\n|\r|\n/g, "<br>");
 }
 
+// ★要望対応：シナリオの地の文・会話文にルビ（ふりがな）を付けられるようにする。
+//   書き方：{/ルビを振りたい文字}={\ルビ}   例）{/漢字}={\かんじ}
+//   ・ルビは振りたい文字の中央に、小さく上に表示される（<ruby>タグ）
+//   ・全角の｛｝／＝＼や円記号（¥）で書いても同じように変換する（日本語入力のまま打てるように）
+//   ・形が合わないもの（片方の波括弧が無い等）は変換せず、書いた文字のまま表示する
+const RUBY_NOTATION_REGEX = /[{｛][\/／]([^{}｛｝]+?)[}｝]\s*[=＝]\s*[{｛][\\＼¥￥]([^{}｛｝]+?)[}｝]/g;
+function convertRubyForDisplay(text) {
+  if (typeof text !== "string") return text;
+  return text.replace(RUBY_NOTATION_REGEX, (match, base, ruby) => `<ruby>${base}<rt>${ruby}</rt></ruby>`);
+}
+
+// ★ゲーム画面に出す文章の変換（改行 → <br>、ルビ記法 → <ruby>）をまとめて行う
+function convertTextForDisplay(text) {
+  return convertRubyForDisplay(convertLineBreaksForDisplay(text));
+}
+
 async function typeText(element, text, myToken = activeSessionToken) {
   element.innerHTML = ""; // 一度中身を空にする
   isTyping = true;
   skipTypingRequested = false;
   
-  text = convertLineBreaksForDisplay(text); // ★文中の改行(\n)をゲーム画面でも改行として反映させる
+  text = convertTextForDisplay(text); // ★文中の改行(\n)・ルビ記法をゲーム画面用に変換する
   
   fitMessageWindowText(element, text); // ★長文なら自動的に文字サイズを縮めて収める（要望対応）
   
@@ -3599,67 +3615,69 @@ async function typeText(element, text, myToken = activeSessionToken) {
   const tempDiv = document.createElement("div");
   tempDiv.innerHTML = text;
   
-  // 2. 解析した要素（文字やspanタグなど）を1つずつ取り出して処理する
-  const nodes = Array.from(tempDiv.childNodes);
+  // 2. 文章の中の「文字」を、表示する順番にすべて集める。
+  //    ★以前はトップ階層のノードだけを1つずつ処理していたため、<span>の中に別のタグ
+  //      （<ruby>など）が入れ子になっていると、タグが壊れて文字だけに潰れてしまっていた。
+  //      ここでは、DOMの構造は一切いじらず、中の文字だけを空にしておいて1文字ずつ戻していく
+  //      方式にしたので、どんな入れ子でもタグ構造を保ったまま表示できる。
+  //    ★ルビ本体（<rt>の中の文字）は文字送りの対象にせず、振りたい文字の表示が始まる時に
+  //      一緒に出す（ルビだけが後から遅れて出たり、1文字ずつ流れたりしないように）
+  const walker = document.createTreeWalker(tempDiv, NodeFilter.SHOW_TEXT);
+  const items = [];
+  let walkNode;
+  while ((walkNode = walker.nextNode())) {
+    const inRuby = !!(walkNode.parentElement && walkNode.parentElement.closest("rt, rp"));
+    items.push({ node: walkNode, full: walkNode.nodeValue, inRuby: inRuby });
+    walkNode.nodeValue = ""; // いったん空にする（ここから1文字ずつ戻していく）
+  }
   
-  // ★〈重要〉以前は画面側の element に直接「+=」で文字を継ぎ足していたが、これだと
-  //   ロード直後などでまだ完全には止まっていない「古いセッションの文字送り」が
-  //   タイマーの遅延で後から少しだけ動いてしまった時、今表示中の別のメッセージと
-  //   文字単位で混ざって文字化けする不具合があった。
-  //   ここでは自分専用の作業用コンテナ(build)にだけ組み立てて、都度その内容を
-  //   まるごとelementに反映（＝置き換え）するようにする。こうすれば、たとえ他の
-  //   typeText呼び出しが同時に同じelementへ書き込んでも、お互いの文字が入り乱れる
-  //   ことはなく（片方の完全な内容で上書きされるだけになり）、次のチェックで
-  //   古い方は確実に打ち切られる
-  const build = document.createElement("div");
+  // ★〈重要〉画面側の element には、自分専用の作業用コンテナ(tempDiv)の中身を「まるごと置き換え」で
+  //   反映する。ロード直後などでまだ完全には止まっていない「古いセッションの文字送り」が
+  //   タイマーの遅延で後から少しだけ動いてしまっても、今表示中の別のメッセージと
+  //   文字単位で混ざって文字化けすることはなく、次のチェックで古い方は確実に打ち切られる
+  const flush = () => { element.innerHTML = tempDiv.innerHTML; };
   
-  for (let node of nodes) {
+  for (let idx = 0; idx < items.length; idx++) {
     if (activeSessionToken !== myToken) throw new Error("stale session: aborting orphaned scenario chain"); // ★古いセッションは即座に打ち切る（黙って続行すると新しいセッションと衝突するため）
     
-    // ★既にスキップ・早送りが要求されていたら、このノードはまるごと即表示する
-    if (skipTypingRequested || fastForwardMode) {
-      build.appendChild(node.cloneNode(true));
-      element.innerHTML = build.innerHTML;
+    const item = items[idx];
+    
+    // ★ルビ本体の文字は、直前の「振りたい文字」の表示開始時にまとめて出してあるので、ここでは何もしない
+    if (item.inRuby) {
+      item.node.nodeValue = item.full;
       continue;
     }
     
-    if (node.nodeType === Node.TEXT_NODE) {
-      // ◆ 普通の文字の場合：1文字ずつ流す
-      const full = node.textContent;
-      const textNode = document.createTextNode("");
-      build.appendChild(textNode);
-      for (let i = 0; i < full.length; i++) {
-        if (activeSessionToken !== myToken) throw new Error("stale session: aborting orphaned scenario chain");
-        if (skipTypingRequested || fastForwardMode) {
-          textNode.textContent += full.slice(i); // 残り全部を一気に流し込む
-          element.innerHTML = build.innerHTML;
-          break;
-        }
-        textNode.textContent += full[i];
-        element.innerHTML = build.innerHTML;
-        await wait(textSpead);
+    // ★この文字の直後に続くルビ本体を、先に表示しておく（ルビは文字の中央上に出る）
+    for (let k = idx + 1; k < items.length && items[k].inRuby; k++) {
+      items[k].node.nodeValue = items[k].full;
+    }
+    
+    // ★既にスキップ・早送りが要求されていたら、このノードはまるごと即表示する
+    if (skipTypingRequested || fastForwardMode) {
+      item.node.nodeValue = item.full;
+      flush();
+      continue;
+    }
+    
+    // ◆ 普通の文字の場合：1文字ずつ流す
+    const full = item.full;
+    for (let i = 0; i < full.length; i++) {
+      if (activeSessionToken !== myToken) throw new Error("stale session: aborting orphaned scenario chain");
+      if (skipTypingRequested || fastForwardMode) {
+        item.node.nodeValue = full; // 残り全部を一気に流し込む
+        flush();
+        break;
       }
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      // ◆ HTMLタグ（spanなど）の場合：
-      // まず空のタグを作業用コンテナ側に追加し、その中身を1文字ずつタイピングする
-      const clonedElement = node.cloneNode(false); // タグとその属性（classなど）だけ複製
-      clonedElement.innerHTML = ""; // 中身は空にしておく
-      build.appendChild(clonedElement);
-      
-      const full = node.textContent;
-      for (let i = 0; i < full.length; i++) {
-        if (activeSessionToken !== myToken) throw new Error("stale session: aborting orphaned scenario chain");
-        if (skipTypingRequested || fastForwardMode) {
-          clonedElement.innerHTML += full.slice(i);
-          element.innerHTML = build.innerHTML;
-          break;
-        }
-        clonedElement.innerHTML += full[i];
-        element.innerHTML = build.innerHTML;
-        await wait(textSpead);
-      }
+      item.node.nodeValue = full.slice(0, i + 1);
+      flush();
+      await wait(textSpead);
     }
   }
+  
+  // ★念のため最終形をそのまま反映しておく（スキップ等で途中のまま終わった場合の保険）
+  for (const item of items) item.node.nodeValue = item.full;
+  flush();
   
   isTyping = false;
 }
