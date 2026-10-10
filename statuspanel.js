@@ -657,6 +657,21 @@ function getCurrentStatusPanelCells() {
   return (def && def.cells) ? def.cells : {};
 }
 
+// ★バグ修正：例えば→を押した直後に（まだ→を押したまま）↑も押した場合、
+//   「→だけの移動」と「→↑の合成（斜め）移動」が別々のkeydownとしてそれぞれ実行されてしまい、
+//   斜めに1マスのつもりが右に1・右上に1で合計2マスぶん動いてしまっていた。
+//   短い間隔で新しいキーが追加された時は、直前の単独移動を「無かったこと」にしてから
+//   合成方向で改めて1マスだけ動かす（＝直前の移動開始位置を基準にする）ことでこれを防ぐ
+// ★さらに、2方向のキーを同時に押し続けている間は、それぞれのキーが独立に自動連射（キーリピート）を
+//   送ってくるため、何もしないとその2本ぶんのリピートが両方とも移動を起こしてしまい、
+//   斜め移動だけ片方向の時より2倍の速さで進んでしまう。片方向のキーリピート間隔（120ms）より
+//   少し短い間隔で、連続する移動を1回ぶんに間引く
+let statusPanelMoveOriginRow = null;
+let statusPanelMoveOriginCol = null;
+let statusPanelLastMoveTime = 0;
+const STATUS_PANEL_COMBO_WINDOW_MS = 150;
+const STATUS_PANEL_REPEAT_MIN_INTERVAL_MS = 100;
+
 window.addEventListener("keydown", (event) => {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
   if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return;
@@ -666,13 +681,30 @@ window.addEventListener("keydown", (event) => {
   if (STATUS_PANEL_ARROW_KEYS.includes(event.key)) {
     event.preventDefault();
     event.stopImmediatePropagation();
+    const isFreshKey = !statusPanelHeldArrowKeys.has(event.key);
     statusPanelHeldArrowKeys.add(event.key);
     const [dRow, dCol] = getStatusPanelArrowMoveDelta();
     if (dRow !== 0 || dCol !== 0) {
-      const targetRow = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, statusPanelCursorRow + dRow));
-      const targetCol = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, statusPanelCursorCol + dCol));
+      const now = Date.now();
+      let baseRow, baseCol;
+      if (isFreshKey && statusPanelMoveOriginRow !== null && now - statusPanelLastMoveTime < STATUS_PANEL_COMBO_WINDOW_MS) {
+        // ★直前の移動の「開始位置」からやり直す（直前の単独移動ぶんは無かったことにする）
+        baseRow = statusPanelMoveOriginRow;
+        baseCol = statusPanelMoveOriginCol;
+      } else if (!isFreshKey && now - statusPanelLastMoveTime < STATUS_PANEL_REPEAT_MIN_INTERVAL_MS) {
+        // ★2方向のキーリピートがほぼ同時に来た回。直近で動いたばかりなので、この回は間引く
+        return;
+      } else {
+        baseRow = statusPanelCursorRow;
+        baseCol = statusPanelCursorCol;
+      }
+      const targetRow = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, baseRow + dRow));
+      const targetCol = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, baseCol + dCol));
       // ★バグ修正：マスが無い場所には移動しない（置かれているマスの上だけをカーソルが動く）
       if (getCurrentStatusPanelCells()[`${targetRow},${targetCol}`]) {
+        statusPanelMoveOriginRow = baseRow;
+        statusPanelMoveOriginCol = baseCol;
+        statusPanelLastMoveTime = now;
         statusPanelCursorRow = targetRow;
         statusPanelCursorCol = targetCol;
         renderStatusPanelTab();
