@@ -3463,6 +3463,55 @@ function buildIfConditionEditorFields(chapter, block, wrap, persist) {
     wrap.appendChild(falseRow);
 }
 
+// ★要望対応：地の文・セリフの入力欄に、ルビ（ふりがな）の書き方の説明と、
+//   「選択した文字にルビを付ける」ボタン、ルビ入りの文章の見え方プレビューを付ける。
+//   書き方：{/ルビを振りたい文字}={\ルビ}  例）{/漢字}={\かんじ}
+//   実際の変換は mainfunc.js の convertRubyForDisplay が行う（ゲーム画面・ログと同じ処理）
+function attachRubyHelper(wrap, textArea) {
+  const noteEl = document.createElement("p");
+  noteEl.className = "devmode-note scenariobuild-condition";
+  noteEl.textContent = "ルビ：{/ルビを振りたい文字}={\\ルビ} と書くと、その文字の上にルビが付きます。例）{/漢字}={\\かんじ}";
+  
+  const rubyBtn = document.createElement("button");
+  rubyBtn.type = "button";
+  rubyBtn.className = "devmode-btn";
+  rubyBtn.textContent = "選択した文字にルビを付ける";
+  rubyBtn.onclick = () => {
+    const start = textArea.selectionStart;
+    const end = textArea.selectionEnd;
+    if (start === end) {
+      window.alert("ルビを付けたい文字を、先に入力欄の中で範囲選択してください。");
+      return;
+    }
+    const baseText = textArea.value.slice(start, end);
+    const rubyText = window.prompt(`「${baseText}」に付けるルビを入力してください`, "");
+    if (!rubyText) return;
+    const notation = `{/${baseText}}={\\${rubyText}}`;
+    textArea.value = textArea.value.slice(0, start) + notation + textArea.value.slice(end);
+    textArea.dispatchEvent(new Event("input"));
+    textArea.dispatchEvent(new Event("change")); // ★textArea.onchangeで保存処理（block.textへの反映）を走らせる
+    textArea.focus();
+    textArea.setSelectionRange(start + notation.length, start + notation.length);
+  };
+  
+  const previewEl = document.createElement("div");
+  previewEl.className = "scenariobuild-ruby-preview";
+  const refreshPreview = () => {
+    const hasRuby = typeof convertRubyForDisplay === "function" && convertRubyForDisplay(textArea.value) !== textArea.value;
+    previewEl.style.display = hasRuby ? "" : "none";
+    if (!hasRuby) return;
+    // ★ゲーム画面と同じ変換を通す。ルビ以外の文字はHTMLとして解釈されないよう、先にエスケープしておく
+    const escaped = textArea.value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    previewEl.innerHTML = "プレビュー：" + convertRubyForDisplay(escaped).replace(/\r\n|\r|\n/g, "<br>");
+  };
+  textArea.addEventListener("input", refreshPreview);
+  refreshPreview();
+  
+  wrap.appendChild(noteEl);
+  wrap.appendChild(rubyBtn);
+  wrap.appendChild(previewEl);
+}
+
 function buildBlockFormFields(chapter, block) {
   const wrap = document.createElement("div");
   wrap.className = "scenariobuild-block-fields";
@@ -3485,6 +3534,7 @@ function buildBlockFormFields(chapter, block) {
     
     wrap.appendChild(speakerInput);
     wrap.appendChild(textArea);
+    attachRubyHelper(wrap, textArea); // ★ルビの書き方の説明・ボタン・プレビュー
     return wrap;
   }
   
@@ -3495,6 +3545,7 @@ function buildBlockFormFields(chapter, block) {
     textArea.value = block.text;
     textArea.onchange = () => { block.text = textArea.value; persist(); };
     wrap.appendChild(textArea);
+    attachRubyHelper(wrap, textArea); // ★ルビの書き方の説明・ボタン・プレビュー
     return wrap;
   }
   
