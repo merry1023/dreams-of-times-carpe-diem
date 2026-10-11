@@ -9249,7 +9249,7 @@ function renderFacilityManager(container) {
         bgTrack: "", bgImage: "", ownerDialogue: "",
         price: 20, sleepinessRecovery: 40, fatigueRecovery: 40,
         classChangeCost: 100,
-        minBet: 10, maxBet: 1000, slotImages: {}, slotWeights: {}, // ★カジノ系で使う項目（他の種類では無視される）
+        minBetCoins: 1, maxBetCoins: 100, prizes: [], slotImages: {}, slotWeights: {}, // ★カジノ系で使う項目（他の種類では無視される）。賭け金はカジノコインの枚数で、prizesは景品交換所の景品
         entryItemId: "", entryItemQty: 1, floors: [], regularEnemyPool: [], bossRoundConfig: {}, // ★コロシアム系で使う項目（他の種類では無視される）
         coinItemIdBlue: "", coinItemIdYellow: "", coinItemIdRed: "",
         milestone10CoinQty: 1, milestone20CoinQty: 1, milestone50CoinQty: 1,
@@ -9546,29 +9546,137 @@ function buildFacilityRow(facility) {
   } else if (facility.type === "casino") {
     const noteEl = document.createElement("p");
     noteEl.className = "devmode-note";
-    noteEl.textContent = "丁半博打・ルーレット・スロットの3種類で遊べます。賭け金の下限・上限をここで設定してください（丁半博打・スロットでは1回の賭け金の上限、ルーレットでは1マスあたりに置けるチップの上限になります。いずれも実際の上限は、この設定額とプレイヤーの所持金の低い方です）。";
+    noteEl.textContent = "丁半博打・ルーレット・スロットの3種類で遊べます。賭け金は「カジノコイン」の枚数で設定してください（丁半博打・スロットでは1回の賭け金の上限、ルーレットでは1マスあたりに置けるチップの上限になります。いずれも実際の上限は、この設定枚数とプレイヤーの所持コインの低い方です）。コインは全カジノ共通で、「両替バニーガールちゃん」で陳と両替できます（100陳→1コイン、1コイン→50陳）。";
     infoEl.appendChild(noteEl);
     
     const betRow = document.createElement("div");
     betRow.className = "scenariobuild-condition-row";
-    betRow.appendChild(labelSpan("最低ベット額："));
+    betRow.appendChild(labelSpan("最低ベット（コイン枚数）："));
     const minBetInput = document.createElement("input");
     minBetInput.type = "number";
     minBetInput.min = "1";
     minBetInput.className = "scenariobuild-condition-input";
-    minBetInput.value = facility.minBet != null ? facility.minBet : 10;
-    minBetInput.onchange = () => { facility.minBet = Math.max(1, Number(minBetInput.value) || 1); markScenarioBuildDirty(); };
+    minBetInput.value = facility.minBetCoins != null ? facility.minBetCoins : 1;
+    minBetInput.onchange = () => { facility.minBetCoins = Math.max(1, Math.floor(Number(minBetInput.value)) || 1); markScenarioBuildDirty(); };
     betRow.appendChild(minBetInput);
     
-    betRow.appendChild(labelSpan("最高ベット額："));
+    betRow.appendChild(labelSpan("最高ベット（コイン枚数）："));
     const maxBetInput = document.createElement("input");
     maxBetInput.type = "number";
     maxBetInput.min = "1";
     maxBetInput.className = "scenariobuild-condition-input";
-    maxBetInput.value = facility.maxBet != null ? facility.maxBet : 1000;
-    maxBetInput.onchange = () => { facility.maxBet = Math.max(1, Number(maxBetInput.value) || 1); markScenarioBuildDirty(); };
+    maxBetInput.value = facility.maxBetCoins != null ? facility.maxBetCoins : 100;
+    maxBetInput.onchange = () => { facility.maxBetCoins = Math.max(1, Math.floor(Number(maxBetInput.value)) || 1); markScenarioBuildDirty(); };
     betRow.appendChild(maxBetInput);
     infoEl.appendChild(betRow);
+    
+    // ★景品交換所（「景品交換バニーガールちゃん」）の景品。コインと交換でアイテムを渡す。
+    //   在庫無制限／個数制限ありを景品ごとに指定できる（個数制限の売れた数はプレイヤーのセーブデータ側に記録される）
+    const prizeNoteEl = document.createElement("p");
+    prizeNoteEl.className = "devmode-note";
+    prizeNoteEl.style.margin = "10px 0 2px";
+    prizeNoteEl.textContent = "景品交換所の景品（コインと交換できるアイテム）を登録してください。「個数制限あり」にすると、その在庫数ぶん交換されたら売り切れになります（チェック無しは在庫無制限）。";
+    infoEl.appendChild(prizeNoteEl);
+    
+    if (!Array.isArray(facility.prizes)) facility.prizes = [];
+    facility.prizes.forEach((entry, i) => {
+      const prizeRow = document.createElement("div");
+      prizeRow.className = "scenariobuild-condition-row";
+      prizeRow.style.flexWrap = "wrap";
+      
+      const upBtn = document.createElement("button");
+      upBtn.type = "button";
+      upBtn.className = "devmode-btn";
+      upBtn.textContent = "▲";
+      upBtn.disabled = i === 0;
+      upBtn.onclick = (event) => {
+        event.stopPropagation();
+        if (i === 0) return;
+        [facility.prizes[i - 1], facility.prizes[i]] = [facility.prizes[i], facility.prizes[i - 1]];
+        markScenarioBuildDirty();
+        renderScenarioBuildPanel();
+      };
+      prizeRow.appendChild(upBtn);
+      
+      const downBtn = document.createElement("button");
+      downBtn.type = "button";
+      downBtn.className = "devmode-btn";
+      downBtn.textContent = "▼";
+      downBtn.disabled = i === facility.prizes.length - 1;
+      downBtn.onclick = (event) => {
+        event.stopPropagation();
+        if (i === facility.prizes.length - 1) return;
+        [facility.prizes[i + 1], facility.prizes[i]] = [facility.prizes[i], facility.prizes[i + 1]];
+        markScenarioBuildDirty();
+        renderScenarioBuildPanel();
+      };
+      prizeRow.appendChild(downBtn);
+      
+      const itemInput = document.createElement("input");
+      itemInput.type = "text";
+      itemInput.className = "scenariobuild-title-input";
+      itemInput.placeholder = "アイテムID";
+      itemInput.setAttribute("list", "scenariobuild-item-datalist");
+      itemInput.value = entry.itemId || "";
+      itemInput.onchange = () => { entry.itemId = itemInput.value.trim(); markScenarioBuildDirty(); };
+      prizeRow.appendChild(itemInput);
+      
+      prizeRow.appendChild(labelSpan("必要コイン："));
+      const priceInput = document.createElement("input");
+      priceInput.type = "number";
+      priceInput.min = "1";
+      priceInput.className = "scenariobuild-condition-input";
+      priceInput.value = entry.coinPrice != null ? entry.coinPrice : 1;
+      priceInput.onchange = () => { entry.coinPrice = Math.max(1, Math.floor(Number(priceInput.value)) || 1); markScenarioBuildDirty(); };
+      prizeRow.appendChild(priceInput);
+      
+      const limitedCheckbox = document.createElement("input");
+      limitedCheckbox.type = "checkbox";
+      limitedCheckbox.checked = entry.limited === true;
+      limitedCheckbox.onchange = () => {
+        entry.limited = limitedCheckbox.checked;
+        if (entry.limited && !(entry.stock > 0)) entry.stock = 1;
+        markScenarioBuildDirty();
+        renderScenarioBuildPanel();
+      };
+      prizeRow.appendChild(limitedCheckbox);
+      prizeRow.appendChild(labelSpan("個数制限あり"));
+      
+      if (entry.limited === true) {
+        prizeRow.appendChild(labelSpan("在庫数："));
+        const stockInput = document.createElement("input");
+        stockInput.type = "number";
+        stockInput.min = "1";
+        stockInput.className = "scenariobuild-condition-input";
+        stockInput.value = entry.stock != null ? entry.stock : 1;
+        stockInput.onchange = () => { entry.stock = Math.max(1, Math.floor(Number(stockInput.value)) || 1); markScenarioBuildDirty(); };
+        prizeRow.appendChild(stockInput);
+      }
+      
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "devmode-btn devmode-btn-danger";
+      removeBtn.textContent = "×";
+      removeBtn.onclick = (event) => {
+        event.stopPropagation();
+        facility.prizes.splice(i, 1);
+        markScenarioBuildDirty();
+        renderScenarioBuildPanel();
+      };
+      prizeRow.appendChild(removeBtn);
+      infoEl.appendChild(prizeRow);
+    });
+    
+    const addPrizeBtn = document.createElement("button");
+    addPrizeBtn.className = "devmode-btn";
+    addPrizeBtn.textContent = "＋景品を追加";
+    addPrizeBtn.onclick = (event) => {
+      event.stopPropagation();
+      // ★idは「個数制限の売れた数」をプレイヤーのセーブデータ側で記録する時の目印（並び替えや同じ景品の二重登録をしても混ざらない）
+      facility.prizes.push({ id: generateId("prize"), itemId: "", coinPrice: 1, limited: false, stock: 1 });
+      markScenarioBuildDirty();
+      renderScenarioBuildPanel();
+    };
+    infoEl.appendChild(addPrizeBtn);
     
     // ★修正（バグ報告対応）：以前は「揃う確率」という表示のまま、実際には1マスあたりの
     //   出現しやすさ（重み、他の絵柄との相対比）を入力させていたため、表示と実態が食い違っていた。
