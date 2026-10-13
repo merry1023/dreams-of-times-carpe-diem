@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1791131212360,
+  "version": 1791904906857,
   "enemies": [
     {
       "id": "goblin",
@@ -35,7 +35,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "statusImmunities": [],
       "statusResistances": {},
-      "restSkillBlocks": []
+      "restSkillBlocks": [],
+      "elements": [
+        "element_1790419127202_4"
+      ]
     },
     {
       "id": "bat",
@@ -64,6 +67,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "affectionGainRange": [
         5,
         10
+      ],
+      "elements": [
+        "element_1789993533981_3"
       ]
     },
     {
@@ -127,6 +133,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "affectionGainRange": [
         5,
         10
+      ],
+      "elements": [
+        "element_1789993538636_5"
       ]
     },
     {
@@ -162,6 +171,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "affectionGainRange": [
         5,
         10
+      ],
+      "elements": [
+        "element_1789993499387_1"
       ]
     },
     {
@@ -189,6 +201,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "affectionGainRange": [
         5,
         10
+      ],
+      "elements": [
+        "element_1789993533981_3"
       ]
     },
     {
@@ -218,7 +233,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         10
       ],
       "statusImmunities": [],
-      "statusResistances": {}
+      "statusResistances": {},
+      "elements": [
+        "element_1790419127202_4"
+      ]
     },
     {
       "id": "succubus",
@@ -371,7 +389,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "flavor": "土煙を上げながら猛烈な勢いで突進してくる！"
       },
       "builtin": true,
-      "statusInflictions": []
+      "statusInflictions": [],
+      "elements": [
+        "element_1789993499387_1"
+      ]
     },
     {
       "id": "harpy",
@@ -400,7 +421,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         10
       ],
       "statusImmunities": [],
-      "statusResistances": {}
+      "statusResistances": {},
+      "elements": [
+        "element_1790419127202_6"
+      ]
     },
     {
       "id": "treant",
@@ -427,6 +451,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "affectionGainRange": [
         5,
         10
+      ],
+      "elements": [
+        "element_1789993499387_1"
       ]
     },
     {
@@ -470,7 +497,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "restSkillBlocks": [],
       "normalAttackStatusInflictions": [],
       "statusImmunities": [],
-      "statusResistances": {}
+      "statusResistances": {},
+      "elements": [
+        "element_1789993533981_3"
+      ]
     },
     {
       "id": "enemy_1788135897707_6",
@@ -549,7 +579,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         10
       ],
       "statusImmunities": [],
-      "statusResistances": {}
+      "statusResistances": {},
+      "elements": [
+        "element_1789993572395_7"
+      ]
     },
     {
       "id": "enemy_1788595339691_6",
@@ -600,7 +633,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         10
       ],
       "killBlocks": [],
-      "spareBlocks": []
+      "spareBlocks": [],
+      "elements": [
+        "element_1789993499387_1"
+      ]
     },
     {
       "id": "enemy_1788879028805_3",
@@ -648,7 +684,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "killBlocks": [],
       "spareBlocks": [],
       "restSkillBlocks": [],
-      "normalAttackStatusInflictions": []
+      "normalAttackStatusInflictions": [],
+      "elements": [
+        "element_1790419127202_5"
+      ]
     },
     {
       "id": "enemy_1789443926000_18",
@@ -684,7 +723,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         10
       ],
       "killBlocks": [],
-      "spareBlocks": []
+      "spareBlocks": [],
+      "elements": [
+        "element_1789993499387_1"
+      ]
     }
   ],
   "bosses": [
@@ -729,7 +771,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "statusImmunities": [],
       "statusResistances": {},
-      "battleEvents": []
+      "battleEvents": [],
+      "elements": [
+        "element_1789993533981_3"
+      ]
     },
     {
       "id": "grassland_miniboss",
@@ -765,7 +810,11 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         10
       ],
       "statusImmunities": [],
-      "statusResistances": {}
+      "statusResistances": {},
+      "elements": [
+        "element_1789993538636_5",
+        "element_1789993499387_1"
+      ]
     },
     {
       "id": "forest_boss",
@@ -801,7 +850,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "statusImmunities": [],
       "statusResistances": {},
-      "battleEvents": []
+      "battleEvents": [],
+      "elements": [
+        "element_1789993499387_1"
+      ]
     },
     {
       "id": "hobgoblin_pack",
@@ -844,7 +896,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         10
       ],
       "statusImmunities": [],
-      "statusResistances": {}
+      "statusResistances": {},
+      "elements": [
+        "element_1790419127202_4"
+      ]
     },
     {
       "id": "boss_1788135349004_3",
@@ -891,7 +946,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "statusImmunities": [],
       "statusResistances": {},
-      "battleEvents": []
+      "battleEvents": [],
+      "elements": [
+        "element_1789993536302_4"
+      ]
     },
     {
       "id": "boss_1788595810642_7",
@@ -976,7 +1034,11 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       ],
       "statusResistances": {
         "confuse": 0.4
-      }
+      },
+      "elements": [
+        "element_1789993499387_1",
+        "element_1789993536302_4"
+      ]
     },
     {
       "id": "boss_1788741265160_1",
@@ -1023,7 +1085,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         10
       ],
       "statusImmunities": [],
-      "statusResistances": {}
+      "statusResistances": {},
+      "elements": [
+        "element_1789993514120_2"
+      ]
     },
     {
       "id": "boss_1789622131499_3",
@@ -1122,7 +1187,11 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "triggerConditionValue": 50
         }
       ],
-      "actionsPerTurn": 2
+      "actionsPerTurn": 2,
+      "elements": [
+        "element_1789993514120_2",
+        "element_1790419127202_4"
+      ]
     }
   ],
   "items": [
@@ -12024,16 +12093,1556 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     }
   ],
+  "upperSkills": [
+    {
+      "id": "upper_1791900779403_1",
+      "name": "紅の暴破(レッド・バースト)",
+      "description": "自身の血液を極限まで凝縮させ放つ超絶技巧。",
+      "type": "attack",
+      "element": "element_1790419127202_5",
+      "spCost": 75,
+      "power": 20,
+      "target": "single",
+      "hitCount": 1,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1791901146387_2",
+          "type": "message",
+          "speaker": "ケツァナ",
+          "text": "....はぁーーーっっっ！"
+        },
+        {
+          "id": "skillblock_1791901179327_4",
+          "type": "selfDamage",
+          "amount": "仲間HP割合(ケツァナ) * 0.2"
+        },
+        {
+          "id": "skillblock_1791901404091_6",
+          "type": "message",
+          "speaker": "",
+          "text": "血の色をした爆風が敵全体を襲う！"
+        },
+        {
+          "id": "skillblock_1791901176520_3",
+          "type": "applyStatus",
+          "targetSide": "enemy",
+          "target": "all",
+          "statusId": "burn",
+          "duration": "3",
+          "power": "仲間攻撃力(ケツァナ) * 0.3",
+          "chance": "1"
+        },
+        {
+          "id": "skillblock_1791901337188_5",
+          "type": "damage",
+          "target": "all",
+          "powerMultiplier": "45 + 仲間攻撃力(ケツァナ) * 0.2",
+          "atkType": "magical"
+        },
+        {
+          "id": "skillblock_1791901436031_7",
+          "type": "end"
+        }
+      ],
+      "variables": {}
+    }
+  ],
   "statusPanels": {
     "classes": {
       "ニート": {
-        "cells": {}
+        "cells": {
+          "4,4": {
+            "label": "",
+            "effects": [],
+            "costExp": 0,
+            "costItems": []
+          },
+          "3,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "4,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "flat",
+                "value": 6
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "4,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 10
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "5,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          }
+        }
       },
       "魔法少女": {
-        "cells": {}
+        "cells": {
+          "4,4": {
+            "label": "",
+            "effects": [],
+            "costExp": 0,
+            "costItems": []
+          },
+          "3,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "flat",
+                "value": 4
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "4,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "flat",
+                "value": 8
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "4,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 18
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "5,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          }
+        }
+      },
+      "全能士": {
+        "cells": {
+          "4,4": {
+            "label": "",
+            "effects": [],
+            "costExp": 0,
+            "costItems": []
+          },
+          "3,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "4,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "flat",
+                "value": 9
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "4,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 8
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "5,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          }
+        }
+      },
+      "戦士": {
+        "cells": {
+          "4,4": {
+            "label": "",
+            "effects": [],
+            "costExp": 0,
+            "costItems": []
+          },
+          "3,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "flat",
+                "value": 3
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "4,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "flat",
+                "value": 11
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "4,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 5
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "5,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          }
+        }
+      },
+      "性騎士": {
+        "cells": {
+          "4,4": {
+            "label": "",
+            "effects": [],
+            "costExp": 0,
+            "costItems": []
+          },
+          "3,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "4,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "flat",
+                "value": 9
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "4,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 7
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "5,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 4
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 4
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          }
+        }
+      },
+      "お宝鑑定団": {
+        "cells": {
+          "4,4": {
+            "label": "",
+            "effects": [],
+            "costExp": 0,
+            "costItems": []
+          },
+          "3,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "flat",
+                "value": 3
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "4,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "flat",
+                "value": 7
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "4,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 8
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "5,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 3
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 3
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          }
+        }
+      },
+      "のど自慢": {
+        "cells": {
+          "4,4": {
+            "label": "",
+            "effects": [],
+            "costExp": 0,
+            "costItems": []
+          },
+          "3,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "flat",
+                "value": 4
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "4,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "flat",
+                "value": 9
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "4,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 8
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "5,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 8
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 8
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 8
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "flat",
+                "value": 3
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 8
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          }
+        }
+      },
+      "暗殺者": {
+        "cells": {
+          "4,4": {
+            "label": "",
+            "effects": [],
+            "costExp": 0,
+            "costItems": []
+          },
+          "3,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "flat",
+                "value": 3
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "4,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "flat",
+                "value": 7
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "4,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 7
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "5,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          }
+        }
+      },
+      "陰騎士": {
+        "cells": {
+          "4,4": {
+            "label": "",
+            "effects": [],
+            "costExp": 0,
+            "costItems": []
+          },
+          "3,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "flat",
+                "value": 3
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "4,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "flat",
+                "value": 12
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "4,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 7
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "5,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "flat",
+                "value": 3
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          }
+        }
       }
     },
-    "companions": {}
+    "companions": {
+      "ketsuna": {
+        "cells": {
+          "4,4": {
+            "label": "",
+            "effects": [],
+            "costExp": 0,
+            "costItems": []
+          },
+          "3,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "flat",
+                "value": 3
+              }
+            ],
+            "costExp": 3000,
+            "costItems": []
+          },
+          "4,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "flat",
+                "value": 11
+              }
+            ],
+            "costExp": 1500,
+            "costItems": []
+          },
+          "4,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 7
+              }
+            ],
+            "costExp": 1500,
+            "costItems": []
+          },
+          "5,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 1000,
+            "costItems": []
+          },
+          "3,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 1000,
+            "costItems": []
+          },
+          "3,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 1000,
+            "costItems": []
+          },
+          "5,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "flat",
+                "value": 8
+              }
+            ],
+            "costExp": 3000,
+            "costItems": []
+          },
+          "5,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 1000,
+            "costItems": []
+          },
+          "0,7": {
+            "label": "乗り越えるんだ。",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1791900779403_1"
+              }
+            ],
+            "costExp": 70000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 25
+              },
+              {
+                "itemId": "excalibur",
+                "count": 1
+              },
+              {
+                "itemId": "book_dragonslayer_saga",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
+          },
+          "2,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "statusResist",
+                "value": 4
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "2,6": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1789108214910_2",
+                "count": 10
+              },
+              {
+                "itemId": "potion_004",
+                "count": 10
+              }
+            ],
+            "minLevel": 50
+          },
+          "1,6": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "percent",
+                "value": 7
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 15
+              },
+              {
+                "kind": "elementResist",
+                "element": "element_1789993514120_2",
+                "value": 5
+              }
+            ],
+            "costExp": 34000,
+            "costItems": [
+              {
+                "itemId": "item_1790531256969_1",
+                "count": 5
+              },
+              {
+                "itemId": "fish_1790065872945_3",
+                "count": 10
+              },
+              {
+                "itemId": "item_1790066410104_5",
+                "count": 1
+              }
+            ],
+            "minLevel": 55
+          }
+        }
+      },
+      "companion_1788390422466_28": {
+        "cells": {
+          "4,4": {
+            "label": "",
+            "effects": [],
+            "costExp": 0,
+            "costItems": []
+          },
+          "3,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "flat",
+                "value": 3
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "4,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "flat",
+                "value": 7
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "4,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 7
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "5,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          }
+        }
+      },
+      "companion_1789144270926_76": {
+        "cells": {
+          "4,4": {
+            "label": "",
+            "effects": [],
+            "costExp": 0,
+            "costItems": []
+          },
+          "3,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "flat",
+                "value": 3
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "4,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "flat",
+                "value": 12
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "4,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 7
+              }
+            ],
+            "costExp": 150,
+            "costItems": []
+          },
+          "5,4": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "agi",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "luck",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "3,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "flat",
+                "value": 3
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          },
+          "5,3": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "charm",
+                "mode": "flat",
+                "value": 2
+              }
+            ],
+            "costExp": 100,
+            "costItems": []
+          }
+        }
+      }
+    }
   },
   "bgmTracks": [
     {
@@ -13544,7 +15153,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
               "x": 0,
               "y": 0,
               "width": 8,
-              "height": 10,
+              "height": 11,
               "name": "二階リビング",
               "roomType": "",
               "brightness": 4,
@@ -13556,11 +15165,182 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
               },
               "doorStyle": {
                 "west": {
-                  "position": 4,
+                  "position": 2,
                   "color": "#6b4226"
                 }
               },
-              "fixedItems": [],
+              "fixedItems": [
+                {
+                  "id": "fixeditem_1791188195151_3",
+                  "kind": "stairs",
+                  "x": 6,
+                  "y": 2,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "down",
+                  "targetFloor": 0
+                },
+                {
+                  "id": "fixeditem_1791188197744_4",
+                  "kind": "stairs",
+                  "x": 7,
+                  "y": 2,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "down",
+                  "targetFloor": 0
+                },
+                {
+                  "id": "fixeditem_1791188202942_5",
+                  "kind": "stairs",
+                  "x": 6,
+                  "y": 3,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "down",
+                  "targetFloor": 0
+                },
+                {
+                  "id": "fixeditem_1791188205016_6",
+                  "kind": "stairs",
+                  "x": 7,
+                  "y": 3,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "down",
+                  "targetFloor": 0
+                },
+                {
+                  "id": "fixeditem_1791188209865_7",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532855000_11",
+                  "x": 6,
+                  "y": 4,
+                  "w": 1,
+                  "h": 1,
+                  "locked": true
+                },
+                {
+                  "id": "fixeditem_1791188211935_8",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532855000_11",
+                  "x": 7,
+                  "y": 4,
+                  "w": 1,
+                  "h": 1,
+                  "locked": true
+                },
+                {
+                  "id": "fixeditem_1791188220157_9",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532855000_11",
+                  "x": 5,
+                  "y": 2,
+                  "w": 1,
+                  "h": 1,
+                  "locked": true
+                },
+                {
+                  "id": "fixeditem_1791188222524_10",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532855000_11",
+                  "x": 5,
+                  "y": 3,
+                  "w": 1,
+                  "h": 1,
+                  "locked": true
+                },
+                {
+                  "id": "fixeditem_1791188225910_11",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532855000_11",
+                  "x": 5,
+                  "y": 4,
+                  "w": 1,
+                  "h": 1,
+                  "locked": true
+                },
+                {
+                  "id": "fixeditem_1791188248596_13",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532378071_10",
+                  "x": 4,
+                  "y": 7,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188257486_15",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532378071_10",
+                  "x": 4,
+                  "y": 8,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188292552_17",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790162502818_8",
+                  "x": 4,
+                  "y": 9,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188297388_18",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790162502818_8",
+                  "x": 5,
+                  "y": 9,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188317900_19",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790162502818_8",
+                  "x": 3,
+                  "y": 7,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188320732_20",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790162502818_8",
+                  "x": 3,
+                  "y": 8,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188347357_22",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790531805277_2",
+                  "x": 7,
+                  "y": 7,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188350403_23",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790531805277_2",
+                  "x": 7,
+                  "y": 8,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                }
+              ],
               "outsideDoors": {
                 "north": false,
                 "south": false,
