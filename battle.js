@@ -1954,7 +1954,7 @@ function showComboCutIn(text) {
     label.textContent = "COMBO";
     const main = document.createElement("span");
     main.className = "combo-cutin-text";
-    main.textContent = text;
+    setTextWithRuby(main, text); // ★技名のルビ記法に対応（mainfunc.js）
     band.appendChild(label);
     band.appendChild(main);
     el.appendChild(band);
