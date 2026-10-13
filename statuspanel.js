@@ -285,6 +285,11 @@ function getPanelCellCost(cell) {
   return { exp, items };
 }
 
+// ★要望対応：マスごとに指定できる「解放に必要な最低レベル」（0・未指定なら制限なし）
+function getPanelCellMinLevel(cell) {
+  return Math.max(0, Math.floor(Number(cell && cell.minLevel) || 0));
+}
+
 function getPanelItemName(itemId) {
   const data = (typeof ITEM_MASTER !== "undefined") ? ITEM_MASTER[itemId] : null;
   return (data && data.name) || itemId;
@@ -366,6 +371,8 @@ function checkPanelCellUnlockable(unit, ownerType, row, col) {
   if (!cell) return { ok: false, reason: "ここにはマスがない" };
   if (isPanelCellUnlocked(unit, ownerType, key)) return { ok: false, reason: "解放済み" };
   if (!isPanelCellAdjacentToUnlocked(unit, ownerType, row, col)) return { ok: false, reason: "解放済みのマスに隣接していない" };
+  const minLevel = getPanelCellMinLevel(cell);
+  if (minLevel > 0 && (Number(unit.level) || 1) < minLevel) return { ok: false, reason: `レベル${minLevel}以上が必要` };
   const cost = getPanelCellCost(cell);
   for (const item of cost.items) {
     if (getItemCount(item.itemId) < item.count) return { ok: false, reason: `${getPanelItemName(item.itemId)}が足りない` };
@@ -594,6 +601,13 @@ function buildStatusPanelDetail(owner, def) {
     cost.items.forEach(i => parts.push(`${getPanelItemName(i.itemId)} ×${i.count}（所持${getItemCount(i.itemId)}）`));
     costEl.textContent = "コスト：" + (parts.length ? parts.join("、") : "なし");
     box.appendChild(costEl);
+    const minLevel = getPanelCellMinLevel(cell);
+    if (minLevel > 0) {
+      const lvEl = document.createElement("div");
+      lvEl.className = "statuspanel-detail-cost";
+      lvEl.textContent = `必要レベル：${minLevel}以上（現在Lv.${unit.level}）`;
+      box.appendChild(lvEl);
+    }
 
     const check = checkPanelCellUnlockable(unit, owner.type, statusPanelCursorRow, statusPanelCursorCol);
     const btn = document.createElement("button");

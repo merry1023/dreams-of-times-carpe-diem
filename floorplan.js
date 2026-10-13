@@ -107,9 +107,20 @@ function ensureRoomFixedItems(room) {
   return room.fixedItems;
 }
 
+// ★固定設置物の占有サイズ。家具は家具管理タブで登録した縦横（width×height）を使う（回転なし）。
+//   以前は間取り編集から置くとw:1,h:1で保存されていたため、保存済みの古いデータもここで実サイズに直して扱う
+function getFixedItemSize(it) {
+  if (it && it.kind === "furniture") {
+    const def = findFurnitureDef(it.furnitureId);
+    if (def) return { w: Math.max(1, def.width || 1), h: Math.max(1, def.height || 1) };
+  }
+  return { w: Math.max(1, (it && it.w) || 1), h: Math.max(1, (it && it.h) || 1) };
+}
+
 function findFixedItemAt(room, x, y, isCeiling) {
   return ensureRoomFixedItems(room).find(it => {
-    if (x < it.x || x >= it.x + (it.w || 1) || y < it.y || y >= it.y + (it.h || 1)) return false;
+    const size = getFixedItemSize(it);
+    if (x < it.x || x >= it.x + size.w || y < it.y || y >= it.y + size.h) return false;
     const itDef = it.kind === "furniture" ? findFurnitureDef(it.furnitureId) : null;
     const itIsCeiling = it.kind === "furniture" && itDef ? !!itDef.isCeiling : false; // ★階段は常に床レイヤー扱い
     return itIsCeiling === !!isCeiling;
@@ -524,7 +535,8 @@ function buildFixedItemEditorSection(area, floorPlan, room, persist) {
         + (item && item.kind === "furniture" && item.locked ? " fixeditem-editor-cell-locked" : "")
         + (scenarioBuildFixedItemSelectedCell && scenarioBuildFixedItemSelectedCell.x === x && scenarioBuildFixedItemSelectedCell.y === y ? " fixeditem-editor-cell-selected" : "");
       if (item) {
-        cellBtn.textContent = item.kind === "stairs" ? "階段" : (findFurnitureDef(item.furnitureId) ? findFurnitureDef(item.furnitureId).name : "？");
+        const isOrigin = item.x === x && item.y === y; // ★複数マスの家具は左上のマスにだけ名前を出す
+        cellBtn.textContent = !isOrigin ? "〃" : (item.kind === "stairs" ? "階段" : (findFurnitureDef(item.furnitureId) ? findFurnitureDef(item.furnitureId).name : "？"));
       }
       cellBtn.onclick = (event) => {
         event.stopPropagation();
@@ -635,9 +647,16 @@ function buildFixedItemCellDetail(area, floorPlan, room, cell, persist) {
       const btn = document.createElement("button");
       btn.className = "devmode-btn";
       btn.textContent = def.name || "（無名の家具）";
+      // ★家具管理タブの縦×横サイズぶんのマスを占有する。はみ出す・他の設置物と重なる場合は置けない
+      const fw = Math.max(1, def.width || 1), fh = Math.max(1, def.height || 1);
+      const canPlace = isFurniturePlacementFree(room, cell.x, cell.y, fw, fh, null, null, false); // furniture.js
+      btn.textContent = (def.name || "（無名の家具）") + (fw > 1 || fh > 1 ? `（${fw}×${fh}）` : "") + (canPlace ? "" : "（ここには置けない）");
+      btn.disabled = !canPlace;
+      if (!canPlace) btn.title = "部屋の範囲からはみ出すか、他の設置物と重なります。左上のマスを選び直してください";
       btn.onclick = (event) => {
         event.stopPropagation();
-        items.push({ id: generateId("fixeditem"), kind: "furniture", furnitureId: def.id, x: cell.x, y: cell.y, w: 1, h: 1, locked: true });
+        if (!isFurniturePlacementFree(room, cell.x, cell.y, fw, fh, null, null, false)) return;
+        items.push({ id: generateId("fixeditem"), kind: "furniture", furnitureId: def.id, x: cell.x, y: cell.y, w: fw, h: fh, locked: true });
         persist();
       };
       furnitureListWrap.appendChild(btn);
