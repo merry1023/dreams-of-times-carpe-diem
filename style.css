@@ -4309,6 +4309,39 @@ rt {
   box-sizing: border-box;
 }
 
+/* ★戦闘中の行動可能数（残り1つにつきアイコン1つ。最大4つ）。使い切った分は薄い枠だけ残す */
+.battle-action-points {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: rgba(0, 0, 0, 0.55);
+  border-radius: 16px;
+  pointer-events: none;
+}
+.battle-action-points.hidden {
+  display: none !important;
+}
+.battle-action-points.battle-action-points-boss {
+  top: 56px;
+}
+.battle-action-point {
+  display: block;
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #fff3b0, #ffc400);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  filter: drop-shadow(0 0 3px rgba(255, 196, 0, 0.9));
+}
+.battle-action-point.spent {
+  background: rgba(255, 255, 255, 0.18);
+  filter: none;
+}
+
 .battle-hud.hidden {
   display: none !important;
 }
