@@ -107,9 +107,20 @@ function ensureRoomFixedItems(room) {
   return room.fixedItems;
 }
 
+// ★固定設置物の占有サイズ。家具は家具管理タブで登録した縦横（width×height）を使う（回転なし）。
+//   以前は間取り編集から置くとw:1,h:1で保存されていたため、保存済みの古いデータもここで実サイズに直して扱う
+function getFixedItemSize(it) {
+  if (it && it.kind === "furniture") {
+    const def = findFurnitureDef(it.furnitureId);
+    if (def) return { w: Math.max(1, def.width || 1), h: Math.max(1, def.height || 1) };
+  }
+  return { w: Math.max(1, (it && it.w) || 1), h: Math.max(1, (it && it.h) || 1) };
+}
+
 function findFixedItemAt(room, x, y, isCeiling) {
   return ensureRoomFixedItems(room).find(it => {
-    if (x < it.x || x >= it.x + (it.w || 1) || y < it.y || y >= it.y + (it.h || 1)) return false;
+    const size = getFixedItemSize(it);
+    if (x < it.x || x >= it.x + size.w || y < it.y || y >= it.y + size.h) return false;
     const itDef = it.kind === "furniture" ? findFurnitureDef(it.furnitureId) : null;
     const itIsCeiling = it.kind === "furniture" && itDef ? !!itDef.isCeiling : false; // ★階段は常に床レイヤー扱い
     return itIsCeiling === !!isCeiling;
@@ -524,7 +535,8 @@ function buildFixedItemEditorSection(area, floorPlan, room, persist) {
         + (item && item.kind === "furniture" && item.locked ? " fixeditem-editor-cell-locked" : "")
         + (scenarioBuildFixedItemSelectedCell && scenarioBuildFixedItemSelectedCell.x === x && scenarioBuildFixedItemSelectedCell.y === y ? " fixeditem-editor-cell-selected" : "");
       if (item) {
-        cellBtn.textContent = item.kind === "stairs" ? "階段" : (findFurnitureDef(item.furnitureId) ? findFurnitureDef(item.furnitureId).name : "？");
+        const isOrigin = item.x === x && item.y === y; // ★複数マスの家具は左上のマスにだけ名前を出す
+        cellBtn.textContent = !isOrigin ? "〃" : (item.kind === "stairs" ? "階段" : (findFurnitureDef(item.furnitureId) ? findFurnitureDef(item.furnitureId).name : "？"));
       }
       cellBtn.onclick = (event) => {
         event.stopPropagation();
@@ -635,9 +647,16 @@ function buildFixedItemCellDetail(area, floorPlan, room, cell, persist) {
       const btn = document.createElement("button");
       btn.className = "devmode-btn";
       btn.textContent = def.name || "（無名の家具）";
+      // ★家具管理タブの縦×横サイズぶんのマスを占有する。はみ出す・他の設置物と重なる場合は置けない
+      const fw = Math.max(1, def.width || 1), fh = Math.max(1, def.height || 1);
+      const canPlace = isFurniturePlacementFree(room, cell.x, cell.y, fw, fh, null, null, false); // furniture.js
+      btn.textContent = (def.name || "（無名の家具）") + (fw > 1 || fh > 1 ? `（${fw}×${fh}）` : "") + (canPlace ? "" : "（ここには置けない）");
+      btn.disabled = !canPlace;
+      if (!canPlace) btn.title = "部屋の範囲からはみ出すか、他の設置物と重なります。左上のマスを選び直してください";
       btn.onclick = (event) => {
         event.stopPropagation();
-        items.push({ id: generateId("fixeditem"), kind: "furniture", furnitureId: def.id, x: cell.x, y: cell.y, w: 1, h: 1, locked: true });
+        if (!isFurniturePlacementFree(room, cell.x, cell.y, fw, fh, null, null, false)) return;
+        items.push({ id: generateId("fixeditem"), kind: "furniture", furnitureId: def.id, x: cell.x, y: cell.y, w: fw, h: fh, locked: true });
         persist();
       };
       furnitureListWrap.appendChild(btn);
@@ -771,23 +790,43 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       if (typeof renderRoomView === "function") renderRoomView(room, currentUiState(), floorPlan); // furniture.js
     }
     
-    // ★要望対応：Lキーで、この家（area）の全ての階・全ての部屋にある「天井の照明」を一斉に点ける
-    function turnOnAllCeilingLights() {
+    // ★要望対応：Lキーで、この家（area）の全ての階・全ての部屋にある「天井の照明」を一斉に点ける/消す（トグル）
+    function forEachCeilingLightInHouse(callback) {
       const floors = (area.floorPlans && typeof area.floorPlans === "object") ? Object.values(area.floorPlans) : [floorPlan];
       floors.forEach(fp => {
         if (!fp || !Array.isArray(fp.rooms)) return;
         fp.rooms.forEach(r => {
           getRoomPlacedFurniture(r.id).forEach(inst => { // furniture.js
             const def = findFurnitureDef(inst.furnitureId);
-            if (def && def.type === "lighting" && def.isCeiling) inst.lightOn = true;
+            if (def && def.type === "lighting" && def.isCeiling) callback(inst);
           });
           (Array.isArray(r.fixedItems) ? r.fixedItems : []).forEach(item => {
             if (item.kind !== "furniture") return;
             const def = findFurnitureDef(item.furnitureId);
-            if (def && def.type === "lighting" && def.isCeiling) item.lightOn = true;
+            if (def && def.type === "lighting" && def.isCeiling) callback(item);
           });
         });
       });
+    }
+
+    function isAnyCeilingLightOnInHouse() {
+      let anyOn = false;
+      forEachCeilingLightInHouse(obj => { if (obj.lightOn !== false) anyOn = true; });
+      return anyOn;
+    }
+
+    function turnOnAllCeilingLights() {
+      forEachCeilingLightInHouse(obj => { obj.lightOn = true; });
+    }
+
+    function turnOffAllCeilingLights() {
+      forEachCeilingLightInHouse(obj => { obj.lightOn = false; });
+    }
+
+    // ★要望対応：Lキーをもう1回押すと全消灯になるようにトグル化。現在1つでも点いていれば全消灯、全て消えていれば全点灯。
+    function toggleAllCeilingLights() {
+      if (isAnyCeilingLightOnInHouse()) turnOffAllCeilingLights();
+      else turnOnAllCeilingLights();
     }
     
     function toggleMode() {
@@ -922,14 +961,29 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         //   HP・SPは現在値が最大の半分に届いていなければ半分まで引き上げ、眠気・疲労度は現在値が最大の半分を超えていれば半分まで下げる
         //   （既に半分より良い状態なら、悪化させないようそのまま）
         const g = player.gauges || {};
+        const before = {
+          hp: g.hp ? g.hp.current : null,
+          sp: g.sp ? g.sp.current : null,
+          fatigue: g.fatigue ? g.fatigue.current : null,
+          sleepiness: g.sleepiness ? g.sleepiness.current : null
+        };
         if (g.hp) g.hp.current = Math.max(g.hp.current, Math.floor(g.hp.max / 2));
         if (g.sp) g.sp.current = Math.max(g.sp.current, Math.floor(g.sp.max / 2));
         if (g.fatigue) g.fatigue.current = Math.min(g.fatigue.current, Math.floor(g.fatigue.max / 2));
         if (g.sleepiness) g.sleepiness.current = Math.min(g.sleepiness.current, Math.floor(g.sleepiness.max / 2));
         if (typeof advanceGameTime === "function") advanceGameTime(8); // player.js
         if (typeof renderStatusHUD === "function") renderStatusHUD();
+        
+        // ★要望対応：回復したことが一目で分かるよう、実際に変化した量をメッセージにそのまま出す
+        const changeParts = [];
+        if (g.hp && g.hp.current > before.hp) changeParts.push(`HPが${g.hp.current - before.hp}回復した`);
+        if (g.sp && g.sp.current > before.sp) changeParts.push(`SPが${g.sp.current - before.sp}回復した`);
+        if (g.fatigue && g.fatigue.current < before.fatigue) changeParts.push(`疲労度が${before.fatigue - g.fatigue.current}減った`);
+        if (g.sleepiness && g.sleepiness.current < before.sleepiness) changeParts.push(`眠気が${before.sleepiness - g.sleepiness.current}減った`);
+        const changeSummary = changeParts.length > 0 ? changeParts.join("。") + "。" : "もう十分に回復していたようで、特に変化は無かった。";
+        
         changeSpeaker("");
-        await displayMessage((def.useMessage) || "ぐっすりと眠った。8時間が経過し、体力も気力も半分ほどまで回復した。");
+        await displayMessage(`${(def.useMessage) || "ぐっすりと眠った。8時間が経過した。"}\n${changeSummary}`);
       } else {
         await displayMessage((def && def.useMessage) || "特に変わったことは無いようだ。");
       }
@@ -1083,7 +1137,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       }
       
       if (event.key === "g" || event.key === "G") { event.preventDefault(); toggleMode(); return; }
-      if (event.key === "l" || event.key === "L") { event.preventDefault(); turnOnAllCeilingLights(); render(); return; } // ★要望対応：Lキーで、この家の全部屋の天井の照明を一斉に点ける
+      if (event.key === "l" || event.key === "L") { event.preventDefault(); toggleAllCeilingLights(); render(); return; } // ★要望対応：Lキーで、この家の全部屋の天井の照明を一斉に点ける/消す（トグル）
       
       if (mode === "move") {
         if (event.key === "ArrowUp") { event.preventDefault(); handleDirection("up"); }

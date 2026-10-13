@@ -76,6 +76,8 @@ function isScenarioCompanionChatEnabled() {
 //   シナリオエディタの「タブ管理」で開発者だけが決められるようにした（プレイヤー側の個人設定は廃止）
 function isPlayTabEnabled(tabId) {
   if (!tabId) return false;
+  // ★要望対応：パネルタブは、主人公が30レベルに到達するまで隠す（statuspanel.js）
+  if (tabId === "tab-statuspanel" && typeof isStatusPanelTabUnlocked === "function" && !isStatusPanelTabUnlocked()) return false;
   return isScenarioPlayTabEnabled(tabId);
 }
 

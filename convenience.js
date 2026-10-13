@@ -87,6 +87,7 @@ const CONVENIENCE_APPS = [
   { id: "progress", label: "進行度", icon: "📊", action: () => openProgressPanel() },
   { id: "achievements", label: "実績", icon: "🏆", action: () => openAchievementsPanel() },
   { id: "elementCombo", label: "属性コンボ", icon: "⚡", action: () => openElementComboPanel() }, // ★要望対応：今使えるコンボと属性の順番の一覧
+  { id: "elementChart", label: "属性表", icon: "📋", action: () => openElementChartPanel() }, // ★要望対応：属性同士の相性一覧（特攻・耐性）
   { id: "tutorial", label: "チュートリアル", icon: "❓", action: () => openTutorialPanel() },
   { id: "credits", label: "クレジット", icon: "📜", action: () => openCredits() }
 ];
@@ -116,10 +117,12 @@ function closeAllConvenienceSubPanels() {
   const codexPanel = document.getElementById("monster-codex-panel");
   const creditsPanel = document.getElementById("credits-panel");
   const comboPanel = document.getElementById("element-combo-panel");
+  const chartPanel = document.getElementById("element-chart-panel");
   const progressPanel = document.getElementById("progress-panel");
   const tutorialPanel = document.getElementById("tutorial-panel");
   const achievementsPanel = document.getElementById("achievements-panel");
   window.removeEventListener("keydown", handleElementComboKeyDown);
+  window.removeEventListener("keydown", handleElementChartKeyDown);
   window.removeEventListener("keydown", handleSaveLoadKeyDown);
   window.removeEventListener("keydown", handleMonsterCodexKeyDown);
   window.removeEventListener("keydown", handleCreditsKeyDown);
@@ -130,6 +133,7 @@ function closeAllConvenienceSubPanels() {
   if (codexPanel) codexPanel.classList.add("hidden"); // ★これが抜けていて、図鑑を閉じても下半分に残り続けるバグの原因だった
   if (creditsPanel) creditsPanel.classList.add("hidden"); // ★クレジットも同様に、閉じ忘れると下半分に残ってしまう
   if (comboPanel) comboPanel.classList.add("hidden");
+  if (chartPanel) chartPanel.classList.add("hidden");
   if (progressPanel) progressPanel.classList.add("hidden");
   if (tutorialPanel) tutorialPanel.classList.add("hidden");
   if (achievementsPanel) achievementsPanel.classList.add("hidden");
@@ -522,6 +526,114 @@ function handleElementComboKeyDown(event) {
   if (KEY_CONFIG.cancelKeys.includes(event.key)) {
     event.preventDefault();
     closeElementComboPanel();
+  }
+}
+
+// ===== 属性表（要望対応：属性同士の相性一覧） =====
+//   シナリオエディタの「属性管理」タブで設定した相性表（scenarioProject.elementMatchups、
+//   キーは"攻撃側id>防御側id"で値は"advantage"（特攻）／"resist"（耐性）／未設定なら通常）を、
+//   プレイヤー向けに見やすく一覧表示する。通常（相性なし）の組み合わせは、数が多くなるため載せない
+function openElementChartPanel() {
+  const grid = document.getElementById("convenience-icon-grid");
+  if (grid) grid.classList.add("hidden");
+  closeAllConvenienceSubPanels();
+  renderElementChartPanel();
+  window.removeEventListener("keydown", handleElementChartKeyDown);
+  window.addEventListener("keydown", handleElementChartKeyDown);
+}
+
+function closeElementChartPanel() {
+  window.removeEventListener("keydown", handleElementChartKeyDown);
+  renderConvenienceIcons();
+}
+
+function renderElementChartPanel() {
+  const panel = document.getElementById("element-chart-panel");
+  if (!panel) return;
+  panel.classList.remove("hidden");
+  panel.innerHTML = "";
+
+  const title = document.createElement("h3");
+  title.className = "monster-codex-title";
+  title.textContent = "属性表";
+  panel.appendChild(title);
+
+  const noteEl = document.createElement("p");
+  noteEl.className = "element-combo-note";
+  noteEl.textContent = "攻撃する属性と、受ける側の属性の相性です（通常の組み合わせは省略しています）。";
+  panel.appendChild(noteEl);
+
+  const elementDefs = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.elementDefs)) ? scenarioProject.elementDefs : [];
+  const matchups = (typeof scenarioProject !== "undefined" && scenarioProject.elementMatchups) ? scenarioProject.elementMatchups : {};
+  const elementName = (id) => {
+    const def = elementDefs.find(e => e.id === id);
+    return (def && def.name) || id;
+  };
+
+  const rows = elementDefs.map(atkEl => {
+    const entries = elementDefs
+      .filter(defEl => defEl.id !== atkEl.id && matchups[atkEl.id + ">" + defEl.id])
+      .map(defEl => ({ defEl, kind: matchups[atkEl.id + ">" + defEl.id] }));
+    return { atkEl, entries };
+  }).filter(row => row.entries.length > 0);
+
+  if (rows.length === 0) {
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "element-combo-empty";
+    emptyEl.textContent = "まだ相性が設定されていません。";
+    panel.appendChild(emptyEl);
+  }
+
+  rows.forEach(({ atkEl, entries }) => {
+    const item = document.createElement("div");
+    item.className = "element-combo-item";
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "element-combo-name";
+    if (typeof createElementIconEl === "function") nameEl.appendChild(createElementIconEl(atkEl.id)); // battle.js
+    nameEl.appendChild(document.createTextNode(" " + (atkEl.name || "（無名）") + " の攻撃"));
+    item.appendChild(nameEl);
+
+    const orderEl = document.createElement("div");
+    orderEl.className = "element-combo-order";
+    entries.forEach(({ defEl, kind }) => {
+      const chip = document.createElement("span");
+      chip.className = "element-combo-chip " + (kind === "advantage" ? "element-chart-chip-advantage" : "element-chart-chip-resist");
+
+      const chipNameEl = document.createElement("span");
+      chipNameEl.className = "element-combo-chip-name";
+      chipNameEl.textContent = elementName(defEl.id);
+      chip.appendChild(chipNameEl);
+
+      if (typeof createElementIconEl === "function") chip.appendChild(createElementIconEl(defEl.id));
+
+      const kindLabel = document.createElement("span");
+      kindLabel.className = "element-chart-chip-kind";
+      kindLabel.textContent = kind === "advantage" ? "特攻" : "耐性";
+      chip.appendChild(kindLabel);
+
+      orderEl.appendChild(chip);
+    });
+    item.appendChild(orderEl);
+    panel.appendChild(item);
+  });
+
+  const backBtn = document.createElement("button");
+  backBtn.className = "monster-codex-back-btn";
+  backBtn.textContent = "◀ 戻る";
+  backBtn.onclick = (event) => { event.stopPropagation(); closeElementChartPanel(); };
+  panel.appendChild(backBtn);
+}
+
+function handleElementChartKeyDown(event) {
+  if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // シナリオエディタ表示中は本編を操作させない
+  if (controlFocus !== "sub") return;
+  if (isGameDialogOpen) return;
+  const activeTab = document.querySelector('.tab-content.active');
+  if (!activeTab || activeTab.id !== 'tab-convenience') return;
+  if (KEY_CONFIG.cancelKeys.includes(event.key)) {
+    event.preventDefault();
+    closeElementChartPanel();
   }
 }
 

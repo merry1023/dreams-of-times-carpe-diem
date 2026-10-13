@@ -2,6 +2,7 @@
 //   職業ごと（主人公）・仲間ごとに用意された9×9のマス目の盤。中心の「基本パネル」から、斜めを含む8方向に
 //   隣接したマスだけを、コスト（アイテム・経験値）を払って順に解放していく。
 //   マスの効果＝ステータスの割合/固定値アップ・新しい技の習得・状態異常耐性。
+//   ★割合アップは「100レベル時のステータスの三分の二」に％をかけた値を加算する（レベルに左右されない固定の上乗せ量）
 //   ★経験値をコストにすると経験値が減り、それに応じてレベル・ステータスも下がる。
 //     解放したマスの効果は解放した瞬間から有効で、同じレベルに戻ると、その分だけ上乗せされた状態になる。
 //   盤の中身は、シナリオエディタの「ステータスパネル」タブ（scenarioProject.statusPanels）で作る：
@@ -12,6 +13,34 @@
 const STATUS_PANEL_SIZE = 9;
 const STATUS_PANEL_CENTER = 4; // 中心マス（行・列とも4）＝基本パネル。最初から解放済み
 const STATUS_PANEL_CENTER_KEY = `${STATUS_PANEL_CENTER},${STATUS_PANEL_CENTER}`;
+
+// ★要望対応：ハニカム構造（蜂の巣）のように、六角形のマス同士が隙間なく組み合う配置の計算。
+//   マスは「左右がとがった正六角形」（横:縦 = 2:√3。以前は上下がとがった向きだったが90°回転した）。
+//   このマスは縦方向には直接重ねるだけで隙間なく並び（同じ列どうしはずれ無し）、
+//   横方向は奇数列を半マスぶん下へずらし、列の間隔をマスの横幅の75%にすることで、
+//   隙間に隣の列のマスの先端がぴったり収まる。
+//   .statuspanel-grid（土台）はposition:relative、各.statuspanel-cellはposition:absoluteで
+//   並べるため、土台の縦横比もここから逆算してJSで設定する
+const STATUS_PANEL_HEX_HEIGHT_PERCENT = 100 / (STATUS_PANEL_SIZE + 0.5); // ★1マスの縦幅（土台の高さに対する%）。末尾の半マスずれの分だけ全体を広めに取っておく
+const STATUS_PANEL_HEX_COL_UNIT_COUNT = 1 + (STATUS_PANEL_SIZE - 1) * 0.75; // ★横方向に必要なマスの横幅の合計（マスの横幅を1とした単位）
+const STATUS_PANEL_HEX_WIDTH_PERCENT = 100 / STATUS_PANEL_HEX_COL_UNIT_COUNT; // ★1マスの横幅（土台の幅に対する%）
+const STATUS_PANEL_HEX_ASPECT_RATIO = (STATUS_PANEL_HEX_COL_UNIT_COUNT * (2 / Math.sqrt(3))) / (STATUS_PANEL_SIZE + 0.5); // ★土台(.statuspanel-grid)自体の横:縦比
+
+// ★土台となる.statuspanel-grid要素に、マス数から計算した縦横比を設定する
+function applyStatusPanelGridAspectRatio(gridEl) {
+  gridEl.style.aspectRatio = String(STATUS_PANEL_HEX_ASPECT_RATIO);
+}
+
+// ★1マスぶんの.statuspanel-cell要素に、行row・列col（ともに0始まり）に応じた位置・大きさを設定する
+function layoutStatusPanelHexCell(cellEl, row, col) {
+  const leftPercent = col * 0.75 * STATUS_PANEL_HEX_WIDTH_PERCENT;
+  const topPercent = (row + (col % 2 === 1 ? 0.5 : 0)) * STATUS_PANEL_HEX_HEIGHT_PERCENT;
+  cellEl.style.position = "absolute";
+  cellEl.style.left = leftPercent + "%";
+  cellEl.style.top = topPercent + "%";
+  cellEl.style.width = STATUS_PANEL_HEX_WIDTH_PERCENT + "%";
+  cellEl.style.height = STATUS_PANEL_HEX_HEIGHT_PERCENT + "%";
+}
 const STATUS_PANEL_STAT_DEFS = [
   { key: "atk", label: "物理攻撃力", short: "物攻" },
   { key: "skillPower", label: "魔法攻撃力", short: "魔攻" },
@@ -21,6 +50,30 @@ const STATUS_PANEL_STAT_DEFS = [
   { key: "maxHp", label: "最大HP", short: "HP" },
   { key: "maxSp", label: "最大SP", short: "SP" }
 ];
+
+// ===== パネルタブの解放（要望対応） =====
+//   パネルタブは、主人公が30レベルに到達するまで隠す。経験値をコストに払うとレベルが下がるので、
+//   一度30レベルに到達したら（player.statusPanelUnlocked）、その後レベルが下がっても隠さない
+const STATUS_PANEL_TAB_UNLOCK_LEVEL = 30;
+let statusPanelTabUnlockedApplied = null;
+
+function isStatusPanelTabUnlocked() {
+  if (typeof player === "undefined" || !player) return false;
+  if (player.statusPanelUnlocked) return true;
+  if (player.level >= STATUS_PANEL_TAB_UNLOCK_LEVEL) {
+    player.statusPanelUnlocked = true;
+    return true;
+  }
+  return false;
+}
+
+// ★タブの表示状態が変わった時だけ、タブの表示を更新する（HUDの更新のたび＝レベルアップ・ロード・ニューゲームの後に呼ぶ）
+function refreshStatusPanelTabVisibility() {
+  const unlocked = isStatusPanelTabUnlocked();
+  if (unlocked === statusPanelTabUnlockedApplied) return;
+  statusPanelTabUnlockedApplied = unlocked;
+  if (typeof applyPlayTabVisibility === "function") applyPlayTabVisibility(); // mainfunc.js
+}
 
 // ===== データ参照 =====
 function getStatusPanelDefFor(unit, ownerType) {
@@ -48,7 +101,7 @@ function ensurePanelUnlockedListFor(unit, ownerType) {
 
 // ★解放済みのマス全部の効果を合計する（中心の基本パネルは常に解放済み扱い）
 function computePanelTotalsFor(unit, ownerType) {
-  const totals = { flat: {}, pct: {}, skillRefs: [], statusResist: 0, elementResist: {} };
+  const totals = { flat: {}, pct: {}, skillRefs: [], upperSkillIds: [], statusResist: 0, elementResist: {} };
   const def = getStatusPanelDefFor(unit, ownerType);
   if (!def || !def.cells) return totals;
   const keys = new Set(getPanelUnlockedListFor(unit, ownerType));
@@ -61,6 +114,8 @@ function computePanelTotalsFor(unit, ownerType) {
       if (effect.kind === "stat" && effect.stat) {
         const bucket = effect.mode === "percent" ? totals.pct : totals.flat;
         bucket[effect.stat] = (bucket[effect.stat] || 0) + (Number(effect.value) || 0);
+      } else if (effect.kind === "upperSkill" && effect.upperSkillId) {
+        totals.upperSkillIds.push(effect.upperSkillId);
       } else if (effect.kind === "skill" && effect.skillName) {
         totals.skillRefs.push({ className: effect.className, skillName: effect.skillName });
       } else if (effect.kind === "statusResist") {
@@ -73,26 +128,35 @@ function computePanelTotalsFor(unit, ownerType) {
   return totals;
 }
 
-// ★ステータスへの上乗せ量。割合アップは「基礎値（レベルで決まる素の値）の％を加算」
+// ★割合アップの基準値＝「100レベル時のステータス」の三分の二。レベルが低くても高くても、同じ％なら同じ量が乗る
+const PANEL_PERCENT_BASE_LEVEL = 100;
+const PANEL_PERCENT_BASE_RATIO = 2 / 3;
+
+function getPanelPercentBaseFor(unit, ownerType) {
+  const base = {};
+  if (ownerType === "class") {
+    const cls = (typeof CLASS_MASTER !== "undefined") ? CLASS_MASTER[unit.class] : null;
+    const growth = (cls && cls.growthPerLevel) || {};
+    STATUS_PANEL_STAT_DEFS.forEach(def => {
+      base[def.key] = ((cls && cls.baseStats && cls.baseStats[def.key]) || 0) + getCumulativeGrowth(growth, PANEL_PERCENT_BASE_LEVEL, def.key);
+    });
+  } else {
+    const master = getCompanionMaster(unit);
+    const at100 = master ? getCompanionStatsAtLevel(master, PANEL_PERCENT_BASE_LEVEL) : {};
+    STATUS_PANEL_STAT_DEFS.forEach(def => { base[def.key] = at100[def.key] || 0; });
+  }
+  STATUS_PANEL_STAT_DEFS.forEach(def => { base[def.key] = base[def.key] * PANEL_PERCENT_BASE_RATIO; });
+  return base;
+}
+
+// ★ステータスへの上乗せ量。割合アップは「100レベル時のステータスの三分の二」の％を加算
 function getPanelBonusFor(unit, ownerType) {
   const result = { atk: 0, agi: 0, skillPower: 0, luck: 0, charm: 0, maxHp: 0, maxSp: 0 };
   if (!unit) return result;
   const totals = computePanelTotalsFor(unit, ownerType);
   const hasAny = Object.keys(totals.flat).length > 0 || Object.keys(totals.pct).length > 0;
   if (!hasAny) return result;
-  let base = {};
-  if (ownerType === "class") {
-    const cls = (typeof CLASS_MASTER !== "undefined") ? CLASS_MASTER[unit.class] : null;
-    const growth = (cls && cls.growthPerLevel) || {};
-    base = {
-      atk: unit.stats.atk, agi: unit.stats.agi, skillPower: unit.stats.skillPower, luck: unit.stats.luck, charm: unit.stats.charm,
-      maxHp: ((cls && cls.baseStats.maxHp) || 0) + getCumulativeGrowth(growth, unit.level, "maxHp"),
-      maxSp: ((cls && cls.baseStats.maxSp) || 0) + getCumulativeGrowth(growth, unit.level, "maxSp")
-    };
-  } else {
-    const master = getCompanionMaster(unit);
-    base = master ? getCompanionStatsAtLevel(master, unit.level) : {};
-  }
+  const base = getPanelPercentBaseFor(unit, ownerType);
   STATUS_PANEL_STAT_DEFS.forEach(def => {
     const key = def.key;
     result[key] = (totals.flat[key] || 0) + Math.round((base[key] || 0) * (totals.pct[key] || 0) / 100);
@@ -154,7 +218,49 @@ function syncAllPanelGauges() {
   (player.companions || []).forEach(c => syncPanelGauges(c, "companion"));
 }
 
-// ===== 新しい技 =====
+// ===== 上位スキル（要望対応） =====
+//   パネルで習得する技は、職業技（CLASS_SKILLS）とは別枠の「上位スキル」（scenarioProject.upperSkills）。
+//   戦闘中は、通常の「スキル」とは別の「上位スキル」の選択肢から使う（battle.js）。
+//   上位スキルのデータは、職業技と同じ変換（buildRuntimeSkillFromSkillEntry）で、戦闘が参照する技にして返す
+function getAllUpperSkills() {
+  const entries = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.upperSkills)) ? scenarioProject.upperSkills : [];
+  if (typeof buildRuntimeSkillFromSkillEntry !== "function") return [];
+  return entries.map(entry => {
+    const skill = buildRuntimeSkillFromSkillEntry(entry);
+    skill.upperId = entry.id;
+    skill.isUpper = true;
+    return skill;
+  });
+}
+
+function getPanelGrantedUpperSkills(unit, ownerType) {
+  if (!unit) return [];
+  const ids = computePanelTotalsFor(unit, ownerType).upperSkillIds;
+  if (ids.length === 0) return [];
+  const all = getAllUpperSkills();
+  const result = [];
+  ids.forEach(id => {
+    const skill = all.find(s => s.upperId === id);
+    if (skill && !result.includes(skill)) result.push(skill);
+  });
+  return result;
+}
+
+// ★戦闘中に使える上位スキル（攻撃・回復・自己強化、またはブロックで組んだ技）
+function isUsableUpperSkill(skill) {
+  return skill.type === "attack" || skill.type === "heal" || skill.type === "buff" || (Array.isArray(skill.blocks) && skill.blocks.length > 0);
+}
+
+function getPlayerUpperSkills() {
+  if (typeof player === "undefined" || !player) return [];
+  return getPanelGrantedUpperSkills(player, "class").filter(isUsableUpperSkill);
+}
+
+function getCompanionUpperSkills(companion) {
+  return getPanelGrantedUpperSkills(companion, "companion").filter(isUsableUpperSkill);
+}
+
+// ===== 新しい技（旧：職業技を習得するタイプ。以前の設定との互換用） =====
 function getPanelGrantedSkills(unit, ownerType) {
   if (typeof CLASS_SKILLS === "undefined") return [];
   const totals = computePanelTotalsFor(unit, ownerType);
@@ -177,6 +283,11 @@ function getPanelCellCost(cell) {
   const items = ((cell && cell.costItems) || []).filter(i => i && i.itemId && Number(i.count) > 0)
     .map(i => ({ itemId: i.itemId, count: Math.floor(Number(i.count)) }));
   return { exp, items };
+}
+
+// ★要望対応：マスごとに指定できる「解放に必要な最低レベル」（0・未指定なら制限なし）
+function getPanelCellMinLevel(cell) {
+  return Math.max(0, Math.floor(Number(cell && cell.minLevel) || 0));
 }
 
 function getPanelItemName(itemId) {
@@ -260,6 +371,8 @@ function checkPanelCellUnlockable(unit, ownerType, row, col) {
   if (!cell) return { ok: false, reason: "ここにはマスがない" };
   if (isPanelCellUnlocked(unit, ownerType, key)) return { ok: false, reason: "解放済み" };
   if (!isPanelCellAdjacentToUnlocked(unit, ownerType, row, col)) return { ok: false, reason: "解放済みのマスに隣接していない" };
+  const minLevel = getPanelCellMinLevel(cell);
+  if (minLevel > 0 && (Number(unit.level) || 1) < minLevel) return { ok: false, reason: `レベル${minLevel}以上が必要` };
   const cost = getPanelCellCost(cell);
   for (const item of cost.items) {
     if (getItemCount(item.itemId) < item.count) return { ok: false, reason: `${getPanelItemName(item.itemId)}が足りない` };
@@ -284,6 +397,11 @@ function unlockPanelCell(unit, ownerType, row, col) {
 }
 
 // ===== 表示用の文章 =====
+function getUpperSkillName(upperId) {
+  const entry = (typeof scenarioProject !== "undefined" && scenarioProject.upperSkills || []).find(s => s.id === upperId);
+  return (entry && entry.name) || "？";
+}
+
 function getPanelElementName(elementId) {
   const def = (typeof scenarioProject !== "undefined" && scenarioProject.elementDefs || []).find(e => e.id === elementId);
   return (def && def.name) || elementId || "？";
@@ -294,8 +412,9 @@ function describePanelEffect(effect) {
   if (effect.kind === "stat") {
     const def = STATUS_PANEL_STAT_DEFS.find(d => d.key === effect.stat);
     const name = def ? def.label : effect.stat;
-    return effect.mode === "percent" ? `${name} +${effect.value}%（基礎値に対して）` : `${name} +${effect.value}`;
+    return effect.mode === "percent" ? `${name} +${effect.value}%（100レベル時の能力の2/3が基準）` : `${name} +${effect.value}`;
   }
+  if (effect.kind === "upperSkill") return `上位スキル「${getUpperSkillName(effect.upperSkillId)}」を習得`;
   if (effect.kind === "skill") return `新しい技「${effect.skillName}」を習得`;
   if (effect.kind === "statusResist") return `状態異常耐性 +${effect.value}%（かかる確率が下がる）`;
   if (effect.kind === "elementResist") return `${getPanelElementName(effect.element)}属性の敵から受けるダメージ -${effect.value}%`;
@@ -312,6 +431,8 @@ function summarizePanelCell(cell) {
     const def = STATUS_PANEL_STAT_DEFS.find(d => d.key === first.stat);
     top = def ? def.short : first.stat;
     bottom = first.mode === "percent" ? `+${first.value}%` : `+${first.value}`;
+  } else if (first.kind === "upperSkill") {
+    top = "上位"; bottom = getUpperSkillName(first.upperSkillId);
   } else if (first.kind === "skill") {
     top = "技"; bottom = "";
   } else if (first.kind === "statusResist") {
@@ -341,6 +462,8 @@ function getStatusPanelOwners() {
 function renderStatusPanelTab() {
   const root = document.getElementById("statuspanel-root");
   if (!root) return;
+  const prevWrap = root.querySelector(".statuspanel-grid-wrap");
+  const prevGridScroll = prevWrap ? prevWrap.scrollTop : 0;
   root.innerHTML = "";
   const owners = getStatusPanelOwners();
   if (owners.length === 0) return;
@@ -381,8 +504,11 @@ function renderStatusPanelTab() {
     return;
   }
 
+  const gridWrap = document.createElement("div");
+  gridWrap.className = "statuspanel-grid-wrap"; // ★盤だけをスクロールさせ、下のマスの説明は常に画面内に固定する
   const grid = document.createElement("div");
   grid.className = "statuspanel-grid";
+  applyStatusPanelGridAspectRatio(grid); // ★要望対応：ハニカム状に組み合う縦横比を設定
   for (let r = 0; r < STATUS_PANEL_SIZE; r++) {
     for (let c = 0; c < STATUS_PANEL_SIZE; c++) {
       const key = `${r},${c}`;
@@ -410,8 +536,10 @@ function renderStatusPanelTab() {
       }
       if (r === statusPanelCursorRow && c === statusPanelCursorCol) cls += " cursor";
       el.className = cls;
+      layoutStatusPanelHexCell(el, r, c); // ★要望対応：ハニカム状に隙間なく並べる位置計算
       el.onclick = (event) => {
         event.stopPropagation();
+        if (!cell) return; // ★バグ修正：マスが無い場所はクリックしても選べないようにする
         statusPanelCursorRow = r;
         statusPanelCursorCol = c;
         renderStatusPanelTab();
@@ -419,9 +547,18 @@ function renderStatusPanelTab() {
       grid.appendChild(el);
     }
   }
-  root.appendChild(grid);
-
+  gridWrap.appendChild(grid);
+  root.appendChild(gridWrap);
   root.appendChild(buildStatusPanelDetail(owner, def));
+
+  // ★描き直してもスクロール位置が先頭に戻らないようにし、カーソルのマスが見える位置まで動かす（scrollIntoViewは使わず直接計算）
+  gridWrap.scrollTop = prevGridScroll;
+  const cursorEl = grid.querySelector(".statuspanel-cell.cursor");
+  if (cursorEl) {
+    const top = cursorEl.offsetTop, bottom = top + cursorEl.offsetHeight;
+    if (top < gridWrap.scrollTop) gridWrap.scrollTop = top;
+    else if (bottom > gridWrap.scrollTop + gridWrap.clientHeight) gridWrap.scrollTop = bottom - gridWrap.clientHeight;
+  }
 }
 
 function buildStatusPanelDetail(owner, def) {
@@ -464,6 +601,13 @@ function buildStatusPanelDetail(owner, def) {
     cost.items.forEach(i => parts.push(`${getPanelItemName(i.itemId)} ×${i.count}（所持${getItemCount(i.itemId)}）`));
     costEl.textContent = "コスト：" + (parts.length ? parts.join("、") : "なし");
     box.appendChild(costEl);
+    const minLevel = getPanelCellMinLevel(cell);
+    if (minLevel > 0) {
+      const lvEl = document.createElement("div");
+      lvEl.className = "statuspanel-detail-cost";
+      lvEl.textContent = `必要レベル：${minLevel}以上（現在Lv.${unit.level}）`;
+      box.appendChild(lvEl);
+    }
 
     const check = checkPanelCellUnlockable(unit, owner.type, statusPanelCursorRow, statusPanelCursorCol);
     const btn = document.createElement("button");
@@ -497,23 +641,103 @@ async function tryUnlockStatusPanelCellWithConfirm() {
   renderStatusPanelTab();
 }
 
+// ★要望対応：矢印キーを同時押し（例：→を押したまま↑も押す）すると、斜めのマスへ移動できるようにする。
+//   今「物理的に押されている」矢印キーの集合を持っておき、押されている方向をすべて足し合わせて
+//   移動先を決める（例：→と↑が同時に押されていれば、右上の斜めマスへ移動）
+const STATUS_PANEL_ARROW_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+const statusPanelHeldArrowKeys = new Set();
+
+function getStatusPanelArrowMoveDelta() {
+  const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+  let dRow = 0, dCol = 0;
+  statusPanelHeldArrowKeys.forEach(key => {
+    const m = moves[key];
+    if (!m) return;
+    dRow += m[0];
+    dCol += m[1];
+  });
+  // ★上下同時・左右同時など、打ち消し合う組み合わせは-1〜1の範囲に丸めて無効化する
+  return [Math.max(-1, Math.min(1, dRow)), Math.max(-1, Math.min(1, dCol))];
+}
+
+// ★バグ修正：矢印キーでの移動が、マス自体が置かれていない（def.cellsに無い）場所にも
+//   カーソルを動かせてしまっていたのを直すため、今表示中のパネルのマス一覧を取得する
+function getCurrentStatusPanelCells() {
+  const owners = getStatusPanelOwners();
+  if (owners.length === 0) return {};
+  if (statusPanelOwnerIndex >= owners.length) statusPanelOwnerIndex = 0;
+  const owner = owners[statusPanelOwnerIndex];
+  const def = getStatusPanelDefFor(owner.unit, owner.type);
+  return (def && def.cells) ? def.cells : {};
+}
+
+// ★バグ修正：例えば→を押した直後に（まだ→を押したまま）↑も押した場合、
+//   「→だけの移動」と「→↑の合成（斜め）移動」が別々のkeydownとしてそれぞれ実行されてしまい、
+//   斜めに1マスのつもりが右に1・右上に1で合計2マスぶん動いてしまっていた。
+//   短い間隔で新しいキーが追加された時は、直前の単独移動を「無かったこと」にしてから
+//   合成方向で改めて1マスだけ動かす（＝直前の移動開始位置を基準にする）ことでこれを防ぐ
+// ★さらに、2方向のキーを同時に押し続けている間は、それぞれのキーが独立に自動連射（キーリピート）を
+//   送ってくるため、何もしないとその2本ぶんのリピートが両方とも移動を起こしてしまい、
+//   斜め移動だけ片方向の時より2倍の速さで進んでしまう。片方向のキーリピート間隔（120ms）より
+//   少し短い間隔で、連続する移動を1回ぶんに間引く
+let statusPanelMoveOriginRow = null;
+let statusPanelMoveOriginCol = null;
+let statusPanelLastMoveTime = 0;
+const STATUS_PANEL_COMBO_WINDOW_MS = 150;
+const STATUS_PANEL_REPEAT_MIN_INTERVAL_MS = 100;
+
 window.addEventListener("keydown", (event) => {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
   if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return;
   if (typeof controlFocus !== "undefined" && controlFocus !== "sub") return;
   const activeTab = document.querySelector(".tab-content.active");
   if (!activeTab || activeTab.id !== "tab-statuspanel") return;
-  const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
-  if (moves[event.key]) {
+  if (STATUS_PANEL_ARROW_KEYS.includes(event.key)) {
     event.preventDefault();
     event.stopImmediatePropagation();
-    statusPanelCursorRow = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, statusPanelCursorRow + moves[event.key][0]));
-    statusPanelCursorCol = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, statusPanelCursorCol + moves[event.key][1]));
-    renderStatusPanelTab();
+    const isFreshKey = !statusPanelHeldArrowKeys.has(event.key);
+    statusPanelHeldArrowKeys.add(event.key);
+    const [dRow, dCol] = getStatusPanelArrowMoveDelta();
+    if (dRow !== 0 || dCol !== 0) {
+      const now = Date.now();
+      let baseRow, baseCol;
+      if (isFreshKey && statusPanelMoveOriginRow !== null && now - statusPanelLastMoveTime < STATUS_PANEL_COMBO_WINDOW_MS) {
+        // ★直前の移動の「開始位置」からやり直す（直前の単独移動ぶんは無かったことにする）
+        baseRow = statusPanelMoveOriginRow;
+        baseCol = statusPanelMoveOriginCol;
+      } else if (!isFreshKey && now - statusPanelLastMoveTime < STATUS_PANEL_REPEAT_MIN_INTERVAL_MS) {
+        // ★2方向のキーリピートがほぼ同時に来た回。直近で動いたばかりなので、この回は間引く
+        return;
+      } else {
+        baseRow = statusPanelCursorRow;
+        baseCol = statusPanelCursorCol;
+      }
+      const targetRow = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, baseRow + dRow));
+      const targetCol = Math.max(0, Math.min(STATUS_PANEL_SIZE - 1, baseCol + dCol));
+      // ★バグ修正：マスが無い場所には移動しない（置かれているマスの上だけをカーソルが動く）
+      if (getCurrentStatusPanelCells()[`${targetRow},${targetCol}`]) {
+        statusPanelMoveOriginRow = baseRow;
+        statusPanelMoveOriginCol = baseCol;
+        statusPanelLastMoveTime = now;
+        statusPanelCursorRow = targetRow;
+        statusPanelCursorCol = targetCol;
+        renderStatusPanelTab();
+      }
+    }
   } else if (KEY_CONFIG.decideKeys.includes(event.key)) {
     if (typeof isTextDisplaying !== "undefined" && isTextDisplaying) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     tryUnlockStatusPanelCellWithConfirm();
   }
+});
+
+// ★押されているキーの集合から外す（タブを離れていても、離したキーは常に外しておく）
+window.addEventListener("keyup", (event) => {
+  if (STATUS_PANEL_ARROW_KEYS.includes(event.key)) statusPanelHeldArrowKeys.delete(event.key);
+});
+
+// ★他アプリに切り替える等でウィンドウが非アクティブになった時、押しっぱなし扱いのまま残らないようにする
+window.addEventListener("blur", () => {
+  statusPanelHeldArrowKeys.clear();
 });

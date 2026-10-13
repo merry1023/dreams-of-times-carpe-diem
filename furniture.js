@@ -98,7 +98,8 @@ function isFurniturePlacementFree(room, x, y, w, h, excludeInstanceId, excludeFi
     const itDef = it.kind === "furniture" ? findFurnitureDef(it.furnitureId) : null;
     const itIsCeiling = it.kind === "furniture" && itDef ? !!itDef.isCeiling : false;
     if (itIsCeiling !== !!isCeiling) return false;
-    const iw = it.w || 1, ih = it.h || 1;
+    const fsz = (typeof getFixedItemSize === "function") ? getFixedItemSize(it) : { w: it.w || 1, h: it.h || 1 }; // ★家具は登録サイズで判定（古い1×1保存データ対策）
+    const iw = fsz.w, ih = fsz.h;
     return x < it.x + iw && x + w > it.x && y < it.y + ih && y + h > it.y;
   });
   return !overlapsFixed;
@@ -319,6 +320,37 @@ function renderRoomView(room, uiState, floorPlan) {
       const doorEl = document.createElement("div");
       doorEl.className = "room-view-door";
       doorEl.style.backgroundColor = color;
+      const thickness = Math.max(4, Math.floor(cellPx * 0.2));
+      const doorSpanPx = Math.max(6, Math.floor(cellPx * 0.7));
+      if (isHorizontalWall) {
+        doorEl.style.width = doorSpanPx + "px";
+        doorEl.style.height = thickness + "px";
+        doorEl.style.left = (position * cellPx + (cellPx - doorSpanPx) / 2) + "px";
+        doorEl.style[dirKey === "north" ? "top" : "bottom"] = -(thickness / 2) + "px";
+      } else {
+        doorEl.style.height = doorSpanPx + "px";
+        doorEl.style.width = thickness + "px";
+        doorEl.style.top = (position * cellPx + (cellPx - doorSpanPx) / 2) + "px";
+        doorEl.style[dirKey === "west" ? "left" : "right"] = -(thickness / 2) + "px";
+      }
+      grid.appendChild(doorEl);
+    });
+  }
+  
+  // ★要望対応：外に出る扉も、普通のドアと同じ見た目で壁に描き、白枠でハイライトして見分けられるようにする
+  //   （位置調整の項目は無いので、壁の中央に固定で表示する）
+  if (room.outsideDoors && typeof FLOORPLAN_DIRECTIONS === "object") {
+    Object.keys(FLOORPLAN_DIRECTIONS).forEach(dirKey => {
+      if (!room.outsideDoors[dirKey]) return;
+      if (room.doors && room.doors[dirKey]) return; // ★通常ドアと重複設定されていた場合は、通常ドアの表示を優先する
+      const isHorizontalWall = dirKey === "north" || dirKey === "south";
+      const wallLengthCells = isHorizontalWall ? roomW : roomH;
+      const maxPos = Math.max(0, wallLengthCells - 1);
+      const position = Math.floor(maxPos / 2);
+      
+      const doorEl = document.createElement("div");
+      doorEl.className = "room-view-door room-view-door-outside";
+      doorEl.style.backgroundColor = "#6b4226";
       const thickness = Math.max(4, Math.floor(cellPx * 0.2));
       const doorSpanPx = Math.max(6, Math.floor(cellPx * 0.7));
       if (isHorizontalWall) {
