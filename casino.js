@@ -19,50 +19,255 @@ function openCasino(facility, returnTo) {
   showCasinoMenu();
 }
 
+// ===== カジノコイン =====
+// ★要望対応：カジノの賭け金は「陳」を直接使うのではなく、専用の「カジノコイン」で賭ける方式にした。
+//   ・コインは全カジノ共通の1種類。所持数は player.casinoCoins に持たせる
+//     （playerはセーブ/ロード・追憶の館のスナップショットに丸ごと含まれるため、セーブ処理は変更不要。
+//       古いセーブには無い項目なので、未定義は0枚として扱う）
+//   ・両替：100陳 → 1コイン ／ 1コイン → 50陳（「両替バニーガールちゃん」）
+//   ・景品交換：コインをアイテムと交換（「景品交換バニーガールちゃん」）。
+//     景品は施設（facility.prizes）ごとに登録し、在庫無制限／個数制限ありを景品ごとに指定できる。
+//     個数制限の「売れた数」は player.casinoPrizeSold に記録する
+const CASINO_COIN_BUY_RATE = 100;  // 100陳で1コイン
+const CASINO_COIN_SELL_RATE = 50;  // 1コインを50陳に戻せる
+const CASINO_EXCHANGE_NAME = "両替バニーガールちゃん";
+const CASINO_PRIZE_NAME = "景品交換バニーガールちゃん";
+
+function getCasinoCoins() {
+  if (!player || !Number.isFinite(player.casinoCoins)) return 0;
+  return Math.max(0, Math.floor(player.casinoCoins));
+}
+
+function changeCasinoCoins(amount) {
+  if (!player) return;
+  player.casinoCoins = Math.max(0, getCasinoCoins() + amount);
+}
+
 function showCasinoMenu() {
-  changeSpeaker(casinoFacility.name || "カジノ");
+  const casinoName = casinoFacility.name || "カジノ";
+  changeSpeaker(casinoName);
   showLocationMenu([
     { label: "丁半博打で遊ぶ", action: () => startDiceGame() },
     { label: "ルーレットで遊ぶ", action: () => startRouletteGame() },
     { label: "スロットで遊ぶ", action: () => startSlotGame() },
+    { label: `${CASINO_EXCHANGE_NAME}に話しかける`, action: () => openCasinoExchange() },
+    { label: `${CASINO_PRIZE_NAME}に話しかける`, action: () => openCasinoPrizeCounter() },
     { label: "戻る", action: () => casinoReturnTo() }
-  ], casinoFacility.name || "カジノ");
+  ], `${casinoName}（所持コイン：${getCasinoCoins()}枚）`);
+}
+
+// 数量選択（pickQuantity）の刻み幅の候補。最大値の桁に応じて初期の刻み幅を決める
+function getCasinoQuantityStepOptions(maxQty) {
+  return {
+    stepOptions: [1, 10, 100, 1000].filter(s => s <= maxQty),
+    step: maxQty >= 2000 ? 100 : (maxQty >= 200 ? 10 : 1)
+  };
 }
 
 // ===== 賭け金選択（共通） =====
-// pickQuantity（town.js）の±UIをそのまま流用し、「◯個」ではなく「◯陳」の金額選択にする
+// pickQuantity（town.js）の±UIをそのまま流用し、「◯個」ではなく「◯枚」のコイン枚数選択にする
+// ★賭け金の下限・上限はコイン枚数で、施設ごとに設定する（facility.minBetCoins / maxBetCoins。未設定なら1〜100枚）。
+//   以前の陳単位の設定（minBet / maxBet）は使わない
 function getCasinoMinBet() {
-  return Math.max(1, casinoFacility.minBet != null ? casinoFacility.minBet : 10);
+  return Math.max(1, casinoFacility.minBetCoins != null ? casinoFacility.minBetCoins : 1);
 }
 
-function getCasinoMaxBet() {
-  const facilityMax = Math.max(getCasinoMinBet(), casinoFacility.maxBet != null ? casinoFacility.maxBet : 1000);
-  return Math.min(facilityMax, gold); // 所持金以上は賭けられない
+// ★alreadyStaked：ルーレットで、既に別のマスに置いたチップの合計。所持コインからこの分を引いた残りまでしか賭けられない
+//   （以前は、所持金を超える合計を複数マスに分けて賭けられてしまい、負けても所持金が0で止まるだけだった）
+function getCasinoMaxBet(alreadyStaked = 0) {
+  const facilityMax = Math.max(getCasinoMinBet(), casinoFacility.maxBetCoins != null ? casinoFacility.maxBetCoins : 100);
+  return Math.min(facilityMax, Math.max(0, getCasinoCoins() - alreadyStaked)); // 所持コイン以上は賭けられない
 }
 
-async function pickCasinoBet(label) {
+async function pickCasinoBet(label, alreadyStaked = 0) {
   const minBet = getCasinoMinBet();
-  if (gold < minBet) {
+  if (getCasinoCoins() - alreadyStaked < minBet) {
     changeSpeaker(casinoFacility.name || "カジノ");
-    await displayMessage(`すまないが、最低${minBet}陳は無いと賭けられないよ……`);
+    await displayMessage(`すまないが、最低コイン${minBet}枚は無いと賭けられないよ……（両替バニーガールちゃんに頼めば、陳をコインに替えられるよ）`);
     return 0;
   }
   
-  const maxBet = getCasinoMaxBet();
-  // ★要望対応：以前は上限額の桁に応じて刻み幅を自動でひとつ選ぶだけで、その場で変更できなかった。
-  //   Q/Eキーまたは専用ボタンで、1回の±で増減する額（1／10／100／1000）をその場で切り替えられるようにした
-  const defaultStep = maxBet >= 2000 ? 100 : (maxBet >= 200 ? 10 : 1);
-  const stepOptions = [1, 10, 100, 1000].filter(s => s <= maxBet);
+  const maxBet = getCasinoMaxBet(alreadyStaked);
+  // ★要望対応：Q/Eキーまたは専用ボタンで、1回の±で増減する枚数（1／10／100／1000）をその場で切り替えられる
+  const { stepOptions, step } = getCasinoQuantityStepOptions(maxBet);
   
   const bet = await pickQuantity(maxBet, label, {
     min: minBet,
-    step: defaultStep,
+    step,
     stepOptions,
-    formatValue: v => `${v}陳`,
-    formatLabel: max => `${label}（所持金${gold}陳／最大${max}陳）`,
+    formatValue: v => `${v}枚`,
+    formatLabel: max => `${label}（所持コイン${getCasinoCoins() - alreadyStaked}枚／最大${max}枚）`,
     cancelValue: 0
   });
   return bet;
+}
+
+// ===== 両替バニーガールちゃん：陳 ⇄ コイン =====
+async function openCasinoExchange() {
+  prepareCasinoConversationFocus();
+  changeSpeaker(CASINO_EXCHANGE_NAME);
+  await displayMessage(`いらっしゃいませ♪ 両替ですね！\n${CASINO_COIN_BUY_RATE}陳で1コイン、コインを陳に戻す時は1コインにつき${CASINO_COIN_SELL_RATE}陳になりますよ♪`);
+  await showCasinoExchangeMenu();
+}
+
+async function showCasinoExchangeMenu() {
+  changeSpeaker(CASINO_EXCHANGE_NAME);
+  await displayMessage(`どちらにしますか？（所持：${gold}陳／コイン${getCasinoCoins()}枚）`);
+  const picked = await displayChoices([
+    { text: `陳をコインに両替する（${CASINO_COIN_BUY_RATE}陳→1コイン）`, next: "buy" },
+    { text: `コインを陳に両替する（1コイン→${CASINO_COIN_SELL_RATE}陳）`, next: "sell" },
+    { text: "やめる", next: "cancel", isBack: true }
+  ]);
+  if (picked.next === "cancel") {
+    changeSpeaker(CASINO_EXCHANGE_NAME);
+    await displayMessage("またいらしてくださいね♪");
+    showCasinoMenu();
+    return;
+  }
+  
+  if (picked.next === "buy") {
+    const maxCoins = Math.floor(gold / CASINO_COIN_BUY_RATE);
+    if (maxCoins <= 0) {
+      changeSpeaker(CASINO_EXCHANGE_NAME);
+      await displayMessage(`ごめんなさい、${CASINO_COIN_BUY_RATE}陳からでないと両替できないんです……`);
+      await showCasinoExchangeMenu();
+      return;
+    }
+    const stepConfig = getCasinoQuantityStepOptions(maxCoins);
+    const qty = await pickQuantity(maxCoins, "コインに両替", {
+      ...stepConfig,
+      formatValue: v => `${v}枚`,
+      formatLabel: max => `コインに両替（${CASINO_COIN_BUY_RATE}陳→1コイン／最大${max}枚）`
+    });
+    if (qty <= 0) { await showCasinoExchangeMenu(); return; }
+    const cost = qty * CASINO_COIN_BUY_RATE;
+    const confirmed = await showGameConfirm(`${cost}陳を、コイン${qty}枚に両替しますか？`); // mainfunc.js
+    if (!confirmed) { await showCasinoExchangeMenu(); return; }
+    changeGold(-cost);
+    changeCasinoCoins(qty);
+    renderStatusHUD(); // mainfunc.js
+    changeSpeaker(CASINO_EXCHANGE_NAME);
+    await displayMessage(`はい、コイン${qty}枚ですね♪ （所持コイン：${getCasinoCoins()}枚）`);
+    await showCasinoExchangeMenu();
+    return;
+  }
+  
+  // 売る（コイン→陳）
+  const ownedCoins = getCasinoCoins();
+  if (ownedCoins <= 0) {
+    changeSpeaker(CASINO_EXCHANGE_NAME);
+    await displayMessage("あれれ、コインをお持ちじゃないみたいですよ？");
+    await showCasinoExchangeMenu();
+    return;
+  }
+  const stepConfig = getCasinoQuantityStepOptions(ownedCoins);
+  const qty = await pickQuantity(ownedCoins, "陳に両替", {
+    ...stepConfig,
+    formatValue: v => `${v}枚`,
+    formatLabel: max => `陳に両替（1コイン→${CASINO_COIN_SELL_RATE}陳／最大${max}枚）`
+  });
+  if (qty <= 0) { await showCasinoExchangeMenu(); return; }
+  const payout = qty * CASINO_COIN_SELL_RATE;
+  const confirmed = await showGameConfirm(`コイン${qty}枚を、${payout}陳に両替しますか？`);
+  if (!confirmed) { await showCasinoExchangeMenu(); return; }
+  changeCasinoCoins(-qty);
+  changeGold(payout);
+  renderStatusHUD();
+  changeSpeaker(CASINO_EXCHANGE_NAME);
+  await displayMessage(`はい、${payout}陳です♪ （所持コイン：${getCasinoCoins()}枚）`);
+  await showCasinoExchangeMenu();
+}
+
+// ===== 景品交換バニーガールちゃん：コイン → アイテム =====
+// ★見た目・操作は店（town.jsのshowCustomShopMenu）と同じ流れ：品物を選ぶ → 個数 → 確認 → 受け取り
+function getCasinoPrizeKey(entry) {
+  return `${casinoFacility.id}:${entry.id || entry.itemId}`; // 同じ景品を別々の枠で登録しても在庫を混ぜないよう、枠のidを優先
+}
+
+function getCasinoPrizeRemaining(entry) {
+  if (entry.limited !== true) return Infinity; // 在庫無制限
+  const sold = (player && player.casinoPrizeSold && Number(player.casinoPrizeSold[getCasinoPrizeKey(entry)])) || 0;
+  return Math.max(0, Math.floor(Number(entry.stock) || 0) - sold);
+}
+
+function addCasinoPrizeSold(entry, qty) {
+  if (entry.limited !== true || !player) return;
+  if (!player.casinoPrizeSold || typeof player.casinoPrizeSold !== "object") player.casinoPrizeSold = {};
+  const key = getCasinoPrizeKey(entry);
+  player.casinoPrizeSold[key] = (Number(player.casinoPrizeSold[key]) || 0) + qty;
+}
+
+async function openCasinoPrizeCounter() {
+  prepareCasinoConversationFocus();
+  changeSpeaker(CASINO_PRIZE_NAME);
+  await displayMessage("いらっしゃいませ♪ 景品交換カウンターへようこそ！");
+  await showCasinoPrizeMenu();
+}
+
+async function showCasinoPrizeMenu() {
+  const prizes = Array.isArray(casinoFacility.prizes)
+    ? casinoFacility.prizes.filter(e => e.itemId && ITEM_MASTER[e.itemId])
+    : [];
+  if (prizes.length === 0) {
+    changeSpeaker(CASINO_PRIZE_NAME);
+    await displayMessage("ごめんなさい、今は交換できる景品が無いんです……");
+    showCasinoMenu();
+    return;
+  }
+  
+  changeSpeaker(CASINO_PRIZE_NAME);
+  const choices = prizes.map((entry, index) => {
+    const remaining = getCasinoPrizeRemaining(entry);
+    const stockLabel = remaining === Infinity ? "" : (remaining > 0 ? `／残り${remaining}個` : "／売り切れ");
+    return { text: `${ITEM_MASTER[entry.itemId].name}（${Math.max(1, Math.floor(entry.coinPrice) || 1)}コイン${stockLabel}）`, next: String(index) };
+  });
+  choices.push({ text: "やめる", next: "cancel", isBack: true });
+  await displayMessage(`どれと交換しますか？（所持コイン：${getCasinoCoins()}枚）`);
+  const picked = await displayChoices(choices);
+  if (picked.next === "cancel") {
+    changeSpeaker(CASINO_PRIZE_NAME);
+    await displayMessage("またいらしてくださいね♪");
+    showCasinoMenu();
+    return;
+  }
+  
+  const entry = prizes[Number(picked.next)];
+  const itemName = ITEM_MASTER[entry.itemId].name;
+  const unitPrice = Math.max(1, Math.floor(entry.coinPrice) || 1);
+  const remaining = getCasinoPrizeRemaining(entry);
+  if (remaining <= 0) {
+    changeSpeaker(CASINO_PRIZE_NAME);
+    await displayMessage("ごめんなさい、それは売り切れなんです……");
+    await showCasinoPrizeMenu();
+    return;
+  }
+  if (getCasinoCoins() < unitPrice) {
+    changeSpeaker(CASINO_PRIZE_NAME);
+    await displayMessage("ごめんなさい、コインが足りないみたいです……");
+    await showCasinoPrizeMenu();
+    return;
+  }
+  
+  // ★まとめて交換できるように個数を選ばせる（所持コインで足りる範囲・在庫の範囲・最大10個まで。店と同じ仕様）
+  const affordableMax = Math.min(10, Math.floor(getCasinoCoins() / unitPrice), remaining);
+  const qty = await pickQuantity(affordableMax, itemName);
+  if (qty <= 0) { await showCasinoPrizeMenu(); return; }
+  
+  const totalPrice = unitPrice * qty;
+  const confirmed = await showGameConfirm(`「${itemName}」を${qty}個、コイン${totalPrice}枚と交換しますか？`);
+  if (!confirmed) { await showCasinoPrizeMenu(); return; }
+  
+  const added = addItem(entry.itemId, qty); // inventory.js
+  changeSpeaker(CASINO_PRIZE_NAME);
+  if (added) {
+    changeCasinoCoins(-totalPrice);
+    addCasinoPrizeSold(entry, qty);
+    renderStatusHUD();
+    await displayMessage(`「${itemName}」を${qty}個、受け取りました♪`);
+  } else {
+    await displayMessage("持ち物がいっぱいで、受け取れないみたいです……"); // ★受け取れなかった時はコインも減らさず、在庫も減らさない
+  }
+  await showCasinoPrizeMenu();
 }
 
 // ===== ①丁半博打（サイコロ2つの合計が偶数＝丁／奇数＝半） =====
@@ -93,11 +298,11 @@ async function startDiceGame() {
   await displayMessage(`サイコロの目は「${dice1}」と「${dice2}」……合計${total}で「${resultLabel}」だ！`);
   
   if (picked.next === resultKey) {
-    changeGold(bet); // 等倍配当：賭け金と同額をそのまま儲けとして獲得
-    await displayMessage(`大当たりだ！ ${bet}陳の儲けだ！`);
+    changeCasinoCoins(bet); // 等倍配当：賭け金と同額をそのまま儲けとして獲得
+    await displayMessage(`大当たりだ！ コイン${bet}枚の儲けだ！`);
   } else {
-    changeGold(-bet);
-    await displayMessage(`残念、外れだ。${bet}陳は没収だな……`);
+    changeCasinoCoins(-bet);
+    await displayMessage(`残念、外れだ。コイン${bet}枚は没収だな……`);
   }
   renderStatusHUD(); // mainfunc.js
   showCasinoMenu();
@@ -424,7 +629,7 @@ async function startSlotGame() {
   const betStepDecBtn = document.getElementById("casino-slot-bet-step-dec");
   const betStepIncBtn = document.getElementById("casino-slot-bet-step-inc");
   const minBet = getCasinoMinBet();
-  const maxBet = getCasinoMaxBet();
+  let maxBet = getCasinoMaxBet(); // ★毎ラウンド、その時点の所持コインで取り直す（chooseBet冒頭）
   // ★要望対応：以前は上限額の桁に応じて刻み幅（1回の±で増減する額）を自動でひとつ選ぶだけだったが、
   //   Q/Eキーまたは専用ボタンでその場で切り替えられるようにした
   const defaultStep = maxBet >= 2000 ? 100 : (maxBet >= 200 ? 10 : 1);
@@ -445,25 +650,26 @@ async function startSlotGame() {
   }
 
   const updateBetStepDisplay = () => {
-    if (betStepDisplay) betStepDisplay.textContent = `刻み幅：${step}陳`;
+    if (betStepDisplay) betStepDisplay.textContent = `刻み幅：${step}枚`;
     if (betStepDecBtn) betStepDecBtn.disabled = stepIndex <= 0;
     if (betStepIncBtn) betStepIncBtn.disabled = stepIndex >= stepOptions.length - 1;
   };
 
   const updateBetDisplay = (nextBet) => {
-    if (betDisplay) betDisplay.textContent = `${nextBet}陳`;
+    if (betDisplay) betDisplay.textContent = `${nextBet}枚`;
     if (betDecBtn) betDecBtn.disabled = nextBet <= minBet;
     if (betIncBtn) betIncBtn.disabled = nextBet >= maxBet;
     if (betMinBtn) betMinBtn.disabled = nextBet <= minBet;
     if (betMaxBtn) betMaxBtn.disabled = nextBet >= maxBet;
     if (stopButton) {
-      stopButton.innerHTML = `開始（${nextBet}陳）<span class="key-badge">Z</span>`;
+      stopButton.innerHTML = `開始（${nextBet}枚）<span class="key-badge">Z</span>`;
     }
   };
 
   const chooseBet = () => new Promise((resolve) => {
     // ★要望対応：初回や前回の掛け金があればそれを初期値にする（無ければ最低額）。
     //   施設が変わってmin/maxが変化していても範囲内に収まるようclampする
+    maxBet = getCasinoMaxBet(); // ★負けて所持コインが減っていたら、上限もそれに合わせる（以前は最初の上限のままで、持っている枚数以上を賭けられた）
     let currentBet = Math.max(minBet, Math.min(maxBet, casinoSlotLastBet !== null ? casinoSlotLastBet : minBet));
     let settled = false;
     
@@ -560,7 +766,7 @@ async function startSlotGame() {
   });
 
   const runOneSlotRound = async (bet) => {
-    changeGold(-bet);
+    changeCasinoCoins(-bet);
     renderStatusHUD();
 
     const finalBoard = Array.from({ length: 9 }, () => pickWeightedSlotSymbol());
@@ -592,17 +798,17 @@ async function startSlotGame() {
       if (result.type === "win") {
         if (result.lineCount > 1) {
           const emojiList = result.symbols.map(s => s.emoji).join("、");
-          resultEl.textContent = `大当たり！ ${result.lineCount}列同時に揃った！（${emojiList}）合計${bet * result.payout}陳の儲けだ！`;
+          resultEl.textContent = `大当たり！ ${result.lineCount}列同時に揃った！（${emojiList}）合計コイン${bet * result.payout}枚の儲けだ！`;
         } else {
-          resultEl.textContent = `大当たり！ ${result.symbol.emoji} が揃って${bet * result.payout}陳の儲けだ！`;
+          resultEl.textContent = `大当たり！ ${result.symbol.emoji} が揃ってコイン${bet * result.payout}枚の儲けだ！`;
         }
       } else {
-        resultEl.textContent = `残念、揃わなかった。${bet}陳は没収だな……`;
+        resultEl.textContent = `残念、揃わなかった。コイン${bet}枚は没収だな……`;
       }
     }
 
     if (result.type === "win") {
-      changeGold(bet * result.payout);
+      changeCasinoCoins(bet * result.payout);
     }
     renderStatusHUD();
 
@@ -620,12 +826,12 @@ async function startSlotGame() {
   };
 
   while (true) {
-    if (casinoSlotQuitRequested || gold < minBet) {
+    if (casinoSlotQuitRequested || getCasinoCoins() < minBet) {
       // ★スロット画面のみで完結させるため、通常のメッセージウィンドウではなく
       //   スロット画面内の結果表示欄を使って一瞬伝えてから閉じる
-      if (gold < minBet && !casinoSlotQuitRequested && resultEl) {
+      if (getCasinoCoins() < minBet && !casinoSlotQuitRequested && resultEl) {
         resultEl.classList.remove("hidden");
-        resultEl.textContent = `所持金が足りない。最低${minBet}陳必要だ。`;
+        resultEl.textContent = `コインが足りない。最低${minBet}枚必要だ。`;
         await sleep(1400);
       }
       if (quitButton) quitButton.onclick = null;
@@ -661,7 +867,7 @@ function updateRouletteSelectionSummary(bets) {
   const statusEl = document.getElementById("casino-roulette-status");
   if (!statusEl) return;
   const total = bets.reduce((sum, bet) => sum + bet.amount, 0);
-  statusEl.textContent = `掛け済み: ${total}陳 / ${bets.length}箇所`;
+  statusEl.textContent = `掛け済み: ${total}枚 / ${bets.length}箇所`;
 }
 
 // ★要望対応：同じマスへの二重掛け（1回のルーレットで同じマスに何度も賭けてしまうこと）を防ぐ際、
@@ -907,7 +1113,7 @@ async function pickRouletteBets() {
             render();
             return;
           }
-          const amount = await pickCasinoBet(`「${cell.label}」（配当${cell.payoutMultiple}倍）への賭け金`);
+          const amount = await pickCasinoBet(`「${cell.label}」（配当${cell.payoutMultiple}倍）への賭け金`, selections.reduce((t, b) => t + b.amount, 0));
           if (amount > 0) {
             selections.push({ cell, amount });
             updateRouletteSelectionSummary(selections);
@@ -992,7 +1198,7 @@ async function pickRouletteBets() {
         flashRouletteNotice(`「${cell.label}」には既に賭けています`, selections);
         return;
       }
-      const amount = await pickCasinoBet(`「${cell.label}」（配当${cell.payoutMultiple}倍）への賭け金`);
+      const amount = await pickCasinoBet(`「${cell.label}」（配当${cell.payoutMultiple}倍）への賭け金`, selections.reduce((t, b) => t + b.amount, 0));
       if (amount > 0) {
         selections.push({ cell, amount });
         updateRouletteSelectionSummary(selections);
@@ -1046,9 +1252,9 @@ async function pickRouletteBets() {
 async function startRouletteGame() {
   prepareCasinoConversationFocus();
   const minBet = getCasinoMinBet();
-  if (gold < minBet) {
+  if (getCasinoCoins() < minBet) {
     changeSpeaker(casinoFacility.name || "ルーレット台");
-    await displayMessage(`すまないが、最低${minBet}陳は無いと賭けられないよ……`);
+    await displayMessage(`すまないが、最低コイン${minBet}枚は無いと賭けられないよ……（両替バニーガールちゃんに頼めば、陳をコインに替えられるよ）`);
     showCasinoMenu();
     return;
   }
@@ -1072,19 +1278,19 @@ async function startRouletteGame() {
     if (bet.cell.matches(resultNumber)) {
       const profit = bet.amount * bet.cell.payoutMultiple;
       netResult += profit;
-      await displayMessage(`「${bet.cell.label}」に当たった！ ${profit}陳の儲けだ！`);
+      await displayMessage(`「${bet.cell.label}」に当たった！ コイン${profit}枚の儲けだ！`);
     } else {
       netResult -= bet.amount;
     }
   }
 
   if (netResult > 0) {
-    changeGold(netResult);
-    await displayMessage(`合計で${netResult}陳の儲けだ！`);
+    changeCasinoCoins(netResult);
+    await displayMessage(`合計でコイン${netResult}枚の儲けだ！`);
   } else {
     const loss = Math.abs(netResult);
-    changeGold(-loss);
-    await displayMessage(`残念、外れが多かった。合計${loss}陳は没収だな……`);
+    changeCasinoCoins(-loss);
+    await displayMessage(`残念、外れが多かった。合計コイン${loss}枚は没収だな……`);
   }
 
   renderStatusHUD();

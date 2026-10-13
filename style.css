@@ -703,6 +703,26 @@ html, body {
     word-break: break-word; /* ★fitMessageWindowTextで高さ判定する前提として、横にはみ出さず必ず折り返すようにする */
 }
 
+/* ★ルビ（ふりがな）：振りたい文字の中央の上に、小さめの文字で表示する（シナリオの{/文字}={\ルビ}記法） */
+ruby {
+    ruby-align: center;
+    ruby-position: over;
+}
+rt {
+    font-size: 0.5em;
+    line-height: 1;
+}
+
+/* ★シナリオエディタ：ルビ入りの文章のプレビュー */
+.scenariobuild-ruby-preview {
+    margin-top: 6px;
+    padding: 6px 8px;
+    line-height: 2;
+    border: 1px dashed #888;
+    border-radius: 4px;
+    word-break: break-word;
+}
+
 /* 選択肢を囲む箱（少し中央に寄せる） */
 /* 選択肢を囲む箱 */
 .choice-box {

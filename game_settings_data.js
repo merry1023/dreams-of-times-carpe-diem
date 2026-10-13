@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1791182586462,
+  "version": 1791906075134,
   "enemies": [
     {
       "id": "goblin",
@@ -2739,6 +2739,640 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "listedPrice": 160,
       "trueValue": 160,
       "builtin": true
+    },
+    {
+      "id": "fish_1792000000001_21",
+      "name": "ドロンコフナ",
+      "category": "fish",
+      "description": "泥の中に潜るのが好きな、どこにでもいる地味なフナ。泥臭いが火を通せば食べられる。",
+      "rank": "F",
+      "listedPrice": 15,
+      "trueValue": 15,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000002_22",
+      "name": "ホタルメダカ",
+      "category": "fish",
+      "description": "夜になると体がぼんやり光る小さなメダカ。群れで水面近くを漂っている。",
+      "rank": "F",
+      "listedPrice": 25,
+      "trueValue": 25,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000003_23",
+      "name": "ミズタマハゼ",
+      "category": "fish",
+      "description": "水玉模様の背びれを持つ小さなハゼ。揚げ物にするとサクサクで美味しい。",
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000004_24",
+      "name": "コケむしウナギ",
+      "category": "fish",
+      "description": "全身が苔に覆われたウナギ。ぬるぬるして掴みづらいが、身は脂がのっている。",
+      "rank": "E",
+      "listedPrice": 90,
+      "trueValue": 90,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000005_25",
+      "name": "ヒラヒラサヨリ",
+      "category": "fish",
+      "description": "長いヒレをヒラヒラ揺らして泳ぐ細身の魚。上品な白身で、癖がない。",
+      "rank": "E",
+      "listedPrice": 70,
+      "trueValue": 70,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000006_26",
+      "name": "トゲトゲカサゴ",
+      "category": "fish",
+      "description": "全身トゲだらけの魚。うかつに触ると痛い目を見るが、出汁がよく出る。",
+      "rank": "E",
+      "listedPrice": 110,
+      "trueValue": 110,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000007_27",
+      "name": "ニジイロマス",
+      "category": "fish",
+      "description": "朝日を浴びると虹色に輝くマス。バターとの相性が抜群。",
+      "rank": "D",
+      "listedPrice": 180,
+      "trueValue": 180,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000008_28",
+      "name": "ギンパクヒラメ",
+      "category": "fish",
+      "description": "銀の箔をまとったような美しいヒラメ。池の底でじっと獲物を待っている。",
+      "rank": "D",
+      "listedPrice": 240,
+      "trueValue": 240,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000009_29",
+      "name": "ハリネズミフグ",
+      "category": "fish",
+      "description": "危険を感じると針を逆立ててまん丸になる小さなフグ。観賞用としても人気。",
+      "rank": "D",
+      "listedPrice": 260,
+      "trueValue": 260,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000010_30",
+      "name": "ヨルヅキナマズ",
+      "category": "fish",
+      "description": "月夜にだけ姿を現す大きなナマズ。ふっくらした身は鍋にすると絶品。",
+      "rank": "C",
+      "listedPrice": 420,
+      "trueValue": 420,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000011_31",
+      "name": "ホウライコイ",
+      "category": "fish",
+      "description": "縁起が良いとされる、金と赤の模様を持つコイ。夕暮れ時によく跳ねる。",
+      "rank": "C",
+      "listedPrice": 500,
+      "trueValue": 500,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000012_32",
+      "name": "ガラスのシラウオ",
+      "category": "fish",
+      "description": "体が透き通って向こう側が見えるほど儚いシラウオ。雨の日にだけ水面に集まる。",
+      "rank": "C",
+      "listedPrice": 600,
+      "trueValue": 600,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000013_33",
+      "name": "カミナリブリ",
+      "category": "fish",
+      "description": "雷雨の日に荒々しく暴れまわる大型のブリ。その引きは並の釣竿では耐えられない。",
+      "rank": "B",
+      "listedPrice": 1100,
+      "trueValue": 1100,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000014_34",
+      "name": "ガマジルオオイワナ",
+      "category": "fish",
+      "description": "ガマジルの池の深みに棲む、全身ゴツゴツしたオオイワナ。釣り人の間では憧れの的。",
+      "rank": "B",
+      "listedPrice": 1500,
+      "trueValue": 1500,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000015_35",
+      "name": "コガネヌシ",
+      "category": "fish",
+      "description": "池の主と噂される黄金色の巨大魚。一生に一度見られるかどうかと言われている。",
+      "rank": "A",
+      "listedPrice": 5000,
+      "trueValue": 5000,
+      "builtin": true
+    },
+    {
+      "id": "item_1792000000101_31",
+      "name": "ドロダンゴ",
+      "category": "tool",
+      "description": "泥を丸めて作った団子状の餌。ドロ科の魚が好んで食いつく。",
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30,
+      "unsellable": false,
+      "baitFishTypes": [
+        "ドロ科"
+      ],
+      "params": {
+        "希少度": 1
+      },
+      "isFishingBait": true,
+      "baitFishType": "ドロ科",
+      "baitBiteRate": 6
+    },
+    {
+      "id": "item_1792000000102_32",
+      "name": "ひかりゴケ",
+      "category": "tool",
+      "description": "ほんのり光る苔を練った餌。ピカリ科の魚を引き寄せる。",
+      "rank": "F",
+      "listedPrice": 40,
+      "trueValue": 40,
+      "unsellable": false,
+      "baitFishTypes": [
+        "ピカリ科"
+      ],
+      "params": {
+        "希少度": 1
+      },
+      "isFishingBait": true,
+      "baitFishType": "ピカリ科",
+      "baitBiteRate": 6
+    },
+    {
+      "id": "item_1792000000103_33",
+      "name": "ヒラヒラ毛鉤",
+      "category": "tool",
+      "description": "ヒラヒラ揺れる羽根飾り付きの毛鉤。ヒレナガ科の魚が反応する。",
+      "rank": "F",
+      "listedPrice": 50,
+      "trueValue": 50,
+      "unsellable": false,
+      "baitFishTypes": [
+        "ヒレナガ科"
+      ],
+      "params": {
+        "希少度": 1
+      },
+      "isFishingBait": true,
+      "baitFishType": "ヒレナガ科",
+      "baitBiteRate": 7
+    },
+    {
+      "id": "item_1792000000104_34",
+      "name": "トゲぬき小エビ",
+      "category": "tool",
+      "description": "トゲを抜いてある小エビ。トゲトゲ科の魚の大好物。",
+      "rank": "F",
+      "listedPrice": 50,
+      "trueValue": 50,
+      "unsellable": false,
+      "baitFishTypes": [
+        "トゲトゲ科"
+      ],
+      "params": {
+        "希少度": 1
+      },
+      "isFishingBait": true,
+      "baitFishType": "トゲトゲ科",
+      "baitBiteRate": 7
+    },
+    {
+      "id": "item_1792000000201_41",
+      "name": "食用油",
+      "category": "misc",
+      "description": "揚げ物や炒め物に欠かせない油。なぜか魔力が少しこもっている。",
+      "rank": "F",
+      "listedPrice": 25,
+      "trueValue": 25,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000202_42",
+      "name": "醤油",
+      "category": "misc",
+      "description": "豆から作る黒い調味料。焼くと香ばしい匂いがする。",
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000203_43",
+      "name": "味噌",
+      "category": "misc",
+      "description": "じっくり発酵させた旨味のかたまり。魚の臭みを消してくれる。",
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000204_44",
+      "name": "小麦粉",
+      "category": "misc",
+      "description": "衣や生地に使う白い粉。ふわっと軽い。",
+      "rank": "F",
+      "listedPrice": 20,
+      "trueValue": 20,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000205_45",
+      "name": "お米",
+      "category": "misc",
+      "description": "ふっくら炊けば力が出る、この世界の主食。",
+      "rank": "F",
+      "listedPrice": 25,
+      "trueValue": 25,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000206_46",
+      "name": "たまご",
+      "category": "misc",
+      "description": "どこかの鶏が産んだ新鮮なたまご。割ると黄身が元気に盛り上がる。",
+      "rank": "F",
+      "listedPrice": 15,
+      "trueValue": 15,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000207_47",
+      "name": "長ネギ",
+      "category": "misc",
+      "description": "香りが強く、火を通すと甘くなる野菜。",
+      "rank": "F",
+      "listedPrice": 15,
+      "trueValue": 15,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000208_48",
+      "name": "ショウガ",
+      "category": "misc",
+      "description": "ピリッと辛い根菜。体がポカポカ温まる。",
+      "rank": "F",
+      "listedPrice": 20,
+      "trueValue": 20,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000209_49",
+      "name": "ニンニク",
+      "category": "misc",
+      "description": "食欲をそそる強烈な香りの球根。食べたあとは少し自信がつく。",
+      "rank": "F",
+      "listedPrice": 20,
+      "trueValue": 20,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000210_50",
+      "name": "バター",
+      "category": "misc",
+      "description": "濃厚なコクを出せる乳製品。牧場の搾りたてミルクから作られている。",
+      "rank": "F",
+      "listedPrice": 45,
+      "trueValue": 45,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000211_51",
+      "name": "レモン",
+      "category": "misc",
+      "description": "酸っぱい黄色い果実。魚料理にひと搾りすると味が引き締まる。",
+      "rank": "F",
+      "listedPrice": 25,
+      "trueValue": 25,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000212_52",
+      "name": "トマト",
+      "category": "misc",
+      "description": "真っ赤に熟した、ジューシーな野菜。煮込むと旨味が増す。",
+      "rank": "F",
+      "listedPrice": 25,
+      "trueValue": 25,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000213_53",
+      "name": "昆布",
+      "category": "misc",
+      "description": "海で採れる出汁の素。池の魚との相性も悪くない。",
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000301_61",
+      "name": "ドロンコフナの味噌煮",
+      "category": "food",
+      "description": "泥臭さを味噌でしっかり消した、素朴で優しい味の煮魚。",
+      "rank": "F",
+      "listedPrice": 60,
+      "trueValue": 60,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 80
+      },
+      "foodBuffKind": "regen",
+      "foodBuffDuration": 5,
+      "foodBuffPower": 0
+    },
+    {
+      "id": "item_1792000000302_62",
+      "name": "ホタルメダカのからあげ",
+      "category": "food",
+      "description": "丸ごとカラッと揚げた小魚。噛むとほんのり光る気がする。",
+      "rank": "F",
+      "listedPrice": 80,
+      "trueValue": 80,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "SP回復量": 20,
+        "回復量": 40
+      },
+      "foodBuffKind": "critUp",
+      "foodBuffDuration": 3,
+      "foodBuffPower": 20
+    },
+    {
+      "id": "item_1792000000303_63",
+      "name": "ミズタマハゼの天ぷら",
+      "category": "food",
+      "description": "衣はサクサク、身はふわふわ。揚げたてが一番美味い。",
+      "rank": "F",
+      "listedPrice": 100,
+      "trueValue": 100,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 60
+      },
+      "foodBuffKind": "atkUp",
+      "foodBuffDuration": 3,
+      "foodBuffPower": 5
+    },
+    {
+      "id": "item_1792000000304_64",
+      "name": "コケむしウナギの蒲焼き",
+      "category": "food",
+      "description": "甘辛いタレを絡めて香ばしく焼き上げた。スタミナ満点。",
+      "rank": "F",
+      "listedPrice": 220,
+      "trueValue": 220,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 120,
+        "疲労回復量": 30
+      },
+      "foodBuffKind": "atkUp",
+      "foodBuffDuration": 4,
+      "foodBuffPower": 8
+    },
+    {
+      "id": "item_1792000000305_65",
+      "name": "ヒラヒラサヨリのレモン昆布炒め",
+      "category": "food",
+      "description": "昆布の旨味とレモンの酸味で、上品に仕上げた炒め物。",
+      "rank": "F",
+      "listedPrice": 180,
+      "trueValue": 180,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 90
+      },
+      "foodBuffKind": "defUp",
+      "foodBuffDuration": 3,
+      "foodBuffPower": 30
+    },
+    {
+      "id": "item_1792000000306_66",
+      "name": "トゲトゲカサゴのアクアパッツァ風",
+      "category": "food",
+      "description": "トマトとニンニクで煮込んだ、豪快で香り高い一皿。",
+      "rank": "F",
+      "listedPrice": 260,
+      "trueValue": 260,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 150
+      },
+      "foodBuffKind": "all_stats_up",
+      "foodBuffDuration": 3,
+      "foodBuffPower": 15
+    },
+    {
+      "id": "item_1792000000307_67",
+      "name": "ニジイロマスのバターソテー",
+      "category": "food",
+      "description": "バターの香りが食欲をそそる。皮目までパリッと焼けている。",
+      "rank": "F",
+      "listedPrice": 340,
+      "trueValue": 340,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "SP回復量": 40,
+        "回復量": 100
+      },
+      "foodBuffKind": "heal_up",
+      "foodBuffDuration": 3,
+      "foodBuffPower": 10
+    },
+    {
+      "id": "item_1792000000308_68",
+      "name": "ギンパクヒラメのムニエル",
+      "category": "food",
+      "description": "小麦粉をまぶして焼いた、外はカリッと中はしっとりの逸品。",
+      "rank": "F",
+      "listedPrice": 400,
+      "trueValue": 400,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 180,
+        "疲労回復量": 40
+      },
+      "foodBuffKind": "regen",
+      "foodBuffDuration": 5,
+      "foodBuffPower": 0
+    },
+    {
+      "id": "item_1792000000309_69",
+      "name": "ヨルヅキナマズのネギ味噌焼き",
+      "category": "food",
+      "description": "月夜に釣れたナマズに、味噌とネギをたっぷり乗せて焼いた。",
+      "rank": "F",
+      "listedPrice": 700,
+      "trueValue": 700,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 250,
+        "疲労回復量": 40,
+        "眠気軽減割合": 0.1
+      },
+      "foodBuffKind": "statusImmune",
+      "foodBuffDuration": 5,
+      "foodBuffPower": 0
+    },
+    {
+      "id": "item_1792000000310_70",
+      "name": "コガネヌシの黄金丼",
+      "category": "food",
+      "description": "主と呼ばれた魚を、ご飯と卵でまとめ上げた伝説の丼。食べれば全身に力がみなぎる。",
+      "rank": "F",
+      "listedPrice": 3000,
+      "trueValue": 3000,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 400,
+        "SP回復量": 100
+      },
+      "foodBuffKind": "all_stats_up",
+      "foodBuffDuration": 5,
+      "foodBuffPower": 25
     }
   ],
   "furniture": [
@@ -2939,6 +3573,186 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "rank": "F",
       "listedPrice": 20,
       "trueValue": 20
+    },
+    {
+      "id": "fish_1792000000001_21",
+      "name": "ドロンコフナ",
+      "description": "泥の中に潜るのが好きな、どこにでもいる地味なフナ。泥臭いが火を通せば食べられる。",
+      "fishType": "ドロ科",
+      "power": 2,
+      "hp": 12,
+      "size": 8,
+      "rank": "F",
+      "listedPrice": 15,
+      "trueValue": 15
+    },
+    {
+      "id": "fish_1792000000002_22",
+      "name": "ホタルメダカ",
+      "description": "夜になると体がぼんやり光る小さなメダカ。群れで水面近くを漂っている。",
+      "fishType": "ピカリ科",
+      "power": 1,
+      "hp": 8,
+      "size": 3,
+      "rank": "F",
+      "listedPrice": 25,
+      "trueValue": 25
+    },
+    {
+      "id": "fish_1792000000003_23",
+      "name": "ミズタマハゼ",
+      "description": "水玉模様の背びれを持つ小さなハゼ。揚げ物にするとサクサクで美味しい。",
+      "fishType": "ドロ科",
+      "power": 3,
+      "hp": 16,
+      "size": 6,
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30
+    },
+    {
+      "id": "fish_1792000000004_24",
+      "name": "コケむしウナギ",
+      "description": "全身が苔に覆われたウナギ。ぬるぬるして掴みづらいが、身は脂がのっている。",
+      "fishType": "ドロ科",
+      "power": 5,
+      "hp": 28,
+      "size": 45,
+      "rank": "E",
+      "listedPrice": 90,
+      "trueValue": 90
+    },
+    {
+      "id": "fish_1792000000005_25",
+      "name": "ヒラヒラサヨリ",
+      "description": "長いヒレをヒラヒラ揺らして泳ぐ細身の魚。上品な白身で、癖がない。",
+      "fishType": "ヒレナガ科",
+      "power": 4,
+      "hp": 20,
+      "size": 30,
+      "rank": "E",
+      "listedPrice": 70,
+      "trueValue": 70
+    },
+    {
+      "id": "fish_1792000000006_26",
+      "name": "トゲトゲカサゴ",
+      "description": "全身トゲだらけの魚。うかつに触ると痛い目を見るが、出汁がよく出る。",
+      "fishType": "トゲトゲ科",
+      "power": 6,
+      "hp": 26,
+      "size": 20,
+      "rank": "E",
+      "listedPrice": 110,
+      "trueValue": 110
+    },
+    {
+      "id": "fish_1792000000007_27",
+      "name": "ニジイロマス",
+      "description": "朝日を浴びると虹色に輝くマス。バターとの相性が抜群。",
+      "fishType": "ピカリ科",
+      "power": 6,
+      "hp": 35,
+      "size": 40,
+      "rank": "D",
+      "listedPrice": 180,
+      "trueValue": 180
+    },
+    {
+      "id": "fish_1792000000008_28",
+      "name": "ギンパクヒラメ",
+      "description": "銀の箔をまとったような美しいヒラメ。池の底でじっと獲物を待っている。",
+      "fishType": "ヒレナガ科",
+      "power": 7,
+      "hp": 40,
+      "size": 55,
+      "rank": "D",
+      "listedPrice": 240,
+      "trueValue": 240
+    },
+    {
+      "id": "fish_1792000000009_29",
+      "name": "ハリネズミフグ",
+      "description": "危険を感じると針を逆立ててまん丸になる小さなフグ。観賞用としても人気。",
+      "fishType": "トゲトゲ科",
+      "power": 8,
+      "hp": 38,
+      "size": 25,
+      "rank": "D",
+      "listedPrice": 260,
+      "trueValue": 260
+    },
+    {
+      "id": "fish_1792000000010_30",
+      "name": "ヨルヅキナマズ",
+      "description": "月夜にだけ姿を現す大きなナマズ。ふっくらした身は鍋にすると絶品。",
+      "fishType": "ドロ科",
+      "power": 9,
+      "hp": 55,
+      "size": 90,
+      "rank": "C",
+      "listedPrice": 420,
+      "trueValue": 420
+    },
+    {
+      "id": "fish_1792000000011_31",
+      "name": "ホウライコイ",
+      "description": "縁起が良いとされる、金と赤の模様を持つコイ。夕暮れ時によく跳ねる。",
+      "fishType": "ヒレナガ科",
+      "power": 8,
+      "hp": 60,
+      "size": 70,
+      "rank": "C",
+      "listedPrice": 500,
+      "trueValue": 500
+    },
+    {
+      "id": "fish_1792000000012_32",
+      "name": "ガラスのシラウオ",
+      "description": "体が透き通って向こう側が見えるほど儚いシラウオ。雨の日にだけ水面に集まる。",
+      "fishType": "ピカリ科",
+      "power": 5,
+      "hp": 30,
+      "size": 15,
+      "rank": "C",
+      "listedPrice": 600,
+      "trueValue": 600
+    },
+    {
+      "id": "fish_1792000000013_33",
+      "name": "カミナリブリ",
+      "description": "雷雨の日に荒々しく暴れまわる大型のブリ。その引きは並の釣竿では耐えられない。",
+      "fishType": "ヒレナガ科",
+      "power": 12,
+      "hp": 80,
+      "size": 110,
+      "rank": "B",
+      "listedPrice": 1100,
+      "trueValue": 1100
+    },
+    {
+      "id": "fish_1792000000014_34",
+      "name": "ガマジルオオイワナ",
+      "description": "ガマジルの池の深みに棲む、全身ゴツゴツしたオオイワナ。釣り人の間では憧れの的。",
+      "fishType": "トゲトゲ科",
+      "power": 13,
+      "hp": 95,
+      "size": 130,
+      "rank": "B",
+      "listedPrice": 1500,
+      "trueValue": 1500
+    },
+    {
+      "id": "fish_1792000000015_35",
+      "name": "コガネヌシ",
+      "description": "池の主と噂される黄金色の巨大魚。一生に一度見られるかどうかと言われている。",
+      "fishType": "ピカリ科",
+      "power": 15,
+      "hp": 120,
+      "size": 160,
+      "rank": "A",
+      "listedPrice": 5000,
+      "trueValue": 5000
     }
   ],
   "skills": [
@@ -10743,6 +11557,58 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         {
           "itemId": "item_1790126427439_3",
           "price": 30
+        },
+        {
+          "itemId": "item_1792000000201_41",
+          "price": 25
+        },
+        {
+          "itemId": "item_1792000000202_42",
+          "price": 30
+        },
+        {
+          "itemId": "item_1792000000203_43",
+          "price": 30
+        },
+        {
+          "itemId": "item_1792000000204_44",
+          "price": 20
+        },
+        {
+          "itemId": "item_1792000000205_45",
+          "price": 25
+        },
+        {
+          "itemId": "item_1792000000206_46",
+          "price": 15
+        },
+        {
+          "itemId": "item_1792000000207_47",
+          "price": 15
+        },
+        {
+          "itemId": "item_1792000000208_48",
+          "price": 20
+        },
+        {
+          "itemId": "item_1792000000209_49",
+          "price": 20
+        },
+        {
+          "itemId": "item_1792000000210_50",
+          "price": 45
+        },
+        {
+          "itemId": "item_1792000000211_51",
+          "price": 25
+        },
+        {
+          "itemId": "item_1792000000212_52",
+          "price": 25
+        },
+        {
+          "itemId": "item_1792000000213_53",
+          "price": 30
         }
       ],
       "shopOffers": []
@@ -11332,6 +12198,96 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "weight": 1,
           "timeOfDay": "night",
           "weather": "any"
+        },
+        {
+          "fishId": "fish_1792000000001_21",
+          "weight": 5,
+          "timeOfDay": "any",
+          "weather": "any"
+        },
+        {
+          "fishId": "fish_1792000000002_22",
+          "weight": 4,
+          "timeOfDay": "night",
+          "weather": "any"
+        },
+        {
+          "fishId": "fish_1792000000003_23",
+          "weight": 5,
+          "timeOfDay": "any",
+          "weather": "any"
+        },
+        {
+          "fishId": "fish_1792000000004_24",
+          "weight": 3,
+          "timeOfDay": "any",
+          "weather": "cloudy"
+        },
+        {
+          "fishId": "fish_1792000000005_25",
+          "weight": 4,
+          "timeOfDay": "morning",
+          "weather": "any"
+        },
+        {
+          "fishId": "fish_1792000000006_26",
+          "weight": 4,
+          "timeOfDay": "any",
+          "weather": "any"
+        },
+        {
+          "fishId": "fish_1792000000007_27",
+          "weight": 3,
+          "timeOfDay": "morning",
+          "weather": "clear"
+        },
+        {
+          "fishId": "fish_1792000000008_28",
+          "weight": 3,
+          "timeOfDay": "day",
+          "weather": "any"
+        },
+        {
+          "fishId": "fish_1792000000009_29",
+          "weight": 3,
+          "timeOfDay": "day",
+          "weather": "any"
+        },
+        {
+          "fishId": "fish_1792000000010_30",
+          "weight": 2,
+          "timeOfDay": "night",
+          "weather": "any"
+        },
+        {
+          "fishId": "fish_1792000000011_31",
+          "weight": 2,
+          "timeOfDay": "evening",
+          "weather": "any"
+        },
+        {
+          "fishId": "fish_1792000000012_32",
+          "weight": 2,
+          "timeOfDay": "any",
+          "weather": "rain"
+        },
+        {
+          "fishId": "fish_1792000000013_33",
+          "weight": 1,
+          "timeOfDay": "any",
+          "weather": "thunderstorm"
+        },
+        {
+          "fishId": "fish_1792000000014_34",
+          "weight": 1,
+          "timeOfDay": "night",
+          "weather": "any"
+        },
+        {
+          "fishId": "fish_1792000000015_35",
+          "weight": 1,
+          "timeOfDay": "any",
+          "weather": "any"
         }
       ]
     },
@@ -11371,6 +12327,22 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         {
           "itemId": "item_1790066410104_5",
           "price": 600
+        },
+        {
+          "itemId": "item_1792000000101_31",
+          "price": 30
+        },
+        {
+          "itemId": "item_1792000000102_32",
+          "price": 40
+        },
+        {
+          "itemId": "item_1792000000103_33",
+          "price": 50
+        },
+        {
+          "itemId": "item_1792000000104_34",
+          "price": 50
         }
       ],
       "shopOffers": []
@@ -11936,6 +12908,292 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "description": "",
       "toolItemId": "item_1790126275174_1",
       "cookTimeSeconds": 4
+    },
+    {
+      "id": "recipe_1792000000401_71",
+      "name": "ドロンコフナの味噌煮",
+      "shopType": "cooking",
+      "mode": "create",
+      "materials": [
+        {
+          "itemId": "fish_1792000000001_21",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000203_43",
+          "count": 2
+        },
+        {
+          "itemId": "item_1792000000208_48",
+          "count": 1
+        }
+      ],
+      "baseItemId": "",
+      "resultItemId": "item_1792000000301_61",
+      "resultCount": 1,
+      "cost": 0,
+      "description": "泥臭さを味噌でしっかり消した、素朴で優しい味の煮魚。",
+      "toolItemId": "item_1790126275174_1",
+      "cookTimeSeconds": 4
+    },
+    {
+      "id": "recipe_1792000000402_72",
+      "name": "ホタルメダカのからあげ",
+      "shopType": "cooking",
+      "mode": "create",
+      "materials": [
+        {
+          "itemId": "fish_1792000000002_22",
+          "count": 3
+        },
+        {
+          "itemId": "item_1792000000204_44",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000201_41",
+          "count": 1
+        }
+      ],
+      "baseItemId": "",
+      "resultItemId": "item_1792000000302_62",
+      "resultCount": 1,
+      "cost": 0,
+      "description": "丸ごとカラッと揚げた小魚。噛むとほんのり光る気がする。",
+      "toolItemId": "item_1790126275174_1",
+      "cookTimeSeconds": 3
+    },
+    {
+      "id": "recipe_1792000000403_73",
+      "name": "ミズタマハゼの天ぷら",
+      "shopType": "cooking",
+      "mode": "create",
+      "materials": [
+        {
+          "itemId": "fish_1792000000003_23",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000204_44",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000206_46",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000201_41",
+          "count": 1
+        }
+      ],
+      "baseItemId": "",
+      "resultItemId": "item_1792000000303_63",
+      "resultCount": 1,
+      "cost": 0,
+      "description": "衣はサクサク、身はふわふわ。揚げたてが一番美味い。",
+      "toolItemId": "item_1790126275174_1",
+      "cookTimeSeconds": 4
+    },
+    {
+      "id": "recipe_1792000000404_74",
+      "name": "コケむしウナギの蒲焼き",
+      "shopType": "cooking",
+      "mode": "create",
+      "materials": [
+        {
+          "itemId": "fish_1792000000004_24",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000202_42",
+          "count": 2
+        },
+        {
+          "itemId": "item_1792000000205_45",
+          "count": 1
+        }
+      ],
+      "baseItemId": "",
+      "resultItemId": "item_1792000000304_64",
+      "resultCount": 1,
+      "cost": 0,
+      "description": "甘辛いタレを絡めて香ばしく焼き上げた。スタミナ満点。",
+      "toolItemId": "item_1790126275174_1",
+      "cookTimeSeconds": 6
+    },
+    {
+      "id": "recipe_1792000000405_75",
+      "name": "ヒラヒラサヨリのレモン昆布炒め",
+      "shopType": "cooking",
+      "mode": "create",
+      "materials": [
+        {
+          "itemId": "fish_1792000000005_25",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000213_53",
+          "count": 2
+        },
+        {
+          "itemId": "item_1792000000211_51",
+          "count": 1
+        }
+      ],
+      "baseItemId": "",
+      "resultItemId": "item_1792000000305_65",
+      "resultCount": 1,
+      "cost": 0,
+      "description": "昆布の旨味とレモンの酸味で、上品に仕上げた炒め物。",
+      "toolItemId": "item_1790126275174_1",
+      "cookTimeSeconds": 5
+    },
+    {
+      "id": "recipe_1792000000406_76",
+      "name": "トゲトゲカサゴのアクアパッツァ風",
+      "shopType": "cooking",
+      "mode": "create",
+      "materials": [
+        {
+          "itemId": "fish_1792000000006_26",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000212_52",
+          "count": 2
+        },
+        {
+          "itemId": "item_1792000000209_49",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000201_41",
+          "count": 1
+        }
+      ],
+      "baseItemId": "",
+      "resultItemId": "item_1792000000306_66",
+      "resultCount": 1,
+      "cost": 0,
+      "description": "トマトとニンニクで煮込んだ、豪快で香り高い一皿。",
+      "toolItemId": "item_1790126275174_1",
+      "cookTimeSeconds": 6
+    },
+    {
+      "id": "recipe_1792000000407_77",
+      "name": "ニジイロマスのバターソテー",
+      "shopType": "cooking",
+      "mode": "create",
+      "materials": [
+        {
+          "itemId": "fish_1792000000007_27",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000210_50",
+          "count": 2
+        },
+        {
+          "itemId": "item_1792000000211_51",
+          "count": 1
+        }
+      ],
+      "baseItemId": "",
+      "resultItemId": "item_1792000000307_67",
+      "resultCount": 1,
+      "cost": 0,
+      "description": "バターの香りが食欲をそそる。皮目までパリッと焼けている。",
+      "toolItemId": "item_1790126275174_1",
+      "cookTimeSeconds": 5
+    },
+    {
+      "id": "recipe_1792000000408_78",
+      "name": "ギンパクヒラメのムニエル",
+      "shopType": "cooking",
+      "mode": "create",
+      "materials": [
+        {
+          "itemId": "fish_1792000000008_28",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000204_44",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000210_50",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000211_51",
+          "count": 1
+        }
+      ],
+      "baseItemId": "",
+      "resultItemId": "item_1792000000308_68",
+      "resultCount": 1,
+      "cost": 0,
+      "description": "小麦粉をまぶして焼いた、外はカリッと中はしっとりの逸品。",
+      "toolItemId": "item_1790126275174_1",
+      "cookTimeSeconds": 7
+    },
+    {
+      "id": "recipe_1792000000409_79",
+      "name": "ヨルヅキナマズのネギ味噌焼き",
+      "shopType": "cooking",
+      "mode": "create",
+      "materials": [
+        {
+          "itemId": "fish_1792000000010_30",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000203_43",
+          "count": 2
+        },
+        {
+          "itemId": "item_1792000000207_47",
+          "count": 2
+        }
+      ],
+      "baseItemId": "",
+      "resultItemId": "item_1792000000309_69",
+      "resultCount": 1,
+      "cost": 0,
+      "description": "月夜に釣れたナマズに、味噌とネギをたっぷり乗せて焼いた。",
+      "toolItemId": "item_1790126275174_1",
+      "cookTimeSeconds": 8
+    },
+    {
+      "id": "recipe_1792000000410_80",
+      "name": "コガネヌシの黄金丼",
+      "shopType": "cooking",
+      "mode": "create",
+      "materials": [
+        {
+          "itemId": "fish_1792000000015_35",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000205_45",
+          "count": 2
+        },
+        {
+          "itemId": "item_1792000000206_46",
+          "count": 1
+        },
+        {
+          "itemId": "item_1792000000202_42",
+          "count": 1
+        }
+      ],
+      "baseItemId": "",
+      "resultItemId": "item_1792000000310_70",
+      "resultCount": 1,
+      "cost": 0,
+      "description": "主と呼ばれた魚を、ご飯と卵でまとめ上げた伝説の丼。食べれば全身に力がみなぎる。",
+      "toolItemId": "item_1790126275174_1",
+      "cookTimeSeconds": 8
     }
   ],
   "randomNamePool": [
@@ -12227,6 +13485,79 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
           "target": "all",
           "powerMultiplier": "20",
           "atkType": "physical"
+        }
+      ],
+      "variables": {}
+    }
+  ],
+  "upperSkills": [
+    {
+      "id": "upper_1791900779403_1",
+      "name": "紅の暴破(レッド・バースト)",
+      "description": "自身の血液を極限まで凝縮させ放つ超絶技巧。",
+      "type": "attack",
+      "element": "element_1790419127202_5",
+      "spCost": 75,
+      "power": 20,
+      "target": "single",
+      "hitCount": 1,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1791901146387_2",
+          "type": "message",
+          "speaker": "ケツァナ",
+          "text": "....はぁーーーっっっ！"
+        },
+        {
+          "id": "skillblock_1791901179327_4",
+          "type": "selfDamage",
+          "amount": "仲間HP割合(ケツァナ) * 0.2"
+        },
+        {
+          "id": "skillblock_1791901404091_6",
+          "type": "message",
+          "speaker": "",
+          "text": "血の色をした爆風が敵全体を襲う！"
+        },
+        {
+          "id": "skillblock_1791901176520_3",
+          "type": "applyStatus",
+          "targetSide": "enemy",
+          "target": "all",
+          "statusId": "burn",
+          "duration": "3",
+          "power": "仲間攻撃力(ケツァナ) * 0.3",
+          "chance": "1"
+        },
+        {
+          "id": "skillblock_1791901337188_5",
+          "type": "damage",
+          "target": "all",
+          "powerMultiplier": "45 + 仲間攻撃力(ケツァナ) * 0.2",
+          "atkType": "magical"
+        },
+        {
+          "id": "skillblock_1791901436031_7",
+          "type": "end"
         }
       ],
       "variables": {}
@@ -13280,7 +14611,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                 "value": 3
               }
             ],
-            "costExp": 100,
+            "costExp": 3000,
             "costItems": []
           },
           "4,5": {
@@ -13293,7 +14624,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                 "value": 11
               }
             ],
-            "costExp": 150,
+            "costExp": 1500,
             "costItems": []
           },
           "4,3": {
@@ -13306,7 +14637,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                 "value": 7
               }
             ],
-            "costExp": 150,
+            "costExp": 1500,
             "costItems": []
           },
           "5,4": {
@@ -13319,7 +14650,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                 "value": 2
               }
             ],
-            "costExp": 100,
+            "costExp": 1000,
             "costItems": []
           },
           "3,5": {
@@ -13332,7 +14663,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                 "value": 2
               }
             ],
-            "costExp": 100,
+            "costExp": 1000,
             "costItems": []
           },
           "3,3": {
@@ -13345,7 +14676,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                 "value": 2
               }
             ],
-            "costExp": 100,
+            "costExp": 1000,
             "costItems": []
           },
           "5,5": {
@@ -13355,10 +14686,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                 "kind": "stat",
                 "stat": "skillPower",
                 "mode": "flat",
-                "value": 3
+                "value": 8
               }
             ],
-            "costExp": 100,
+            "costExp": 3000,
             "costItems": []
           },
           "5,3": {
@@ -13371,8 +14702,112 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                 "value": 2
               }
             ],
-            "costExp": 100,
+            "costExp": 1000,
             "costItems": []
+          },
+          "0,7": {
+            "label": "乗り越えるんだ。",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1791900779403_1"
+              }
+            ],
+            "costExp": 70000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 25
+              },
+              {
+                "itemId": "excalibur",
+                "count": 1
+              },
+              {
+                "itemId": "book_dragonslayer_saga",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
+          },
+          "2,5": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "statusResist",
+                "value": 4
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "2,6": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1789108214910_2",
+                "count": 10
+              },
+              {
+                "itemId": "potion_004",
+                "count": 10
+              }
+            ],
+            "minLevel": 50
+          },
+          "1,6": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "percent",
+                "value": 7
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "flat",
+                "value": 15
+              },
+              {
+                "kind": "elementResist",
+                "element": "element_1789993514120_2",
+                "value": 5
+              }
+            ],
+            "costExp": 34000,
+            "costItems": [
+              {
+                "itemId": "item_1790531256969_1",
+                "count": 5
+              },
+              {
+                "itemId": "fish_1790065872945_3",
+                "count": 10
+              },
+              {
+                "itemId": "item_1790066410104_5",
+                "count": 1
+              }
+            ],
+            "minLevel": 55
           }
         }
       },
@@ -15115,7 +16550,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
               "x": 0,
               "y": 0,
               "width": 8,
-              "height": 10,
+              "height": 11,
               "name": "二階リビング",
               "roomType": "",
               "brightness": 4,
@@ -15127,11 +16562,182 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
               },
               "doorStyle": {
                 "west": {
-                  "position": 4,
+                  "position": 2,
                   "color": "#6b4226"
                 }
               },
-              "fixedItems": [],
+              "fixedItems": [
+                {
+                  "id": "fixeditem_1791188195151_3",
+                  "kind": "stairs",
+                  "x": 6,
+                  "y": 2,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "down",
+                  "targetFloor": 0
+                },
+                {
+                  "id": "fixeditem_1791188197744_4",
+                  "kind": "stairs",
+                  "x": 7,
+                  "y": 2,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "down",
+                  "targetFloor": 0
+                },
+                {
+                  "id": "fixeditem_1791188202942_5",
+                  "kind": "stairs",
+                  "x": 6,
+                  "y": 3,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "down",
+                  "targetFloor": 0
+                },
+                {
+                  "id": "fixeditem_1791188205016_6",
+                  "kind": "stairs",
+                  "x": 7,
+                  "y": 3,
+                  "w": 1,
+                  "h": 1,
+                  "direction": "down",
+                  "targetFloor": 0
+                },
+                {
+                  "id": "fixeditem_1791188209865_7",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532855000_11",
+                  "x": 6,
+                  "y": 4,
+                  "w": 1,
+                  "h": 1,
+                  "locked": true
+                },
+                {
+                  "id": "fixeditem_1791188211935_8",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532855000_11",
+                  "x": 7,
+                  "y": 4,
+                  "w": 1,
+                  "h": 1,
+                  "locked": true
+                },
+                {
+                  "id": "fixeditem_1791188220157_9",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532855000_11",
+                  "x": 5,
+                  "y": 2,
+                  "w": 1,
+                  "h": 1,
+                  "locked": true
+                },
+                {
+                  "id": "fixeditem_1791188222524_10",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532855000_11",
+                  "x": 5,
+                  "y": 3,
+                  "w": 1,
+                  "h": 1,
+                  "locked": true
+                },
+                {
+                  "id": "fixeditem_1791188225910_11",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532855000_11",
+                  "x": 5,
+                  "y": 4,
+                  "w": 1,
+                  "h": 1,
+                  "locked": true
+                },
+                {
+                  "id": "fixeditem_1791188248596_13",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532378071_10",
+                  "x": 4,
+                  "y": 7,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188257486_15",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790532378071_10",
+                  "x": 4,
+                  "y": 8,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188292552_17",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790162502818_8",
+                  "x": 4,
+                  "y": 9,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188297388_18",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790162502818_8",
+                  "x": 5,
+                  "y": 9,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188317900_19",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790162502818_8",
+                  "x": 3,
+                  "y": 7,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188320732_20",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790162502818_8",
+                  "x": 3,
+                  "y": 8,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188347357_22",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790531805277_2",
+                  "x": 7,
+                  "y": 7,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                },
+                {
+                  "id": "fixeditem_1791188350403_23",
+                  "kind": "furniture",
+                  "furnitureId": "furniture_1790531805277_2",
+                  "x": 7,
+                  "y": 8,
+                  "w": 1,
+                  "h": 1,
+                  "locked": false
+                }
+              ],
               "outsideDoors": {
                 "north": false,
                 "south": false,
