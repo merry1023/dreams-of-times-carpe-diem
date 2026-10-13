@@ -1809,8 +1809,13 @@ async function performCompanionSkillMenu(companion, options = {}) {
   
   changeSpeaker("");
   let isFirstHit = true;
+  // ★要望対応：全体攻撃・連続攻撃は1発ごとに入力待ちにするとテンポが悪いので自動で進めるようにし、
+  //   最後に全体攻撃なら平均ダメージ、連続攻撃なら合計ダメージをまとめて表示する
+  const isMultiAction = targets.length > 1 || hitCount > 1;
+  const perTargetTotals = [];
   for (const target of targets) {
     if (!target) continue;
+    let targetSubtotal = 0;
     for (let i = 0; i < hitCount; i++) {
       if (target.hp <= 0) break; // ★倒した後の残り命中回数は空撃ちしない（主人公側の全体攻撃と同じ挙動）
       companionBuffs.attackCount++; // ★血闘の刻印用のカウント
@@ -1826,26 +1831,35 @@ async function performCompanionSkillMenu(companion, options = {}) {
       const result = resolveDamageForTarget(target, raw, skill.element);
       target.hp = Math.max(0, target.hp - result.damage);
       totalDamage += result.damage;
+      targetSubtotal += result.damage;
       if (skill.lifestealRatio) lifestealTotal += result.damage; // ★血臭の宴：与えたダメージの一部を後でHPに変換する
       // ★複数回攻撃・複数対象の技名は最初の1回だけ言い、以降はダメージ量だけ表示する
       const prefix = isFirstHit ? `${name}の「${skill.name}」！ ` : "";
       isFirstHit = false;
+      const showFn = isMultiAction ? displayMessageAutoAdvance : displayMessage;
       if (result.blocked) {
-        await displayMessage(`${prefix}しかし、${target.displayName}には効いていないようだッ！`);
+        await showFn(`${prefix}しかし、${target.displayName}には効いていないようだッ！`);
       } else {
-        await displayMessage(`${prefix}${target.displayName}に${result.damage}のダメージ！`);
+        await showFn(`${prefix}${target.displayName}に${result.damage}のダメージ！`);
       }
       updateBattleHud();
       await maybeApplyBloodDanceOnAttack(companion); // ★血華の演舞：発動中なら攻撃力が積み上がり、代わりに少しダメージを受ける
     }
+    perTargetTotals.push(targetSubtotal);
     if (target.hp > 0 && skill.statusEffect && Math.random() < (skill.statusEffect.chance != null ? skill.statusEffect.chance : 1)) {
       const applied = applyEnemyStatusEffectFromSkill(target, skill.statusEffect);
-      if (applied) await displayMessage(`${target.displayName}は${applied}状態になった！`);
+      if (applied) await (isMultiAction ? displayMessageAutoAdvance : displayMessage)(`${target.displayName}は${applied}状態になった！`);
     }
     if (target.hp > 0 && skill.statusEffect2 && Math.random() < (skill.statusEffect2.chance != null ? skill.statusEffect2.chance : 1)) {
       const applied2 = applyEnemyStatusEffectFromSkill(target, skill.statusEffect2);
-      if (applied2) await displayMessage(`${target.displayName}は${applied2}状態になった！`);
+      if (applied2) await (isMultiAction ? displayMessageAutoAdvance : displayMessage)(`${target.displayName}は${applied2}状態になった！`);
     }
+  }
+  if (targets.length > 1 && perTargetTotals.length > 0) {
+    const avg = Math.round(perTargetTotals.reduce((a, b) => a + b, 0) / perTargetTotals.length);
+    await displayMessage(`平均${avg}のダメージを与えた！`);
+  } else if (hitCount > 1 && perTargetTotals.length > 0) {
+    await displayMessage(`合計${perTargetTotals[0]}のダメージを与えた！`);
   }
   
   // ★血臭の宴：与えたダメージの一部を自身のHPに変換する
@@ -1982,19 +1996,32 @@ async function executeComboSkill(combo) {
     await runSkillBlockList(skill.blocks, skill, context);
   } else if (skill.type === "attack") {
     const targets = skill.target === "all" ? getAliveEnemies() : (fallbackTarget ? [fallbackTarget] : []);
+    // ★要望対応：全体攻撃・連続攻撃は1発ごとに入力待ちにするとテンポが悪いので自動で進めるようにし、
+    //   最後に全体攻撃なら平均ダメージ、連続攻撃なら合計ダメージをまとめて表示する
+    const isMultiAction = targets.length > 1 || skill.hitCount > 1;
+    const perTargetTotals = [];
     for (const target of targets) {
+      let targetSubtotal = 0;
       for (let hit = 0; hit < skill.hitCount; hit++) {
         if (target.hp <= 0) break;
         const damage = calculateSkillDamage(skill, skill.hitCount);
         const result = resolveDamageForTarget(target, damage, skill.element);
         target.hp = Math.max(0, target.hp - result.damage);
-        await displayMessage(result.blocked ? `${target.displayName}には効いていないようだッ！` : `${target.displayName}に${result.damage}のダメージ！`);
+        targetSubtotal += result.damage;
+        await (isMultiAction ? displayMessageAutoAdvance : displayMessage)(result.blocked ? `${target.displayName}には効いていないようだッ！` : `${target.displayName}に${result.damage}のダメージ！`);
       }
+      perTargetTotals.push(targetSubtotal);
       for (const effect of [skill.statusEffect, skill.statusEffect2]) {
         if (!effect || target.hp <= 0 || Math.random() >= effect.chance) continue;
         const applied = applyEnemyStatusEffectFromSkill(target, effect);
-        if (applied) await displayMessage(`${target.displayName}は${applied}状態になった！`);
+        if (applied) await (isMultiAction ? displayMessageAutoAdvance : displayMessage)(`${target.displayName}は${applied}状態になった！`);
       }
+    }
+    if (targets.length > 1 && perTargetTotals.length > 0) {
+      const avg = Math.round(perTargetTotals.reduce((a, b) => a + b, 0) / perTargetTotals.length);
+      await displayMessage(`平均${avg}のダメージを与えた！`);
+    } else if (skill.hitCount > 1 && perTargetTotals.length > 0) {
+      await displayMessage(`合計${perTargetTotals[0]}のダメージを与えた！`);
     }
   } else if (skill.type === "heal") {
     const healed = applyHealToUnit(player, "hp", skill.power, false, false); // player.js
@@ -3009,14 +3036,30 @@ async function runSingleSkillBlock(block, skill, context, hitCountForBalance = 1
   
   if (block.type === "damage") {
     const multiplier = evaluateSkillExpression(block.powerMultiplier, buildSkillExprContext(skill, context));
-    for (const enemyTarget of resolveSkillBlockEnemyTargets(block.target, context)) {
+    const damageTargets = resolveSkillBlockEnemyTargets(block.target, context).filter(t => t.hp > 0);
+    // ★要望対応：このdamageブロックが複数の敵に同時に当たる（全体攻撃）か、
+    //   外側をrepeatブロック（連続攻撃）に囲まれている場合は、1発ごとに入力待ちにせず自動で進める
+    const isMultiAction = damageTargets.length > 1 || hitCountForBalance > 1;
+    const showFn = isMultiAction ? displayMessageAutoAdvance : displayMessage;
+    let blockTotal = 0, blockHitCount = 0;
+    for (const enemyTarget of damageTargets) {
       if (enemyTarget.hp <= 0) continue;
       const damage = calculateSkillBlockDamage(skill, block, multiplier, context.caster, hitCountForBalance);
       const result = resolveDamageForTarget(enemyTarget, damage, skill.element);
       enemyTarget.hp = Math.max(0, enemyTarget.hp - result.damage);
-      if (result.blocked) await displayMessage(`${enemyTarget.displayName}には効いていないようだッ！`, { allowSubFocus: true });
-      else if (lastHitWasCritical) await displayMessage(`会心の一撃！ ${enemyTarget.displayName}に${result.damage}のダメージ！`, { allowSubFocus: true });
-      else await displayMessage(`${enemyTarget.displayName}に${result.damage}のダメージ！`, { allowSubFocus: true });
+      blockTotal += result.damage;
+      blockHitCount++;
+      if (result.blocked) await showFn(`${enemyTarget.displayName}には効いていないようだッ！`, { allowSubFocus: true });
+      else if (lastHitWasCritical) await showFn(`会心の一撃！ ${enemyTarget.displayName}に${result.damage}のダメージ！`, { allowSubFocus: true });
+      else await showFn(`${enemyTarget.displayName}に${result.damage}のダメージ！`, { allowSubFocus: true });
+    }
+    // ★要望対応：このdamageブロック自体が複数の敵を同時に攻撃する「全体攻撃」なら、ここで平均ダメージを表示する
+    if (damageTargets.length > 1 && blockHitCount > 0) {
+      await displayMessage(`平均${Math.round(blockTotal / blockHitCount)}のダメージを与えた！`, { allowSubFocus: true });
+    }
+    // ★要望対応：このdamageブロックを囲んでいるrepeatブロック（連続攻撃）があれば、後で合計を表示できるよう積算しておく
+    if (Array.isArray(context.repeatDamageStack)) {
+      context.repeatDamageStack.forEach(frame => { frame.total += blockTotal; frame.count += blockHitCount; });
     }
     return null;
   }
@@ -3138,14 +3181,22 @@ async function runSingleSkillBlock(block, skill, context, hitCountForBalance = 1
   if (block.type === "repeat") {
     const count = Math.max(0, Math.round(evaluateSkillExpression(block.countExpression, buildSkillExprContext(skill, context))));
     const innerHitCountForBalance = hitCountForBalance * Math.max(1, count);
+    // ★要望対応：連続攻撃（このrepeatの中で与えたダメージの合計）を、くり返しが終わった後にまとめて表示するための集計枠
+    if (!Array.isArray(context.repeatDamageStack)) context.repeatDamageStack = [];
+    context.repeatDamageStack.push({ total: 0, count: 0 });
+    let earlyOutcome = null;
     for (let i = 0; i < count; i++) {
       const outcome = await runSkillBlockList(block.bodyBlocks || [], skill, context, innerHitCountForBalance);
-      if (outcome === "END") return "END"; // ★くり返しの中で「end」ブロックに達したら、技全体をそこで打ち切る
+      if (outcome === "END") { earlyOutcome = "END"; break; } // ★くり返しの中で「end」ブロックに達したら、技全体をそこで打ち切る
       // ★要望対応：くり返しの中のジャンプブロックの行き先がこのくり返しの中に無かった場合、
       //   そのまま外側へジャンプ要求を伝える（くり返しの外へジャンプで抜けられるようにする）
-      if (typeof outcome === "string" && outcome.startsWith("JUMP:")) return outcome;
+      if (typeof outcome === "string" && outcome.startsWith("JUMP:")) { earlyOutcome = outcome; break; }
     }
-    return null;
+    const damageFrame = context.repeatDamageStack.pop();
+    if (damageFrame.count > 0) {
+      await displayMessage(`合計${damageFrame.total}のダメージを与えた！`, { allowSubFocus: true });
+    }
+    return earlyOutcome;
   }
   
   if (block.type === "end") return "END";
@@ -3399,26 +3450,34 @@ async function handleSkillMenu(options = {}) {
     // ★skill.target === "all" の全体攻撃スキルは、ターゲット選択をせず生きている敵全員に当てる
     if (skill.target === "all") {
       await displayMessage(`「${skill.name}」を放った！`);
+      // ★要望対応：全体攻撃・連続攻撃は1発ごとに入力待ちにするとテンポが悪いので自動で進めるようにし、
+      //   最後に平均ダメージをまとめて表示する
+      let totalDamage = 0, hitLandedCount = 0;
       for (const enemy of getAliveEnemies()) {
         for (let hit = 0; hit < hitCount; hit++) {
           if (enemy.hp <= 0) break;
           const damage = calculateSkillDamage(skill, hitCount); // ★命中回数分だけ攻撃力の効果を均等に割る（バランス調整）
           const result = resolveDamageForTarget(enemy, damage, skill.element);
           enemy.hp = Math.max(0, enemy.hp - result.damage);
+          totalDamage += result.damage;
+          hitLandedCount++;
           if (result.blocked) {
-            await displayMessage(`${enemy.displayName}には効いていないようだッ！`);
+            await displayMessageAutoAdvance(`${enemy.displayName}には効いていないようだッ！`);
           } else {
-            await displayMessage(`${enemy.displayName}に${result.damage}のダメージ！`);
+            await displayMessageAutoAdvance(`${enemy.displayName}に${result.damage}のダメージ！`);
           }
         }
         if (enemy.hp > 0 && skill.statusEffect) {
           const applied = applyEnemyStatusEffectFromSkill(enemy, skill.statusEffect);
-          if (applied) await displayMessage(`${enemy.displayName}は${applied}状態になった！`);
+          if (applied) await displayMessageAutoAdvance(`${enemy.displayName}は${applied}状態になった！`);
           if (skill.statusEffect2) {
             const applied2 = applyEnemyStatusEffectFromSkill(enemy, skill.statusEffect2);
-            if (applied2) await displayMessage(`${enemy.displayName}は${applied2}状態になった！`);
+            if (applied2) await displayMessageAutoAdvance(`${enemy.displayName}は${applied2}状態になった！`);
           }
         }
+      }
+      if (hitLandedCount > 0) {
+        await displayMessage(`平均${Math.round(totalDamage / hitLandedCount)}のダメージを与えた！`);
       }
     } else {
       // ★「一か八か」等：randomTargetの技は、狙う相手を自分で選ばせず、生きている敵の中からランダムに選ぶ。
@@ -3432,6 +3491,9 @@ async function handleSkillMenu(options = {}) {
           return false; // ★ターンを消費せず選び直せる
         }
       }
+      // ★要望対応：命中回数が2回以上の連続攻撃は、1発ごとに入力待ちにするとテンポが悪いので自動で進めるようにし、
+      //   最後に合計ダメージをまとめて表示する（1回だけの通常攻撃技は今まで通り入力待ちのまま）
+      let hitTotalDamage = 0, hitLandedCount = 0;
       for (let hit = 0; hit < hitCount; hit++) {
           if (skill.randomTarget) {
             const candidates = getAliveEnemies();
@@ -3441,15 +3503,21 @@ async function handleSkillMenu(options = {}) {
           const damage = calculateSkillDamage(skill, hitCount); // ★命中回数分だけ攻撃力の効果を均等に割る（バランス調整）
           const result = resolveDamageForTarget(target, damage, skill.element);
           target.hp = Math.max(0, target.hp - result.damage);
+          hitTotalDamage += result.damage;
+          hitLandedCount++;
           // ★命中回数が2以上の技は、技名を言うのは最初の1回のみにして、以降はダメージ量だけ表示する
           const prefix = hit === 0 ? `「${skill.name}」を放った！ ` : "";
+          const showFn = hitCount > 1 ? displayMessageAutoAdvance : displayMessage;
           if (result.blocked) {
-            await displayMessage(`${prefix}しかし、効いていないようだッ！`);
+            await showFn(`${prefix}しかし、効いていないようだッ！`);
           } else if (lastHitWasCritical) {
-            await displayMessage(`${prefix}会心の一撃！ ${target.displayName}に${result.damage}のダメージ！`);
+            await showFn(`${prefix}会心の一撃！ ${target.displayName}に${result.damage}のダメージ！`);
           } else {
-            await displayMessage(`${prefix}${target.displayName}に${result.damage}のダメージ！`);
+            await showFn(`${prefix}${target.displayName}に${result.damage}のダメージ！`);
           }
+        }
+        if (hitCount > 1 && hitLandedCount > 0) {
+          await displayMessage(`合計${hitTotalDamage}のダメージを与えた！`);
         }
         if (target && target.hp > 0 && skill.statusEffect) {
           const applied = applyEnemyStatusEffectFromSkill(target, skill.statusEffect);
