@@ -812,8 +812,12 @@ function normalizeScenarioProject() {
       // ★同一判定：まずskillId（player.js側のid）で探し、見つからなければ技名で探す
       //  （「技にidを新しく付けた」ことで、既存データのskillIdが空のまま一致しなくなるケースを拾うため）
       const existing = scenarioProject.skills.find(s => s.className === className && s.builtin && skill.id && s.skillId === skill.id)
-        || scenarioProject.skills.find(s => s.className === className && s.builtin && s.name === skill.name);
+        || scenarioProject.skills.find(s => s.className === className && s.builtin && s.name === skill.name)
+        // ★技名を「名前（読み）」からルビ記法に変えた分：旧い名前で保存済みの組み込み技も同じ技として引き継ぐ
+        //   （ゴースト扱いで消されて、技管理で行った編集が失われないように）
+        || scenarioProject.skills.find(s => s.className === className && s.builtin && s.name !== skill.name && skillNameKey(s.name) === skillNameKey(skill.name) && /[{｛][\/／]/.test(skill.name));
       if (existing) {
+        if (existing.name !== skill.name && skillNameKey(existing.name) === skillNameKey(skill.name) && /[{｛][\/／]/.test(skill.name)) existing.name = skill.name; // ★旧い名前→ルビ記法の名前へ更新
         existing.id = skillId; // ★idのズレ（旧：レベル入り）を今の形に揃えておく
         if (skill.id) existing.skillId = skill.id; // ★新しく付いたidも取り込んでおく（次回からはskillId一致で見つかる）
         claimedBuiltinSkillEntries.add(existing);
@@ -8196,7 +8200,7 @@ function buildComboSkillRow(combo, index) {
     const clsDetails = document.createElement("details");
     clsDetails.className = "scenariobuild-skill-details";
     const clsSummary = document.createElement("summary");
-    const selectedCount = byClass[className].filter(sk => combo.requiredSkillNames.includes(sk.name)).length;
+    const selectedCount = byClass[className].filter(sk => combo.requiredSkillNames.some(n => skillNameKey(n) === skillNameKey(sk.name))).length;
     clsSummary.textContent = `${className}の技${selectedCount ? `（${selectedCount}件選択中）` : ""}`;
     clsDetails.appendChild(clsSummary);
     byClass[className].slice().sort((a, b) => (a.unlockLevel || 0) - (b.unlockLevel || 0)).forEach(sk => {
@@ -8205,9 +8209,9 @@ function buildComboSkillRow(combo, index) {
       label.style.cursor = "pointer";
       const cb = document.createElement("input");
       cb.type = "checkbox";
-      cb.checked = combo.requiredSkillNames.includes(sk.name);
+      cb.checked = combo.requiredSkillNames.some(n => skillNameKey(n) === skillNameKey(sk.name));
       cb.onchange = () => {
-        const idx = combo.requiredSkillNames.indexOf(sk.name);
+        const idx = combo.requiredSkillNames.findIndex(n => skillNameKey(n) === skillNameKey(sk.name));
         if (cb.checked && idx < 0) combo.requiredSkillNames.push(sk.name);
         if (!cb.checked && idx >= 0) combo.requiredSkillNames.splice(idx, 1);
         persist();

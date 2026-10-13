@@ -3823,10 +3823,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "戦士_弧月斬（こげつざん）",
+      "id": "戦士_{/弧月斬}={\\こげつざん}",
       "className": "戦士",
       "skillId": "",
-      "name": "弧月斬（こげつざん）",
+      "name": "{/弧月斬}={\\こげつざん}",
       "description": "素早く円を描くように得物を振り抜き、敵全体に物理ダメージを与える。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -3856,10 +3856,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "戦士_爆炎の舞(ディオニス・ディウム)",
+      "id": "戦士_{/爆炎の舞}={\\ディオニス・ディウム}",
       "className": "戦士",
       "skillId": "",
-      "name": "爆炎の舞(ディオニス・ディウム)",
+      "name": "{/爆炎の舞}={\\ディオニス・ディウム}",
       "description": "刀身に高熱の炎を纏わせて敵を焼き払う範囲攻撃。敵全体に炎属性ダメージを与え、火傷を負わせる。",
       "type": "attack",
       "element": "element_1790419127202_5",
@@ -3955,10 +3955,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "戦士_猪武者の豪突（いのししむしゃのごうとつ）",
+      "id": "戦士_{/猪武者の豪突}={\\いのししむしゃのごうとつ}",
       "className": "戦士",
       "skillId": "",
-      "name": "猪武者の豪突（いのししむしゃのごうとつ）",
+      "name": "{/猪武者の豪突}={\\いのししむしゃのごうとつ}",
       "description": "全力で敵陣に突撃し、敵全体に物理ダメージを与える。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -4021,10 +4021,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "戦士_甲殻穿孔（こうかくせんこう）",
+      "id": "戦士_{/甲殻穿孔}={\\こうかくせんこう}",
       "className": "戦士",
       "skillId": "",
-      "name": "甲殻穿孔（こうかくせんこう）",
+      "name": "{/甲殻穿孔}={\\こうかくせんこう}",
       "description": "敵の防御力の一部を無視する強打を放ち、敵単体に確実なダメージを与える。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -4054,10 +4054,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "戦士_獣王無尽(レックス・ブレイク)",
+      "id": "戦士_{/獣王無尽}={\\レックス・ブレイク}",
       "className": "戦士",
       "skillId": "",
-      "name": "獣王無尽(レックス・ブレイク)",
+      "name": "{/獣王無尽}={\\レックス・ブレイク}",
       "description": "自身に獣の心を宿し、極めて高いダメージを敵全体に与える。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -4087,10 +4087,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "戦士_破軍双刃（はぐんそうじん）",
+      "id": "戦士_{/破軍双刃}={\\はぐんそうじん}",
       "className": "戦士",
       "skillId": "",
-      "name": "破軍双刃（はぐんそうじん）",
+      "name": "{/破軍双刃}={\\はぐんそうじん}",
       "description": "得物を両手で操り、敵単体へ5回の連続斬撃を浴びせる。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -4120,10 +4120,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "戦士_唐竹割り（からたけわり）",
+      "id": "戦士_{/唐竹割り}={\\からたけわり}",
       "className": "戦士",
       "skillId": "",
-      "name": "唐竹割り（からたけわり）",
+      "name": "{/唐竹割り}={\\からたけわり}",
       "description": "得物を頭上から真っ二つに振り下ろし、敵単体に大きな物理ダメージを与える。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -4153,10 +4153,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "戦士_大地一擘（だいちいっぱく）",
+      "id": "戦士_{/大地一擘}={\\だいちいっぱく}",
       "className": "戦士",
       "skillId": "",
-      "name": "大地一擘（だいちいっぱく）",
+      "name": "{/大地一擘}={\\だいちいっぱく}",
       "description": "地面を叩き割って衝撃波を発生させ、敵全体に自然属性ダメージを与える。",
       "type": "attack",
       "element": "element_1789993499387_1",
@@ -4222,7 +4222,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "戦士_shura_e_no_katsubou",
       "className": "戦士",
       "skillId": "shura_e_no_katsubou",
-      "name": "修羅への渇望（しゅらへのかつぼう）",
+      "name": "{/修羅への渇望}={\\しゅらへのかつぼう}",
       "description": "自身のHPが瀕死に近いほど攻撃回数が増える連続攻撃を敵単体に行う。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -4255,10 +4255,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "戦士_雷鳴一閃（らいめいいっせん）",
+      "id": "戦士_{/雷鳴一閃}={\\らいめいいっせん}",
       "className": "戦士",
       "skillId": "",
-      "name": "雷鳴一閃（らいめいいっせん）",
+      "name": "{/雷鳴一閃}={\\らいめいいっせん}",
       "description": "雷鳴を纏った一閃を放ち、敵単体に雷属性の大ダメージを与える。低確率で麻痺を付与する。",
       "type": "attack",
       "element": "element_1790419127202_6",
@@ -4288,10 +4288,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "戦士_万鈞の穿（ばんきんのうがち）",
+      "id": "戦士_{/万鈞の穿}={\\ばんきんのうがち}",
       "className": "戦士",
       "skillId": "",
-      "name": "万鈞の穿（ばんきんのうがち）",
+      "name": "{/万鈞の穿}={\\ばんきんのうがち}",
       "description": "得物を槍のように連続で突き出し、敵単体に4回の貫通ダメージを与える。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -4321,10 +4321,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "全能士_幻想の贈り物（イマジン・ベネディクション）",
+      "id": "全能士_{/幻想の贈り物}={\\イマジン・ベネディクション}",
       "className": "全能士",
       "skillId": "",
-      "name": "幻想の贈り物（イマジン・ベネディクション）",
+      "name": "{/幻想の贈り物}={\\イマジン・ベネディクション}",
       "description": "一定ターンの間、使用するスキルの効果が強化される（攻撃は威力上昇、回復は回復量増加）。",
       "type": "buff",
       "element": "element_1789993536302_4",
@@ -4423,7 +4423,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "全能士_aun_no_issen",
       "className": "全能士",
       "skillId": "aun_no_issen",
-      "name": "阿吽の一閃（あうんのいっせん）",
+      "name": "{/阿吽の一閃}={\\あうんのいっせん}",
       "description": "味方と息を合わせて連携攻撃を行い、敵単体に追加ダメージを与える。生きている仲間の数（自分を含む）だけ連続で攻撃する。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -4522,10 +4522,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "全能士_明鏡止水（めいきょうしすい）",
+      "id": "全能士_{/明鏡止水}={\\めいきょうしすい}",
       "className": "全能士",
       "skillId": "",
-      "name": "明鏡止水（めいきょうしすい）",
+      "name": "{/明鏡止水}={\\めいきょうしすい}",
       "description": "敵の隙を見抜き、次に自身が行う攻撃のクリティカル率を上昇させる。",
       "type": "buff",
       "element": "element_1790419127202_4",
@@ -4555,10 +4555,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "全能士_千変万化の一撃（せんぺんばんかのいちげき）",
+      "id": "全能士_{/千変万化の一撃}={\\せんぺんばんかのいちげき}",
       "className": "全能士",
       "skillId": "",
-      "name": "千変万化の一撃（せんぺんばんかのいちげき）",
+      "name": "{/千変万化の一撃}={\\せんぺんばんかのいちげき}",
       "description": "敵単体にランダムな属性で中程度のダメージを与える。",
       "type": "attack",
       "element": "element_1789993499387_1",
@@ -4621,10 +4621,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "全能士_斬打両断（ざんだりょうだん）",
+      "id": "全能士_{/斬打両断}={\\ざんだりょうだん}",
       "className": "全能士",
       "skillId": "",
-      "name": "斬打両断（ざんだりょうだん）",
+      "name": "{/斬打両断}={\\ざんだりょうだん}",
       "description": "得物の刃と柄を巧みに使い分け、敵単体に物理ダメージを与える。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -4654,10 +4654,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "全能士_変幻自在の采配（へんげんじざいのさいはい）",
+      "id": "全能士_{/変幻自在の采配}={\\へんげんじざいのさいはい}",
       "className": "全能士",
       "skillId": "",
-      "name": "変幻自在の采配（へんげんじざいのさいはい）",
+      "name": "{/変幻自在の采配}={\\へんげんじざいのさいはい}",
       "description": "次に使用するスキルの効果を強化する。",
       "type": "buff",
       "element": "element_1789993514120_2",
@@ -4790,10 +4790,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "partyWide": true
     },
     {
-      "id": "全能士_八面六臂（はちめんろっぴ）",
+      "id": "全能士_{/八面六臂}={\\はちめんろっぴ}",
       "className": "全能士",
       "skillId": "",
-      "name": "八面六臂（はちめんろっぴ）",
+      "name": "{/八面六臂}={\\はちめんろっぴ}",
       "description": "八方に得物を薙ぎ払い、敵全体に物理ダメージを与える。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -4823,10 +4823,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "狂戦士_血華の演舞（ブラッド・ダンス）",
+      "id": "狂戦士_{/血華の演舞}={\\ブラッド・ダンス}",
       "className": "狂戦士",
       "skillId": "",
-      "name": "血華の演舞（ブラッド・ダンス）",
+      "name": "{/血華の演舞}={\\ブラッド・ダンス}",
       "description": "自身の血を力に変え、一定ターンの間、攻撃力を強化する。攻撃時に自身も少しダメージを受ける。",
       "type": "buff",
       "element": "element_1789993538636_5",
@@ -4856,10 +4856,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "狂戦士_獅子吼（ししく）",
+      "id": "狂戦士_{/獅子吼}={\\ししく}",
       "className": "狂戦士",
       "skillId": "",
-      "name": "獅子吼（ししく）",
+      "name": "{/獅子吼}={\\ししく}",
       "description": "雄叫びを上げて自身を鼓舞し、一定ターンの間、攻撃力を上昇させる。",
       "type": "buff",
       "element": "element_1790419127202_4",
@@ -4889,10 +4889,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "狂戦士_怒濤乱撃（どとうらんげき）",
+      "id": "狂戦士_{/怒濤乱撃}={\\どとうらんげき}",
       "className": "狂戦士",
       "skillId": "",
-      "name": "怒濤乱撃（どとうらんげき）",
+      "name": "{/怒濤乱撃}={\\どとうらんげき}",
       "description": "怒涛の勢いで斬りつける3連撃。命中するたびに敵の防御力を低下させる。",
       "type": "attack",
       "element": "element_1789993538636_5",
@@ -4922,10 +4922,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "狂戦士_捨身乱撃（しゃしんらんげき）",
+      "id": "狂戦士_{/捨身乱撃}={\\しゃしんらんげき}",
       "className": "狂戦士",
       "skillId": "",
-      "name": "捨身乱撃（しゃしんらんげき）",
+      "name": "{/捨身乱撃}={\\しゃしんらんげき}",
       "description": "防御を顧みず得物を振り回し、自身の防御力を一定ターン低下させる代わりに、敵全体へ大ダメージを与える。",
       "type": "attack",
       "element": "element_1789993538636_5",
@@ -4955,10 +4955,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "狂戦士_怨嗟の号哭（えんさのごうこく）",
+      "id": "狂戦士_{/怨嗟の号哭}={\\えんさのごうこく}",
       "className": "狂戦士",
       "skillId": "",
-      "name": "怨嗟の号哭（えんさのごうこく）",
+      "name": "{/怨嗟の号哭}={\\えんさのごうこく}",
       "description": "断末魔じみた咆哮を上げ、敵全体を一定の確率で混乱状態にする。",
       "type": "attack",
       "element": "element_1789993514120_2",
@@ -4991,7 +4991,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "狂戦士_kesshu_no_utage",
       "className": "狂戦士",
       "skillId": "kesshu_no_utage",
-      "name": "血臭の宴（けっしゅうのうたげ）",
+      "name": "{/血臭の宴}={\\けっしゅうのうたげ}",
       "description": "敵全体を巻き込む乱舞を行い、与えたダメージの一部を自身のHPに変換する。",
       "type": "attack",
       "element": "element_1789993514120_2",
@@ -5287,10 +5287,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "魔法少女_影縛りの呪(シャドウバインド)",
+      "id": "魔法少女_{/影縛りの呪}={\\シャドウバインド}",
       "className": "魔法少女",
       "skillId": "",
-      "name": "影縛りの呪(シャドウバインド)",
+      "name": "{/影縛りの呪}={\\シャドウバインド}",
       "description": "敵単体を闇の力で拘束し、高確率で一定ターンの間、行動を制限する。",
       "type": "attack",
       "element": "element_1789993533981_3",
@@ -5419,10 +5419,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "魔法少女_混沌の渦(カオスヴォルテックス)",
+      "id": "魔法少女_{/混沌の渦}={\\カオスヴォルテックス}",
       "className": "魔法少女",
       "skillId": "",
-      "name": "混沌の渦(カオスヴォルテックス)",
+      "name": "{/混沌の渦}={\\カオスヴォルテックス}",
       "description": "敵全体にランダムな属性のダメージを連続して与える。",
       "type": "attack",
       "element": "element_1789993514120_2",
@@ -5551,10 +5551,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "魔法少女_深淵の一撃(アビスストライク)",
+      "id": "魔法少女_{/深淵の一撃}={\\アビスストライク}",
       "className": "魔法少女",
       "skillId": "",
-      "name": "深淵の一撃(アビスストライク)",
+      "name": "{/深淵の一撃}={\\アビスストライク}",
       "description": "敵単体に闇属性の大ダメージを与え、防御力を低下させる。",
       "type": "attack",
       "element": "element_1789993533981_3",
@@ -5916,10 +5916,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "性騎士_大爆発射(スペルマティック・シンドローム)",
+      "id": "性騎士_{/大爆発射}={\\スペルマティック・シンドローム}",
       "className": "性騎士",
       "skillId": "",
-      "name": "大爆発射(スペルマティック・シンドローム)",
+      "name": "{/大爆発射}={\\スペルマティック・シンドローム}",
       "description": "かなりのSPを消費する代わりに中程度のダメージを与え、行動不能+火傷を負わせる。",
       "type": "attack",
       "element": "element_1789993543337_6",
@@ -6240,10 +6240,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "お宝鑑定団_闇討ち（やみうち）",
+      "id": "お宝鑑定団_{/闇討ち}={\\やみうち}",
       "className": "お宝鑑定団",
       "skillId": "",
-      "name": "闇討ち（やみうち）",
+      "name": "{/闇討ち}={\\やみうち}",
       "description": "敵の不意を突いて斬りつけ、物理ダメージを与える。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -6306,10 +6306,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "お宝鑑定団_峰打ち（みねうち）",
+      "id": "お宝鑑定団_{/峰打ち}={\\みねうち}",
       "className": "お宝鑑定団",
       "skillId": "",
-      "name": "峰打ち（みねうち）",
+      "name": "{/峰打ち}={\\みねうち}",
       "description": "得物の峰で打ち据え、敵単体に物理ダメージを与える。低確率でスタンを付与する。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -6339,10 +6339,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "お宝鑑定団_真贋看破（しんがんかんぱ）",
+      "id": "お宝鑑定団_{/真贋看破}={\\しんがんかんぱ}",
       "className": "お宝鑑定団",
       "skillId": "",
-      "name": "真贋看破（しんがんかんぱ）",
+      "name": "{/真贋看破}={\\しんがんかんぱ}",
       "description": "敵の使用する技を見切り、次に受けるダメージを軽減する。",
       "type": "buff",
       "element": "element_1789993536302_4",
@@ -6372,10 +6372,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "お宝鑑定団_算盤高き目利き（そろばんだかきめきき）",
+      "id": "お宝鑑定団_{/算盤高き目利き}={\\そろばんだかきめきき}",
       "className": "お宝鑑定団",
       "skillId": "",
-      "name": "算盤高き目利き（そろばんだかきめきき）",
+      "name": "{/算盤高き目利き}={\\そろばんだかきめきき}",
       "description": "常時発動：アイテムを売却する時の買取価格が上昇する。",
       "type": "passive",
       "element": "無",
@@ -6405,10 +6405,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "お宝鑑定団_山猫の一閃（やまねこのいっせん）",
+      "id": "お宝鑑定団_{/山猫の一閃}={\\やまねこのいっせん}",
       "className": "お宝鑑定団",
       "skillId": "",
-      "name": "山猫の一閃（やまねこのいっせん）",
+      "name": "{/山猫の一閃}={\\やまねこのいっせん}",
       "description": "隙を突いた素早い一閃で、敵単体に物理ダメージを与える。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -6438,10 +6438,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "お宝鑑定団_百発百中の采配（ひゃっぱつひゃくちゅうのさいはい）",
+      "id": "お宝鑑定団_{/百発百中の采配}={\\ひゃっぱつひゃくちゅうのさいはい}",
       "className": "お宝鑑定団",
       "skillId": "",
-      "name": "百発百中の采配（ひゃっぱつひゃくちゅうのさいはい）",
+      "name": "{/百発百中の采配}={\\ひゃっぱつひゃくちゅうのさいはい}",
       "description": "敵全体の急所を解析し、味方全員の命中率とクリティカル率を上昇させる。",
       "type": "buff",
       "element": "無",
@@ -6471,10 +6471,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "お宝鑑定団_運否天賦の勘（うんぷてんぷのかん）",
+      "id": "お宝鑑定団_{/運否天賦の勘}={\\うんぷてんぷのかん}",
       "className": "お宝鑑定団",
       "skillId": "",
-      "name": "運否天賦の勘（うんぷてんぷのかん）",
+      "name": "{/運否天賦の勘}={\\うんぷてんぷのかん}",
       "description": "常時発動：「調べる」で隠しアイテムを発見できる確率が上昇する。",
       "type": "passive",
       "element": "無",
@@ -6504,10 +6504,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "お宝鑑定団_眼光紙背の鑑定（がんこうしはいのかんてい）",
+      "id": "お宝鑑定団_{/眼光紙背の鑑定}={\\がんこうしはいのかんてい}",
       "className": "お宝鑑定団",
       "skillId": "",
-      "name": "眼光紙背の鑑定（がんこうしはいのかんてい）",
+      "name": "{/眼光紙背の鑑定}={\\がんこうしはいのかんてい}",
       "description": "敵単体の全ステータスと弱点を完全に見抜き、一定ターンの間、その敵への与ダメージを上昇させる。",
       "type": "attack",
       "element": "element_1789993536302_4",
@@ -6537,10 +6537,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "お宝鑑定団_舌先三寸（したさきさんずん）",
+      "id": "お宝鑑定団_{/舌先三寸}={\\したさきさんずん}",
       "className": "お宝鑑定団",
       "skillId": "",
-      "name": "舌先三寸（したさきさんずん）",
+      "name": "{/舌先三寸}={\\したさきさんずん}",
       "description": "常時発動：魔物とのエンカウント率がわずかに下がる。",
       "type": "passive",
       "element": "無",
@@ -6603,10 +6603,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "ニート_後でやろう（ばかやろう）",
+      "id": "ニート_{/後でやろう}={\\ばかやろう}",
       "className": "ニート",
       "skillId": "",
-      "name": "後でやろう（ばかやろう）",
+      "name": "{/後でやろう}={\\ばかやろう}",
       "description": "自身を「やる気なし状態」にし、一定時間経過後、能力が大幅強化される「本気状態」になる。",
       "type": "buff",
       "element": "element_1789993514120_2",
@@ -6791,10 +6791,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "ニート_無為徒食（むいとしょく）",
+      "id": "ニート_{/無為徒食}={\\むいとしょく}",
       "className": "ニート",
       "skillId": "",
-      "name": "無為徒食（むいとしょく）",
+      "name": "{/無為徒食}={\\むいとしょく}",
       "description": "自身の防御力を上げる代わりに、5ターンの間敵の攻撃対象を自分に集中させる。",
       "type": "buff",
       "element": "element_1789993514120_2",
@@ -6845,10 +6845,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "ニート_生半可な一撃（なまはんかないちげき）",
+      "id": "ニート_{/生半可な一撃}={\\なまはんかないちげき}",
       "className": "ニート",
       "skillId": "",
-      "name": "生半可な一撃（なまはんかないちげき）",
+      "name": "{/生半可な一撃}={\\なまはんかないちげき}",
       "description": "気の抜けた様子で得物を振るうが、思わぬ形で敵単体にダメージを与える。低確率で麻痺を付与する。",
       "type": "attack",
       "element": "element_1789993514120_2",
@@ -6886,10 +6886,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "ニート_三十六計（さんじゅうろっけい）",
+      "id": "ニート_{/三十六計}={\\さんじゅうろっけい}",
       "className": "ニート",
       "skillId": "",
-      "name": "三十六計（さんじゅうろっけい）",
+      "name": "{/三十六計}={\\さんじゅうろっけい}",
       "description": "一定確率で敵の攻撃を回避しつつ、その場から距離を取る。",
       "type": "buff",
       "element": "element_1789993514120_2",
@@ -6919,10 +6919,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "ニート_籠城の策（ろうじょうのさく）",
+      "id": "ニート_{/籠城の策}={\\ろうじょうのさく}",
       "className": "ニート",
       "skillId": "",
-      "name": "籠城の策（ろうじょうのさく）",
+      "name": "{/籠城の策}={\\ろうじょうのさく}",
       "description": "一定ターンの間、受けるダメージを大幅に軽減する代わりに反撃できなくなる。",
       "type": "buff",
       "element": "element_1789993514120_2",
@@ -7391,10 +7391,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "ニート_難攻不落（なんこうふらく）",
+      "id": "ニート_{/難攻不落}={\\なんこうふらく}",
       "className": "ニート",
       "skillId": "",
-      "name": "難攻不落（なんこうふらく）",
+      "name": "{/難攻不落}={\\なんこうふらく}",
       "description": "一定ターンの間、自身への被ダメージを完全に無効化する。",
       "type": "buff",
       "element": "element_1789993514120_2",
@@ -7645,7 +7645,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "狂戦士_zokugai_no_rensa",
       "className": "狂戦士",
       "skillId": "zokugai_no_rensa",
-      "name": "賊害の連鎖(アナザー・ワン・バイツ・ザ・ダスト)",
+      "name": "{/賊害の連鎖}={\\アナザー・ワン・バイツ・ザ・ダスト}",
       "description": "10ターンの間、自分のあらゆる攻撃が別の敵にも連鎖するようになる。",
       "type": "buff",
       "element": "element_1789993514120_2",
@@ -7681,7 +7681,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "狂戦士_kettou_no_kokuin",
       "className": "狂戦士",
       "skillId": "kettou_no_kokuin",
-      "name": "血闘の刻印（けっとうのこくいん）",
+      "name": "{/血闘の刻印}={\\けっとうのこくいん}",
       "description": "戦闘中に自身が繰り出した攻撃の回数に応じて威力が増加する一撃を放つ（上昇量には上限がある）。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -7714,10 +7714,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "戦士_一期一振（いちごいちふり）",
+      "id": "戦士_{/一期一振}={\\いちごいちふり}",
       "className": "戦士",
       "skillId": "",
-      "name": "一期一振（いちごいちふり）",
+      "name": "{/一期一振}={\\いちごいちふり}",
       "description": "己の限界を超えた渾身の一撃を放ち、敵単体に大ダメージを与える。使用後、自身も反動ダメージを受ける。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -7770,10 +7770,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "戦士_青天の霹靂剣（せいてんのへきれきけん）",
+      "id": "戦士_{/青天の霹靂剣}={\\せいてんのへきれきけん}",
       "className": "戦士",
       "skillId": "",
-      "name": "青天の霹靂剣（せいてんのへきれきけん）",
+      "name": "{/青天の霹靂剣}={\\せいてんのへきれきけん}",
       "description": "己の得物に天より雷を呼び込み、敵全体に強力な雷属性ダメージを与える。",
       "type": "attack",
       "element": "element_1790419127202_6",
@@ -7813,10 +7813,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "全能士_呉越同舟の号令（ごえつどうしゅうのごうれい）",
+      "id": "全能士_{/呉越同舟の号令}={\\ごえつどうしゅうのごうれい}",
       "className": "全能士",
       "skillId": "",
-      "name": "呉越同舟の号令（ごえつどうしゅうのごうれい）",
+      "name": "{/呉越同舟の号令}={\\ごえつどうしゅうのごうれい}",
       "description": "一定ターンの間、自身のステータスを強化する。",
       "type": "buff",
       "element": "element_1789993536302_4",
@@ -7856,10 +7856,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "全能士_二天一流（にてんいちりゅう）",
+      "id": "全能士_{/二天一流}={\\にてんいちりゅう}",
       "className": "全能士",
       "skillId": "",
-      "name": "二天一流（にてんいちりゅう）",
+      "name": "{/二天一流}={\\にてんいちりゅう}",
       "description": "二つの得物を巧みに使い分け、敵単体に4連続攻撃を行う。",
       "type": "attack",
       "element": "element_1790419127202_4",
@@ -7899,10 +7899,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "全能士_業火一閃（ごうかいっせん）",
+      "id": "全能士_{/業火一閃}={\\ごうかいっせん}",
       "className": "全能士",
       "skillId": "",
-      "name": "業火一閃（ごうかいっせん）",
+      "name": "{/業火一閃}={\\ごうかいっせん}",
       "description": "得物に炎を纏わせて斬りつけ、敵単体に炎属性ダメージを与える。低確率で火傷を付与する。",
       "type": "attack",
       "element": "element_1790419127202_5",
@@ -7942,10 +7942,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "狂戦士_痛快の一太刀（つうかいのひとたち）",
+      "id": "狂戦士_{/痛快の一太刀}={\\つうかいのひとたち}",
       "className": "狂戦士",
       "skillId": "",
-      "name": "痛快の一太刀（つうかいのひとたち）",
+      "name": "{/痛快の一太刀}={\\つうかいのひとたち}",
       "description": "自らの体を軽く傷つけて怒りを高め、次に繰り出す攻撃の威力を上昇させる。",
       "type": "buff",
       "element": "element_1789993538636_5",
@@ -8027,10 +8027,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "狂戦士_血振るい（ちぶるい）",
+      "id": "狂戦士_{/血振るい}={\\ちぶるい}",
       "className": "狂戦士",
       "skillId": "",
-      "name": "血振るい（ちぶるい）",
+      "name": "{/血振るい}={\\ちぶるい}",
       "description": "血に濡れた得物を振るい、敵単体に裂属性ダメージを与える。",
       "type": "attack",
       "element": "element_1789993538636_5",
@@ -8070,10 +8070,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "狂戦士_紅蓮の代価（ぐれんのだいか）",
+      "id": "狂戦士_{/紅蓮の代価}={\\ぐれんのだいか}",
       "className": "狂戦士",
       "skillId": "",
-      "name": "紅蓮の代価（ぐれんのだいか）",
+      "name": "{/紅蓮の代価}={\\ぐれんのだいか}",
       "description": "自身のHPを大きく消費する代わりに、敵単体へ甚大なダメージを与える。",
       "type": "attack",
       "element": "element_1789993538636_5",
@@ -8113,10 +8113,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "狂戦士_狂騒曲（きょうそうきょく）",
+      "id": "狂戦士_{/狂騒曲}={\\きょうそうきょく}",
       "className": "狂戦士",
       "skillId": "",
-      "name": "狂騒曲（きょうそうきょく）",
+      "name": "{/狂騒曲}={\\きょうそうきょく}",
       "description": "一定ターンの間、攻撃力が大幅に上昇する狂乱状態になる。",
       "type": "buff",
       "element": "element_1789993514120_2",
@@ -8156,10 +8156,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "狂戦士_阿鼻叫喚（あびきょうかん）",
+      "id": "狂戦士_{/阿鼻叫喚}={\\あびきょうかん}",
       "className": "狂戦士",
       "skillId": "",
-      "name": "阿鼻叫喚（あびきょうかん）",
+      "name": "{/阿鼻叫喚}={\\あびきょうかん}",
       "description": "阿鼻地獄の如き絶叫を撒き散らし、敵全体に混沌属性ダメージを与える。低確率で混乱を付与する。",
       "type": "attack",
       "element": "element_1789993514120_2",
@@ -8199,10 +8199,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "狂戦士_業苦の悦（ごうくのえつ）",
+      "id": "狂戦士_{/業苦の悦}={\\ごうくのえつ}",
       "className": "狂戦士",
       "skillId": "",
-      "name": "業苦の悦（ごうくのえつ）",
+      "name": "{/業苦の悦}={\\ごうくのえつ}",
       "description": "自らに鈍痛を刻み、その代償として一定ターンの間、攻撃力を大きく上昇させる。",
       "type": "buff",
       "element": "element_1789993514120_2",
@@ -8269,10 +8269,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "狂戦士_終焉の血華（しゅうえんのけっか）",
+      "id": "狂戦士_{/終焉の血華}={\\しゅうえんのけっか}",
       "className": "狂戦士",
       "skillId": "",
-      "name": "終焉の血華（しゅうえんのけっか）",
+      "name": "{/終焉の血華}={\\しゅうえんのけっか}",
       "description": "自身のHPを大きく犠牲にして、敵単体へ致命的なダメージを与える。",
       "type": "attack",
       "element": "element_1789993538636_5",
@@ -8429,10 +8429,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "variables": {}
     },
     {
-      "id": "お宝鑑定団_九死一生（きゅうしいっしょう）",
+      "id": "お宝鑑定団_{/九死一生}={\\きゅうしいっしょう}",
       "className": "お宝鑑定団",
       "skillId": "",
-      "name": "九死一生（きゅうしいっしょう）",
+      "name": "{/九死一生}={\\きゅうしいっしょう}",
       "description": "一定ターンの間、戦闘不能になるはずの一撃をHP1で耐える幸運を得る。",
       "type": "buff",
       "element": "無",
@@ -8475,7 +8475,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "skill_1788246514140_19",
       "className": "のど自慢",
       "skillId": "",
-      "name": "のど自慢大会(ワイルド・シンガー)",
+      "name": "{/のど自慢大会}={\\ワイルド・シンガー}",
       "description": "歌の上手さを全国へアピール！選択によってSP消費量は変わる。",
       "type": "attack",
       "element": "element_1789993514120_2",
@@ -9077,7 +9077,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "skill_1788389920141_24",
       "className": "暗殺者",
       "skillId": "",
-      "name": "影起(ダーク・フロンティア)",
+      "name": "{/影起}={\\ダーク・フロンティア}",
       "description": "HPを回復しつつ攻撃する基本の暗殺術",
       "type": "attack",
       "element": "element_1789993533981_3",
@@ -9228,7 +9228,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "skill_1789019984617_2",
       "className": "陰騎士",
       "skillId": "",
-      "name": "陰炎(かげろう)",
+      "name": "{/陰炎}={\\かげろう}",
       "description": "ぼんやりと浮かぶ陰のような存在感で敵の裏から斬る。また、確実に攻撃力低下を与える。",
       "type": "attack",
       "element": "element_1789993533981_3",
@@ -9265,7 +9265,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "skill_1789125376253_2",
       "className": "陰騎士",
       "skillId": "",
-      "name": "陰贄の対価(かげにえのたいか)",
+      "name": "{/陰贄の対価}={\\かげにえのたいか}",
       "description": "自身を戦闘不能にする代わりに仲間全員を万全の状態まで回復させる。",
       "type": "heal",
       "element": "element_1789993533981_3",
@@ -9307,7 +9307,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "skill_1789136993486_1",
       "className": "陰騎士",
       "skillId": "",
-      "name": "陰癒術(シェイド・ヒーリング)",
+      "name": "{/陰癒術}={\\シェイド・ヒーリング}",
       "description": "傷口を陰で覆い軽く治癒する。",
       "type": "heal",
       "element": "element_1789993533981_3",
@@ -9381,7 +9381,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "skill_1789143623598_71",
       "className": "陰騎士",
       "skillId": "",
-      "name": "曠劫の瞬打(こうごうのしゅんだ)",
+      "name": "{/曠劫の瞬打}={\\こうごうのしゅんだ}",
       "description": "受けた痛みをかなり長い時間引き延ばす攻撃で叩き斬る。",
       "type": "attack",
       "element": "element_1789993538636_5",
@@ -9520,7 +9520,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "skill_1790960183445_31",
       "className": "暗殺者",
       "skillId": "",
-      "name": "紅蓮の刺突(クリムゾン・ソーン)",
+      "name": "{/紅蓮の刺突}={\\クリムゾン・ソーン}",
       "description": "業火を纏った刃を一閃させ、傷口に炎を焼き付ける",
       "type": "attack",
       "element": "element_1790419127202_5",
@@ -9557,7 +9557,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "skill_1790960183445_32",
       "className": "暗殺者",
       "skillId": "",
-      "name": "雷光断(らいこうだん)",
+      "name": "{/雷光断}={\\らいこうだん}",
       "description": "雷のような速さで斬りつけ、神経を一時的に麻痺させる",
       "type": "attack",
       "element": "element_1790419127202_6",
@@ -9594,7 +9594,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "skill_1790960183445_33",
       "className": "暗殺者",
       "skillId": "",
-      "name": "木霊の加速(こだまのアクセル)",
+      "name": "{/木霊の加速}={\\こだまのアクセル}",
       "description": "森の気を身に纏い、己の動きと牙を加速させる",
       "type": "buff",
       "element": "element_1789993499387_1",
@@ -13493,7 +13493,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
   "upperSkills": [
     {
       "id": "upper_1791900779403_1",
-      "name": "紅の暴破(レッド・バースト)",
+      "name": "{/紅の暴破}={\\レッド・バースト}",
       "description": "自身の血液を極限まで凝縮させ放つ超絶技巧。",
       "type": "attack",
       "element": "element_1790419127202_5",

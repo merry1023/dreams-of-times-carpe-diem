@@ -3687,6 +3687,14 @@ function stripRubyNotation(text) {
   return text.replace(RUBY_NOTATION_REGEX, (match, base) => base);
 }
 
+// ★技名の「同じ技かどうか」の判定用キー。技名を「弧月斬（こげつざん）」のような後ろ括弧の読み方から
+//   ルビ記法（{/弧月斬}={\\こげつざん}）に変えたため、旧い名前で保存されたデータ（コンボの必要技・
+//   技管理の編集内容など）とも同じ技として照合できるよう、ルビ／後ろ括弧の読み方を外した本文で比べる
+function skillNameKey(name) {
+  if (typeof name !== "string") return name;
+  return stripRubyNotation(name).replace(/[（(][ぁ-ゖァ-ヶー・ 　]+[）)]\s*$/, "").trim();
+}
+
 // ★ゲーム画面に出す文章の変換（改行 → <br>、ルビ記法 → <ruby>）をまとめて行う
 function convertTextForDisplay(text) {
   return convertRubyForDisplay(convertLineBreaksForDisplay(text));
