@@ -8769,6 +8769,24 @@ function buildSkillTextInput(entry, key, label, containerRow) {
     ensureCustomSkillsRegistered();
   };
   containerRow.appendChild(input);
+  // ★要望対応：技名・カットインの文字にもルビ記法（{/漢字}={\\かんじ}）が使える。書き方の説明と、ルビ入りの見え方プレビューを出す
+  if ((key === "name" || key === "cutInText") && typeof setTextWithRuby === "function") {
+    const hintEl = document.createElement("span");
+    hintEl.className = "devmode-note";
+    hintEl.style.display = "block";
+    hintEl.textContent = "ルビ：{/ルビを振りたい文字}={\\ルビ} と書くと、技名の文字の上にルビが付きます。例）{/業火}={\\ごうか}";
+    containerRow.appendChild(hintEl);
+    const previewEl = document.createElement("span");
+    previewEl.className = "scenariobuild-ruby-preview";
+    const updatePreview = () => {
+      const has = hasRubyNotation(input.value);
+      previewEl.style.display = has ? "" : "none";
+      if (has) { previewEl.textContent = ""; previewEl.appendChild(document.createTextNode("プレビュー：")); const inner = document.createElement("span"); setTextWithRuby(inner, input.value); previewEl.appendChild(inner); }
+    };
+    input.addEventListener("input", updatePreview);
+    updatePreview();
+    containerRow.appendChild(previewEl);
+  }
 }
 
 function buildSkillNumberInline(entry, key, label, defaultVal, isText = false) {

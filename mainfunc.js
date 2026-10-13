@@ -1166,7 +1166,7 @@ function renderChoiceBox() {
     let label = choice.text;
     if (choice.loops && showHints) label = `↻ ${label}`;
     if (showHint) label = `★ ${label}`;
-    button.textContent = label;
+    setTextWithRuby(button, label); // ★技名などのルビ記法に対応（記法が無ければ今まで通りtextContent）
     button.className = (i === choiceCursorIndex ? "cursor" : "")
       + (choice.loops && showHints ? " choice-loop" : "")
       + (showHint ? " choice-correct-hint" : "");
@@ -2435,7 +2435,7 @@ function buildCompanionTabCard(companion, isCursor) {
       infoRow.className = "skill-item-info";
       const nameEl2 = document.createElement("span");
       nameEl2.className = "skill-name";
-      nameEl2.textContent = unlocked ? `${skill.name}${skill.spCost ? `（SP${skill.spCost}）` : ""}` : `？？？（Lv.${skill.unlockLevel}で習得）`;
+      setTextWithRuby(nameEl2, unlocked ? `${skill.name}${skill.spCost ? `（SP${skill.spCost}）` : ""}` : `？？？（Lv.${skill.unlockLevel}で習得）`); // ★ルビ記法対応
       const descEl2 = document.createElement("span");
       descEl2.className = "skill-description";
       descEl2.textContent = unlocked ? skill.description : "まだ習得していない、未知のスキル。";
@@ -2673,7 +2673,7 @@ function renderSkills() {
     
     const nameEl = document.createElement("span");
     nameEl.className = "skill-name";
-    nameEl.textContent = unlocked ? `${skill.name}${skill.spCost ? `（SP${skill.spCost}）` : ""}` : `？？？（Lv.${skill.unlockLevel}で習得）`;
+    setTextWithRuby(nameEl, unlocked ? `${skill.name}${skill.spCost ? `（SP${skill.spCost}）` : ""}` : `？？？（Lv.${skill.unlockLevel}で習得）`); // ★ルビ記法対応
     
     const descEl = document.createElement("span");
     descEl.className = "skill-description";
@@ -3667,6 +3667,24 @@ const RUBY_NOTATION_REGEX = /[{｛][\/／]([^{}｛｝]+?)[}｝]\s*[=＝]\s*[{｛
 function convertRubyForDisplay(text) {
   if (typeof text !== "string") return text;
   return text.replace(RUBY_NOTATION_REGEX, (match, base, ruby) => `<ruby>${base}<rt>${ruby}</rt></ruby>`);
+}
+
+// ★要望対応：技名（スキル名）などの短い文字列にもルビ記法を使えるようにするための補助関数。
+//   ・setTextWithRuby：ルビ記法が含まれている時だけ、HTMLとして安全にエスケープした上で<ruby>に変換して入れる
+//     （含まれていなければ今まで通りtextContent。技名にHTMLの記号が入っていても壊れない）
+//   ・stripRubyNotation：ルビ記法を「振りたい文字」だけに戻す（パネルのマスなど、ルビを出せない狭い場所向け）
+function hasRubyNotation(text) {
+  return typeof text === "string" && new RegExp(RUBY_NOTATION_REGEX.source).test(text);
+}
+function setTextWithRuby(element, text) {
+  if (!element) return;
+  if (!hasRubyNotation(text)) { element.textContent = text; return; }
+  const escaped = String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  element.innerHTML = convertRubyForDisplay(escaped);
+}
+function stripRubyNotation(text) {
+  if (typeof text !== "string") return text;
+  return text.replace(RUBY_NOTATION_REGEX, (match, base) => base);
 }
 
 // ★ゲーム画面に出す文章の変換（改行 → <br>、ルビ記法 → <ruby>）をまとめて行う

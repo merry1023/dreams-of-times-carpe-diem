@@ -441,7 +441,7 @@ function summarizePanelCell(cell) {
     top = def ? def.short : first.stat;
     bottom = first.mode === "percent" ? `+${first.value}%` : `+${first.value}`;
   } else if (first.kind === "upperSkill") {
-    top = "上位"; bottom = getUpperSkillName(first.upperSkillId);
+    top = "上位"; bottom = stripRubyNotation(getUpperSkillName(first.upperSkillId)); // ★マスは狭いのでルビは外して本文だけ出す（mainfunc.js）
   } else if (first.kind === "skill") {
     top = "技"; bottom = "";
   } else if (first.kind === "statusResist") {
@@ -597,7 +597,7 @@ function buildStatusPanelDetail(owner, def) {
   effects.forEach(effect => {
     const line = document.createElement("div");
     line.className = "statuspanel-detail-effect";
-    line.textContent = "・" + describePanelEffect(effect);
+    setTextWithRuby(line, "・" + describePanelEffect(effect)); // ★上位スキル名のルビ記法に対応（mainfunc.js）
     box.appendChild(line);
   });
 
