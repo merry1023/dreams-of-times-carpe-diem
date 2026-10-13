@@ -524,7 +524,8 @@ async function tryFriendlyMonsterAssist() {
 
 // ★要望対応：行動可能回数の仕組みのため、主人公の「1回分の行動選択〜実行」を切り出した。
 //   戻り値："acted"（実際に行動した＝回数を1消費）／"cancelled"（サブメニューから「戻る」で抜けた＝回数を消費せずもう一度）／
-//   "ended"（勝利・敗北・逃走成功などで戦闘自体が終わった＝呼び出し元はreturnする）
+//   "ended"（勝利・敗北・逃走成功などで戦闘自体が終わった＝呼び出し元はreturnする）／
+//   "passed"（パスを選んだ＝回数を消費しない）／"blocked"（倒れている・スタン等で動けなかった＝回数は消費するが、そのラウンドの2周目以降は黙って飛ばす）
 async function runHeroActionPhase() {
   updateBattleHud();
   
@@ -544,15 +545,18 @@ async function runHeroActionPhase() {
   // ★スタン・麻痺・混乱にかかっていると、コマンドを選ぶ前にその場で行動を潰されてしまう
   const statusBlockedBy = typeof checkPlayerStatusPreventsAction === "function" ? checkPlayerStatusPreventsAction() : null; // player.js
   let turnEnded = false;
+  let heroBlocked = false; // ★倒れている／スタン等で動けなかった場合はtrue（戻り値"blocked"）
   if (playerIsDown) {
     changeSpeaker("");
     await displayMessage("倒れていて、動くことができない……");
     turnEnded = true;
+    heroBlocked = true;
   } else if (statusBlockedBy) {
     changeSpeaker("");
     const blockMessages = { stun: "スタンしてしまい、動けなかった！", paralyze: "麻痺していて、体が動かなかった！", confuse: "混乱していて、まともに行動できなかった！" };
     await displayMessage(blockMessages[statusBlockedBy] || "行動できなかった……");
     turnEnded = true;
+    heroBlocked = true;
   } else {
     // ★要望対応：装備している武器・防具に「常時発動」のスキルがあれば、行動選択の前に自動で発動する
     await triggerPassiveEquipmentSkills(player, true);
@@ -565,10 +569,15 @@ async function runHeroActionPhase() {
     const action = await displayChoices([
       { text: "たたかう", next: "fight" },
       { text: "こうどう", next: "action" },
-      { text: "逃げる", next: "flee" }
+      { text: "逃げる", next: "flee" },
+      { text: "パス", next: "pass" } // ★要望対応：主人公も行動をパスできるようにする（仲間と同じく、パスしても行動可能数は減らない）
     ]);
     
-    if (action.next === "fight") {
+    if (action.next === "pass") {
+      changeSpeaker("");
+      await displayMessage("田中治郎は行動をパスした。");
+      return "passed";
+    } else if (action.next === "fight") {
       turnEnded = await handleFightMenu();
     } else if (action.next === "action") {
       turnEnded = await handleActionMenu();
@@ -580,47 +589,58 @@ async function runHeroActionPhase() {
   }
   
   if (!turnEnded) return "cancelled"; // 「戻る」でサブメニューから抜けただけ：行動回数を消費せずもう一度
-  return "acted";
+  return heroBlocked ? "blocked" : "acted";
 }
 
 async function battleLoop() {
   while (battleState) {
-    // ★要望対応：1ラウンドあたりの主人公側（主人公＋仲間）の行動可能回数は、パーティ人数（主人公＋生存中の仲間）と同じ。
-    //   仲間が行動をパスすると、その分の行動回数は主人公や他の仲間の追加行動に回せる。
-    //   最後の仲間が行動／パスし終えた時点でまだ回数が残っていれば、主人公の行動選択に戻る。
-    //   逆に、途中で回数が尽きたら（最後の仲間の行動でなくても）残りの仲間は行動させず、すぐ敵のターンへ進む
+    // ★要望対応：1ラウンドあたりの主人公側（主人公＋仲間）の行動可能数は、パーティ人数（主人公＋生存中の仲間）と同じ。
+    //   メイン画面上のアイコン（最大4つ）で残りを表示する（updateBattleActionPoints）。
+    //   ・行動すると1減る。パスしても減らない
+    //   ・順番は「主人公 → 仲間（パーティ順）→ 主人公 → ……」と、行動可能数が尽きるまで回り続ける。
+    //     パスした人も、次の周でまた順番が回ってくる
+    //     （★以前は、仲間がパスするとその仲間はそのラウンド中二度と順番が来ず、浮いた回数は主人公の追加行動にしか
+    //       使えなかった。パスした味方の行動に切り替わらない不具合の修正）
+    //   ・全員が続けてパスした（誰も行動しないまま1周した）ら、行動可能数が残っていても敵のターンへ進む
     let actionsRemaining = 1 + (player.companions ? player.companions.filter(c => c.alive).length : 0);
-    let nextIsHero = true;
-    // ★バグ修正：パスで浮いた回数を主人公の追加行動に回した後、再び仲間の番になった時に
-    //   runCompanionPhaseWithPassが毎回「全員」をループし直していたため、既にこのラウンドで
-    //   行動／パス済みの仲間まで重複して行動選択を聞かれてしまい（二重行動）、さらにその結果
-    //   actionsRemainingが0になるタイミング次第では、本来はまだ主人公の行動に回せる回数が
-    //   残っているにもかかわらず「allDone=false」としてすぐ敵のターンに進んでしまい、
-    //   せっかく積み上げた属性のコンボ履歴が途中で失われてしまっていた（要望対応：パスで
-    //   コンボ履歴がリセットされる不具合）。ラウンドの最初にこの集合をリセットし、
-    //   1人の仲間がこのラウンド中に行動選択を聞かれるのは1回だけになるようにする
-    if (battleState) battleState.companionsActedThisRound = new Set();
+    const maxActions = actionsRemaining;
+    let cursor = 0; // 次に行動選択を聞く人（0＝主人公、1以降＝生きている仲間の順番）
+    let consecutivePasses = 0; // 行動せずに続けてパス（または動けず）した人数
+    let heroBlockedThisRound = false; // ★倒れている／スタン等で動けない場合、そのメッセージは1ラウンドに1度だけ出す
+    updateBattleActionPoints(actionsRemaining, maxActions);
     
     while (battleState && actionsRemaining > 0) {
-      if (nextIsHero) {
+      const order = [null].concat((player.companions || []).filter(c => c.alive)); // null＝主人公
+      if (consecutivePasses >= order.length) break; // ★全員が続けてパス → このラウンドの味方の行動はここまで
+      if (cursor >= order.length) cursor = 0;
+      const actor = order[cursor];
+      
+      if (actor === null) {
+        if (heroBlockedThisRound) { cursor++; consecutivePasses++; continue; } // ★動けない主人公は2周目以降は黙って飛ばす
         const heroResult = await runHeroActionPhase();
         if (heroResult === "ended") return;
         if (heroResult === "cancelled") continue; // ★サブメニューから「戻る」で抜けただけ：回数を消費せずもう一度主人公の選択へ
+        if (heroResult === "passed") { consecutivePasses++; cursor++; continue; } // ★パス：行動可能数は減らない
         // ★主人公の行動（このターンのダメージ・状態異常等）で前の形態のHPが0になっていたら、
         //   仲間や敵のターンを待たず、ここですぐ形態移行の演出・メッセージを出す
         if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
         if (!battleState) return;
         if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
-        actionsRemaining--; // heroResult === "acted"
-        nextIsHero = false; // 行動した後は仲間の番（回数が残っていれば）
+        actionsRemaining--; // heroResult === "acted" または "blocked"
+        if (heroResult === "blocked") { heroBlockedThisRound = true; consecutivePasses++; } else { consecutivePasses = 0; }
+        cursor++;
+        updateBattleActionPoints(actionsRemaining, maxActions);
       } else {
         if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
-        const companionResult = await runCompanionPhaseWithPass(actionsRemaining);
-        actionsRemaining = companionResult.remaining;
+        const acted = await performCompanionAction(actor);
+        if (!battleState) return;
+        // ★この仲間の攻撃で前の形態のHPが0になっていたら、他の仲間やボスの番を待たず、すぐに形態移行の演出を出す
+        if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
         if (!battleState) return;
         if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
-        if (companionResult.allDone && actionsRemaining > 0) { nextIsHero = true; continue; } // ★要望対応：回数が残っていれば主人公の行動選択に戻る
-        break; // ★行動回数が尽きた（途中でも、全員分やりきってでも）→ 敵のターンへ
+        if (acted === true) { actionsRemaining--; consecutivePasses = 0; } else { consecutivePasses++; } // ★パス（false）は減らない
+        cursor++;
+        updateBattleActionPoints(actionsRemaining, maxActions);
       }
     }
     if (!battleState) return;
@@ -1397,31 +1417,6 @@ function getCompanionDisplayName(companion) {
   return master ? master.name : "仲間";
 }
 
-// ★要望対応：仲間のターンに「パス」を追加したことに伴い、行動可能回数（actionsRemaining）の仕組みに対応。
-//   実際に行動した仲間の分だけactionsRemainingを1消費し、0になった時点で残りの仲間を待たず打ち切る
-//   （呼び出し元はその場合、敵のターンへ進む）。パスはactionsRemainingを消費しない。
-//   戻り値のallDoneは「生きている仲間全員が行動／パスし終えた（行動回数切れで打ち切ったのではない）」かどうか
-async function runCompanionPhaseWithPass(actionsRemaining) {
-  if (!player || !player.companions || player.companions.length === 0) return { remaining: actionsRemaining, allDone: true };
-  if (!battleState.companionsActedThisRound) battleState.companionsActedThisRound = new Set(); // ★保険：万一未初期化でもここで用意する
-  for (const companion of player.companions) {
-    if (!battleState) return { remaining: actionsRemaining, allDone: false };
-    if (!companion.alive) continue;
-    if (battleState.companionsActedThisRound.has(companion)) continue; // ★バグ修正：このラウンドで既に行動／パス済みの仲間には、重複して行動選択を聞かない
-    if (getAliveEnemies().length === 0) break; // ★既に全滅していたら、残りの仲間は行動させない
-    if (actionsRemaining <= 0) return { remaining: actionsRemaining, allDone: false }; // ★要望対応：行動回数が尽きたら、途中でも残りの仲間は行動させず打ち切る
-    const acted = await performCompanionAction(companion);
-    battleState.companionsActedThisRound.add(companion); // ★このラウンドでの行動選択は済んだものとして記録する（行動した場合もパスした場合も）
-    // ★要望対応：この仲間の攻撃で前の形態のHPが0になっていたら、他の仲間やボスの番を待たず、
-    //   すぐに形態移行の演出を出す（最後の仲間の行動ターンになるまで待たせない）
-    if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
-    if (acted) actionsRemaining--;
-  }
-  // ★全員がこのラウンドで行動／パス済みになっていれば、途中でこの関数に何度呼ばれても「完了」として扱う
-  const allCompanionsDone = player.companions.every(c => !c.alive || battleState.companionsActedThisRound.has(c));
-  return { remaining: actionsRemaining, allDone: allCompanionsDone };
-}
-
 // ★仲間の行動は、主人公と同じく「たたかう／スキル」から選んで、対象を選んで発動する
 // ===== 仲間の自己バフ（狂戦士の技等）=====
 // ★主人公のbattleStateと同じ考え方だが、仲間は複数人それぞれ独立に持てるよう、
@@ -1586,7 +1581,7 @@ async function performCompanionAction(companion) {
     await displayMessage(`${name}は行動をパスした。`);
     return false;
   } else if (action.next === "fight") {
-    await performCompanionNormalAttack(companion);
+    if (await performCompanionNormalAttack(companion) === "passed") return false;
   } else if (action.next === "item") {
     const used = await handleItemMenuInBattle(); // battle.js（対象は自分・他の仲間・全員から選べる。既存の道具選択と共通）
     if (!used) return await performCompanionAction(companion); // ★何も使わず「戻る」を選んだ場合は、行動選択からやり直す
@@ -1595,7 +1590,7 @@ async function performCompanionAction(companion) {
     if (!success) return await performCompanionAction(companion); // ★対象選択をキャンセル／戻るを選んだ場合は、行動選択からやり直す
   } else {
     if (battleState) battleState.lastCompanionSkill = null;
-    await performCompanionSkillMenu(companion, { upper: action.next === "upperskill" });
+    if (await performCompanionSkillMenu(companion, { upper: action.next === "upperskill" }) === "passed") return false;
     if (battleState && battleState.lastCompanionSkill) {
       const usedSkill = battleState.lastCompanionSkill;
       battleState.lastCompanionSkill = null;
@@ -1638,8 +1633,10 @@ async function performCompanionWeaponSkillMenu(companion, activeWeaponSkills) {
 async function performCompanionNormalAttack(companion) {
   const target = await selectEnemyTarget();
   if (!target) {
-    await performCompanionAction(companion); // ★狙う相手を選ぶ前にキャンセルしたので、行動選択からやり直す
-    return;
+    // ★狙う相手を選ぶ前にキャンセルしたので、行動選択からやり直す。やり直した先でパスを選んだ場合は、呼び出し元に「パスした」と伝える
+    //   （以前はこの結果を捨てていたため、パスしたのに行動可能数が減ってしまっていた）
+    const redoActed = await performCompanionAction(companion);
+    return redoActed === false ? "passed" : "acted";
   }
   
   const stats = getCompanionEffectiveStats(companion); // player.js
@@ -1680,8 +1677,8 @@ async function performCompanionSkillMenu(companion, options = {}) {
   choices.push({ text: "戻る", next: "back", isBack: true });
   const picked = await displayChoices(choices);
   if (picked.next === "back") {
-    await performCompanionAction(companion); // ★行動選択からやり直す
-    return;
+    const redoActed = await performCompanionAction(companion); // ★行動選択からやり直す（やり直した先でパスなら呼び出し元に伝える）
+    return redoActed === false ? "passed" : "acted";
   }
   
   const skill = skills.find(s => s.name === picked.next);
@@ -3961,9 +3958,34 @@ function showBattleHud() {
   updateBattleHud();
 }
 
+// ★要望対応：メイン画面上に、味方の「行動可能数」を最大4つの横並びのアイコンで表示する。
+//   行動すると1つ減る（パスしても減らない）。使い切った分は薄い枠だけを残して、最大数が分かるようにしておく
+function updateBattleActionPoints(remaining, max) {
+  const el = document.getElementById("battle-action-points");
+  if (!el) return;
+  if (!battleState || !(max > 0)) {
+    el.classList.add("hidden");
+    el.innerHTML = "";
+    return;
+  }
+  const slots = Math.min(4, max);
+  const lit = Math.max(0, Math.min(slots, remaining));
+  el.classList.toggle("battle-action-points-boss", !!battleState.isBoss); // ボス戦は上部中央に細いHPゲージが出るので、その下にずらす
+  el.title = `行動可能数：${Math.max(0, remaining)}`;
+  el.innerHTML = "";
+  for (let i = 0; i < slots; i++) {
+    const icon = document.createElement("span");
+    icon.className = "battle-action-point" + (i < lit ? "" : " spent");
+    el.appendChild(icon);
+  }
+  el.classList.remove("hidden");
+}
+
 function hideBattleHud() {
   const hud = document.getElementById("battle-hud");
   if (hud) hud.classList.add("hidden");
+  updateBattleActionPoints(0, 0); // ★戦闘が終わったら行動可能数のアイコンも消す
+
   const container = document.getElementById("battle-enemies");
   if (container) container.innerHTML = "";
 }

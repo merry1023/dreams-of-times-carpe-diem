@@ -7655,7 +7655,7 @@ function buildStatusPanelCellEditor(def) {
 
     if (effect.kind === "stat") {
       row.appendChild(buildSkillSelectInline(effect, "stat", "", STATUS_PANEL_STAT_DEFS.map(d => ({ value: d.key, label: d.label }))));
-      row.appendChild(buildSkillSelectInline(effect, "mode", "", [{ value: "percent", label: "％（100レベル時の2/3が基準）" }, { value: "flat", label: "固定値" }]));
+      row.appendChild(buildSkillSelectInline(effect, "mode", "", [{ value: "percent", label: "％（現在のステータスが基準・合計100%まで）" }, { value: "flat", label: "固定値" }]));
       row.appendChild(buildSkillNumberInline(effect, "value", "値", 0));
     } else if (effect.kind === "upperSkill") {
       // ★要望対応：パネルで習得する技は、職業技とは別枠の「上位スキル」から選ぶ
