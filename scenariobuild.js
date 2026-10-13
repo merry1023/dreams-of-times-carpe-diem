@@ -7535,7 +7535,7 @@ function getEditingStatusPanelDef(createIfMissing) {
 }
 
 function createNewStatusPanelCell() {
-  return { label: "", effects: [], costExp: 0, costItems: [] };
+  return { label: "", effects: [], costExp: 0, costItems: [], minLevel: 0 };
 }
 
 function renderStatusPanelManager(container) {
@@ -7719,6 +7719,11 @@ function buildStatusPanelCellEditor(def) {
     box.appendChild(note);
     return box;
   }
+  box.appendChild(labelSpan("解放条件："));
+  const minLevelRow = document.createElement("div");
+  minLevelRow.className = "scenariobuild-condition-row";
+  minLevelRow.appendChild(buildSkillNumberInline(cell, "minLevel", "最低レベル（0なら指定なし。現在のレベルがこれ以上のときだけ解放できる）", 0));
+  box.appendChild(minLevelRow);
   box.appendChild(labelSpan("コスト："));
   const expRow = document.createElement("div");
   expRow.className = "scenariobuild-condition-row";

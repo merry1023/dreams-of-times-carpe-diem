@@ -98,7 +98,8 @@ function isFurniturePlacementFree(room, x, y, w, h, excludeInstanceId, excludeFi
     const itDef = it.kind === "furniture" ? findFurnitureDef(it.furnitureId) : null;
     const itIsCeiling = it.kind === "furniture" && itDef ? !!itDef.isCeiling : false;
     if (itIsCeiling !== !!isCeiling) return false;
-    const iw = it.w || 1, ih = it.h || 1;
+    const fsz = (typeof getFixedItemSize === "function") ? getFixedItemSize(it) : { w: it.w || 1, h: it.h || 1 }; // ★家具は登録サイズで判定（古い1×1保存データ対策）
+    const iw = fsz.w, ih = fsz.h;
     return x < it.x + iw && x + w > it.x && y < it.y + ih && y + h > it.y;
   });
   return !overlapsFixed;
