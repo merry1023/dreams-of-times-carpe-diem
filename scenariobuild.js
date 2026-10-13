@@ -7655,7 +7655,7 @@ function buildStatusPanelCellEditor(def) {
 
     if (effect.kind === "stat") {
       row.appendChild(buildSkillSelectInline(effect, "stat", "", STATUS_PANEL_STAT_DEFS.map(d => ({ value: d.key, label: d.label }))));
-      row.appendChild(buildSkillSelectInline(effect, "mode", "", [{ value: "percent", label: "％（100レベル時の2/3が基準）" }, { value: "flat", label: "固定値" }]));
+      row.appendChild(buildSkillSelectInline(effect, "mode", "", [{ value: "percent", label: "％（現在のステータスが基準・合計100%まで）" }, { value: "flat", label: "固定値" }]));
       row.appendChild(buildSkillNumberInline(effect, "value", "値", 0));
     } else if (effect.kind === "upperSkill") {
       // ★要望対応：パネルで習得する技は、職業技とは別枠の「上位スキル」から選ぶ
@@ -8769,6 +8769,24 @@ function buildSkillTextInput(entry, key, label, containerRow) {
     ensureCustomSkillsRegistered();
   };
   containerRow.appendChild(input);
+  // ★要望対応：技名・カットインの文字にもルビ記法（{/漢字}={\\かんじ}）が使える。書き方の説明と、ルビ入りの見え方プレビューを出す
+  if ((key === "name" || key === "cutInText") && typeof setTextWithRuby === "function") {
+    const hintEl = document.createElement("span");
+    hintEl.className = "devmode-note";
+    hintEl.style.display = "block";
+    hintEl.textContent = "ルビ：{/ルビを振りたい文字}={\\ルビ} と書くと、技名の文字の上にルビが付きます。例）{/業火}={\\ごうか}";
+    containerRow.appendChild(hintEl);
+    const previewEl = document.createElement("span");
+    previewEl.className = "scenariobuild-ruby-preview";
+    const updatePreview = () => {
+      const has = hasRubyNotation(input.value);
+      previewEl.style.display = has ? "" : "none";
+      if (has) { previewEl.textContent = ""; previewEl.appendChild(document.createTextNode("プレビュー：")); const inner = document.createElement("span"); setTextWithRuby(inner, input.value); previewEl.appendChild(inner); }
+    };
+    input.addEventListener("input", updatePreview);
+    updatePreview();
+    containerRow.appendChild(previewEl);
+  }
 }
 
 function buildSkillNumberInline(entry, key, label, defaultVal, isText = false) {

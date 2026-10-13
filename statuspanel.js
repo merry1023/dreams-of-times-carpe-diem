@@ -2,7 +2,8 @@
 //   職業ごと（主人公）・仲間ごとに用意された9×9のマス目の盤。中心の「基本パネル」から、斜めを含む8方向に
 //   隣接したマスだけを、コスト（アイテム・経験値）を払って順に解放していく。
 //   マスの効果＝ステータスの割合/固定値アップ・新しい技の習得・状態異常耐性。
-//   ★割合アップは「100レベル時のステータスの三分の二」に％をかけた値を加算する（レベルに左右されない固定の上乗せ量）
+//   ★割合アップは「現在のステータス（今のレベルの素のステータス。装備・パネルの上乗せは含まない）」に％をかけた値を加算する。
+//     同じステータスへの割合アップの合計は最大100%まで（それ以上は上がらない）
 //   ★経験値をコストにすると経験値が減り、それに応じてレベル・ステータスも下がる。
 //     解放したマスの効果は解放した瞬間から有効で、同じレベルに戻ると、その分だけ上乗せされた状態になる。
 //   盤の中身は、シナリオエディタの「ステータスパネル」タブ（scenarioProject.statusPanels）で作る：
@@ -128,9 +129,11 @@ function computePanelTotalsFor(unit, ownerType) {
   return totals;
 }
 
-// ★割合アップの基準値＝「100レベル時のステータス」の三分の二。レベルが低くても高くても、同じ％なら同じ量が乗る
-const PANEL_PERCENT_BASE_LEVEL = 100;
-const PANEL_PERCENT_BASE_RATIO = 2 / 3;
+// ★割合アップの基準値＝「現在のステータス」（今のレベルの素のステータス。装備とパネル自身の上乗せは含めない。
+//   パネル自身を含めると、上乗せが上乗せを呼んで値が安定しなくなるため）。
+//   以前は「100レベル時のステータスの三分の二」を基準にしていたが、現在のステータスに変更した。
+//   ★経験値をコストにレベルが下がるとステータスも下がるため、割合アップの上乗せ量もそれに合わせて小さくなる
+const PANEL_PERCENT_MAX = 100; // ★同じステータスへの割合アップの合計の上限（％）。これ以上は上がらない
 
 function getPanelPercentBaseFor(unit, ownerType) {
   const base = {};
@@ -138,18 +141,23 @@ function getPanelPercentBaseFor(unit, ownerType) {
     const cls = (typeof CLASS_MASTER !== "undefined") ? CLASS_MASTER[unit.class] : null;
     const growth = (cls && cls.growthPerLevel) || {};
     STATUS_PANEL_STAT_DEFS.forEach(def => {
-      base[def.key] = ((cls && cls.baseStats && cls.baseStats[def.key]) || 0) + getCumulativeGrowth(growth, PANEL_PERCENT_BASE_LEVEL, def.key);
+      // 物攻・魔攻・素早さ・運・魅力は、実際に今持っている素のステータス（player.stats）を使う。
+      // 最大HP/SPは、クラスの初期値＋今のレベルまでの成長量で求める（装備による上乗せは含めない）
+      if (def.key !== "maxHp" && def.key !== "maxSp" && unit.stats && typeof unit.stats[def.key] === "number") {
+        base[def.key] = unit.stats[def.key];
+      } else {
+        base[def.key] = ((cls && cls.baseStats && cls.baseStats[def.key]) || 0) + getCumulativeGrowth(growth, unit.level || 1, def.key);
+      }
     });
   } else {
     const master = getCompanionMaster(unit);
-    const at100 = master ? getCompanionStatsAtLevel(master, PANEL_PERCENT_BASE_LEVEL) : {};
-    STATUS_PANEL_STAT_DEFS.forEach(def => { base[def.key] = at100[def.key] || 0; });
+    const atLevel = master ? getCompanionStatsAtLevel(master, unit.level || 1) : {};
+    STATUS_PANEL_STAT_DEFS.forEach(def => { base[def.key] = atLevel[def.key] || 0; });
   }
-  STATUS_PANEL_STAT_DEFS.forEach(def => { base[def.key] = base[def.key] * PANEL_PERCENT_BASE_RATIO; });
   return base;
 }
 
-// ★ステータスへの上乗せ量。割合アップは「100レベル時のステータスの三分の二」の％を加算
+// ★ステータスへの上乗せ量。割合アップは「現在のステータス」の％を加算（同じステータスの合計は最大100%まで）
 function getPanelBonusFor(unit, ownerType) {
   const result = { atk: 0, agi: 0, skillPower: 0, luck: 0, charm: 0, maxHp: 0, maxSp: 0 };
   if (!unit) return result;
@@ -159,7 +167,8 @@ function getPanelBonusFor(unit, ownerType) {
   const base = getPanelPercentBaseFor(unit, ownerType);
   STATUS_PANEL_STAT_DEFS.forEach(def => {
     const key = def.key;
-    result[key] = (totals.flat[key] || 0) + Math.round((base[key] || 0) * (totals.pct[key] || 0) / 100);
+    const percent = Math.max(0, Math.min(PANEL_PERCENT_MAX, totals.pct[key] || 0)); // ★上限100%
+    result[key] = (totals.flat[key] || 0) + Math.round((base[key] || 0) * percent / 100);
   });
   return result;
 }
@@ -412,7 +421,7 @@ function describePanelEffect(effect) {
   if (effect.kind === "stat") {
     const def = STATUS_PANEL_STAT_DEFS.find(d => d.key === effect.stat);
     const name = def ? def.label : effect.stat;
-    return effect.mode === "percent" ? `${name} +${effect.value}%（100レベル時の能力の2/3が基準）` : `${name} +${effect.value}`;
+    return effect.mode === "percent" ? `${name} +${effect.value}%（現在のステータスが基準・合計100%まで）` : `${name} +${effect.value}`;
   }
   if (effect.kind === "upperSkill") return `上位スキル「${getUpperSkillName(effect.upperSkillId)}」を習得`;
   if (effect.kind === "skill") return `新しい技「${effect.skillName}」を習得`;
@@ -432,7 +441,7 @@ function summarizePanelCell(cell) {
     top = def ? def.short : first.stat;
     bottom = first.mode === "percent" ? `+${first.value}%` : `+${first.value}`;
   } else if (first.kind === "upperSkill") {
-    top = "上位"; bottom = getUpperSkillName(first.upperSkillId);
+    top = "上位"; bottom = stripRubyNotation(getUpperSkillName(first.upperSkillId)); // ★マスは狭いのでルビは外して本文だけ出す（mainfunc.js）
   } else if (first.kind === "skill") {
     top = "技"; bottom = "";
   } else if (first.kind === "statusResist") {
@@ -588,7 +597,7 @@ function buildStatusPanelDetail(owner, def) {
   effects.forEach(effect => {
     const line = document.createElement("div");
     line.className = "statuspanel-detail-effect";
-    line.textContent = "・" + describePanelEffect(effect);
+    setTextWithRuby(line, "・" + describePanelEffect(effect)); // ★上位スキル名のルビ記法に対応（mainfunc.js）
     box.appendChild(line);
   });
 

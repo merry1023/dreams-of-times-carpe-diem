@@ -524,7 +524,8 @@ async function tryFriendlyMonsterAssist() {
 
 // ★要望対応：行動可能回数の仕組みのため、主人公の「1回分の行動選択〜実行」を切り出した。
 //   戻り値："acted"（実際に行動した＝回数を1消費）／"cancelled"（サブメニューから「戻る」で抜けた＝回数を消費せずもう一度）／
-//   "ended"（勝利・敗北・逃走成功などで戦闘自体が終わった＝呼び出し元はreturnする）
+//   "ended"（勝利・敗北・逃走成功などで戦闘自体が終わった＝呼び出し元はreturnする）／
+//   "passed"（パスを選んだ＝回数を消費しない）／"blocked"（倒れている・スタン等で動けなかった＝回数は消費するが、そのラウンドの2周目以降は黙って飛ばす）
 async function runHeroActionPhase() {
   updateBattleHud();
   
@@ -544,15 +545,18 @@ async function runHeroActionPhase() {
   // ★スタン・麻痺・混乱にかかっていると、コマンドを選ぶ前にその場で行動を潰されてしまう
   const statusBlockedBy = typeof checkPlayerStatusPreventsAction === "function" ? checkPlayerStatusPreventsAction() : null; // player.js
   let turnEnded = false;
+  let heroBlocked = false; // ★倒れている／スタン等で動けなかった場合はtrue（戻り値"blocked"）
   if (playerIsDown) {
     changeSpeaker("");
     await displayMessage("倒れていて、動くことができない……");
     turnEnded = true;
+    heroBlocked = true;
   } else if (statusBlockedBy) {
     changeSpeaker("");
     const blockMessages = { stun: "スタンしてしまい、動けなかった！", paralyze: "麻痺していて、体が動かなかった！", confuse: "混乱していて、まともに行動できなかった！" };
     await displayMessage(blockMessages[statusBlockedBy] || "行動できなかった……");
     turnEnded = true;
+    heroBlocked = true;
   } else {
     // ★要望対応：装備している武器・防具に「常時発動」のスキルがあれば、行動選択の前に自動で発動する
     await triggerPassiveEquipmentSkills(player, true);
@@ -565,10 +569,15 @@ async function runHeroActionPhase() {
     const action = await displayChoices([
       { text: "たたかう", next: "fight" },
       { text: "こうどう", next: "action" },
-      { text: "逃げる", next: "flee" }
+      { text: "逃げる", next: "flee" },
+      { text: "パス", next: "pass" } // ★要望対応：主人公も行動をパスできるようにする（仲間と同じく、パスしても行動可能数は減らない）
     ]);
     
-    if (action.next === "fight") {
+    if (action.next === "pass") {
+      changeSpeaker("");
+      await displayMessage("田中治郎は行動をパスした。");
+      return "passed";
+    } else if (action.next === "fight") {
       turnEnded = await handleFightMenu();
     } else if (action.next === "action") {
       turnEnded = await handleActionMenu();
@@ -580,47 +589,58 @@ async function runHeroActionPhase() {
   }
   
   if (!turnEnded) return "cancelled"; // 「戻る」でサブメニューから抜けただけ：行動回数を消費せずもう一度
-  return "acted";
+  return heroBlocked ? "blocked" : "acted";
 }
 
 async function battleLoop() {
   while (battleState) {
-    // ★要望対応：1ラウンドあたりの主人公側（主人公＋仲間）の行動可能回数は、パーティ人数（主人公＋生存中の仲間）と同じ。
-    //   仲間が行動をパスすると、その分の行動回数は主人公や他の仲間の追加行動に回せる。
-    //   最後の仲間が行動／パスし終えた時点でまだ回数が残っていれば、主人公の行動選択に戻る。
-    //   逆に、途中で回数が尽きたら（最後の仲間の行動でなくても）残りの仲間は行動させず、すぐ敵のターンへ進む
+    // ★要望対応：1ラウンドあたりの主人公側（主人公＋仲間）の行動可能数は、パーティ人数（主人公＋生存中の仲間）と同じ。
+    //   メイン画面上のアイコン（最大4つ）で残りを表示する（updateBattleActionPoints）。
+    //   ・行動すると1減る。パスしても減らない
+    //   ・順番は「主人公 → 仲間（パーティ順）→ 主人公 → ……」と、行動可能数が尽きるまで回り続ける。
+    //     パスした人も、次の周でまた順番が回ってくる
+    //     （★以前は、仲間がパスするとその仲間はそのラウンド中二度と順番が来ず、浮いた回数は主人公の追加行動にしか
+    //       使えなかった。パスした味方の行動に切り替わらない不具合の修正）
+    //   ・全員が続けてパスした（誰も行動しないまま1周した）ら、行動可能数が残っていても敵のターンへ進む
     let actionsRemaining = 1 + (player.companions ? player.companions.filter(c => c.alive).length : 0);
-    let nextIsHero = true;
-    // ★バグ修正：パスで浮いた回数を主人公の追加行動に回した後、再び仲間の番になった時に
-    //   runCompanionPhaseWithPassが毎回「全員」をループし直していたため、既にこのラウンドで
-    //   行動／パス済みの仲間まで重複して行動選択を聞かれてしまい（二重行動）、さらにその結果
-    //   actionsRemainingが0になるタイミング次第では、本来はまだ主人公の行動に回せる回数が
-    //   残っているにもかかわらず「allDone=false」としてすぐ敵のターンに進んでしまい、
-    //   せっかく積み上げた属性のコンボ履歴が途中で失われてしまっていた（要望対応：パスで
-    //   コンボ履歴がリセットされる不具合）。ラウンドの最初にこの集合をリセットし、
-    //   1人の仲間がこのラウンド中に行動選択を聞かれるのは1回だけになるようにする
-    if (battleState) battleState.companionsActedThisRound = new Set();
+    const maxActions = actionsRemaining;
+    let cursor = 0; // 次に行動選択を聞く人（0＝主人公、1以降＝生きている仲間の順番）
+    let consecutivePasses = 0; // 行動せずに続けてパス（または動けず）した人数
+    let heroBlockedThisRound = false; // ★倒れている／スタン等で動けない場合、そのメッセージは1ラウンドに1度だけ出す
+    updateBattleActionPoints(actionsRemaining, maxActions);
     
     while (battleState && actionsRemaining > 0) {
-      if (nextIsHero) {
+      const order = [null].concat((player.companions || []).filter(c => c.alive)); // null＝主人公
+      if (consecutivePasses >= order.length) break; // ★全員が続けてパス → このラウンドの味方の行動はここまで
+      if (cursor >= order.length) cursor = 0;
+      const actor = order[cursor];
+      
+      if (actor === null) {
+        if (heroBlockedThisRound) { cursor++; consecutivePasses++; continue; } // ★動けない主人公は2周目以降は黙って飛ばす
         const heroResult = await runHeroActionPhase();
         if (heroResult === "ended") return;
         if (heroResult === "cancelled") continue; // ★サブメニューから「戻る」で抜けただけ：回数を消費せずもう一度主人公の選択へ
+        if (heroResult === "passed") { consecutivePasses++; cursor++; continue; } // ★パス：行動可能数は減らない
         // ★主人公の行動（このターンのダメージ・状態異常等）で前の形態のHPが0になっていたら、
         //   仲間や敵のターンを待たず、ここですぐ形態移行の演出・メッセージを出す
         if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
         if (!battleState) return;
         if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
-        actionsRemaining--; // heroResult === "acted"
-        nextIsHero = false; // 行動した後は仲間の番（回数が残っていれば）
+        actionsRemaining--; // heroResult === "acted" または "blocked"
+        if (heroResult === "blocked") { heroBlockedThisRound = true; consecutivePasses++; } else { consecutivePasses = 0; }
+        cursor++;
+        updateBattleActionPoints(actionsRemaining, maxActions);
       } else {
         if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
-        const companionResult = await runCompanionPhaseWithPass(actionsRemaining);
-        actionsRemaining = companionResult.remaining;
+        const acted = await performCompanionAction(actor);
+        if (!battleState) return;
+        // ★この仲間の攻撃で前の形態のHPが0になっていたら、他の仲間やボスの番を待たず、すぐに形態移行の演出を出す
+        if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
         if (!battleState) return;
         if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
-        if (companionResult.allDone && actionsRemaining > 0) { nextIsHero = true; continue; } // ★要望対応：回数が残っていれば主人公の行動選択に戻る
-        break; // ★行動回数が尽きた（途中でも、全員分やりきってでも）→ 敵のターンへ
+        if (acted === true) { actionsRemaining--; consecutivePasses = 0; } else { consecutivePasses++; } // ★パス（false）は減らない
+        cursor++;
+        updateBattleActionPoints(actionsRemaining, maxActions);
       }
     }
     if (!battleState) return;
@@ -1397,31 +1417,6 @@ function getCompanionDisplayName(companion) {
   return master ? master.name : "仲間";
 }
 
-// ★要望対応：仲間のターンに「パス」を追加したことに伴い、行動可能回数（actionsRemaining）の仕組みに対応。
-//   実際に行動した仲間の分だけactionsRemainingを1消費し、0になった時点で残りの仲間を待たず打ち切る
-//   （呼び出し元はその場合、敵のターンへ進む）。パスはactionsRemainingを消費しない。
-//   戻り値のallDoneは「生きている仲間全員が行動／パスし終えた（行動回数切れで打ち切ったのではない）」かどうか
-async function runCompanionPhaseWithPass(actionsRemaining) {
-  if (!player || !player.companions || player.companions.length === 0) return { remaining: actionsRemaining, allDone: true };
-  if (!battleState.companionsActedThisRound) battleState.companionsActedThisRound = new Set(); // ★保険：万一未初期化でもここで用意する
-  for (const companion of player.companions) {
-    if (!battleState) return { remaining: actionsRemaining, allDone: false };
-    if (!companion.alive) continue;
-    if (battleState.companionsActedThisRound.has(companion)) continue; // ★バグ修正：このラウンドで既に行動／パス済みの仲間には、重複して行動選択を聞かない
-    if (getAliveEnemies().length === 0) break; // ★既に全滅していたら、残りの仲間は行動させない
-    if (actionsRemaining <= 0) return { remaining: actionsRemaining, allDone: false }; // ★要望対応：行動回数が尽きたら、途中でも残りの仲間は行動させず打ち切る
-    const acted = await performCompanionAction(companion);
-    battleState.companionsActedThisRound.add(companion); // ★このラウンドでの行動選択は済んだものとして記録する（行動した場合もパスした場合も）
-    // ★要望対応：この仲間の攻撃で前の形態のHPが0になっていたら、他の仲間やボスの番を待たず、
-    //   すぐに形態移行の演出を出す（最後の仲間の行動ターンになるまで待たせない）
-    if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
-    if (acted) actionsRemaining--;
-  }
-  // ★全員がこのラウンドで行動／パス済みになっていれば、途中でこの関数に何度呼ばれても「完了」として扱う
-  const allCompanionsDone = player.companions.every(c => !c.alive || battleState.companionsActedThisRound.has(c));
-  return { remaining: actionsRemaining, allDone: allCompanionsDone };
-}
-
 // ★仲間の行動は、主人公と同じく「たたかう／スキル」から選んで、対象を選んで発動する
 // ===== 仲間の自己バフ（狂戦士の技等）=====
 // ★主人公のbattleStateと同じ考え方だが、仲間は複数人それぞれ独立に持てるよう、
@@ -1586,7 +1581,7 @@ async function performCompanionAction(companion) {
     await displayMessage(`${name}は行動をパスした。`);
     return false;
   } else if (action.next === "fight") {
-    await performCompanionNormalAttack(companion);
+    if (await performCompanionNormalAttack(companion) === "passed") return false;
   } else if (action.next === "item") {
     const used = await handleItemMenuInBattle(); // battle.js（対象は自分・他の仲間・全員から選べる。既存の道具選択と共通）
     if (!used) return await performCompanionAction(companion); // ★何も使わず「戻る」を選んだ場合は、行動選択からやり直す
@@ -1595,7 +1590,7 @@ async function performCompanionAction(companion) {
     if (!success) return await performCompanionAction(companion); // ★対象選択をキャンセル／戻るを選んだ場合は、行動選択からやり直す
   } else {
     if (battleState) battleState.lastCompanionSkill = null;
-    await performCompanionSkillMenu(companion, { upper: action.next === "upperskill" });
+    if (await performCompanionSkillMenu(companion, { upper: action.next === "upperskill" }) === "passed") return false;
     if (battleState && battleState.lastCompanionSkill) {
       const usedSkill = battleState.lastCompanionSkill;
       battleState.lastCompanionSkill = null;
@@ -1638,8 +1633,10 @@ async function performCompanionWeaponSkillMenu(companion, activeWeaponSkills) {
 async function performCompanionNormalAttack(companion) {
   const target = await selectEnemyTarget();
   if (!target) {
-    await performCompanionAction(companion); // ★狙う相手を選ぶ前にキャンセルしたので、行動選択からやり直す
-    return;
+    // ★狙う相手を選ぶ前にキャンセルしたので、行動選択からやり直す。やり直した先でパスを選んだ場合は、呼び出し元に「パスした」と伝える
+    //   （以前はこの結果を捨てていたため、パスしたのに行動可能数が減ってしまっていた）
+    const redoActed = await performCompanionAction(companion);
+    return redoActed === false ? "passed" : "acted";
   }
   
   const stats = getCompanionEffectiveStats(companion); // player.js
@@ -1680,8 +1677,8 @@ async function performCompanionSkillMenu(companion, options = {}) {
   choices.push({ text: "戻る", next: "back", isBack: true });
   const picked = await displayChoices(choices);
   if (picked.next === "back") {
-    await performCompanionAction(companion); // ★行動選択からやり直す
-    return;
+    const redoActed = await performCompanionAction(companion); // ★行動選択からやり直す（やり直した先でパスなら呼び出し元に伝える）
+    return redoActed === false ? "passed" : "acted";
   }
   
   const skill = skills.find(s => s.name === picked.next);
@@ -1809,8 +1806,13 @@ async function performCompanionSkillMenu(companion, options = {}) {
   
   changeSpeaker("");
   let isFirstHit = true;
+  // ★要望対応：全体攻撃・連続攻撃は1発ごとに入力待ちにするとテンポが悪いので自動で進めるようにし、
+  //   最後に全体攻撃なら平均ダメージ、連続攻撃なら合計ダメージをまとめて表示する
+  const isMultiAction = targets.length > 1 || hitCount > 1;
+  const perTargetTotals = [];
   for (const target of targets) {
     if (!target) continue;
+    let targetSubtotal = 0;
     for (let i = 0; i < hitCount; i++) {
       if (target.hp <= 0) break; // ★倒した後の残り命中回数は空撃ちしない（主人公側の全体攻撃と同じ挙動）
       companionBuffs.attackCount++; // ★血闘の刻印用のカウント
@@ -1826,26 +1828,35 @@ async function performCompanionSkillMenu(companion, options = {}) {
       const result = resolveDamageForTarget(target, raw, skill.element);
       target.hp = Math.max(0, target.hp - result.damage);
       totalDamage += result.damage;
+      targetSubtotal += result.damage;
       if (skill.lifestealRatio) lifestealTotal += result.damage; // ★血臭の宴：与えたダメージの一部を後でHPに変換する
       // ★複数回攻撃・複数対象の技名は最初の1回だけ言い、以降はダメージ量だけ表示する
       const prefix = isFirstHit ? `${name}の「${skill.name}」！ ` : "";
       isFirstHit = false;
+      const showFn = isMultiAction ? displayMessageAutoAdvance : displayMessage;
       if (result.blocked) {
-        await displayMessage(`${prefix}しかし、${target.displayName}には効いていないようだッ！`);
+        await showFn(`${prefix}しかし、${target.displayName}には効いていないようだッ！`);
       } else {
-        await displayMessage(`${prefix}${target.displayName}に${result.damage}のダメージ！`);
+        await showFn(`${prefix}${target.displayName}に${result.damage}のダメージ！`);
       }
       updateBattleHud();
       await maybeApplyBloodDanceOnAttack(companion); // ★血華の演舞：発動中なら攻撃力が積み上がり、代わりに少しダメージを受ける
     }
+    perTargetTotals.push(targetSubtotal);
     if (target.hp > 0 && skill.statusEffect && Math.random() < (skill.statusEffect.chance != null ? skill.statusEffect.chance : 1)) {
       const applied = applyEnemyStatusEffectFromSkill(target, skill.statusEffect);
-      if (applied) await displayMessage(`${target.displayName}は${applied}状態になった！`);
+      if (applied) await (isMultiAction ? displayMessageAutoAdvance : displayMessage)(`${target.displayName}は${applied}状態になった！`);
     }
     if (target.hp > 0 && skill.statusEffect2 && Math.random() < (skill.statusEffect2.chance != null ? skill.statusEffect2.chance : 1)) {
       const applied2 = applyEnemyStatusEffectFromSkill(target, skill.statusEffect2);
-      if (applied2) await displayMessage(`${target.displayName}は${applied2}状態になった！`);
+      if (applied2) await (isMultiAction ? displayMessageAutoAdvance : displayMessage)(`${target.displayName}は${applied2}状態になった！`);
     }
+  }
+  if (targets.length > 1 && perTargetTotals.length > 0) {
+    const avg = Math.round(perTargetTotals.reduce((a, b) => a + b, 0) / perTargetTotals.length);
+    await displayMessage(`平均${avg}のダメージを与えた！`);
+  } else if (hitCount > 1 && perTargetTotals.length > 0) {
+    await displayMessage(`合計${perTargetTotals[0]}のダメージを与えた！`);
   }
   
   // ★血臭の宴：与えたダメージの一部を自身のHPに変換する
@@ -1943,7 +1954,7 @@ function showComboCutIn(text) {
     label.textContent = "COMBO";
     const main = document.createElement("span");
     main.className = "combo-cutin-text";
-    main.textContent = text;
+    setTextWithRuby(main, text); // ★技名のルビ記法に対応（mainfunc.js）
     band.appendChild(label);
     band.appendChild(main);
     el.appendChild(band);
@@ -1982,19 +1993,32 @@ async function executeComboSkill(combo) {
     await runSkillBlockList(skill.blocks, skill, context);
   } else if (skill.type === "attack") {
     const targets = skill.target === "all" ? getAliveEnemies() : (fallbackTarget ? [fallbackTarget] : []);
+    // ★要望対応：全体攻撃・連続攻撃は1発ごとに入力待ちにするとテンポが悪いので自動で進めるようにし、
+    //   最後に全体攻撃なら平均ダメージ、連続攻撃なら合計ダメージをまとめて表示する
+    const isMultiAction = targets.length > 1 || skill.hitCount > 1;
+    const perTargetTotals = [];
     for (const target of targets) {
+      let targetSubtotal = 0;
       for (let hit = 0; hit < skill.hitCount; hit++) {
         if (target.hp <= 0) break;
         const damage = calculateSkillDamage(skill, skill.hitCount);
         const result = resolveDamageForTarget(target, damage, skill.element);
         target.hp = Math.max(0, target.hp - result.damage);
-        await displayMessage(result.blocked ? `${target.displayName}には効いていないようだッ！` : `${target.displayName}に${result.damage}のダメージ！`);
+        targetSubtotal += result.damage;
+        await (isMultiAction ? displayMessageAutoAdvance : displayMessage)(result.blocked ? `${target.displayName}には効いていないようだッ！` : `${target.displayName}に${result.damage}のダメージ！`);
       }
+      perTargetTotals.push(targetSubtotal);
       for (const effect of [skill.statusEffect, skill.statusEffect2]) {
         if (!effect || target.hp <= 0 || Math.random() >= effect.chance) continue;
         const applied = applyEnemyStatusEffectFromSkill(target, effect);
-        if (applied) await displayMessage(`${target.displayName}は${applied}状態になった！`);
+        if (applied) await (isMultiAction ? displayMessageAutoAdvance : displayMessage)(`${target.displayName}は${applied}状態になった！`);
       }
+    }
+    if (targets.length > 1 && perTargetTotals.length > 0) {
+      const avg = Math.round(perTargetTotals.reduce((a, b) => a + b, 0) / perTargetTotals.length);
+      await displayMessage(`平均${avg}のダメージを与えた！`);
+    } else if (skill.hitCount > 1 && perTargetTotals.length > 0) {
+      await displayMessage(`合計${perTargetTotals[0]}のダメージを与えた！`);
     }
   } else if (skill.type === "heal") {
     const healed = applyHealToUnit(player, "hp", skill.power, false, false); // player.js
@@ -3009,14 +3033,30 @@ async function runSingleSkillBlock(block, skill, context, hitCountForBalance = 1
   
   if (block.type === "damage") {
     const multiplier = evaluateSkillExpression(block.powerMultiplier, buildSkillExprContext(skill, context));
-    for (const enemyTarget of resolveSkillBlockEnemyTargets(block.target, context)) {
+    const damageTargets = resolveSkillBlockEnemyTargets(block.target, context).filter(t => t.hp > 0);
+    // ★要望対応：このdamageブロックが複数の敵に同時に当たる（全体攻撃）か、
+    //   外側をrepeatブロック（連続攻撃）に囲まれている場合は、1発ごとに入力待ちにせず自動で進める
+    const isMultiAction = damageTargets.length > 1 || hitCountForBalance > 1;
+    const showFn = isMultiAction ? displayMessageAutoAdvance : displayMessage;
+    let blockTotal = 0, blockHitCount = 0;
+    for (const enemyTarget of damageTargets) {
       if (enemyTarget.hp <= 0) continue;
       const damage = calculateSkillBlockDamage(skill, block, multiplier, context.caster, hitCountForBalance);
       const result = resolveDamageForTarget(enemyTarget, damage, skill.element);
       enemyTarget.hp = Math.max(0, enemyTarget.hp - result.damage);
-      if (result.blocked) await displayMessage(`${enemyTarget.displayName}には効いていないようだッ！`, { allowSubFocus: true });
-      else if (lastHitWasCritical) await displayMessage(`会心の一撃！ ${enemyTarget.displayName}に${result.damage}のダメージ！`, { allowSubFocus: true });
-      else await displayMessage(`${enemyTarget.displayName}に${result.damage}のダメージ！`, { allowSubFocus: true });
+      blockTotal += result.damage;
+      blockHitCount++;
+      if (result.blocked) await showFn(`${enemyTarget.displayName}には効いていないようだッ！`, { allowSubFocus: true });
+      else if (lastHitWasCritical) await showFn(`会心の一撃！ ${enemyTarget.displayName}に${result.damage}のダメージ！`, { allowSubFocus: true });
+      else await showFn(`${enemyTarget.displayName}に${result.damage}のダメージ！`, { allowSubFocus: true });
+    }
+    // ★要望対応：このdamageブロック自体が複数の敵を同時に攻撃する「全体攻撃」なら、ここで平均ダメージを表示する
+    if (damageTargets.length > 1 && blockHitCount > 0) {
+      await displayMessage(`平均${Math.round(blockTotal / blockHitCount)}のダメージを与えた！`, { allowSubFocus: true });
+    }
+    // ★要望対応：このdamageブロックを囲んでいるrepeatブロック（連続攻撃）があれば、後で合計を表示できるよう積算しておく
+    if (Array.isArray(context.repeatDamageStack)) {
+      context.repeatDamageStack.forEach(frame => { frame.total += blockTotal; frame.count += blockHitCount; });
     }
     return null;
   }
@@ -3138,14 +3178,22 @@ async function runSingleSkillBlock(block, skill, context, hitCountForBalance = 1
   if (block.type === "repeat") {
     const count = Math.max(0, Math.round(evaluateSkillExpression(block.countExpression, buildSkillExprContext(skill, context))));
     const innerHitCountForBalance = hitCountForBalance * Math.max(1, count);
+    // ★要望対応：連続攻撃（このrepeatの中で与えたダメージの合計）を、くり返しが終わった後にまとめて表示するための集計枠
+    if (!Array.isArray(context.repeatDamageStack)) context.repeatDamageStack = [];
+    context.repeatDamageStack.push({ total: 0, count: 0 });
+    let earlyOutcome = null;
     for (let i = 0; i < count; i++) {
       const outcome = await runSkillBlockList(block.bodyBlocks || [], skill, context, innerHitCountForBalance);
-      if (outcome === "END") return "END"; // ★くり返しの中で「end」ブロックに達したら、技全体をそこで打ち切る
+      if (outcome === "END") { earlyOutcome = "END"; break; } // ★くり返しの中で「end」ブロックに達したら、技全体をそこで打ち切る
       // ★要望対応：くり返しの中のジャンプブロックの行き先がこのくり返しの中に無かった場合、
       //   そのまま外側へジャンプ要求を伝える（くり返しの外へジャンプで抜けられるようにする）
-      if (typeof outcome === "string" && outcome.startsWith("JUMP:")) return outcome;
+      if (typeof outcome === "string" && outcome.startsWith("JUMP:")) { earlyOutcome = outcome; break; }
     }
-    return null;
+    const damageFrame = context.repeatDamageStack.pop();
+    if (damageFrame.count > 0) {
+      await displayMessage(`合計${damageFrame.total}のダメージを与えた！`, { allowSubFocus: true });
+    }
+    return earlyOutcome;
   }
   
   if (block.type === "end") return "END";
@@ -3399,26 +3447,34 @@ async function handleSkillMenu(options = {}) {
     // ★skill.target === "all" の全体攻撃スキルは、ターゲット選択をせず生きている敵全員に当てる
     if (skill.target === "all") {
       await displayMessage(`「${skill.name}」を放った！`);
+      // ★要望対応：全体攻撃・連続攻撃は1発ごとに入力待ちにするとテンポが悪いので自動で進めるようにし、
+      //   最後に平均ダメージをまとめて表示する
+      let totalDamage = 0, hitLandedCount = 0;
       for (const enemy of getAliveEnemies()) {
         for (let hit = 0; hit < hitCount; hit++) {
           if (enemy.hp <= 0) break;
           const damage = calculateSkillDamage(skill, hitCount); // ★命中回数分だけ攻撃力の効果を均等に割る（バランス調整）
           const result = resolveDamageForTarget(enemy, damage, skill.element);
           enemy.hp = Math.max(0, enemy.hp - result.damage);
+          totalDamage += result.damage;
+          hitLandedCount++;
           if (result.blocked) {
-            await displayMessage(`${enemy.displayName}には効いていないようだッ！`);
+            await displayMessageAutoAdvance(`${enemy.displayName}には効いていないようだッ！`);
           } else {
-            await displayMessage(`${enemy.displayName}に${result.damage}のダメージ！`);
+            await displayMessageAutoAdvance(`${enemy.displayName}に${result.damage}のダメージ！`);
           }
         }
         if (enemy.hp > 0 && skill.statusEffect) {
           const applied = applyEnemyStatusEffectFromSkill(enemy, skill.statusEffect);
-          if (applied) await displayMessage(`${enemy.displayName}は${applied}状態になった！`);
+          if (applied) await displayMessageAutoAdvance(`${enemy.displayName}は${applied}状態になった！`);
           if (skill.statusEffect2) {
             const applied2 = applyEnemyStatusEffectFromSkill(enemy, skill.statusEffect2);
-            if (applied2) await displayMessage(`${enemy.displayName}は${applied2}状態になった！`);
+            if (applied2) await displayMessageAutoAdvance(`${enemy.displayName}は${applied2}状態になった！`);
           }
         }
+      }
+      if (hitLandedCount > 0) {
+        await displayMessage(`平均${Math.round(totalDamage / hitLandedCount)}のダメージを与えた！`);
       }
     } else {
       // ★「一か八か」等：randomTargetの技は、狙う相手を自分で選ばせず、生きている敵の中からランダムに選ぶ。
@@ -3432,6 +3488,9 @@ async function handleSkillMenu(options = {}) {
           return false; // ★ターンを消費せず選び直せる
         }
       }
+      // ★要望対応：命中回数が2回以上の連続攻撃は、1発ごとに入力待ちにするとテンポが悪いので自動で進めるようにし、
+      //   最後に合計ダメージをまとめて表示する（1回だけの通常攻撃技は今まで通り入力待ちのまま）
+      let hitTotalDamage = 0, hitLandedCount = 0;
       for (let hit = 0; hit < hitCount; hit++) {
           if (skill.randomTarget) {
             const candidates = getAliveEnemies();
@@ -3441,15 +3500,21 @@ async function handleSkillMenu(options = {}) {
           const damage = calculateSkillDamage(skill, hitCount); // ★命中回数分だけ攻撃力の効果を均等に割る（バランス調整）
           const result = resolveDamageForTarget(target, damage, skill.element);
           target.hp = Math.max(0, target.hp - result.damage);
+          hitTotalDamage += result.damage;
+          hitLandedCount++;
           // ★命中回数が2以上の技は、技名を言うのは最初の1回のみにして、以降はダメージ量だけ表示する
           const prefix = hit === 0 ? `「${skill.name}」を放った！ ` : "";
+          const showFn = hitCount > 1 ? displayMessageAutoAdvance : displayMessage;
           if (result.blocked) {
-            await displayMessage(`${prefix}しかし、効いていないようだッ！`);
+            await showFn(`${prefix}しかし、効いていないようだッ！`);
           } else if (lastHitWasCritical) {
-            await displayMessage(`${prefix}会心の一撃！ ${target.displayName}に${result.damage}のダメージ！`);
+            await showFn(`${prefix}会心の一撃！ ${target.displayName}に${result.damage}のダメージ！`);
           } else {
-            await displayMessage(`${prefix}${target.displayName}に${result.damage}のダメージ！`);
+            await showFn(`${prefix}${target.displayName}に${result.damage}のダメージ！`);
           }
+        }
+        if (hitCount > 1 && hitLandedCount > 0) {
+          await displayMessage(`合計${hitTotalDamage}のダメージを与えた！`);
         }
         if (target && target.hp > 0 && skill.statusEffect) {
           const applied = applyEnemyStatusEffectFromSkill(target, skill.statusEffect);
@@ -3961,9 +4026,34 @@ function showBattleHud() {
   updateBattleHud();
 }
 
+// ★要望対応：メイン画面上に、味方の「行動可能数」を最大4つの横並びのアイコンで表示する。
+//   行動すると1つ減る（パスしても減らない）。使い切った分は薄い枠だけを残して、最大数が分かるようにしておく
+function updateBattleActionPoints(remaining, max) {
+  const el = document.getElementById("battle-action-points");
+  if (!el) return;
+  if (!battleState || !(max > 0)) {
+    el.classList.add("hidden");
+    el.innerHTML = "";
+    return;
+  }
+  const slots = Math.min(4, max);
+  const lit = Math.max(0, Math.min(slots, remaining));
+  el.classList.toggle("battle-action-points-boss", !!battleState.isBoss); // ボス戦は上部中央に細いHPゲージが出るので、その下にずらす
+  el.title = `行動可能数：${Math.max(0, remaining)}`;
+  el.innerHTML = "";
+  for (let i = 0; i < slots; i++) {
+    const icon = document.createElement("span");
+    icon.className = "battle-action-point" + (i < lit ? "" : " spent");
+    el.appendChild(icon);
+  }
+  el.classList.remove("hidden");
+}
+
 function hideBattleHud() {
   const hud = document.getElementById("battle-hud");
   if (hud) hud.classList.add("hidden");
+  updateBattleActionPoints(0, 0); // ★戦闘が終わったら行動可能数のアイコンも消す
+
   const container = document.getElementById("battle-enemies");
   if (container) container.innerHTML = "";
 }

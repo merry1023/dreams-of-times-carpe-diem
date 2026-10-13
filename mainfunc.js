@@ -1033,6 +1033,78 @@ async function displayMessage(text, options = {}) {
   isTextDisplaying = false;
 }
 
+// ★要望対応：全体攻撃・連続攻撃（スキルブロックで組んだ場合も含む）のダメージ表示を、
+//   1発ごとに入力待ちにするとテンポが悪いので、自動で進む専用の表示関数。
+//   早送りモード中はいつも通りの速さ（waitForAdvanceの早送り判定と同じ間隔）で進み、
+//   早送りでない時は少し間を置いて自動的に進む（クリック／決定キーを押せば、待たずにすぐ次へ進める）
+async function displayMessageAutoAdvance(text, options = {}) {
+  const allowSubFocus = !!options.allowSubFocus;
+  isTextDisplaying = true;
+  const myToken = activeSessionToken;
+  
+  logMessage(nameVar.textContent, text);
+  
+  if (isReplayingLog && messageLog.length < replayTargetStep) {
+    textVar.innerHTML = convertLineBreaksForDisplay(text);
+    isTextDisplaying = false;
+    return;
+  }
+  if (isReplayingLog) isReplayingLog = false;
+  
+  const previousAllowSubFocus = currentMessageAllowsSubFocus;
+  currentMessageAllowsSubFocus = allowSubFocus;
+  
+  await typeText(textVar, text, myToken);
+  await waitForAutoAdvance(myToken, allowSubFocus);
+  
+  currentMessageAllowsSubFocus = previousAllowSubFocus;
+  isTextDisplaying = false;
+}
+
+// ★waitForAdvanceと同じ作りだが、クリック・決定キーが無くても一定時間で自動的に進む点だけが違う
+//   （早送りモード中はwaitForAdvanceと同じ80ms間隔。通常時は、読める程度の間を置いて自動進行する）
+function waitForAutoAdvance(myToken = activeSessionToken, allowSubFocus = false) {
+  return new Promise(resolve => {
+    let resolved = false;
+    let autoTimer = null;
+    
+    function cleanUp() {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("click", handleClick);
+      if (autoTimer) clearTimeout(autoTimer);
+    }
+    
+    function finish() {
+      if (resolved) return;
+      resolved = true;
+      cleanUp();
+      resolve();
+    }
+    
+    const handleKeyDown = (event) => {
+      if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
+      if (activeSessionToken !== myToken) return;
+      if (event.repeat) return;
+      if (!allowSubFocus && controlFocus !== "main") return;
+      if (KEY_CONFIG.advanceKeys.includes(event.key)) finish(); // ★押せば自動の間を待たずすぐ次へ進める
+    };
+    
+    const handleClick = () => {
+      if (activeSessionToken !== myToken) return;
+      if (!allowSubFocus && controlFocus !== "main") return;
+      finish();
+    };
+    
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("click", handleClick);
+    
+    autoTimer = setTimeout(() => {
+      if (activeSessionToken !== myToken) return;
+      finish();
+    }, fastForwardMode ? 80 : 450); // ★早送りモードでなければ、スキップほどは速くない間隔で自動的に進む
+  });
+}
+
 // ==== シナリオ・戦闘の選択肢（choice-box） ====
 // ★以前はDOMフォーカス(.focus())に頼っていたが、サブ画面のタブを操作した後などに
 //   フォーカスが失われて矢印キーが効かなくなる不具合があったため、
@@ -1094,7 +1166,7 @@ function renderChoiceBox() {
     let label = choice.text;
     if (choice.loops && showHints) label = `↻ ${label}`;
     if (showHint) label = `★ ${label}`;
-    button.textContent = label;
+    setTextWithRuby(button, label); // ★技名などのルビ記法に対応（記法が無ければ今まで通りtextContent）
     button.className = (i === choiceCursorIndex ? "cursor" : "")
       + (choice.loops && showHints ? " choice-loop" : "")
       + (showHint ? " choice-correct-hint" : "");
@@ -2363,7 +2435,7 @@ function buildCompanionTabCard(companion, isCursor) {
       infoRow.className = "skill-item-info";
       const nameEl2 = document.createElement("span");
       nameEl2.className = "skill-name";
-      nameEl2.textContent = unlocked ? `${skill.name}${skill.spCost ? `（SP${skill.spCost}）` : ""}` : `？？？（Lv.${skill.unlockLevel}で習得）`;
+      setTextWithRuby(nameEl2, unlocked ? `${skill.name}${skill.spCost ? `（SP${skill.spCost}）` : ""}` : `？？？（Lv.${skill.unlockLevel}で習得）`); // ★ルビ記法対応
       const descEl2 = document.createElement("span");
       descEl2.className = "skill-description";
       descEl2.textContent = unlocked ? skill.description : "まだ習得していない、未知のスキル。";
@@ -2601,7 +2673,7 @@ function renderSkills() {
     
     const nameEl = document.createElement("span");
     nameEl.className = "skill-name";
-    nameEl.textContent = unlocked ? `${skill.name}${skill.spCost ? `（SP${skill.spCost}）` : ""}` : `？？？（Lv.${skill.unlockLevel}で習得）`;
+    setTextWithRuby(nameEl, unlocked ? `${skill.name}${skill.spCost ? `（SP${skill.spCost}）` : ""}` : `？？？（Lv.${skill.unlockLevel}で習得）`); // ★ルビ記法対応
     
     const descEl = document.createElement("span");
     descEl.className = "skill-description";
@@ -3595,6 +3667,24 @@ const RUBY_NOTATION_REGEX = /[{｛][\/／]([^{}｛｝]+?)[}｝]\s*[=＝]\s*[{｛
 function convertRubyForDisplay(text) {
   if (typeof text !== "string") return text;
   return text.replace(RUBY_NOTATION_REGEX, (match, base, ruby) => `<ruby>${base}<rt>${ruby}</rt></ruby>`);
+}
+
+// ★要望対応：技名（スキル名）などの短い文字列にもルビ記法を使えるようにするための補助関数。
+//   ・setTextWithRuby：ルビ記法が含まれている時だけ、HTMLとして安全にエスケープした上で<ruby>に変換して入れる
+//     （含まれていなければ今まで通りtextContent。技名にHTMLの記号が入っていても壊れない）
+//   ・stripRubyNotation：ルビ記法を「振りたい文字」だけに戻す（パネルのマスなど、ルビを出せない狭い場所向け）
+function hasRubyNotation(text) {
+  return typeof text === "string" && new RegExp(RUBY_NOTATION_REGEX.source).test(text);
+}
+function setTextWithRuby(element, text) {
+  if (!element) return;
+  if (!hasRubyNotation(text)) { element.textContent = text; return; }
+  const escaped = String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  element.innerHTML = convertRubyForDisplay(escaped);
+}
+function stripRubyNotation(text) {
+  if (typeof text !== "string") return text;
+  return text.replace(RUBY_NOTATION_REGEX, (match, base) => base);
 }
 
 // ★ゲーム画面に出す文章の変換（改行 → <br>、ルビ記法 → <ruby>）をまとめて行う
