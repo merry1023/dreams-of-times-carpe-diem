@@ -1891,11 +1891,12 @@ async function performCompanionSkillMenu(companion, options = {}) {
 function isComboSkillLearned(requiredNames) {
   if (!Array.isArray(requiredNames) || requiredNames.length === 0) return true;
   const learned = new Set();
-  if (typeof getUnlockedSkills === "function") getUnlockedSkills().forEach(s => learned.add(s.name));
+  // ★技名はルビ記法／旧い後ろ括弧の読み方を外した本文で照合する（mainfunc.js の skillNameKey）
+  if (typeof getUnlockedSkills === "function") getUnlockedSkills().forEach(s => learned.add(skillNameKey(s.name)));
   if (typeof player !== "undefined" && player && Array.isArray(player.companions) && typeof getCompanionSkills === "function") {
-    player.companions.forEach(c => { try { getCompanionSkills(c).forEach(s => learned.add(s.name)); } catch (e) { /* 無視 */ } });
+    player.companions.forEach(c => { try { getCompanionSkills(c).forEach(s => learned.add(skillNameKey(s.name))); } catch (e) { /* 無視 */ } });
   }
-  return requiredNames.every(name => learned.has(name));
+  return requiredNames.every(name => learned.has(skillNameKey(name)));
 }
 
 function isComboSkillUnlocked(combo) {
