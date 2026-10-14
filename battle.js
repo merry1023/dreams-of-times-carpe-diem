@@ -1669,8 +1669,7 @@ async function performCompanionSkillMenu(companion, options = {}) {
   if (skills.length === 0) {
     changeSpeaker("");
     await displayMessage(`${name}はまだ使えるスキルが無いようだ……通常攻撃で代わりに攻める。`);
-    await performCompanionNormalAttack(companion);
-    return;
+    return await performCompanionNormalAttack(companion); // ★同上：パスした結果を伝える
   }
   
   const choices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description, elementId: s.element })); // ★elementId：選択肢の左上に属性バッジを出す（mainfunc.js renderChoiceBox）
@@ -1685,7 +1684,7 @@ async function performCompanionSkillMenu(companion, options = {}) {
   if (companion.gauges.sp.current < skill.spCost) {
     changeSpeaker("");
     await displayMessage("SPが足りない！");
-    await performCompanionSkillMenu(companion, options);
+    return await performCompanionSkillMenu(companion, options); // ★やり直し先で「パス」を選んだ結果を呼び出し元へ伝える（以前は捨てていたため、パスしたのに行動回数が減っていた）
     return;
   }
   
@@ -1700,7 +1699,7 @@ async function performCompanionSkillMenu(companion, options = {}) {
     if (!success) {
       companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★対象選択をキャンセルしたので、消費したSPを返す
       renderStatusHUD();
-      await performCompanionSkillMenu(companion, options);
+      return await performCompanionSkillMenu(companion, options); // ★やり直し先で「パス」を選んだ結果を呼び出し元へ伝える（以前は捨てていたため、パスしたのに行動回数が減っていた）
       return;
     }
     renderStatusHUD();
@@ -1750,7 +1749,7 @@ async function performCompanionSkillMenu(companion, options = {}) {
         if (picked.next === "cancel") {
           companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★やめたので、消費したSPを返す
           renderStatusHUD();
-          await performCompanionSkillMenu(companion, options);
+          return await performCompanionSkillMenu(companion, options); // ★やり直し先で「パス」を選んだ結果を呼び出し元へ伝える（以前は捨てていたため、パスしたのに行動回数が減っていた）
           return;
         }
         targets = resolveHealTargetUnits(picked.next, !!skill.revives, companion); // player.js
@@ -1787,7 +1786,7 @@ async function performCompanionSkillMenu(companion, options = {}) {
   if (!targets[0]) {
     companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★狙う相手を選ぶ前にキャンセルしたので、消費したSPを返す
     renderStatusHUD();
-    await performCompanionSkillMenu(companion, options); // ★スキル選択からやり直す
+    return await performCompanionSkillMenu(companion, options); // ★やり直し先で「パス」を選んだ結果を呼び出し元へ伝える（以前は捨てていたため、パスしたのに行動回数が減っていた） // ★スキル選択からやり直す
     return;
   }
   
