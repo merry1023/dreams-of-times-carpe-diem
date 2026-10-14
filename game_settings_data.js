@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1792019529119,
+  "version": 1792020096487,
   "enemies": [
     {
       "id": "goblin",
@@ -13946,6 +13946,878 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         }
       ],
       "variables": {}
+    },
+    {
+      "id": "upper_1792020000001_1",
+      "name": "{/雷神断罪}={\\らいじんだんざい}",
+      "description": "天地を揺るがす雷を刃に纏い、敵全体を断ち斬る。麻痺させることがある。",
+      "type": "attack",
+      "element": "element_1790419127202_6",
+      "spCost": 90,
+      "power": 55,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1792020000001_1",
+          "type": "message",
+          "speaker": "",
+          "text": "天よ、地よ、我が刃に雷を――！"
+        },
+        {
+          "id": "skillblock_1792020000002_2",
+          "type": "damage",
+          "target": "all",
+          "powerMultiplier": "55 + 自分攻撃力 * 0.15",
+          "atkType": "physical"
+        },
+        {
+          "id": "skillblock_1792020000003_3",
+          "type": "applyStatus",
+          "targetSide": "enemy",
+          "target": "all",
+          "statusId": "paralyze",
+          "duration": "2",
+          "power": "0",
+          "chance": "0.5"
+        },
+        {
+          "id": "skillblock_1792020000005_5",
+          "type": "repeat",
+          "countExpression": "3",
+          "bodyBlocks": [
+            {
+              "id": "skillblock_1792020000004_4",
+              "type": "damage",
+              "target": "random",
+              "powerMultiplier": "18",
+              "atkType": "physical"
+            }
+          ]
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "upper_1792020000002_2",
+      "name": "{/極光の祝福}={\\アウローラ・グランドフィナーレ}",
+      "description": "夜空を染める極光で敵全体を撃ち、味方全員のHPを回復して継続回復を与える。",
+      "type": "attack",
+      "element": "element_1789993536302_4",
+      "spCost": 120,
+      "power": 58,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "magical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1792020000006_6",
+          "type": "message",
+          "speaker": "",
+          "text": "きらめく極光よ、みんなに祝福を！"
+        },
+        {
+          "id": "skillblock_1792020000007_7",
+          "type": "damage",
+          "target": "all",
+          "powerMultiplier": "58 + 自分魔力 * 0.15",
+          "atkType": "magical"
+        },
+        {
+          "id": "skillblock_1792020000008_8",
+          "type": "heal",
+          "target": "all",
+          "gauge": "hp",
+          "amount": "20",
+          "amountIsPercent": true
+        },
+        {
+          "id": "skillblock_1792020000009_9",
+          "type": "applyStatus",
+          "targetSide": "allies",
+          "target": "single",
+          "statusId": "regen",
+          "duration": "5",
+          "power": "8",
+          "chance": "1"
+        },
+        {
+          "id": "skillblock_1792020000010_10",
+          "type": "applyStatus",
+          "targetSide": "enemy",
+          "target": "all",
+          "statusId": "accDown",
+          "duration": "2",
+          "power": "15",
+          "chance": "0.7"
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "upper_1792020000003_3",
+      "name": "{/森羅万象}={\\しんらばんしょう}",
+      "description": "万象の理を操る。刃・癒やし・力のうち、どれかひとつが顕現する。",
+      "type": "attack",
+      "element": "element_1789993572395_7",
+      "spCost": 100,
+      "power": 60,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1792020000011_11",
+          "type": "setVariable",
+          "varName": "shinra",
+          "expression": "randbuild(1,3)"
+        },
+        {
+          "id": "skillblock_1792020000015_15",
+          "type": "if",
+          "expression": "shinra==1",
+          "trueBlocks": [
+            {
+              "id": "skillblock_1792020000012_12",
+              "type": "message",
+              "speaker": "",
+              "text": "万象は、刃となる。"
+            },
+            {
+              "id": "skillblock_1792020000013_13",
+              "type": "damage",
+              "target": "all",
+              "powerMultiplier": "60 + 自分攻撃力 * 0.15",
+              "atkType": "physical"
+            },
+            {
+              "id": "skillblock_1792020000014_14",
+              "type": "end"
+            }
+          ]
+        },
+        {
+          "id": "skillblock_1792020000020_20",
+          "type": "if",
+          "expression": "shinra==2",
+          "trueBlocks": [
+            {
+              "id": "skillblock_1792020000016_16",
+              "type": "message",
+              "speaker": "",
+              "text": "万象は、癒やしとなる。"
+            },
+            {
+              "id": "skillblock_1792020000017_17",
+              "type": "heal",
+              "target": "all",
+              "gauge": "hp",
+              "amount": "50",
+              "amountIsPercent": true
+            },
+            {
+              "id": "skillblock_1792020000018_18",
+              "type": "applyStatus",
+              "targetSide": "allies",
+              "target": "single",
+              "statusId": "statusImmune",
+              "duration": "3",
+              "power": "0",
+              "chance": "1"
+            },
+            {
+              "id": "skillblock_1792020000019_19",
+              "type": "end"
+            }
+          ]
+        },
+        {
+          "id": "skillblock_1792020000025_25",
+          "type": "if",
+          "expression": "shinra==3",
+          "trueBlocks": [
+            {
+              "id": "skillblock_1792020000021_21",
+              "type": "message",
+              "speaker": "",
+              "text": "万象は、力となる。"
+            },
+            {
+              "id": "skillblock_1792020000022_22",
+              "type": "applyStatus",
+              "targetSide": "allies",
+              "target": "single",
+              "statusId": "all_stats_up",
+              "duration": "4",
+              "power": "20",
+              "chance": "1"
+            },
+            {
+              "id": "skillblock_1792020000023_23",
+              "type": "adjustGauge",
+              "target": "all",
+              "gauge": "sp",
+              "amount": "30"
+            },
+            {
+              "id": "skillblock_1792020000024_24",
+              "type": "end"
+            }
+          ]
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "upper_1792020000004_4",
+      "name": "{/背徳の楽園}={\\エデン・オブ・シン}",
+      "description": "甘い誘惑の領域で敵全体を惑わせる。HPとSPを吸い上げ、混乱させることがある。",
+      "type": "attack",
+      "element": "element_1789993543337_6",
+      "spCost": 95,
+      "power": 50,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "magical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1792020000026_26",
+          "type": "message",
+          "speaker": "",
+          "text": "さあ、堕ちてらっしゃい……♡"
+        },
+        {
+          "id": "skillblock_1792020000027_27",
+          "type": "damage",
+          "target": "all",
+          "powerMultiplier": "50 + 自分魔力 * 0.12",
+          "atkType": "magical"
+        },
+        {
+          "id": "skillblock_1792020000028_28",
+          "type": "applyStatus",
+          "targetSide": "enemy",
+          "target": "all",
+          "statusId": "confuse",
+          "duration": "3",
+          "power": "0",
+          "chance": "0.6"
+        },
+        {
+          "id": "skillblock_1792020000029_29",
+          "type": "heal",
+          "target": "self",
+          "gauge": "hp",
+          "amount": "25",
+          "amountIsPercent": true
+        },
+        {
+          "id": "skillblock_1792020000030_30",
+          "type": "adjustGauge",
+          "target": "self",
+          "gauge": "sp",
+          "amount": "20"
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "upper_1792020000005_5",
+      "name": "{/国宝の一撃}={\\こくほうのいちげき}",
+      "description": "所持金（財力）に比例して威力が上がる、鑑定士渾身の一撃。敵の防御力も下げる。",
+      "type": "attack",
+      "element": "element_1790419127202_4",
+      "spCost": 80,
+      "power": 80,
+      "target": "single",
+      "hitCount": 1,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1792020000031_31",
+          "type": "message",
+          "speaker": "",
+          "text": "これは……国宝級の価値だ！！"
+        },
+        {
+          "id": "skillblock_1792020000032_32",
+          "type": "damage",
+          "target": "single",
+          "powerMultiplier": "80 + (所持金>=100000 ? 40 : 所持金/2500)",
+          "atkType": "physical"
+        },
+        {
+          "id": "skillblock_1792020000033_33",
+          "type": "applyStatus",
+          "targetSide": "enemy",
+          "target": "single",
+          "statusId": "defDown",
+          "duration": "3",
+          "power": "5",
+          "chance": "1"
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "upper_1792020000006_6",
+      "name": "{/明日から本気}={\\あしたからほんき}",
+      "description": "「明日から本気出す」を実行する。ターンが進むほど威力が上がるが、使うと反動でしばらく動けなくなる。",
+      "type": "attack",
+      "element": "element_1789993514120_2",
+      "spCost": 70,
+      "power": 40,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "magical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1792020000034_34",
+          "type": "message",
+          "speaker": "",
+          "text": "明日から本気出す……と言ったな。あれは嘘だ。今日から出す！"
+        },
+        {
+          "id": "skillblock_1792020000035_35",
+          "type": "damage",
+          "target": "all",
+          "powerMultiplier": "30 + (ターン数>=8 ? 80 : ターン数 * 10)",
+          "atkType": "magical"
+        },
+        {
+          "id": "skillblock_1792020000036_36",
+          "type": "message",
+          "speaker": "",
+          "text": "全力の反動で、しばらく動けない……"
+        },
+        {
+          "id": "skillblock_1792020000037_37",
+          "type": "applyStatus",
+          "targetSide": "self",
+          "target": "single",
+          "statusId": "stun",
+          "duration": "1",
+          "power": "0",
+          "chance": "1"
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "upper_1792020000007_7",
+      "name": "{/魂のアンコール}={\\ソウル・アンコール}",
+      "description": "アンコールに応えて三連続で熱唱する。敵全体を焼き、味方の会心率を高め、SPも回復する。",
+      "type": "attack",
+      "element": "element_1790419127202_5",
+      "spCost": 85,
+      "power": 60,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "magical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1792020000038_38",
+          "type": "message",
+          "speaker": "",
+          "text": "アンコールにお応えして――もう一曲ッ！！"
+        },
+        {
+          "id": "skillblock_1792020000040_40",
+          "type": "repeat",
+          "countExpression": "3",
+          "bodyBlocks": [
+            {
+              "id": "skillblock_1792020000039_39",
+              "type": "damage",
+              "target": "all",
+              "powerMultiplier": "20",
+              "atkType": "magical"
+            }
+          ]
+        },
+        {
+          "id": "skillblock_1792020000041_41",
+          "type": "applyStatus",
+          "targetSide": "enemy",
+          "target": "all",
+          "statusId": "burn",
+          "duration": "3",
+          "power": "5",
+          "chance": "1"
+        },
+        {
+          "id": "skillblock_1792020000042_42",
+          "type": "applyStatus",
+          "targetSide": "allies",
+          "target": "single",
+          "statusId": "critUp",
+          "duration": "3",
+          "power": "20",
+          "chance": "1"
+        },
+        {
+          "id": "skillblock_1792020000043_43",
+          "type": "adjustGauge",
+          "target": "all",
+          "gauge": "sp",
+          "amount": "10"
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "upper_1792020000008_8",
+      "name": "{/闇夜の終幕}={\\ダーク・カーテンコール}",
+      "description": "闇に紛れて急所を貫く。敵のHPが少ないほど、とどめの追撃が入る。",
+      "type": "attack",
+      "element": "element_1789993533981_3",
+      "spCost": 90,
+      "power": 75,
+      "target": "single",
+      "hitCount": 1,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1792020000044_44",
+          "type": "message",
+          "speaker": "",
+          "text": "――これで、幕引きだ。"
+        },
+        {
+          "id": "skillblock_1792020000045_45",
+          "type": "damage",
+          "target": "single",
+          "powerMultiplier": "75 + 自分攻撃力 * 0.2",
+          "atkType": "physical"
+        },
+        {
+          "id": "skillblock_1792020000046_46",
+          "type": "applyStatus",
+          "targetSide": "enemy",
+          "target": "single",
+          "statusId": "dullPain",
+          "duration": "3",
+          "power": "5",
+          "chance": "1"
+        },
+        {
+          "id": "skillblock_1792020000050_50",
+          "type": "if",
+          "expression": "敵HP割合<0.3",
+          "trueBlocks": [
+            {
+              "id": "skillblock_1792020000047_47",
+              "type": "message",
+              "speaker": "",
+              "text": "急所を、貫く――"
+            },
+            {
+              "id": "skillblock_1792020000048_48",
+              "type": "damage",
+              "target": "single",
+              "powerMultiplier": "60",
+              "atkType": "physical"
+            },
+            {
+              "id": "skillblock_1792020000049_49",
+              "type": "end"
+            }
+          ]
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "upper_1792020000009_9",
+      "name": "{/断罪の陰刃}={\\だんざいのかげやいば}",
+      "description": "陰から放つ断罪の刃で敵単体を斬り裂く。反動でHPを失うが、敵の防御力を下げる。",
+      "type": "attack",
+      "element": "element_1789993538636_5",
+      "spCost": 95,
+      "power": 85,
+      "target": "single",
+      "hitCount": 1,
+      "atkType": "magical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1792020000051_51",
+          "type": "message",
+          "speaker": "",
+          "text": "陰よ、この者に断罪を。"
+        },
+        {
+          "id": "skillblock_1792020000052_52",
+          "type": "damage",
+          "target": "single",
+          "powerMultiplier": "85",
+          "atkType": "magical"
+        },
+        {
+          "id": "skillblock_1792020000053_53",
+          "type": "applyStatus",
+          "targetSide": "enemy",
+          "target": "single",
+          "statusId": "defDown",
+          "duration": "3",
+          "power": "5",
+          "chance": "1"
+        },
+        {
+          "id": "skillblock_1792020000054_54",
+          "type": "selfDamage",
+          "amount": "20"
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "upper_1792020000010_10",
+      "name": "{/原初の咆哮}={\\げんしょのほうこう}",
+      "description": "獣性を解き放ち、咆哮とともに敵全体を薙ぎ払う。気絶させることがある。反動でHPを失う。",
+      "type": "attack",
+      "element": "element_1789993499387_1",
+      "spCost": 80,
+      "power": 50,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1792020000055_55",
+          "type": "message",
+          "speaker": "ケツァナ",
+          "text": "ウォォォォォォッ！！"
+        },
+        {
+          "id": "skillblock_1792020000056_56",
+          "type": "damage",
+          "target": "all",
+          "powerMultiplier": "50 + 仲間攻撃力(ケツァナ) * 0.2",
+          "atkType": "physical"
+        },
+        {
+          "id": "skillblock_1792020000057_57",
+          "type": "applyStatus",
+          "targetSide": "enemy",
+          "target": "all",
+          "statusId": "stun",
+          "duration": "1",
+          "power": "0",
+          "chance": "0.5"
+        },
+        {
+          "id": "skillblock_1792020000058_58",
+          "type": "selfDamage",
+          "amount": "15"
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "upper_1792020000011_11",
+      "name": "{/雷光神速}={\\らいこうしんそく}",
+      "description": "雷の速さで六連撃を放ち、自身の会心率を高める。",
+      "type": "attack",
+      "element": "element_1790419127202_6",
+      "spCost": 85,
+      "power": 70,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1792020000059_59",
+          "type": "message",
+          "speaker": "ロリル",
+          "text": "遅いよ。"
+        },
+        {
+          "id": "skillblock_1792020000061_61",
+          "type": "repeat",
+          "countExpression": "6",
+          "bodyBlocks": [
+            {
+              "id": "skillblock_1792020000060_60",
+              "type": "damage",
+              "target": "random",
+              "powerMultiplier": "12 + 仲間攻撃力(ロリル) * 0.03",
+              "atkType": "physical"
+            }
+          ]
+        },
+        {
+          "id": "skillblock_1792020000062_62",
+          "type": "applyStatus",
+          "targetSide": "self",
+          "target": "single",
+          "statusId": "critUp",
+          "duration": "3",
+          "power": "25",
+          "chance": "1"
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "upper_1792020000012_12",
+      "name": "{/陰獣王召喚}={\\いんじゅうおうしょうかん}",
+      "description": "陰から陰獣王を呼び出し、敵全体を蹂躙する。敵の防御力も下げる。",
+      "type": "attack",
+      "element": "element_1789993533981_3",
+      "spCost": 100,
+      "power": 70,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "magical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_1792020000063_63",
+          "type": "message",
+          "speaker": "コリスギウス",
+          "text": "出でよ、陰獣王！"
+        },
+        {
+          "id": "skillblock_1792020000064_64",
+          "type": "message",
+          "speaker": "陰獣王",
+          "text": "グォォォォォォォッ！！"
+        },
+        {
+          "id": "skillblock_1792020000065_65",
+          "type": "damage",
+          "target": "all",
+          "powerMultiplier": "70 + 仲間攻撃力(コリスギウス) * 0.15",
+          "atkType": "magical"
+        },
+        {
+          "id": "skillblock_1792020000066_66",
+          "type": "applyStatus",
+          "targetSide": "enemy",
+          "target": "all",
+          "statusId": "defDown",
+          "duration": "3",
+          "power": "5",
+          "chance": "0.8"
+        }
+      ],
+      "variables": {}
     }
   ],
   "statusPanels": {
@@ -14061,6 +14933,70 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             ],
             "costExp": 100,
             "costItems": []
+          },
+          "2,2": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "percent",
+                "value": 3
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "1,1": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1787883339550_5",
+                "count": 5
+              }
+            ],
+            "minLevel": 50
+          },
+          "0,0": {
+            "label": "奥義",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1792020000006_6"
+              }
+            ],
+            "costExp": 60000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 10
+              },
+              {
+                "itemId": "item_1787883570169_6",
+                "count": 5
+              },
+              {
+                "itemId": "item_1788135707492_4",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
           }
         }
       },
@@ -14175,6 +15111,70 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             ],
             "costExp": 100,
             "costItems": []
+          },
+          "2,2": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "percent",
+                "value": 3
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "1,1": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1787883339550_5",
+                "count": 5
+              }
+            ],
+            "minLevel": 50
+          },
+          "0,0": {
+            "label": "奥義",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1792020000002_2"
+              }
+            ],
+            "costExp": 60000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 10
+              },
+              {
+                "itemId": "item_1787883570169_6",
+                "count": 5
+              },
+              {
+                "itemId": "item_1788135707492_4",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
           }
         }
       },
@@ -14289,6 +15289,70 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             ],
             "costExp": 100,
             "costItems": []
+          },
+          "2,2": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "percent",
+                "value": 3
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "1,1": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1787883339550_5",
+                "count": 5
+              }
+            ],
+            "minLevel": 50
+          },
+          "0,0": {
+            "label": "奥義",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1792020000003_3"
+              }
+            ],
+            "costExp": 60000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 10
+              },
+              {
+                "itemId": "item_1787883570169_6",
+                "count": 5
+              },
+              {
+                "itemId": "item_1788135707492_4",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
           }
         }
       },
@@ -14403,6 +15467,70 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             ],
             "costExp": 100,
             "costItems": []
+          },
+          "2,2": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "percent",
+                "value": 3
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "1,1": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1787883339550_5",
+                "count": 5
+              }
+            ],
+            "minLevel": 50
+          },
+          "0,0": {
+            "label": "奥義",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1792020000001_1"
+              }
+            ],
+            "costExp": 60000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 10
+              },
+              {
+                "itemId": "item_1787883570169_6",
+                "count": 5
+              },
+              {
+                "itemId": "item_1788135707492_4",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
           }
         }
       },
@@ -14517,6 +15645,70 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             ],
             "costExp": 100,
             "costItems": []
+          },
+          "2,2": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "percent",
+                "value": 3
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "1,1": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1787883339550_5",
+                "count": 5
+              }
+            ],
+            "minLevel": 50
+          },
+          "0,0": {
+            "label": "奥義",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1792020000004_4"
+              }
+            ],
+            "costExp": 60000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 10
+              },
+              {
+                "itemId": "item_1787883570169_6",
+                "count": 5
+              },
+              {
+                "itemId": "item_1788135707492_4",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
           }
         }
       },
@@ -14631,6 +15823,70 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             ],
             "costExp": 100,
             "costItems": []
+          },
+          "2,2": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "percent",
+                "value": 3
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "1,1": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1787883339550_5",
+                "count": 5
+              }
+            ],
+            "minLevel": 50
+          },
+          "0,0": {
+            "label": "奥義",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1792020000005_5"
+              }
+            ],
+            "costExp": 60000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 10
+              },
+              {
+                "itemId": "item_1787883570169_6",
+                "count": 5
+              },
+              {
+                "itemId": "item_1788135707492_4",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
           }
         }
       },
@@ -14745,6 +16001,70 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             ],
             "costExp": 100,
             "costItems": []
+          },
+          "2,2": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "percent",
+                "value": 3
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "1,1": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1787883339550_5",
+                "count": 5
+              }
+            ],
+            "minLevel": 50
+          },
+          "0,0": {
+            "label": "奥義",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1792020000007_7"
+              }
+            ],
+            "costExp": 60000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 10
+              },
+              {
+                "itemId": "item_1787883570169_6",
+                "count": 5
+              },
+              {
+                "itemId": "item_1788135707492_4",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
           }
         }
       },
@@ -14859,6 +16179,70 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             ],
             "costExp": 100,
             "costItems": []
+          },
+          "2,2": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "percent",
+                "value": 3
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "1,1": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1787883339550_5",
+                "count": 5
+              }
+            ],
+            "minLevel": 50
+          },
+          "0,0": {
+            "label": "奥義",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1792020000008_8"
+              }
+            ],
+            "costExp": 60000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 10
+              },
+              {
+                "itemId": "item_1787883570169_6",
+                "count": 5
+              },
+              {
+                "itemId": "item_1788135707492_4",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
           }
         }
       },
@@ -14973,6 +16357,70 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             ],
             "costExp": 100,
             "costItems": []
+          },
+          "2,2": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "percent",
+                "value": 3
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "1,1": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1787883339550_5",
+                "count": 5
+              }
+            ],
+            "minLevel": 50
+          },
+          "0,0": {
+            "label": "奥義",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1792020000009_9"
+              }
+            ],
+            "costExp": 60000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 10
+              },
+              {
+                "itemId": "item_1787883570169_6",
+                "count": 5
+              },
+              {
+                "itemId": "item_1788135707492_4",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
           }
         }
       }
@@ -15193,6 +16641,70 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
               }
             ],
             "minLevel": 55
+          },
+          "6,2": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "percent",
+                "value": 3
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "7,1": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1787883339550_5",
+                "count": 5
+              }
+            ],
+            "minLevel": 50
+          },
+          "8,0": {
+            "label": "奥義",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1792020000010_10"
+              }
+            ],
+            "costExp": 60000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 10
+              },
+              {
+                "itemId": "item_1787883570169_6",
+                "count": 5
+              },
+              {
+                "itemId": "item_1788135707492_4",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
           }
         }
       },
@@ -15307,6 +16819,70 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             ],
             "costExp": 100,
             "costItems": []
+          },
+          "2,2": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "atk",
+                "mode": "percent",
+                "value": 3
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "1,1": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1787883339550_5",
+                "count": 5
+              }
+            ],
+            "minLevel": 50
+          },
+          "0,0": {
+            "label": "奥義",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1792020000011_11"
+              }
+            ],
+            "costExp": 60000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 10
+              },
+              {
+                "itemId": "item_1787883570169_6",
+                "count": 5
+              },
+              {
+                "itemId": "item_1788135707492_4",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
           }
         }
       },
@@ -15421,6 +16997,70 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
             ],
             "costExp": 100,
             "costItems": []
+          },
+          "2,2": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "skillPower",
+                "mode": "percent",
+                "value": 3
+              }
+            ],
+            "costExp": 4500,
+            "costItems": [],
+            "minLevel": 35
+          },
+          "1,1": {
+            "label": "",
+            "effects": [
+              {
+                "kind": "stat",
+                "stat": "maxHp",
+                "mode": "percent",
+                "value": 4
+              },
+              {
+                "kind": "stat",
+                "stat": "maxSp",
+                "mode": "percent",
+                "value": 4
+              }
+            ],
+            "costExp": 13000,
+            "costItems": [
+              {
+                "itemId": "item_1787883339550_5",
+                "count": 5
+              }
+            ],
+            "minLevel": 50
+          },
+          "0,0": {
+            "label": "奥義",
+            "effects": [
+              {
+                "kind": "upperSkill",
+                "upperSkillId": "upper_1792020000012_12"
+              }
+            ],
+            "costExp": 60000,
+            "costItems": [
+              {
+                "itemId": "material_002",
+                "count": 10
+              },
+              {
+                "itemId": "item_1787883570169_6",
+                "count": 5
+              },
+              {
+                "itemId": "item_1788135707492_4",
+                "count": 1
+              }
+            ],
+            "minLevel": 60
           }
         }
       }
