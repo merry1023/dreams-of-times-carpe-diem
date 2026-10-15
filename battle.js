@@ -1167,6 +1167,10 @@ function resolveDamageForTarget(target, rawDamage, attackElementId) {
   // ★要望対応：属性相性による倍率を反映する
   const elementalMultiplier = getElementalDamageMultiplier(attackElementId, target);
   if (elementalMultiplier !== 1) damage = Math.max(1, Math.round(damage * elementalMultiplier));
+  // ★要望対応：敵の自己強化「被ダメージ軽減（defUp）」の効果中は、受けるダメージが減る
+  if (target && target.status && target.status.defUp && target.status.defUp.turns > 0) {
+    damage = Math.max(1, Math.round(damage * (1 - target.status.defUp.power / 100)));
+  }
   showEnemyDamagePopup(target, damage, attackElementId, elementalMultiplier > 1); // ★ダメージの数字を属性の色ではじけさせる（弱点なら白枠）
   // ★実績システム用：ここを通る対象は常に敵（主人公・仲間が与えるダメージ）なので、そのまま累計する（要望対応）
   if (typeof player !== "undefined" && player && damage > 0) {
@@ -2280,6 +2284,16 @@ async function runSingleEnemyTurn(enemy) {
     if (enemy.status.defDown && enemy.status.defDown.turns > 0) enemy.status.defDown.turns--;
     if (enemy.status.accDown && enemy.status.accDown.turns > 0) enemy.status.accDown.turns--;
     if (enemy.status.atkUp && enemy.status.atkUp.turns > 0) enemy.status.atkUp.turns--; // ★要望対応：状態強化スキルによる攻撃力上昇の残りターン
+    if (enemy.status.defUp && enemy.status.defUp.turns > 0) enemy.status.defUp.turns--; // ★敵の自己強化（被ダメージ軽減）の残りターン
+    if (enemy.status.regenBuff && enemy.status.regenBuff.turns > 0) { // ★敵の自己強化（継続回復）：ターン開始時に少し回復する
+      enemy.status.regenBuff.turns--;
+      const regenHealed = Math.min(enemy.maxHp - enemy.hp, enemy.status.regenBuff.power);
+      if (regenHealed > 0) {
+        enemy.hp += regenHealed;
+        await displayMessage(`${enemy.displayName}のHPが${regenHealed}回復した！`);
+        updateBattleHud();
+      }
+    }
     
     if (enemy.status.stun > 0) {
       enemy.status.stun--;
@@ -2344,7 +2358,7 @@ async function runSingleEnemyTurn(enemy) {
   }
   
   // ★魔物ごとの固有スキル：一定確率で通常攻撃の代わりに繰り出してくる（今のところ常に主人公を狙う）
-  if (master && master.uniqueSkill && Math.random() < master.uniqueSkill.chance) {
+  if (master && master.uniqueSkill && Math.random() < master.uniqueSkill.chance && !shouldSkipEnemySupportSkill(enemy, master.uniqueSkill)) { // ★誰も傷ついていない時の回復技／すでに効いている自己強化技は撃たず、通常攻撃に回す
     await executeMonsterUniqueSkill(enemy, master.uniqueSkill);
     return;
   }
@@ -2443,6 +2457,132 @@ async function applyMonsterAttackStatusInflictions(inflictions) {
 
 // 魔物固有スキルの実行本体。通常攻撃より威力の倍率(multiplier)が高いものが多く、
 // kind: "drain" のものはダメージに加えてプレイヤーのSPも吸い取ってくる（サキュバスの「誘惑」など）
+// ===== 敵が使う回復技・自己強化技 =====
+// ★要望対応：敵の専用スキルの「職業技を使う」で、回復タイプ・自己強化タイプの職業技も選べるようにした。
+//   ・回復：生きている敵の中でHPの割合がいちばん低い1体（自分を含む）を回復する。全体回復の技（partyWide）なら、生きている敵全員を回復する。
+//     回復量は、攻撃技と同じ考え方で「(1＋レベル×0.05)×技の威力＋その敵の攻撃力×0.7」（レベルはプレイヤーのレベルを基準にする）。
+//     SPを回復する技は、敵にSPが無いので何も起こらない。状態異常を治す技（cleanse）は、敵の状態異常も治す
+//   ・自己強化：攻撃力上昇（atkUp）・被ダメージ軽減（defUp）・全ステータス上昇（allStatsUp）・継続回復（regen）に対応。
+//     それ以外（会心率上昇など、敵に効果が無いもの）は何も起こらない
+//   ・無駄打ちを避けるため、誰も傷ついていない時の回復技／すでに同じ強化が効いている時の自己強化技は、
+//     専用スキルとして繰り出さず通常攻撃に回す（shouldSkipEnemySupportSkill）
+function getEnemyBuffMechanic(effect) {
+  if (!effect) return null;
+  const def = resolveStatusBuffDef(effect.kind);
+  return def ? def.mechanic : effect.kind;
+}
+
+function isEnemyBuffActive(enemy, mechanic) {
+  const st = enemy.status || {};
+  const active = (key) => !!(st[key] && st[key].turns > 0);
+  if (mechanic === "atkUp") return active("atkUp");
+  if (mechanic === "defUp") return active("defUp");
+  if (mechanic === "regen") return active("regenBuff");
+  if (mechanic === "allStatsUp") return active("atkUp") && active("defUp");
+  return true; // 敵に効果の無い強化は「すでに効いている」扱い（＝使わない）
+}
+
+function findEnemyClassSkill(skill) {
+  if (!skill || skill.kind !== "classSkill") return null;
+  const skillList = (typeof CLASS_SKILLS !== "undefined" && CLASS_SKILLS[skill.classSkillClass]) || [];
+  return skillList.find(s => s.name === skill.classSkillName) || null;
+}
+
+function shouldSkipEnemySupportSkill(enemy, skill) {
+  if (!skill) return false;
+  if (skill.kind === "buff") return isEnemyBuffActive(enemy, "atkUp"); // 既存の「状態強化」も、すでに攻撃力が上がっている間は撃たない
+  const classSkill = findEnemyClassSkill(skill);
+  if (!classSkill) return false;
+  if (classSkill.type === "heal") {
+    if (classSkill.gauge === "sp") return true;
+    const needsHeal = getAliveEnemies().some(e => e.hp < e.maxHp);
+    const canCleanse = classSkill.cleanse && enemyHasNegativeStatus(enemy);
+    return !needsHeal && !canCleanse;
+  }
+  if (classSkill.type === "buff") {
+    const effects = [classSkill.selfBuff, classSkill.selfBuff2].filter(Boolean);
+    return effects.length > 0 && effects.every(eff => isEnemyBuffActive(enemy, getEnemyBuffMechanic(eff)));
+  }
+  return false;
+}
+
+const ENEMY_NEGATIVE_STATUS_KEYS = ["burn", "poison", "dullPain", "atkDown", "defDown", "accDown", "stun", "paralyze", "confuse"];
+function enemyHasNegativeStatus(enemy) {
+  const st = enemy.status || {};
+  return ENEMY_NEGATIVE_STATUS_KEYS.some(key => (typeof st[key] === "number" ? st[key] > 0 : !!(st[key] && st[key].turns > 0)));
+}
+
+async function executeEnemyHealSkill(enemy, classSkill) {
+  changeSpeaker("");
+  if (classSkill.gauge === "sp") {
+    await displayMessage("しかし、何も起こらなかった……");
+    return;
+  }
+  const level = (typeof player !== "undefined" && player) ? player.level : 1;
+  const levelMultiplier = 1 + level * 0.05; // ★攻撃技と同じレベル補正
+  const amount = Math.max(1, Math.round(levelMultiplier * (classSkill.power || 0) + (enemy.atk + (enemy.enemyAtkBonus || 0)) * 0.7));
+  
+  const alive = getAliveEnemies();
+  let targets;
+  if (classSkill.partyWide) {
+    targets = alive;
+  } else {
+    const lowest = alive.slice().sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+    targets = lowest ? [lowest] : [];
+  }
+  
+  for (const target of targets) {
+    const before = target.hp;
+    target.hp = Math.min(target.maxHp, target.hp + amount);
+    const healed = target.hp - before;
+    if (classSkill.cleanse && target.status) {
+      ENEMY_NEGATIVE_STATUS_KEYS.forEach(key => { if (key in target.status) delete target.status[key]; });
+    }
+    updateBattleHud();
+    if (healed > 0) {
+      await displayMessage(`${target.displayName}のHPが${healed}回復した！`);
+    } else {
+      await displayMessage(`${target.displayName}はすでに元気いっぱいだ！`);
+    }
+  }
+}
+
+// 敵に自己強化を付ける。付けられたら強化の名前、効果の無い強化なら null を返す
+function applyEnemySelfBuff(enemy, effect) {
+  if (!effect) return null;
+  const def = resolveStatusBuffDef(effect.kind);
+  const mechanic = def ? def.mechanic : effect.kind;
+  const duration = effect.duration || (def && def.defaultDuration) || 3;
+  const power = effect.power != null && effect.power !== 0 ? effect.power : ((def && def.defaultPower) || 0);
+  if (!enemy.status) enemy.status = {};
+  const atkBonus = () => (effect.mode === "multiply" ? Math.max(1, Math.round(enemy.atk * (power || 10) / 100)) : (power || 5)); // 「割合」指定なら攻撃力の○%、そうでなければ固定値
+  if (mechanic === "atkUp") enemy.status.atkUp = { turns: duration, power: atkBonus() };
+  else if (mechanic === "defUp") enemy.status.defUp = { turns: duration, power: Math.min(90, power || 30) };
+  else if (mechanic === "allStatsUp") {
+    enemy.status.atkUp = { turns: duration, power: atkBonus() };
+    enemy.status.defUp = { turns: duration, power: Math.min(50, power || 15) };
+  }
+  else if (mechanic === "regen") enemy.status.regenBuff = { turns: duration, power: power || Math.max(1, Math.round(enemy.maxHp * 0.08)) };
+  else return null;
+  return (def && def.label) || STATUS_EFFECT_LABELS[effect.kind] || effect.kind;
+}
+
+async function executeEnemySelfBuffSkill(enemy, classSkill) {
+  changeSpeaker("");
+  // ★「豹変」等：triggerChanceが設定されている技は、その確率でしか発動しない（外れることがある）
+  if (classSkill.triggerChance != null && Math.random() >= classSkill.triggerChance) {
+    await displayMessage("しかし、うまく発動しなかった……");
+    return;
+  }
+  const labels = [classSkill.selfBuff, classSkill.selfBuff2].filter(Boolean).map(eff => applyEnemySelfBuff(enemy, eff)).filter(Boolean);
+  updateBattleHud();
+  if (labels.length === 0) {
+    await displayMessage("しかし、何も起こらなかった……");
+    return;
+  }
+  await displayMessage(`${enemy.displayName}は${labels.join("・")}状態になった！`);
+}
+
 async function executeMonsterUniqueSkill(enemy, skill) {
   changeSpeaker(enemy.displayName);
   await displayMessage(`「${skill.name}」！ ${skill.flavor || ""}`);
@@ -2467,6 +2607,10 @@ async function executeMonsterUniqueSkill(enemy, skill) {
       await displayMessage("しかし、技が不発に終わってしまった……");
       return;
     }
+    
+    // ★要望対応：敵が使える職業技を、攻撃技だけでなく「回復」「自己強化」タイプの技にも広げた
+    if (classSkill.type === "heal") { await executeEnemyHealSkill(enemy, classSkill); return; }
+    if (classSkill.type === "buff") { await executeEnemySelfBuffSkill(enemy, classSkill); return; }
     
     const atkUpBonusForClassSkill = (enemy.status && enemy.status.atkUp && enemy.status.atkUp.turns > 0) ? enemy.status.atkUp.power : 0;
     const classSkillEnemyAtk = enemy.atk + enemy.enemyAtkBonus + atkUpBonusForClassSkill;
@@ -4066,12 +4210,16 @@ function hideBattleHud() {
 //     画像が用意されていない敵のimgがそのたびに再読み込みされ、失敗するまでの一瞬「壊れた画像」アイコンが
 //     ちらついて見える不具合があった。そのため、敵の数が変わった時（＝新しい戦闘が始まった時）だけ
 //     要素を作り直し、それ以外（ターゲット移動やHP変化）は既存の要素を使い回して見た目だけ更新する
+const BATTLE_ENEMIES_PER_ROW = 3; // ★1列に並べる敵の最大数（4体目以降は下の列）
 function renderBattleEnemies() {
   const container = document.getElementById("battle-enemies");
   if (!container || !battleState) return;
   
   const count = battleState.enemies.length;
-  const sizePx = Math.round(Math.max(90, 240 - (count - 1) * 32)); // ★体数に応じて画像サイズを縮小（以前より全体的に大きめに）
+  // ★要望対応：敵が4体以上の時は、4体目以降を下の列に並べる（1列あたり最大3体）。縦に2列ぶん入るよう、画像サイズは小さめにする
+  const sizePx = count > BATTLE_ENEMIES_PER_ROW
+    ? 88
+    : Math.round(Math.max(90, 240 - (count - 1) * 32)); // ★体数に応じて画像サイズを縮小（以前より全体的に大きめに）
   const sizeForEnemy = (enemy) => {
     const multiplier = (typeof enemy.sizeMultiplier === "number" && enemy.sizeMultiplier > 0) ? enemy.sizeMultiplier : 1;
     return Math.round(Math.min(Math.max(sizePx * multiplier, 30), sizePx * 3)); // ★極端な値で表示が壊れないよう上下限を設ける
@@ -4099,6 +4247,15 @@ function renderBattleEnemies() {
   
   if (needsRebuild) {
     unitEls.forEach(el => el.remove());
+    container.querySelectorAll(".battle-enemy-row").forEach(el => el.remove());
+    // ★1列に並べる敵は最大3体。4体目以降は次の列（下の列）に回す。列ごとの入れ物を先に作る
+    const rowEls = [];
+    for (let r = 0; r < Math.ceil(count / BATTLE_ENEMIES_PER_ROW); r++) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "battle-enemy-row";
+      container.appendChild(rowEl);
+      rowEls.push(rowEl);
+    }
     unitEls = battleState.enemies.map((enemy, index) => {
       const unitEl = document.createElement("div");
       unitEl.className = "battle-enemy-unit";
@@ -4141,7 +4298,7 @@ function renderBattleEnemies() {
         confirmEnemyTarget(battleState.enemies[index]);
       };
       
-      container.appendChild(unitEl);
+      rowEls[Math.floor(index / BATTLE_ENEMIES_PER_ROW)].appendChild(unitEl);
       return unitEl;
     });
   }
@@ -4154,6 +4311,7 @@ function renderBattleEnemies() {
     const isTargeted = !isDefeated && index === battleState.targetIndex;
     unitEl.classList.toggle("defeated", isDefeated);
     unitEl.classList.toggle("targeted", isTargeted);
+    unitEl.classList.toggle("battle-enemy-unit-raised", count <= BATTLE_ENEMIES_PER_ROW && index % 2 === 1); // ★1列の時だけ、左から偶数番目を少し高くしてジグザグに見せる（2列の時は列そのもので前後を表すので揃える）
     
     const imgEl = unitEl.querySelector(".battle-enemy-unit-image");
     if (imgEl) {
