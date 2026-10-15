@@ -4473,6 +4473,13 @@ rt {
   z-index: 2;
   
   display: flex;
+  flex-direction: column; /* ★敵は列（.battle-enemy-row）ごとに上から並べる。4体目以降は下の列 */
+  align-items: center;
+  gap: 4px;
+}
+
+.battle-enemy-row {
+  display: flex;
   align-items: flex-end;
   justify-content: center;
   gap: 4px;
@@ -4498,8 +4505,8 @@ rt {
   transition: transform 0.15s ease, opacity 0.2s ease, filter 0.2s ease;
 }
 
-/* ★左から2番目・4番目（偶数番目）を少し高い位置にずらして、ジグザグに見せる */
-.battle-enemy-unit:nth-child(even) {
+/* ★1列（3体まで）の時だけ、左から2番目を少し高い位置にずらして、ジグザグに見せる（クラスはbattle.jsのrenderBattleEnemiesが付ける） */
+.battle-enemy-unit.battle-enemy-unit-raised {
   margin-bottom: 36px;
 }
 

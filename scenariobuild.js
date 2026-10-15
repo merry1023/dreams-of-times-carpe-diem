@@ -11660,7 +11660,7 @@ function buildMonsterDetailEditor(entity, persist, category) {
   wrap.appendChild(skillRow4);
   
   // ★要望対応：職業技を使う敵。既存の職業技（scenarioProject.skills、攻撃技のみ）の中から
-  //   撃たせたい技を選ぶ。発動時のセリフ・名前は上の欄ではなく選んだ技のものを自動で使う
+  //   撃たせたい技を選ぶ（攻撃技のほか、回復技・自己強化技も可）。発動時のセリフ・名前は上の欄ではなく選んだ技のものを自動で使う
   if (entity.uniqueSkill.kind === "classSkill") {
     const classRow = document.createElement("div");
     classRow.className = "scenariobuild-condition-row";
@@ -11681,15 +11681,18 @@ function buildMonsterDetailEditor(entity, persist, category) {
     skillNameRow.appendChild(labelSpan("技："));
     const skillNameSelect = document.createElement("select");
     skillNameSelect.className = "scenariobuild-jump-select";
-    const attackSkillsOfClass = scenarioProject.skills.filter(s => s.className === classSelect.value && s.type === "attack");
+    // ★要望対応：攻撃技に加えて、回復技・自己強化技も選べるようにした（敵が使うと、味方の敵を回復／自分を強化する）
+    const skillTypeLabels = { attack: "攻撃", heal: "回復", buff: "自己強化" };
+    const attackSkillsOfClass = scenarioProject.skills.filter(s => s.className === classSelect.value && skillTypeLabels[s.type]);
     if (attackSkillsOfClass.length === 0) {
       const opt = document.createElement("option");
-      opt.value = ""; opt.textContent = "（この職業に攻撃技がありません）";
+      opt.value = ""; opt.textContent = "（この職業に使える技がありません）";
       skillNameSelect.appendChild(opt);
     } else {
       attackSkillsOfClass.forEach(s => {
         const opt = document.createElement("option");
-        opt.value = s.name; opt.textContent = s.name;
+        opt.value = s.name; // ★ルビ記法のままの名前で照合する
+        opt.textContent = `${s.name.replace(RUBY_NOTATION_REGEX, "$1")}（${skillTypeLabels[s.type]}）`; // ★選択肢の表示ではルビ記法を外して、ルビを振る文字だけを見せる
         skillNameSelect.appendChild(opt);
       });
     }
@@ -11707,7 +11710,7 @@ function buildMonsterDetailEditor(entity, persist, category) {
     
     const classSkillNote = document.createElement("p");
     classSkillNote.className = "devmode-note";
-    classSkillNote.textContent = "選んだ技の威力・命中回数・付与する状態異常がそのまま使われます（威力の基準はこの敵の攻撃力）。発動時のセリフは上の「発動時のセリフ」欄がそのまま使われます。";
+    classSkillNote.textContent = "選んだ技の威力・命中回数・付与する状態異常がそのまま使われます（威力の基準はこの敵の攻撃力）。発動時のセリフは上の「発動時のセリフ」欄がそのまま使われます。回復技は、生きている敵の中でHPの割合がいちばん低い1体（全体回復の技なら全員）を回復し、自己強化技は攻撃力上昇・被ダメージ軽減・全ステータス上昇・継続回復の効果だけが敵に効きます。誰も傷ついていない時の回復技や、すでに同じ強化が効いている時の自己強化技は撃たず、通常攻撃に回ります。";
     wrap.appendChild(classSkillNote);
   }
   
