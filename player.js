@@ -502,6 +502,13 @@ function initPlayer(className) {
     totalHealingDone: 0, // 累計回復量（HP）
     totalDamageTaken: 0, // 累計被ダメージ量
     unlockedAchievementIds: [], // 達成済みの実績ID一覧
+    seenAchievementIds: [], // ★要望対応：実績画面で詳細を確認済みの実績ID一覧（未確認バッジ用）
+    // ★チュートリアルの解放条件用の記録（convenience.js）。新しいデータには最初から配列を持たせておく
+    //   （無いのは、この機能より前の古いセーブ。その場合は最初の判定で「解放済み・確認済み」として静かに引き継ぐ）
+    unlockedTutorialIds: [], // 解放済みのチュートリアルID一覧（解放条件のあるものだけ）
+    seenTutorialIds: [], // 詳細を確認済みのチュートリアルID一覧（未確認バッジ用）
+    obtainedItemIds: {}, // { アイテムID: true } 初めて入手したアイテム
+    usedFacilityIds: {}, // { 施設ID: true } 初めて入った施設
     knownCookingRecipeIds: [], // ★要望対応：レシピ発見アイテムを使って判明した料理レシピのID一覧（料理タブ参照）
     // ★話の始まるきっかけ（「エリアに来た時」）やシナリオ専用エリアのn回目判定に使う、拠点ごとの来訪回数
     areaVisitCounts: {}, // { locationKey: 来訪回数 }
