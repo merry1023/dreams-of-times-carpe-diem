@@ -192,9 +192,13 @@ function renderConvenienceIcons() {
       }
     };
     
+    iconBtn.dataset.appId = app.id; // ★未確認バッジの付け外し用
     const glyph = document.createElement("span");
     glyph.className = "convenience-icon-glyph";
     glyph.textContent = app.icon;
+    // ★実績・チュートリアルに未確認があれば、赤丸の「!」バッジを重ねる
+    if (app.id === "tutorial" && getUnreadTutorialIds().length > 0) glyph.appendChild(createUnreadBadgeElement("convenience-icon-unread"));
+    if (app.id === "achievements" && getUnreadAchievementIds().length > 0) glyph.appendChild(createUnreadBadgeElement("convenience-icon-unread"));
     
     // ★進行度アイコンだけ、アイコンの上に「クリア済み話数／全話数」の小さなバッジを重ねて表示する
     if (app.id === "progress" && typeof getChapterProgressSummary === "function") {
@@ -695,6 +699,9 @@ function isTutorialUnlocked(entry) {
 //   実績チェックのタイミングなどから随時呼ぶ。options.silent が true なら通知は出さない
 function checkTutorialUnlocks(options = {}) {
   if (typeof player === "undefined" || !player) return;
+  // ★古いセーブ（この機能より前）かどうか。ここで一度だけ「解放済み」として静かに引き継ぎ、確認済みにもしておく
+  const migratingLegacy = !Array.isArray(player.unlockedTutorialIds);
+  if (!Array.isArray(player.seenTutorialIds)) player.seenTutorialIds = Array.isArray(player.unlockedTutorialIds) ? player.unlockedTutorialIds.slice() : [];
   const list = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.tutorials)) ? scenarioProject.tutorials : [];
   // ★古いセーブ（この機能より前）：入手済みの持ち物は「初めて入手した」扱いにしておく。
   //   また、初回の判定でまとめて解放されるものは通知しない（通知が一気に出てしまうのを防ぐ）
@@ -712,9 +719,77 @@ function checkTutorialUnlocks(options = {}) {
     if (player.unlockedTutorialIds.includes(entry.id)) return;
     if (!isTutorialConditionMet(entry)) return;
     player.unlockedTutorialIds.push(entry.id);
+    if (migratingLegacy) player.seenTutorialIds.push(entry.id); // 古いセーブからの引き継ぎ分は「確認済み」扱い
     newTitles.push(entry.title || "（無題）");
   });
   if (!silent && newTitles.length > 0) showTutorialUnlockToast(newTitles);
+  if (newTitles.length > 0) updateUnreadBadges();
+}
+
+// ===== 未確認バッジ（要望対応） =====
+// ★実績・チュートリアルのうち「解放されたのに、まだ詳細を開いて確認していないもの」がある間、
+//   便利タブのボタンと、実績／チュートリアルのアイコンに、赤丸・白文字の「!」バッジを出す。
+//   チュートリアルは解放条件のあるものだけが対象（最初から出ているものは、未確認扱いにしない）。
+//   確認済みの記録は player.seenTutorialIds / player.seenAchievementIds（古いセーブに無い時は未確認ゼロとして扱う）
+function getUnreadTutorialIds() {
+  if (typeof player === "undefined" || !player || !Array.isArray(player.unlockedTutorialIds) || !Array.isArray(player.seenTutorialIds)) return [];
+  const list = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.tutorials)) ? scenarioProject.tutorials : [];
+  return list.filter(entry => entry && entry.id && player.unlockedTutorialIds.includes(entry.id) && !player.seenTutorialIds.includes(entry.id)).map(entry => entry.id);
+}
+
+function getUnreadAchievementIds() {
+  if (typeof player === "undefined" || !player || !Array.isArray(player.unlockedAchievementIds) || !Array.isArray(player.seenAchievementIds)) return [];
+  const list = (typeof getAchievementList === "function") ? getAchievementList() : [];
+  return list.filter(a => a && a.id && player.unlockedAchievementIds.includes(a.id) && !player.seenAchievementIds.includes(a.id)).map(a => a.id);
+}
+
+function isTutorialUnread(id) { return getUnreadTutorialIds().includes(id); }
+function isAchievementUnread(id) { return getUnreadAchievementIds().includes(id); }
+
+function markTutorialSeen(id) {
+  if (typeof player === "undefined" || !player || !id) return;
+  if (!Array.isArray(player.seenTutorialIds)) return;
+  if (player.seenTutorialIds.includes(id)) return;
+  player.seenTutorialIds.push(id);
+  updateUnreadBadges();
+}
+
+function markAchievementSeen(id) {
+  if (typeof player === "undefined" || !player || !id) return;
+  if (!Array.isArray(player.seenAchievementIds)) return;
+  if (player.seenAchievementIds.includes(id)) return;
+  player.seenAchievementIds.push(id);
+  updateUnreadBadges();
+}
+
+// ★赤丸の「!」バッジ要素を作る（className で見た目を変える）
+function createUnreadBadgeElement(className) {
+  const badge = document.createElement("span");
+  badge.className = className;
+  badge.textContent = "!";
+  return badge;
+}
+
+// ★未確認があるかどうかに合わせて、便利タブのボタンのバッジを付け外しする。
+//   アイコン一覧側（実績・チュートリアルのアイコン）は、一覧を描画し直す時に付ける
+function updateUnreadBadges() {
+  const tabBtn = document.querySelector('.tab-btn[onclick*="tab-convenience"]');
+  if (!tabBtn) return;
+  const total = getUnreadTutorialIds().length + getUnreadAchievementIds().length;
+  const existing = tabBtn.querySelector(".unread-badge");
+  if (total > 0 && !existing) tabBtn.appendChild(createUnreadBadgeElement("unread-badge"));
+  else if (total === 0 && existing) existing.remove();
+  // ★アイコン一覧が表示されている間に未確認の数が変わった時のために、アイコン側のバッジも合わせておく
+  const iconGrid = document.getElementById("convenience-icon-grid");
+  if (iconGrid) {
+    [["tutorial", getUnreadTutorialIds().length], ["achievements", getUnreadAchievementIds().length]].forEach(([appId, count]) => {
+      const glyph = iconGrid.querySelector(`.convenience-icon[data-app-id="${appId}"] .convenience-icon-glyph`);
+      if (!glyph) return;
+      const iconBadge = glyph.querySelector(".convenience-icon-unread");
+      if (count > 0 && !iconBadge) glyph.appendChild(createUnreadBadgeElement("convenience-icon-unread"));
+      else if (count === 0 && iconBadge) iconBadge.remove();
+    });
+  }
 }
 
 // ★解放の通知（実績の達成トーストと同じ見た目。実績の通知と重なる時は少し遅らせる）
@@ -832,6 +907,7 @@ function renderTutorialPanel() {
         titleEl.className = "progress-panel-chapter-title";
         titleEl.textContent = item.title || "（無題）";
         row.appendChild(titleEl);
+        if (isTutorialUnread(item.id)) row.appendChild(createUnreadBadgeElement("unread-mark")); // ★解放されたけど、まだ読んでいない
         
         row.onclick = (event) => {
           event.stopPropagation();
@@ -860,6 +936,7 @@ function renderTutorialDetail(panel) {
   panel.innerHTML = "";
   const item = getFlatTutorialItems()[tutorialCursorIndex];
   if (!item) { tutorialDetailOpen = false; renderTutorialPanel(); return; }
+  markTutorialSeen(item.id); // ★詳細を開いた＝確認済み（バッジが消える）
   
   const title = document.createElement("h3");
   title.className = "monster-codex-title";

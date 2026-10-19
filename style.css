@@ -878,6 +878,7 @@ rt {
 }
 
 .tab-btn{
+    position: relative; /* ★未確認バッジ（赤丸の「!」）の位置基準 */
     flex: 1;
     padding: 8px 0;
     background-color: #222;
@@ -8114,4 +8115,53 @@ rt {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.2);
   cursor: default;
+}
+
+
+/* ===== 未確認バッジ（赤丸・白文字の「!」）：実績・チュートリアルに、解放されたのにまだ確認していない項目がある時 ===== */
+.unread-badge,
+.convenience-icon-unread,
+.unread-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #e53935;
+    color: #fff;
+    font-weight: bold;
+    border-radius: 50%;
+    line-height: 1;
+    box-sizing: border-box;
+}
+
+/* 便利タブのボタン：右上に重ねる */
+.unread-badge {
+    position: absolute;
+    top: -3px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    font-size: 10px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* 便利タブの実績／チュートリアルのアイコン：左上に重ねる（右上は「達成数／全数」のバッジがあるため） */
+.convenience-icon-unread {
+    position: absolute;
+    top: -5px;
+    left: -6px;
+    width: 14px;
+    height: 14px;
+    font-size: 10px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* 一覧の各行：項目名の右に並べる */
+.unread-mark {
+    width: 16px;
+    height: 16px;
+    font-size: 11px;
+    margin-left: 6px;
+    flex: none;
 }

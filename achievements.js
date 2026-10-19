@@ -61,14 +61,19 @@ function isAchievementConditionMet(achievement) {
 async function checkAchievements() {
   if (!player) return;
   if (!Array.isArray(player.unlockedAchievementIds)) player.unlockedAchievementIds = [];
+  // ★未確認バッジ用：古いセーブに記録が無い時は、今まで達成済みの実績を「確認済み」として引き継ぐ（新しく達成する前に必ず済ませる）
+  if (!Array.isArray(player.seenAchievementIds)) player.seenAchievementIds = player.unlockedAchievementIds.slice();
+  let anyNewAchievement = false;
   const achievements = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.achievements))
     ? scenarioProject.achievements : [];
   for (const achievement of achievements) {
     if (!achievement.id || player.unlockedAchievementIds.includes(achievement.id)) continue;
     if (!isAchievementConditionMet(achievement)) continue;
     player.unlockedAchievementIds.push(achievement.id);
+    anyNewAchievement = true;
     grantAchievementReward(achievement);
   }
+  if (anyNewAchievement && typeof updateUnreadBadges === "function") updateUnreadBadges(); // convenience.js
   if (typeof checkTutorialUnlocks === "function") checkTutorialUnlocks(); // ★チュートリアルの解放条件も同じタイミング（戦闘勝利後・話クリア後など）で確認する（convenience.js）
 }
 
@@ -209,6 +214,7 @@ function renderAchievementsList(container) {
     // ★未達成のものは、hiddenがfalseでも（一覧に出す代わりに）名前を「？？？」にする
     titleEl.textContent = unlocked ? (achievement.name || "（名称未設定）") : "？？？";
     row.appendChild(titleEl);
+    if (unlocked && typeof isAchievementUnread === "function" && isAchievementUnread(achievement.id)) row.appendChild(createUnreadBadgeElement("unread-mark")); // ★達成したけど、まだ詳細を見ていない（convenience.js）
     
     row.onclick = (event) => {
       event.stopPropagation();
@@ -240,6 +246,7 @@ function renderAchievementDetail(panel) {
   const achievement = list[achievementsCursorIndex];
   if (!achievement) { achievementsDetailOpen = false; renderAchievementsPanel(); return; }
   const unlocked = isAchievementUnlocked(achievement);
+  if (unlocked && typeof markAchievementSeen === "function") markAchievementSeen(achievement.id); // ★詳細を開いた＝確認済み（バッジが消える。convenience.js）
   // ★未達成の間は、hiddenがfalseでも（一覧同様）？？？のままにする
   const canReveal = unlocked;
   
