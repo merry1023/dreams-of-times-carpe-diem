@@ -74,7 +74,14 @@ function sanitizeInventoryInstanceIds() {
  * @param {number} quantity - 追加する個数（デフォルト1）
  * @returns {boolean} 全部入りきったら true、途中で満杯になったら false
  */
+// ★アイテムを持ち物に加える。チュートリアルの解放条件「初めて入手したら」のため、入手できたら記録する
 function addItem(itemId, quantity = 1, options = {}) {
+  const added = addItemCore(itemId, quantity, options);
+  if (added && typeof recordItemObtainedForTutorial === "function") recordItemObtainedForTutorial(itemId); // convenience.js
+  return added;
+}
+
+function addItemCore(itemId, quantity = 1, options = {}) {
   const master = ITEM_MASTER[itemId];
   if (!master) {
     console.error(`アイテムID「${itemId}」が ITEM_MASTER に存在しません`);

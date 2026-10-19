@@ -69,6 +69,7 @@ async function checkAchievements() {
     player.unlockedAchievementIds.push(achievement.id);
     grantAchievementReward(achievement);
   }
+  if (typeof checkTutorialUnlocks === "function") checkTutorialUnlocks(); // ★チュートリアルの解放条件も同じタイミング（戦闘勝利後・話クリア後など）で確認する（convenience.js）
 }
 
 // ★実績の報酬（経験値・お金・アイテム）を付与し、達成トーストを表示する

@@ -644,11 +644,110 @@ function handleElementChartKeyDown(event) {
 let tutorialCursorIndex = 0; // ★一覧でのカーソル位置（表示上の通し番号。カテゴリ見出しの行は数えない）
 let tutorialDetailOpen = false;
 
-// ★scenarioProject.tutorials（[{ id, category, title, body }, ...]）を、カテゴリごとにまとめて返す
+// ===== チュートリアルの解放条件（要望対応） =====
+// ★チュートリアルには、任意で「解放条件」を付けられる（シナリオビルドの「チュートリアル管理」タブ）。
+//   条件が1つも無いチュートリアルは、従来どおり最初から一覧に出る。条件があるものは、全ての条件を満たした時に
+//   解放され（画面上部に通知が出る）、一度解放されたら以降は条件を満たさなくなっても出たままになる。
+//   ・requiredChapterId：この話をクリアしたら
+//   ・requiredItemId：このアイテムを初めて入手したら（player.obtainedItemIds に記録）
+//   ・requiredFacilityId：この施設に初めて入ったら（player.usedFacilityIds に記録）
+//   ・requiredRank / requiredProgress / requiredDays / requiredFlag：話の解禁条件と同じ（evaluateChapterUnlockConditions）
+//   解放済みの一覧は player.unlockedTutorialIds（セーブデータに丸ごと含まれる。古いセーブには無いので未定義は空として扱う）
+function tutorialHasUnlockCondition(entry) {
+  return !!(entry && (entry.requiredChapterId || entry.requiredItemId || entry.requiredFacilityId
+    || entry.requiredRank || (Number(entry.requiredProgress) > 0) || (Number(entry.requiredDays) > 0) || entry.requiredFlag));
+}
+
+// ★アイテムを初めて入手したことを記録する（inventory.js の addItem から呼ばれる）
+function recordItemObtainedForTutorial(itemId) {
+  if (typeof player === "undefined" || !player || !itemId) return;
+  if (!player.obtainedItemIds) player.obtainedItemIds = {};
+  if (player.obtainedItemIds[itemId]) return;
+  player.obtainedItemIds[itemId] = true;
+  checkTutorialUnlocks();
+}
+
+// ★施設に入ったことを記録する（town.js の openCustomFacility から呼ばれる）
+function recordFacilityUsedForTutorial(facilityId) {
+  if (typeof player === "undefined" || !player || !facilityId) return;
+  if (!player.usedFacilityIds) player.usedFacilityIds = {};
+  if (player.usedFacilityIds[facilityId]) return;
+  player.usedFacilityIds[facilityId] = true;
+  checkTutorialUnlocks();
+}
+
+// ★1つのチュートリアルの条件を、今の状態で全て満たしているか（解放済みかどうかは見ない）
+function isTutorialConditionMet(entry) {
+  if (typeof player === "undefined" || !player) return false;
+  if (typeof evaluateChapterUnlockConditions === "function" && !evaluateChapterUnlockConditions(entry)) return false; // scenariobuild.js（話・ランク・進行度・日数・フラグ）
+  if (entry.requiredItemId && !(player.obtainedItemIds && player.obtainedItemIds[entry.requiredItemId])) return false;
+  if (entry.requiredFacilityId && !(player.usedFacilityIds && player.usedFacilityIds[entry.requiredFacilityId])) return false;
+  return true;
+}
+
+// ★一覧に出してよいチュートリアルか（条件なし、または解放済み）
+function isTutorialUnlocked(entry) {
+  if (!tutorialHasUnlockCondition(entry)) return true;
+  return !!(typeof player !== "undefined" && player && Array.isArray(player.unlockedTutorialIds) && player.unlockedTutorialIds.includes(entry.id));
+}
+
+// ★新しく条件を満たしたチュートリアルを解放して通知する。話のクリア・アイテム入手・施設に入る・拠点に戻る・
+//   実績チェックのタイミングなどから随時呼ぶ。options.silent が true なら通知は出さない
+function checkTutorialUnlocks(options = {}) {
+  if (typeof player === "undefined" || !player) return;
+  const list = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.tutorials)) ? scenarioProject.tutorials : [];
+  // ★古いセーブ（この機能より前）：入手済みの持ち物は「初めて入手した」扱いにしておく。
+  //   また、初回の判定でまとめて解放されるものは通知しない（通知が一気に出てしまうのを防ぐ）
+  let silent = !!options.silent;
+  if (!player.obtainedItemIds) {
+    player.obtainedItemIds = {};
+    if (typeof inventorySlots !== "undefined" && Array.isArray(inventorySlots)) {
+      inventorySlots.forEach(slot => { if (slot && slot.itemId) player.obtainedItemIds[slot.itemId] = true; });
+    }
+  }
+  if (!Array.isArray(player.unlockedTutorialIds)) { player.unlockedTutorialIds = []; silent = true; }
+  const newTitles = [];
+  list.forEach(entry => {
+    if (!entry || !entry.id || !tutorialHasUnlockCondition(entry)) return;
+    if (player.unlockedTutorialIds.includes(entry.id)) return;
+    if (!isTutorialConditionMet(entry)) return;
+    player.unlockedTutorialIds.push(entry.id);
+    newTitles.push(entry.title || "（無題）");
+  });
+  if (!silent && newTitles.length > 0) showTutorialUnlockToast(newTitles);
+}
+
+// ★解放の通知（実績の達成トーストと同じ見た目。実績の通知と重なる時は少し遅らせる）
+function showTutorialUnlockToast(titles) {
+  const show = () => {
+    const toast = document.createElement("div");
+    toast.className = "achievement-toast";
+    const titleEl = document.createElement("div");
+    titleEl.className = "achievement-toast-title";
+    titleEl.textContent = "❓ チュートリアルが追加されました";
+    toast.appendChild(titleEl);
+    const nameEl = document.createElement("div");
+    nameEl.className = "achievement-toast-name";
+    nameEl.textContent = titles.length <= 2 ? titles.join("・") : `${titles[0]} ほか${titles.length - 1}件`;
+    toast.appendChild(nameEl);
+    const hintEl = document.createElement("div");
+    hintEl.className = "achievement-toast-reward";
+    hintEl.textContent = "便利タブの「チュートリアル」から読めます";
+    toast.appendChild(hintEl);
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add("show"));
+    setTimeout(() => { toast.classList.remove("show"); setTimeout(() => toast.remove(), 500); }, 3500);
+  };
+  if (document.querySelector(".achievement-toast")) setTimeout(show, 4200); else show();
+}
+
+// ★scenarioProject.tutorials（[{ id, category, title, body, requiredXxx... }, ...]）を、カテゴリごとにまとめて返す
+//   （解放条件があって、まだ解放されていないものは含めない）
 function getGroupedTutorials() {
   const list = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.tutorials)) ? scenarioProject.tutorials : [];
   const groups = [];
   list.forEach(entry => {
+    if (!isTutorialUnlocked(entry)) return;
     const categoryName = entry.category || "その他";
     let group = groups.find(g => g.category === categoryName);
     if (!group) { group = { category: categoryName, items: [] }; groups.push(group); }
@@ -680,6 +779,7 @@ function openTutorialPanel() {
   if (creditsPanel) creditsPanel.classList.add("hidden");
   tutorialCursorIndex = 0;
   tutorialDetailOpen = false;
+  checkTutorialUnlocks({ silent: true }); // ★開く時にも解放状況を最新にしておく（rank・進行度・フラグ条件など）
   renderTutorialPanel();
   window.removeEventListener("keydown", handleTutorialKeyDown); // 二重登録防止
   window.addEventListener("keydown", handleTutorialKeyDown);

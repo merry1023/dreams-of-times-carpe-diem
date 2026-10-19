@@ -5146,14 +5146,31 @@ function ensureCustomQuestsRegistered() {
 
 // ★便利タブの「チュートリアル」アイコンから見られる、カテゴリ分けされたヘルプ項目を編集する
 function getTutorialManagerConfig() {
+  const chapterOptions = [{ value: "", label: "（条件なし）" }]
+    .concat((scenarioProject.chapters || []).map(c => ({ value: c.id, label: c.title || c.id })));
+  const facilityOptions = [{ value: "", label: "（条件なし）" }]
+    .concat((scenarioProject.facilities || []).map(f => ({ value: f.id, label: f.name || f.id })));
+  const rankOptions = [{ value: "", label: "（条件なし）" }]
+    .concat((typeof RANK_ORDER !== "undefined" ? RANK_ORDER : ["F", "E", "D", "C", "B", "A", "S"]).map(r => ({ value: r, label: r })));
   return {
-    note: "便利タブの「チュートリアル」アイコンから見られる項目を編集します。同じ「カテゴリ」を持つ項目は、一覧でまとめて表示されます。",
+    note: "便利タブの「チュートリアル」アイコンから見られる項目を編集します。同じ「カテゴリ」を持つ項目は、一覧でまとめて表示されます。" +
+      "「解放条件」を1つでも指定すると、その項目は条件を満たすまで一覧に出ません（画面上部に通知が出て、解放されます）。複数指定した場合は、全てを満たした時に解放されます。" +
+      "一度解放されたら、そのセーブデータでは出たままになります。全て空欄なら、最初から表示されます。",
     category: "tutorials",
+    collapsible: true,
+    getEntitySummary: (entity) => ((typeof tutorialHasUnlockCondition === "function" && tutorialHasUnlockCondition(entity)) ? "🔒 " : "❓ ") + (entity.category || "その他") + "／" + (entity.title || "（無題）"),
     getList: () => scenarioProject.tutorials,
     fields: [
       { key: "category", label: "カテゴリ", type: "text", placeholder: "例：戦闘の基本" },
       { key: "title", label: "項目名", type: "text", placeholder: "例：状態異常について" },
-      { key: "body", label: "本文", type: "textarea", placeholder: "実際に表示される説明文（改行OK）" }
+      { key: "body", label: "本文", type: "textarea", placeholder: "実際に表示される説明文（改行OK）" },
+      { key: "requiredChapterId", label: "解放条件：この話をクリアしたら", type: "select", options: chapterOptions },
+      { key: "requiredItemId", label: "解放条件：このアイテムを初めて入手したら（アイテムID）", type: "text", placeholder: "例：herb_001（空欄なら条件なし）", list: "scenariobuild-item-datalist" },
+      { key: "requiredFacilityId", label: "解放条件：この施設に初めて入ったら", type: "select", options: facilityOptions },
+      { key: "requiredRank", label: "解放条件：冒険者ランクがこれ以上になったら", type: "select", options: rankOptions },
+      { key: "requiredProgress", label: "解放条件：進行度がこれ以上になったら（0なら条件なし）", type: "number", placeholder: "0" },
+      { key: "requiredDays", label: "解放条件：経過日数がこれ以上になったら（0なら条件なし）", type: "number", placeholder: "0" },
+      { key: "requiredFlag", label: "解放条件：このフラグが立っていたら（フラグ名）", type: "text", placeholder: "空欄なら条件なし" }
     ],
     newEntity: () => ({ id: generateId("tutorial"), category: "その他", title: "新しい項目", body: "" })
   };

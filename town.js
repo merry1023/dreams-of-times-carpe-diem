@@ -95,6 +95,7 @@ async function openTownMenu() {
   //   直前の現在地が村以外だった時（＝実際に村へ来た時）だけ「到着」とみなす
   const isFreshArrival = currentLocationKey !== "town";
   currentLocationKey = "town"; // ★セーブ/ロードで現在地を復元するための記録
+  if (typeof checkTutorialUnlocks === "function") checkTutorialUnlocks(); // ★チュートリアルの解放条件（ランク・進行度・フラグ・話クリアなど）を拠点に戻るたびに確認する（convenience.js）
   if (player) player.lastVisitedBaseKey = "town"; // ★要望対応：敗北時に「直前に立ち寄った拠点」へ戻すための記録
   chapter1Finished = true; // ★ここに到達した時点で第一話は完了している
   // ★マップ編集でカリの村（拠点）に設定した背景画像があればそちらを使う。
@@ -494,6 +495,7 @@ async function stayAtInn() {
 //     「戻る」を押しても村に飛ばされてしまい、その拠点の施設一覧に戻れない不具合があった
 async function openCustomFacility(facility, returnTo) {
   const goBack = typeof returnTo === "function" ? returnTo : openTownMenu;
+  if (typeof recordFacilityUsedForTutorial === "function") recordFacilityUsedForTutorial(facility.id); // ★チュートリアルの解放条件「施設に初めて入ったら」（convenience.js）
   currentLocationKey = "facility_" + facility.id; // ★セーブ/ロードで現在地を復元するための記録
   if (facility.bgImage) setBackgroundImage(facility.bgImage);
   if (facility.bgTrack && typeof switchScenarioBGM === "function") switchScenarioBGM(facility.bgTrack, { fadeMs: 600 });
