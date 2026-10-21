@@ -216,6 +216,15 @@ async function startBattle(monsterKeys, options = {}) {
     const enemyLevel = (typeof overrideLevel === "number" && overrideLevel > 0) ? overrideLevel : level;
     return createEnemyUnit(key, enemyLevel);
   });
+  // ★コロシアムの縛り「敵の体力・攻撃力が○倍」（colosseum.js）：最大HP・攻撃力（形態ごとの倍率の基準になるbaseAtkも）を引き上げる
+  if (options.isColosseum && options.colosseumRestrictions) {
+    const hpMult = options.colosseumRestrictions.enemyHpMultiplier || 1;
+    const atkMult = options.colosseumRestrictions.enemyAtkMultiplier || 1;
+    enemies.forEach(e => {
+      if (hpMult !== 1) { e.maxHp = Math.round(e.maxHp * hpMult); e.hp = e.maxHp; }
+      if (atkMult !== 1) { e.atk = Math.round(e.atk * atkMult); e.baseAtk = Math.round(e.baseAtk * atkMult); }
+    });
+  }
   assignDisplayNames(enemies);
   const isBoss = BOSS_MONSTER_KEYS.includes(keys[0]); // ★BGMの切り替えや演出の判定に使う（先頭＝ボス本体）
   
@@ -227,6 +236,7 @@ async function startBattle(monsterKeys, options = {}) {
     targetIndex: 0, // ★今カーソルが乗っている（＝次に選ばれる）敵のenemies内インデックス
     isBoss: isBoss,
     isScripted: !!options.isScripted, // ★シナリオ演出用の戦闘かどうか
+    colosseumRestrictions: options.isColosseum ? (options.colosseumRestrictions || null) : null, // ★コロシアムの縛り（通常攻撃禁止・スキル禁止など。colosseum.js）
     isColosseum: !!options.isColosseum, // ★要望対応：コロシアム（施設編集）の戦闘かどうか。アイテム使用禁止・逃走不可・専用の勝敗処理になる
     isTrial: false,
     // ★プレイヤー側の状態効果（敵ごとではなく戦闘全体で1つ）
@@ -782,12 +792,12 @@ async function tickPlayerTurnBasedBuffs() {
 async function handleFightMenu() {
   // ★要望対応：装備している武器・防具に「任意発動」のスキルがあれば、選択肢に追加する
   const activeWeaponSkills = getEquipmentSkillsFor(player.equipment, "active");
-  const fightChoices = [
-    { text: "通常攻撃", next: "normal" },
-    { text: "スキル", next: "skill" }
-  ];
-  if (typeof getPlayerUpperSkills === "function" && getPlayerUpperSkills().length > 0) fightChoices.push({ text: "上位スキル", next: "upperskill" }); // ★要望対応：パネルで習得した上位スキル専用の選択肢
-  if (activeWeaponSkills.length > 0) fightChoices.push({ text: "武器スキル", next: "weaponskill" });
+  const restrictions = (battleState && battleState.colosseumRestrictions) || {}; // ★コロシアムの縛りで使えない行動は、選択肢に出さない
+  const fightChoices = [];
+  if (!restrictions.noNormal) fightChoices.push({ text: "通常攻撃", next: "normal" });
+  if (!restrictions.noSkill) fightChoices.push({ text: "スキル", next: "skill" });
+  if (!restrictions.noUpper && typeof getPlayerUpperSkills === "function" && getPlayerUpperSkills().length > 0) fightChoices.push({ text: "上位スキル", next: "upperskill" }); // ★要望対応：パネルで習得した上位スキル専用の選択肢
+  if (!restrictions.noWeaponSkill && activeWeaponSkills.length > 0) fightChoices.push({ text: "武器スキル", next: "weaponskill" });
   if (!battleState.isColosseum) fightChoices.push({ text: "道具", next: "item" }); // ★要望対応：コロシアムはアイテム使用禁止
   fightChoices.push({ text: "戻る", next: "back", isBack: true });
   const choice = await displayChoices(fightChoices);
@@ -1568,12 +1578,12 @@ async function performCompanionAction(companion) {
   
   // ★要望対応：装備している武器・防具に「任意発動」のスキルがあれば、選択肢に追加する
   const activeWeaponSkills = getEquipmentSkillsFor(companion.equipment, "active");
-  const actionChoices = [
-    { text: "たたかう", next: "fight" },
-    { text: "スキル", next: "skill" }
-  ];
-  if (typeof getCompanionUpperSkills === "function" && getCompanionUpperSkills(companion).length > 0) actionChoices.push({ text: "上位スキル", next: "upperskill" }); // ★要望対応：パネルで習得した上位スキル専用の選択肢
-  if (activeWeaponSkills.length > 0) actionChoices.push({ text: "武器スキル", next: "weaponskill" });
+  const restrictions = (battleState && battleState.colosseumRestrictions) || {}; // ★コロシアムの縛りで使えない行動は、選択肢に出さない
+  const actionChoices = [];
+  if (!restrictions.noNormal) actionChoices.push({ text: "たたかう", next: "fight" });
+  if (!restrictions.noSkill) actionChoices.push({ text: "スキル", next: "skill" });
+  if (!restrictions.noUpper && typeof getCompanionUpperSkills === "function" && getCompanionUpperSkills(companion).length > 0) actionChoices.push({ text: "上位スキル", next: "upperskill" }); // ★要望対応：パネルで習得した上位スキル専用の選択肢
+  if (!restrictions.noWeaponSkill && activeWeaponSkills.length > 0) actionChoices.push({ text: "武器スキル", next: "weaponskill" });
   if (!battleState.isColosseum) actionChoices.push({ text: "道具", next: "item" }); // ★要望対応：以前は主人公のターンでしか道具を使えなかったが、仲間の行動選択でも使えるようにする（コロシアムはアイテム使用禁止）
   actionChoices.push({ text: "パス", next: "pass" }); // ★要望対応：この仲間の行動をパスできるようにする。パスすると行動回数を消費せず次の仲間へ進む
   
