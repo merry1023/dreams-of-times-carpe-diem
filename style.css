@@ -8165,3 +8165,30 @@ rt {
     margin-left: 6px;
     flex: none;
 }
+
+
+/* ===== 図鑑の分類タブ（魔物／魚／料理／アイテム／家具） ===== */
+.codex-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    margin: 0 0 8px;
+}
+
+.codex-tab {
+    background: #222;
+    color: #aaa;
+    border: 1px solid #444;
+    border-radius: 12px;
+    padding: 3px 10px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.codex-tab.active {
+    background: #ffc107;
+    color: #1a1a1a;
+    border-color: #ffc107;
+    font-weight: bold;
+}
