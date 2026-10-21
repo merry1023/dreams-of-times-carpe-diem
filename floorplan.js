@@ -513,9 +513,29 @@ function buildFixedItemEditorSection(area, floorPlan, room, persist) {
   
   if (!scenarioBuildFixedItemEditorOpen) return wrap;
   
+  // ★要望対応：床／天井のレイヤー切替。天井側では、天井に取り付ける家具（isCeiling）だけを固定で置ける
+  const isCeilingLayer = scenarioBuildFixedItemLayer === "ceiling";
+  const layerRow = document.createElement("div");
+  layerRow.className = "scenariobuild-chapter-buttons";
+  [["floor", "床を編集"], ["ceiling", "天井を編集"]].forEach(([key, label]) => {
+    const layerBtn = document.createElement("button");
+    layerBtn.className = "devmode-btn";
+    layerBtn.textContent = (scenarioBuildFixedItemLayer === key ? "● " : "") + label;
+    if (scenarioBuildFixedItemLayer === key) layerBtn.style.fontWeight = "bold";
+    layerBtn.onclick = (event) => {
+      event.stopPropagation();
+      if (scenarioBuildFixedItemLayer === key) return;
+      scenarioBuildFixedItemLayer = key;
+      scenarioBuildFixedItemSelectedCell = null;
+      renderScenarioBuildPanel();
+    };
+    layerRow.appendChild(layerBtn);
+  });
+  wrap.appendChild(layerRow);
+  
   const note = document.createElement("p");
   note.className = "devmode-note";
-  note.textContent = "ここに置いたものは、プレイヤーの持ち物とは関係なく、この部屋に最初から固定で置かれます（間取り自体の一部）。マスを選ぶと、下に設置・編集欄が出ます。置けるのは今のところ「階段」と「家具（家具管理タブに登録済みのもの）」です。";
+  note.textContent = "ここに置いたものは、プレイヤーの持ち物とは関係なく、この部屋に最初から固定で置かれます（間取り自体の一部）。マスを選ぶと、下に設置・編集欄が出ます。置けるのは「階段」（床のみ）と「家具（家具管理タブに登録済みのもの）」です。「天井を編集」に切り替えると、天井に取り付ける家具（照明など）を置けます。";
   wrap.appendChild(note);
   
   const roomW = room.width || 1, roomH = room.height || 1;
@@ -526,13 +546,14 @@ function buildFixedItemEditorSection(area, floorPlan, room, persist) {
   
   for (let y = 0; y < roomH; y++) {
     for (let x = 0; x < roomW; x++) {
-      const item = findFixedItemAt(room, x, y, false); // ★「さらに細かく編集する」は今のところ床レイヤーのみ対応
+      const item = findFixedItemAt(room, x, y, isCeilingLayer); // ★要望対応：選択中のレイヤー（床／天井）の設置物だけを表示
       const cellBtn = document.createElement("button");
       cellBtn.type = "button";
       cellBtn.className = "fixeditem-editor-cell"
         + (item ? " fixeditem-editor-cell-filled" : "")
         + (item && item.kind === "stairs" ? " fixeditem-editor-cell-stairs" : "")
         + (item && item.kind === "furniture" && item.locked ? " fixeditem-editor-cell-locked" : "")
+        + (item && isCeilingLayer ? " fixeditem-editor-cell-ceiling" : "")
         + (scenarioBuildFixedItemSelectedCell && scenarioBuildFixedItemSelectedCell.x === x && scenarioBuildFixedItemSelectedCell.y === y ? " fixeditem-editor-cell-selected" : "");
       if (item) {
         const isOrigin = item.x === x && item.y === y; // ★複数マスの家具は左上のマスにだけ名前を出す
@@ -561,11 +582,12 @@ function buildFixedItemCellDetail(area, floorPlan, room, cell, persist) {
   box.style.flexDirection = "column";
   box.style.alignItems = "flex-start";
   const items = ensureRoomFixedItems(room);
-  const existing = findFixedItemAt(room, cell.x, cell.y, false);
+  const isCeilingLayer = scenarioBuildFixedItemLayer === "ceiling"; // ★要望対応：床／天井レイヤー
+  const existing = findFixedItemAt(room, cell.x, cell.y, isCeilingLayer);
   
   const title = document.createElement("p");
   title.className = "devmode-note";
-  title.textContent = `選択中のマス：(${cell.x}, ${cell.y})`;
+  title.textContent = `選択中のマス：(${cell.x}, ${cell.y})（${isCeilingLayer ? "天井" : "床"}）`;
   box.appendChild(title);
   
   if (existing) {
@@ -610,6 +632,7 @@ function buildFixedItemCellDetail(area, floorPlan, room, cell, persist) {
     
     const stairsRow = document.createElement("div");
     stairsRow.className = "scenariobuild-chapter-buttons";
+    if (isCeilingLayer) stairsRow.style.display = "none"; // ★階段は床にしか置けない
     const stairsUpBtn = document.createElement("button");
     stairsUpBtn.className = "devmode-btn";
     stairsUpBtn.textContent = "階段を置く（上の階へ）";
@@ -635,27 +658,26 @@ function buildFixedItemCellDetail(area, floorPlan, room, cell, persist) {
     
     const furnitureNote = document.createElement("p");
     furnitureNote.className = "devmode-note";
-    furnitureNote.textContent = "家具（家具管理タブに登録済みのもの）を置く：";
+    furnitureNote.textContent = isCeilingLayer ? "天井に取り付ける家具（家具管理タブに登録済みのもの）を置く：" : "家具（家具管理タブに登録済みのもの）を置く：";
     box.appendChild(furnitureNote);
     
     const furnitureListWrap = document.createElement("div");
     furnitureListWrap.className = "fixeditem-furniture-picker";
-    // ★天井家具（isCeiling）は、この固定配置エディタでは床・天井の区別が無いため今回は対象外
-    //   （プレイヤーが天井選択モードで自分の持ち物として設置する運用にしている）
-    const floorFurnitureList = (scenarioProject.furniture || []).filter(def => !def.isCeiling);
+    // ★要望対応：選択中のレイヤーに合う家具だけを出す（天井レイヤーなら天井家具のみ、床レイヤーなら床の家具のみ）
+    const floorFurnitureList = (scenarioProject.furniture || []).filter(def => !!def.isCeiling === isCeilingLayer);
     floorFurnitureList.forEach(def => {
       const btn = document.createElement("button");
       btn.className = "devmode-btn";
       btn.textContent = def.name || "（無名の家具）";
       // ★家具管理タブの縦×横サイズぶんのマスを占有する。はみ出す・他の設置物と重なる場合は置けない
       const fw = Math.max(1, def.width || 1), fh = Math.max(1, def.height || 1);
-      const canPlace = isFurniturePlacementFree(room, cell.x, cell.y, fw, fh, null, null, false); // furniture.js
+      const canPlace = isFurniturePlacementFree(room, cell.x, cell.y, fw, fh, null, null, isCeilingLayer); // furniture.js
       btn.textContent = (def.name || "（無名の家具）") + (fw > 1 || fh > 1 ? `（${fw}×${fh}）` : "") + (canPlace ? "" : "（ここには置けない）");
       btn.disabled = !canPlace;
       if (!canPlace) btn.title = "部屋の範囲からはみ出すか、他の設置物と重なります。左上のマスを選び直してください";
       btn.onclick = (event) => {
         event.stopPropagation();
-        if (!isFurniturePlacementFree(room, cell.x, cell.y, fw, fh, null, null, false)) return;
+        if (!isFurniturePlacementFree(room, cell.x, cell.y, fw, fh, null, null, isCeilingLayer)) return;
         items.push({ id: generateId("fixeditem"), kind: "furniture", furnitureId: def.id, x: cell.x, y: cell.y, w: fw, h: fh, locked: true });
         persist();
       };
@@ -664,7 +686,7 @@ function buildFixedItemCellDetail(area, floorPlan, room, cell, persist) {
     if (floorFurnitureList.length === 0) {
       const emptyNote = document.createElement("p");
       emptyNote.className = "devmode-note";
-      emptyNote.textContent = "（家具管理タブにまだ何も登録されていません）";
+      emptyNote.textContent = isCeilingLayer ? "（天井に取り付ける家具が家具管理タブにまだ登録されていません。家具の編集で「天井に取り付ける」にチェックしてください）" : "（家具管理タブにまだ何も登録されていません）";
       furnitureListWrap.appendChild(emptyNote);
     }
     box.appendChild(furnitureListWrap);
@@ -1073,7 +1095,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
         return;
       }
       if (sub.next === "move") {
-        placing = { fixedItem: item, def, rotation: 0, isNew: false };
+        placing = { fixedItem: item, def, rotation: 0, isNew: false, isCeiling: !!(def && def.isCeiling) };
         resumeKeys(); render();
         return;
       }
@@ -1155,7 +1177,7 @@ function runRoomInteraction(area, floorPlan, startRoomId, goBack) {
       else if (event.key === "z" || event.key === "Z" || event.key === " ") {
         event.preventDefault();
         const isCeiling = mode === "ceiling";
-        const fixedAtCell = isCeiling ? null : findFixedItemAt(room, cursor.x, cursor.y, false); // ★天井の固定設置物は今のところ非対応
+        const fixedAtCell = findFixedItemAt(room, cursor.x, cursor.y, isCeiling); // ★要望対応：天井選択モードでは天井の固定設置物を拾う
         const atCell = getFurnitureAtCell(room, cursor.x, cursor.y, null, isCeiling); // furniture.js
         if (fixedAtCell) openFixedItemActionMenu(fixedAtCell);
         else if (atCell) openFurnitureActionMenu(atCell);

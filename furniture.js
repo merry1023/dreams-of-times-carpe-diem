@@ -170,16 +170,15 @@ function computeRoomBrightnessGrid(room) {
   const base = Number.isFinite(room.brightness) ? Math.max(0, Math.min(ROOM_BRIGHTNESS_MAX, room.brightness)) : ROOM_BRIGHTNESS_DEFAULT;
   const grid = [];
   for (let y = 0; y < h; y++) { grid.push(new Array(w).fill(base)); }
-  getRoomPlacedFurniture(room.id).forEach(inst => {
-    const def = findFurnitureDef(inst.furnitureId);
+  // ★要望対応：照明1つぶんを明るさグリッドに加算する（持ち物として置いた照明も、間取り編集で固定設置した照明も同じ計算）
+  const applyLight = (def, lightOn, px, py, size) => {
     if (!def || def.type !== "lighting") return;
-    if (inst.lightOn === false) return; // ★要望対応：オフにした照明は照らさない（未設定＝オン）
+    if (lightOn === false) return; // ★要望対応：オフにした照明は照らさない（未設定＝オン）
     const luminance = Math.max(0, Math.min(ROOM_BRIGHTNESS_MAX, Number(def.luminance) || 0));
     const range = Math.max(0, Number(def.lightRange) || 0);
     if (luminance <= 0 || range <= 0) return;
-    const size = getFurnitureEffectiveSize(def, inst.placement.rotation);
-    const cx = inst.placement.x + size.w / 2; // ★照明の中心（家具の占める範囲の真ん中）
-    const cy = inst.placement.y + size.h / 2;
+    const cx = px + size.w / 2; // ★照明の中心（家具の占める範囲の真ん中）
+    const cy = py + size.h / 2;
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const dist = Math.hypot((x + 0.5) - cx, (y + 0.5) - cy);
@@ -187,6 +186,18 @@ function computeRoomBrightnessGrid(room) {
         grid[y][x] += luminance * (1 - dist / range);
       }
     }
+  };
+  getRoomPlacedFurniture(room.id).forEach(inst => {
+    const def = findFurnitureDef(inst.furnitureId);
+    if (!def) return;
+    applyLight(def, inst.lightOn, inst.placement.x, inst.placement.y, getFurnitureEffectiveSize(def, inst.placement.rotation));
+  });
+  // ★要望対応：間取り編集で固定設置した照明（天井の照明など）も部屋を照らす
+  (Array.isArray(room.fixedItems) ? room.fixedItems : []).forEach(item => {
+    if (item.kind !== "furniture") return;
+    const def = findFurnitureDef(item.furnitureId);
+    if (!def) return;
+    applyLight(def, item.lightOn, item.x, item.y, getFixedItemSize(item)); // floorplan.js
   });
   return grid.map(row => row.map(v => Math.min(ROOM_BRIGHTNESS_MAX, v)));
 }
@@ -383,11 +394,12 @@ function renderRoomView(room, uiState, floorPlan) {
     if (!!def.isCeiling !== isCeilingLayer) return; // ★普段は天井の家具を表示しない（天井選択モードでのみ表示）
     grid.appendChild(buildFurnitureBlockEl(def, inst.placement.x, inst.placement.y, "furniture-placement-block-occupied" + (def.isCeiling ? " room-view-ceiling-block" : ""), cellPx, inst.placement.rotation));
   });
-  // ★要望対応：「さらに細かく編集する」で置いた固定設置物（階段・固定家具）も、部屋の中に描く（今のところ床レイヤーのみ）
-  if (!isCeilingLayer) {
+  // ★要望対応：「さらに細かく編集する」で置いた固定設置物（階段・固定家具）も、部屋の中に描く（階段は床レイヤーのみ、天井家具は天井レイヤーのみ）
+  {
     (Array.isArray(room.fixedItems) ? room.fixedItems : []).forEach(item => {
       if (excludeFixedItemId && item.id === excludeFixedItemId) return; // ★移動中は、元の位置には描かず後でカーソル位置に描く
       if (item.kind === "stairs") {
+        if (isCeilingLayer) return; // ★階段は床にしか描かない
         const stairsDef = { name: item.direction === "up" ? "階段（上へ）" : "階段（下へ）", color: "#8a7a5a" };
         const el = buildFurnitureBlockEl(stairsDef, item.x, item.y, "furniture-placement-block-occupied room-view-stairs-block", cellPx, 0);
         grid.appendChild(el);
@@ -395,7 +407,8 @@ function renderRoomView(room, uiState, floorPlan) {
       }
       const def = findFurnitureDef(item.furnitureId);
       if (!def) return;
-      grid.appendChild(buildFurnitureBlockEl(def, item.x, item.y, "furniture-placement-block-occupied" + (item.locked ? " room-view-fixed-locked" : ""), cellPx, 0));
+      if (!!def.isCeiling !== isCeilingLayer) return; // ★レイヤーが違う固定家具は描かない
+      grid.appendChild(buildFurnitureBlockEl(def, item.x, item.y, "furniture-placement-block-occupied" + (item.locked ? " room-view-fixed-locked" : "") + (def.isCeiling ? " room-view-ceiling-block" : ""), cellPx, 0));
     });
   }
   
