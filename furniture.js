@@ -62,6 +62,9 @@ async function showFurnitureShopList(facility, catalog, goBack) {
   changeGold(-(furniture.price || 0));
   ensurePlayerFurniture();
   player.ownedFurniture.push({ instanceId: generateId("furn"), furnitureId: furniture.id, placement: null });
+  // ★図鑑（家具）用に、買ったことのある家具を記録しておく（売ったり捨てたりしても発見済みのまま）
+  if (!Array.isArray(player.discoveredFurnitureIds)) player.discoveredFurnitureIds = [];
+  if (!player.discoveredFurnitureIds.includes(furniture.id)) player.discoveredFurnitureIds.push(furniture.id);
   if (typeof renderStatusHUD === "function") renderStatusHUD();
   await displayMessage(`「${furniture.name}」を購入した！ 自分の家の部屋に置くことができます。`);
   await showFurnitureShopList(facility, catalog, goBack);

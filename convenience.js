@@ -83,7 +83,7 @@ function getChapterProgressSummary() {
 // 便利タブのアイコン一覧
 const CONVENIENCE_APPS = [
   { id: "saveload", label: "セーブ/ロード", icon: "💾", action: () => openSaveLoadPanel() },
-  { id: "monsterCodex", label: "魔物図鑑", icon: "📖", action: () => openMonsterCodex() },
+  { id: "monsterCodex", label: "図鑑", icon: "📖", action: () => openMonsterCodex() }, // ★要望対応：魔物だけでなく、魚・料理・アイテム・家具も載る図鑑に拡張した
   { id: "progress", label: "進行度", icon: "📊", action: () => openProgressPanel() },
   { id: "achievements", label: "実績", icon: "🏆", action: () => openAchievementsPanel() },
   { id: "elementCombo", label: "属性コンボ", icon: "⚡", action: () => openElementComboPanel() }, // ★要望対応：今使えるコンボと属性の順番の一覧
@@ -332,6 +332,194 @@ function getAffectionLabel(tier) {
 let codexCursorIndex = 0;
 let codexViewMode = "list"; // "list"（一覧） | "detail"（選んだ魔物の詳細）
 
+// ===== 図鑑の分類（要望対応） =====
+// ★図鑑を「魔物」だけでなく「魚」「料理」「アイテム」「家具」にも広げた。未発見のものは名前を「？？？」で伏せ、
+//   「初めて手に入れた（釣った・作った・買った）」と発見済みになる。
+//   ・魚／料理／アイテム：player.obtainedItemIds（初めて入手したアイテムの記録。inventory.js の addItem が付ける）
+//     ※古いセーブでは、持ち物に残っているものだけが発見済みとして引き継がれる
+//   ・家具：購入した時に player.discoveredFurnitureIds へ記録（持っている家具も発見済みとして数える）
+//   操作：←→で分類を切り替え、↑↓で選び、Zキーで詳細、Xキーで閉じる
+const CODEX_TABS = [
+  { id: "monster", label: "魔物" },
+  { id: "fish", label: "魚" },
+  { id: "dish", label: "料理" },
+  { id: "item", label: "アイテム" },
+  { id: "furniture", label: "家具" }
+];
+let codexTab = "monster";
+
+const CODEX_ITEM_CATEGORY_LABELS = { herb: "薬草", potion: "ポーション", material: "魔物素材", weapon: "武器", armor: "防具", tool: "道具", cookingTool: "調理道具", book: "本", misc: "その他" };
+const CODEX_FURNITURE_TYPE_LABELS = { storage: "収納", bed: "寝具", lighting: "照明", decoration: "装飾", seating: "座る", cookingAppliance: "調理魔家電", bookshelf: "本棚" };
+
+function isCodexItemDiscovered(itemId) {
+  if (typeof player === "undefined" || !player || !itemId) return false;
+  if (player.obtainedItemIds && player.obtainedItemIds[itemId]) return true;
+  return typeof getItemCount === "function" && getItemCount(itemId) > 0; // 古いセーブ向け：持っているものは発見済み
+}
+
+function isCodexFurnitureDiscovered(furnitureId) {
+  if (typeof player === "undefined" || !player || !furnitureId) return false;
+  if (Array.isArray(player.discoveredFurnitureIds) && player.discoveredFurnitureIds.includes(furnitureId)) return true;
+  return Array.isArray(player.ownedFurniture) && player.ownedFurniture.some(inst => inst && inst.furnitureId === furnitureId);
+}
+
+function getCodexItemName(itemId) {
+  const master = (typeof ITEM_MASTER !== "undefined") ? ITEM_MASTER[itemId] : null;
+  return master ? master.name : null;
+}
+
+// ★魔物以外の分類の項目一覧：[{ id, name, discovered, tag（一覧の右側に出す短い文字）, lines（詳細の説明行）, imagePath }]
+function getCodexEntries(tab) {
+  const entries = [];
+  const price = (m) => (m && m.listedPrice != null) ? `基本価格：${m.listedPrice}陳` : null;
+  if (tab === "fish") {
+    ((typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.fishItems)) ? scenarioProject.fishItems : []).forEach(f => {
+      if (!f || !f.id) return;
+      entries.push({ id: f.id, name: f.name || "（無名）", discovered: isCodexItemDiscovered(f.id), tag: f.rank ? `ランク${f.rank}` : "",
+        lines: [f.description, f.fishType ? `種類：${f.fishType}` : null, f.rank ? `ランク：${f.rank}` : null, f.size != null ? `大きさ：${f.size}` : null, price(f)].filter(Boolean) });
+    });
+  } else if (tab === "dish") {
+    const seen = {};
+    ((typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.recipes)) ? scenarioProject.recipes : []).forEach(r => {
+      if (!r || r.shopType !== "cooking" || seen[r.resultItemId]) return;
+      const master = (typeof ITEM_MASTER !== "undefined") ? ITEM_MASTER[r.resultItemId] : null;
+      if (!master) return; // ★データに無い料理は載せない
+      seen[r.resultItemId] = true;
+      const materials = (r.materials || []).map(m => `${getCodexItemName(m.itemId) || "？？？"}×${m.count || 1}`).join("、");
+      const toolName = r.toolItemId ? getCodexItemName(r.toolItemId) : null;
+      entries.push({ id: r.resultItemId, name: master.name, discovered: isCodexItemDiscovered(r.resultItemId), tag: "料理",
+        lines: [master.description || r.description, materials ? `材料：${materials}` : null, toolName ? `使う道具：${toolName}` : null,
+          r.cookTimeSeconds ? `調理時間：${r.cookTimeSeconds}秒` : null, price(master)].filter(Boolean) });
+    });
+    const failMaster = (typeof ITEM_MASTER !== "undefined") ? ITEM_MASTER["food_cooking_fail"] : null;
+    if (failMaster) entries.push({ id: "food_cooking_fail", name: failMaster.name, discovered: isCodexItemDiscovered("food_cooking_fail"), tag: "失敗",
+      lines: [failMaster.description, "材料や個数が合っていない時にできてしまう料理。"].filter(Boolean) });
+  } else if (tab === "item") {
+    Object.keys((typeof ITEM_MASTER !== "undefined") ? ITEM_MASTER : {}).forEach(id => {
+      const m = ITEM_MASTER[id];
+      if (!m || m.category === "fish" || m.category === "food") return; // 魚・料理は専用の分類に載せる
+      const cat = CODEX_ITEM_CATEGORY_LABELS[m.category] || m.category || "その他";
+      entries.push({ id, name: m.name || id, discovered: isCodexItemDiscovered(id), tag: cat,
+        lines: [m.description, `分類：${cat}`, m.rank ? `ランク：${m.rank}` : null, price(m)].filter(Boolean) });
+    });
+  } else if (tab === "furniture") {
+    ((typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.furniture)) ? scenarioProject.furniture : []).forEach(f => {
+      if (!f || !f.id) return;
+      const type = CODEX_FURNITURE_TYPE_LABELS[f.type] || "家具";
+      entries.push({ id: f.id, name: f.name || "（無名）", discovered: isCodexFurnitureDiscovered(f.id), tag: type, imagePath: f.imagePath || "",
+        lines: [`種類：${type}`, `大きさ：${f.width || 1}×${f.height || 1}マス`, f.isStorage ? `収納：${f.storageSlots || 0}個まで入る` : null,
+          f.price != null ? `価格：${f.price}陳` : null].filter(Boolean) });
+    });
+  }
+  return entries;
+}
+
+// ★分類ごとの「発見数／全数」
+function getCodexCounts(tab) {
+  if (tab === "monster") {
+    const keys = [...SPAREABLE_KEYS, ...BOSS_MONSTER_KEYS];
+    return { found: keys.filter(k => discoveredMonsters[k]).length, total: keys.length };
+  }
+  const entries = getCodexEntries(tab);
+  return { found: entries.filter(e => e.discovered).length, total: entries.length };
+}
+
+function switchCodexTab(tabId) {
+  codexTab = tabId;
+  codexCursorIndex = 0;
+  codexViewMode = "list";
+  renderMonsterCodex();
+}
+
+function buildCodexTabStrip() {
+  const strip = document.createElement("div");
+  strip.className = "codex-tabs";
+  CODEX_TABS.forEach(tab => {
+    const counts = getCodexCounts(tab.id);
+    const btn = document.createElement("button");
+    btn.className = "codex-tab" + (tab.id === codexTab ? " active" : "");
+    btn.textContent = `${tab.label} ${counts.found}/${counts.total}`;
+    btn.onclick = (event) => { event.stopPropagation(); switchCodexTab(tab.id); };
+    strip.appendChild(btn);
+  });
+  return strip;
+}
+
+// ★魚・料理・アイテム・家具の一覧
+function renderCodexGenericList(panel) {
+  const entries = getCodexEntries(codexTab);
+  const list = document.createElement("div");
+  list.className = "monster-codex-list";
+  if (entries.length === 0) {
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "devmode-note";
+    emptyEl.textContent = "この分類は、まだ登録されていません。";
+    list.appendChild(emptyEl);
+  }
+  entries.forEach((entry, i) => {
+    const row = document.createElement("div");
+    row.className = "monster-codex-row" + (i === codexCursorIndex ? " cursor" : "") + (entry.discovered ? "" : " monster-codex-row-unknown");
+    row.onclick = (event) => {
+      event.stopPropagation();
+      codexCursorIndex = i;
+      if (entry.discovered) codexViewMode = "detail";
+      renderMonsterCodex();
+    };
+    const nameEl = document.createElement("span");
+    nameEl.className = "monster-codex-name";
+    nameEl.textContent = entry.discovered ? entry.name : "？？？";
+    row.appendChild(nameEl);
+    const labelEl = document.createElement("span");
+    labelEl.className = entry.discovered ? "monster-codex-label" : "monster-codex-unknown";
+    labelEl.textContent = entry.discovered ? entry.tag : "未発見";
+    row.appendChild(labelEl);
+    list.appendChild(row);
+  });
+  panel.appendChild(list);
+  const cursorRow = list.children[codexCursorIndex];
+  if (cursorRow) requestAnimationFrame(() => cursorRow.scrollIntoView({ block: "nearest" }));
+  
+  const hintEl = document.createElement("p");
+  hintEl.className = "monster-codex-hint";
+  hintEl.textContent = "←→で分類を切り替え／Zキーで詳細を見る／Xキーで閉じる";
+  panel.appendChild(hintEl);
+  
+  const backBtn = document.createElement("button");
+  backBtn.className = "monster-codex-back-btn";
+  backBtn.textContent = "戻る（Xキー）";
+  backBtn.onclick = (event) => { event.stopPropagation(); closeMonsterCodex(); };
+  panel.appendChild(backBtn);
+}
+
+// ★魚・料理・アイテム・家具の詳細
+function renderCodexGenericDetail(panel) {
+  const entry = getCodexEntries(codexTab)[codexCursorIndex];
+  if (!entry || !entry.discovered) { codexViewMode = "list"; renderMonsterCodex(); return; }
+  const title = document.createElement("h3");
+  title.className = "monster-codex-title";
+  title.textContent = entry.name;
+  panel.appendChild(title);
+  if (entry.imagePath) {
+    const imageEl = document.createElement("img");
+    imageEl.className = "monster-codex-detail-image";
+    imageEl.alt = entry.name;
+    imageEl.onerror = () => { imageEl.classList.add("hidden"); };
+    imageEl.src = entry.imagePath;
+    panel.appendChild(imageEl);
+  }
+  entry.lines.forEach(line => {
+    const lineEl = document.createElement("p");
+    lineEl.className = "monster-codex-description";
+    lineEl.textContent = line;
+    panel.appendChild(lineEl);
+  });
+  const backBtn = document.createElement("button");
+  backBtn.className = "monster-codex-back-btn";
+  backBtn.textContent = "一覧に戻る（Xキー）";
+  backBtn.onclick = (event) => { event.stopPropagation(); codexViewMode = "list"; renderMonsterCodex(); };
+  panel.appendChild(backBtn);
+}
+
 // アイコンをタップして、魔物図鑑を開く
 async function openMonsterCodex() {
   // ★シナリオが落ち着くまでは、まだ魔物図鑑を見られないようにする
@@ -353,6 +541,7 @@ async function openMonsterCodex() {
   if (achievementsPanel) achievementsPanel.classList.add("hidden");
   codexCursorIndex = 0;
   codexViewMode = "list";
+  codexTab = "monster";
   renderMonsterCodex();
   window.removeEventListener("keydown", handleMonsterCodexKeyDown); // 二重登録防止
   window.addEventListener("keydown", handleMonsterCodexKeyDown);
@@ -1406,14 +1595,16 @@ function renderMonsterCodex() {
   panel.innerHTML = "";
   
   if (codexViewMode === "detail") {
-    renderMonsterCodexDetail(panel);
+    if (codexTab === "monster") renderMonsterCodexDetail(panel); else renderCodexGenericDetail(panel);
     return;
   }
   
   const title = document.createElement("h3");
   title.className = "monster-codex-title";
-  title.textContent = "魔物図鑑";
+  title.textContent = "図鑑";
   panel.appendChild(title);
+  panel.appendChild(buildCodexTabStrip()); // ★分類（魔物／魚／料理／アイテム／家具）の切り替え
+  if (codexTab !== "monster") { renderCodexGenericList(panel); return; }
   
   const list = document.createElement("div");
   list.className = "monster-codex-list";
@@ -1495,7 +1686,7 @@ function renderMonsterCodex() {
   
   const hintEl = document.createElement("p");
   hintEl.className = "monster-codex-hint";
-  hintEl.textContent = "Zキーで詳細を見る／Xキーで閉じる";
+  hintEl.textContent = "←→で分類を切り替え／Zキーで詳細を見る／Xキーで閉じる";
   panel.appendChild(hintEl);
   
   const backBtn = document.createElement("button");
@@ -1660,6 +1851,37 @@ function handleMonsterCodexKeyDown(event) {
       renderMonsterCodex();
     } else {
       closeMonsterCodex();
+    }
+    return;
+  }
+  
+  // ★分類の切り替え（一覧の時だけ。←→）
+  if (codexViewMode === "list" && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+    event.preventDefault();
+    const currentIndex = CODEX_TABS.findIndex(t => t.id === codexTab);
+    const nextIndex = (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + CODEX_TABS.length) % CODEX_TABS.length;
+    switchCodexTab(CODEX_TABS[nextIndex].id);
+    return;
+  }
+  
+  // ★魚・料理・アイテム・家具の分類
+  if (codexTab !== "monster") {
+    if (codexViewMode === "detail") return;
+    const entries = getCodexEntries(codexTab);
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      codexCursorIndex = Math.min(Math.max(0, entries.length - 1), codexCursorIndex + 1);
+      renderMonsterCodex();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      codexCursorIndex = Math.max(0, codexCursorIndex - 1);
+      renderMonsterCodex();
+    } else if (KEY_CONFIG.decideKeys.includes(event.key)) {
+      event.preventDefault();
+      if (entries[codexCursorIndex] && entries[codexCursorIndex].discovered) {
+        codexViewMode = "detail";
+        renderMonsterCodex();
+      }
     }
     return;
   }

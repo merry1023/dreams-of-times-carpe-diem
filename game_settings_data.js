@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1792436413813,
+  "version": 1792561140961,
   "enemies": [
     {
       "id": "goblin",
@@ -11546,6 +11546,13 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "title": "本について",
       "body": "種類が「本」のアイテムは、持ち物から「使う」と、ページをめくって読むことができます。本は読んでも消費されないので、何度でも読み返せます。",
       "requiredFacilityId": "facility_1790532213468_9"
+    },
+    {
+      "id": "tutorial_1792500000001_1",
+      "category": "基本",
+      "title": "図鑑について",
+      "body": "便利タブの「図鑑」には、魔物・魚・料理・アイテム・家具の分類があります。←→キー（または画面上のボタン）で分類を切り替えられ、分類名の横の数字は「載っている数／全体の数」です。\nまだ手に入れていないものは「？？？」と表示され、初めて倒した・釣った・作った・手に入れた・買ったりすると、名前と詳しい説明が載ります。\n魔物は好感度、料理は材料や使う道具まで確認できるので、集め忘れの確認や、作りたい料理の下調べに使えます。",
+      "requiredChapterId": "builtin_chapter1"
     }
   ],
   "classStats": {
