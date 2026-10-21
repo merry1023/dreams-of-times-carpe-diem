@@ -65,6 +65,7 @@ let scenarioBuildEditingMapAreaId = null; // ★マップ設定の専用全画�
 let scenarioBuildSelectedRoomId = null; // ★間取りエディタで、今どの部屋を選択中か（realestate floorplan）
 let scenarioBuildSelectedFloor = 0; // ★要望対応：間取りエディタで、今どの階を編集中か（0が基準の階、floorplan.js）
 let scenarioBuildFixedItemEditorOpen = false; // ★要望対応：「さらに細かく編集する」（階段・固定家具の設置）を開いているか
+let scenarioBuildFixedItemLayer = "floor"; // ★要望対応：「さらに細かく編集する」で編集中のレイヤー（"floor"＝床／"ceiling"＝天井）
 let scenarioBuildFixedItemSelectedCell = null; // ★要望対応：「さらに細かく編集する」で選択中のマス（{x,y}）
 let scenarioBuildEditingOptionRef = null; // ★選択肢の専用全画面エディタで、今どの選択肢を編集中か（{ chapterId, blockId, optionId }）
 let scenarioBuildEditingIfRef = null; // ★ifブロックの専用全画面エディタで、今どのブロックを編集中か（{ chapterId, blockId }）
