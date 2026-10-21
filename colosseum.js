@@ -7,6 +7,124 @@
 let colosseumFacility = null;   // 今開いているコロシアム施設のデータ（scenariobuild.jsのfacility）
 let colosseumReturnTo = null;   // 「やめる」で呼ぶ関数（村メニュー、または拠点の施設一覧）
 let colosseumCurrentFloor = 1;  // 今の周回で挑戦中の階層（n回戦目。1から始まる）
+let colosseumActiveHandicapIds = []; // ★今の周回で有効な「縛り」のID（挑戦を始めた時点で確定。受付で変えても、挑戦中の周回には影響しない）
+
+// ===== 縛り（要望対応） =====
+// ★受付で「縛り」を追加してから挑戦すると、その重さ（weight）の合計に応じて、報酬のコインが増える。
+//   報酬倍率 ＝ 1 ＋ 選んだ縛りの重さの合計（最大3倍）。コインの獲得数（10・20・50回戦の記念コイン／99回戦の特別報酬）に掛かる
+//   （陳・経験値の特別報酬には掛からない）。
+//   ・group が同じ縛りは、どれか1つしか選べない（選び直すと入れ替わる）。重い方ほど重さが大きい
+//   ・重さ・内容は、この表を書き換えるだけで調整できる
+const COLOSSEUM_HANDICAP_MAX_MULTIPLIER = 3; // ★報酬倍率の上限（最大3倍）
+const COLOSSEUM_HANDICAPS = [
+  { id: "noRest", label: "休憩なし", weight: 0.3, description: "5回戦・10回戦ごとの回復（小休止・休憩所）が無くなる。" },
+  { id: "halfHp", label: "満身創痍", weight: 0.3, description: "挑戦を始める時、全員のHPが半分になる。" },
+  { id: "noRetire", label: "退路なし", weight: 0.3, description: "途中でリタイアできない。負けるか、99回戦をクリアするまで続く。" },
+  { id: "noWeaponSkill", label: "武器スキル禁止", weight: 0.2, description: "装備の武器スキルが使えない。" },
+  { id: "noUpper", label: "上位スキル禁止", weight: 0.3, description: "上位スキルが使えない。" },
+  { id: "noNormal", label: "通常攻撃禁止", weight: 0.4, group: "action", description: "通常攻撃（仲間の「たたかう」）が使えない。スキルは使える。" },
+  { id: "noSkill", label: "スキル禁止", weight: 0.5, group: "action", description: "スキルが使えない（上位スキル・武器スキルは別）。通常攻撃は使える。" },
+  { id: "enemyHp15", label: "敵の体力1.5倍", weight: 0.4, group: "enemyHp", enemyHpMultiplier: 1.5, description: "出てくる敵の最大HPが1.5倍になる。" },
+  { id: "enemyHp20", label: "敵の体力2倍", weight: 0.8, group: "enemyHp", enemyHpMultiplier: 2, description: "出てくる敵の最大HPが2倍になる。" },
+  { id: "enemyAtk13", label: "敵の攻撃力1.3倍", weight: 0.5, group: "enemyAtk", enemyAtkMultiplier: 1.3, description: "出てくる敵の攻撃力が1.3倍になる。" },
+  { id: "enemyAtk16", label: "敵の攻撃力1.6倍", weight: 1.0, group: "enemyAtk", enemyAtkMultiplier: 1.6, description: "出てくる敵の攻撃力が1.6倍になる。" }
+];
+
+function findColosseumHandicap(id) {
+  return COLOSSEUM_HANDICAPS.find(h => h.id === id) || null;
+}
+
+// ★この施設で選んでいる縛り（受付の設定。セーブデータに残る）
+function getColosseumSelectedHandicapIds() {
+  if (!colosseumFacility || !player || !player.colosseumHandicaps || typeof player.colosseumHandicaps !== "object") return [];
+  const ids = player.colosseumHandicaps[colosseumFacility.id];
+  return Array.isArray(ids) ? ids.filter(id => findColosseumHandicap(id)) : [];
+}
+
+function setColosseumSelectedHandicapIds(ids) {
+  if (!player.colosseumHandicaps || typeof player.colosseumHandicaps !== "object") player.colosseumHandicaps = {};
+  player.colosseumHandicaps[colosseumFacility.id] = ids;
+}
+
+// ★縛りの重さの合計と、そこから決まる報酬倍率（1＋重さの合計。最大3倍）
+function getColosseumHandicapTotalWeight(ids) {
+  const total = ids.reduce((sum, id) => sum + ((findColosseumHandicap(id) || {}).weight || 0), 0);
+  return Math.round(total * 100) / 100;
+}
+
+function getColosseumRewardMultiplier(ids) {
+  const mult = Math.min(COLOSSEUM_HANDICAP_MAX_MULTIPLIER, 1 + getColosseumHandicapTotalWeight(ids));
+  return Math.round(mult * 100) / 100;
+}
+
+function formatColosseumMultiplier(mult) {
+  return `×${Number(mult.toFixed(2))}`;
+}
+
+function describeColosseumHandicaps(ids) {
+  if (ids.length === 0) return "縛りなし（報酬×1）";
+  const names = ids.map(id => (findColosseumHandicap(id) || {}).label).filter(Boolean).join("・");
+  const total = getColosseumHandicapTotalWeight(ids);
+  const mult = getColosseumRewardMultiplier(ids);
+  return `${names}（重さ合計+${total}→報酬${formatColosseumMultiplier(mult)}${1 + total > COLOSSEUM_HANDICAP_MAX_MULTIPLIER ? "・上限" : ""}）`;
+}
+
+// ★選んだ縛りを、戦闘側（battle.js）に渡す形にまとめる
+function getColosseumRestrictions(ids) {
+  const r = { noNormal: false, noSkill: false, noUpper: false, noWeaponSkill: false, enemyHpMultiplier: 1, enemyAtkMultiplier: 1 };
+  ids.forEach(id => {
+    if (id === "noNormal") r.noNormal = true;
+    if (id === "noSkill") r.noSkill = true;
+    if (id === "noUpper") r.noUpper = true;
+    if (id === "noWeaponSkill") r.noWeaponSkill = true;
+    const h = findColosseumHandicap(id);
+    if (h && h.enemyHpMultiplier) r.enemyHpMultiplier = h.enemyHpMultiplier;
+    if (h && h.enemyAtkMultiplier) r.enemyAtkMultiplier = h.enemyAtkMultiplier;
+  });
+  return r;
+}
+
+function colosseumHasActiveHandicap(id) {
+  return colosseumActiveHandicapIds.includes(id);
+}
+
+// ★受付の「縛りを追加する」メニュー。選ぶたびに付ける／外すを切り替えて、同じ画面に戻る
+async function showColosseumHandicapMenu(initialIndex = 0) {
+  hideLocationMenu();
+  changeSpeaker(colosseumFacility.name || "コロシアム");
+  const selected = getColosseumSelectedHandicapIds();
+  const choices = COLOSSEUM_HANDICAPS.map((h, index) => ({
+    text: `${selected.includes(h.id) ? "☑" : "☐"} ${h.label}（重さ+${h.weight}）`,
+    next: String(index),
+    description: h.description + (h.group ? "（同じ種類の縛りは、どれか1つだけ）" : "")
+  }));
+  choices.push({ text: "全ての縛りを外す", next: "clear" });
+  choices.push({ text: "決定して戻る", next: "done", isBack: true });
+  await displayMessage(`縛りを選ぼう。重いほど、報酬のコインが増える。\n現在：${describeColosseumHandicaps(selected)}\n（最大${formatColosseumMultiplier(COLOSSEUM_HANDICAP_MAX_MULTIPLIER)}）`);
+  const picked = await displayChoices(choices, initialIndex);
+  if (picked.next === "done") {
+    showColosseumLobbyMenu();
+    return;
+  }
+  if (picked.next === "clear") {
+    setColosseumSelectedHandicapIds([]);
+    showColosseumHandicapMenu(COLOSSEUM_HANDICAPS.length);
+    return;
+  }
+  const index = Number(picked.next);
+  setColosseumSelectedHandicapIds(toggleColosseumHandicapId(selected, COLOSSEUM_HANDICAPS[index].id));
+  showColosseumHandicapMenu(index);
+}
+
+// ★縛りを1つ付ける／外す（もう一度選ぶと外れる。同じ種類（group）の縛りは入れ替える）
+function toggleColosseumHandicapId(selected, handicapId) {
+  const handicap = findColosseumHandicap(handicapId);
+  if (!handicap) return selected;
+  if (selected.includes(handicapId)) return selected.filter(id => id !== handicapId);
+  const next = selected.filter(id => !handicap.group || (findColosseumHandicap(id) || {}).group !== handicap.group);
+  next.push(handicapId);
+  return next;
+}
 
 // コロシアムの入り口。openCustomFacility（town.js）から呼ばれる
 function openColosseum(facility, returnTo) {
@@ -105,8 +223,10 @@ function showColosseumLobbyMenu() {
     return id ? `${colosseumCoinLabel(color)}:${getTotalItemCount(id)}` : null;
   }).filter(Boolean).join(" ");
   
+  const handicapIds = getColosseumSelectedHandicapIds();
   showLocationMenu([
     { label: `挑戦する（${entryLabel}／自己ベスト：${best}回戦）`, action: () => tryStartColosseumRun() },
+    { label: `縛りを追加する（${handicapIds.length === 0 ? "なし／報酬×1" : `${handicapIds.length}個／報酬${formatColosseumMultiplier(getColosseumRewardMultiplier(handicapIds))}`}）`, action: () => showColosseumHandicapMenu() },
     { label: `コインを引き換える${coinSummary ? `（${coinSummary}）` : ""}`, action: () => showColosseumExchangeMenu() },
     { label: "やめる", action: () => colosseumReturnTo() }
   ], colosseumFacility.name || "コロシアム");
@@ -141,10 +261,21 @@ async function tryStartColosseumRun() {
   removeItem(itemId, qty);
   renderStatusHUD();
   colosseumCurrentFloor = 1;
+  colosseumActiveHandicapIds = getColosseumSelectedHandicapIds(); // ★この周回の縛りをここで確定する
   
   hideLocationMenu();
   changeSpeaker(colosseumFacility.name || "コロシアム");
   await displayMessage("コロシアムへの挑戦が始まった！（アイテムは使用できない。持ち物は封じられている）");
+  if (colosseumActiveHandicapIds.length > 0) {
+    await displayMessage(`【縛り】${describeColosseumHandicaps(colosseumActiveHandicapIds)}`);
+    if (colosseumHasActiveHandicap("halfHp")) {
+      const halve = (unit) => { unit.gauges.hp.current = Math.min(unit.gauges.hp.current, Math.max(1, Math.ceil(unit.gauges.hp.max / 2))); };
+      halve(player);
+      (player.companions || []).forEach(c => { if (c.alive) halve(c); });
+      renderStatusHUD();
+      await displayMessage("満身創痍のまま、戦いに臨む……（全員のHPが半分になった）");
+    }
+  }
   await runColosseumFloor();
 }
 
@@ -161,7 +292,7 @@ async function runColosseumFloor() {
   }
   changeSpeaker("");
   await displayMessage(`${colosseumCurrentFloor}回戦目！` + (isColosseumBossRound(colosseumCurrentFloor) ? "\n強大な気配を感じる……！" : ""));
-  const battleOptions = { isColosseum: true };
+  const battleOptions = { isColosseum: true, colosseumRestrictions: getColosseumRestrictions(colosseumActiveHandicapIds) }; // ★縛りの制限・敵の強化を戦闘側へ渡す
   if (encounter.fixedLevel != null) battleOptions.fixedLevel = encounter.fixedLevel; // ★節目の回戦の指定レベル、または雑魚敵回戦なら直近の節目回戦レベル×0.6で固定する
   await startBattle(encounter.enemyMonsterKeys, battleOptions); // battle.js
 }
@@ -176,7 +307,9 @@ async function handleColosseumVictory() {
   
   // ★要望対応：10の倍数（10・20・30…）の回戦をクリアしたら全回復、
   //   5の倍数だが10の倍数ではない回戦（5・15・25…）をクリアしたらHP・SPを1/3回復する
-  if (floor % 10 === 0) {
+  if (colosseumHasActiveHandicap("noRest")) {
+    // ★縛り「休憩なし」：回復は一切無い
+  } else if (floor % 10 === 0) {
     player.gauges.hp.current = player.gauges.hp.max;
     player.gauges.sp.current = player.gauges.sp.max;
     (player.companions || []).forEach(c => {
@@ -205,12 +338,13 @@ async function handleColosseumVictory() {
     : null;
   if (milestoneInfo) {
     const coinItemId = colosseumCoinItemId(milestoneInfo.color);
-    const qty = Math.max(1, milestoneInfo.qty || 1);
+    const rewardMult = getColosseumRewardMultiplier(colosseumActiveHandicapIds); // ★縛りによる報酬倍率（縛りが無ければ1）
+    const qty = Math.max(1, Math.round(Math.max(1, milestoneInfo.qty || 1) * rewardMult));
     if (coinItemId) {
       addItem(coinItemId, qty);
       renderStatusHUD();
       changeSpeaker(colosseumFacility.name || "コロシアム");
-      await displayMessage(`「${itemNameOfColosseum(coinItemId)}」を${qty}個手に入れた！`);
+      await displayMessage(`「${itemNameOfColosseum(coinItemId)}」を${qty}個手に入れた！` + (rewardMult > 1 ? `（縛りボーナス${formatColosseumMultiplier(rewardMult)}）` : ""));
     }
   }
   
@@ -222,10 +356,9 @@ async function handleColosseumVictory() {
   // ★要望対応：1回戦ごとに、次の回戦へ進むか、ここでやめる（リタイア）か選べるようにする。
   //   ここまでの自己ベスト・獲得済みのコインは、リタイアしてもそのまま持ち帰れる
   changeSpeaker(colosseumFacility.name || "コロシアム");
-  showLocationMenu([
-    { label: `次（${floor + 1}回戦目）に挑む`, action: () => advanceColosseumRun(floor) },
-    { label: "ここでやめておく（リタイア）", action: () => retireColosseumRun(floor) }
-  ], colosseumFacility.name || "コロシアム");
+  const afterVictoryMenu = [{ label: `次（${floor + 1}回戦目）に挑む`, action: () => advanceColosseumRun(floor) }];
+  if (!colosseumHasActiveHandicap("noRetire")) afterVictoryMenu.push({ label: "ここでやめておく（リタイア）", action: () => retireColosseumRun(floor) }); // ★縛り「退路なし」ではリタイアできない
+  showLocationMenu(afterVictoryMenu, colosseumFacility.name || "コロシアム");
 }
 
 function advanceColosseumRun(clearedFloor) {
@@ -241,6 +374,7 @@ async function retireColosseumRun(clearedFloor) {
   changeSpeaker(colosseumFacility.name || "コロシアム");
   await displayMessage(`${clearedFloor}回戦でリタイアした。ここまでの記録と報酬はそのまま持ち帰れる。`);
   colosseumCurrentFloor = 1;
+  colosseumActiveHandicapIds = [];
   showColosseumLobbyMenu();
 }
 
@@ -250,8 +384,10 @@ async function handleColosseumFinalClear() {
   await displayMessage("ついに99回戦、全ての戦いを制した……！コロシアムの頂点に立った証を授けよう。");
   
   const rewardTexts = [];
+  const finalRewardMult = getColosseumRewardMultiplier(colosseumActiveHandicapIds); // ★縛りによる報酬倍率（コインの数だけに掛かる）
   ["blue", "yellow", "red"].forEach(color => {
-    const qty = Math.max(0, Number(colosseumFacility[`finalClear${color[0].toUpperCase()}${color.slice(1)}CoinQty`]) || 0);
+    const baseQty = Math.max(0, Number(colosseumFacility[`finalClear${color[0].toUpperCase()}${color.slice(1)}CoinQty`]) || 0);
+    const qty = baseQty > 0 ? Math.max(1, Math.round(baseQty * finalRewardMult)) : 0;
     const coinItemId = colosseumCoinItemId(color);
     if (qty > 0 && coinItemId) {
       addItem(coinItemId, qty);
@@ -272,13 +408,14 @@ async function handleColosseumFinalClear() {
   renderStatusHUD();
   
   if (rewardTexts.length > 0) {
-    await displayMessage(`${rewardTexts.join("、")}を手に入れた！`);
+    await displayMessage(`${rewardTexts.join("、")}を手に入れた！` + (finalRewardMult > 1 ? `（縛りボーナス${formatColosseumMultiplier(finalRewardMult)}がコインに適用された）` : ""));
   }
   if (levelResult && typeof announceLevelUpIfAny === "function") {
     await announceLevelUpIfAny(levelResult);
   }
   
   colosseumCurrentFloor = 1;
+  colosseumActiveHandicapIds = [];
   showColosseumLobbyMenu();
 }
 
@@ -287,6 +424,7 @@ async function handleColosseumDefeat() {
   changeSpeaker(colosseumFacility.name || "コロシアム");
   await displayMessage(`${colosseumCurrentFloor}回戦で敗れてしまった……最初からやり直しだ。`);
   colosseumCurrentFloor = 1;
+  colosseumActiveHandicapIds = [];
   showColosseumLobbyMenu();
 }
 
