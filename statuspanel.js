@@ -238,6 +238,8 @@ function getAllUpperSkills() {
     const skill = buildRuntimeSkillFromSkillEntry(entry);
     skill.upperId = entry.id;
     skill.isUpper = true;
+    // ★要望対応：上位スキルはSPではなく「焦力」を消費する（0〜100、未設定の既存データは30）
+    skill.shouryokuCost = Math.max(0, Math.min(100, entry.shouryokuCost != null ? (Number(entry.shouryokuCost) || 0) : 30));
     return skill;
   });
 }

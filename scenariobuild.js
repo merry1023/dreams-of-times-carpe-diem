@@ -7787,7 +7787,7 @@ function buildStatusPanelCellEditor(def) {
 function createNewUpperSkill() {
   return {
     id: generateId("upper"), name: "新しい上位スキル", description: "", type: "attack",
-    element: "無", spCost: 10, power: 20, target: "single", hitCount: 1, atkType: "physical",
+    element: "無", spCost: 0, shouryokuCost: 30, power: 20, target: "single", hitCount: 1, atkType: "physical",
     cleanse: false,
     statusEffectKind: "", statusEffectChance: 1, statusEffectDuration: 1, statusEffectPower: 0,
     statusEffect2Kind: "", statusEffect2Chance: 1, statusEffect2Duration: 1, statusEffect2Power: 0,
@@ -7823,7 +7823,7 @@ function renderUpperSkillManager(container) {
   if (!Array.isArray(scenarioProject.upperSkills)) scenarioProject.upperSkills = [];
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
-  introEl.textContent = "ステータスパネルで習得する「上位スキル」を作ります（職業技とは別枠）。編集のしかたは職業技と同じで、固定フィールド、または「特殊スキル編集」のブロックで動作を決めます。習得のしかたは、ステータスパネルタブでマスの効果に「上位スキルを習得」を追加して指定します。戦闘中は、通常の「スキル」とは別の「上位スキル」の選択肢から使えます（習得した人にだけ表示）。";
+  introEl.textContent = "ステータスパネルで習得する「上位スキル」を作ります（職業技とは別枠）。編集のしかたは職業技と同じで、固定フィールド、または「特殊スキル編集」のブロックで動作を決めます。習得のしかたは、ステータスパネルタブでマスの効果に「上位スキルを習得」を追加して指定します。戦闘中は、通常の「スキル」とは別の「上位スキル」の選択肢から使えます（習得した人にだけ表示）。発動にはSPではなく「焦力」を消費します（全員最大100。メンバーごとに別々の値を持ち、戦闘が終わっても保持されます。ターン経過+3／通常攻撃+5／攻撃を受ける+2／挑発・奇声+5ずつ増えます）。技ごとの消費焦力は各技の欄で決められます。";
   container.appendChild(introEl);
   const formulaNoteEl = document.createElement("p");
   formulaNoteEl.className = "devmode-note";
@@ -7910,10 +7910,10 @@ function buildUpperSkillRow(entry, index) {
   }
   infoEl.appendChild(blockRow);
 
-  // SP消費は、ブロックモードでも無視されないので、固定フィールドの枠の外に置く（職業技と同じ）
+  // ★要望対応：上位スキルはSPではなく「焦力」を消費する。ブロックモードでも無視されないので、固定フィールドの枠の外に置く
   const spRow = document.createElement("div");
   spRow.className = "scenariobuild-condition-row";
-  spRow.appendChild(buildSkillNumberInline(entry, "spCost", "SP消費", 0));
+  spRow.appendChild(buildSkillNumberInline(entry, "shouryokuCost", "消費焦力（0〜100、全員の焦力は最大100）", 30));
   infoEl.appendChild(spRow);
 
   const fixedWrap = document.createElement("div");
