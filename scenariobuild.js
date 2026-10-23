@@ -7823,7 +7823,7 @@ function renderUpperSkillManager(container) {
   if (!Array.isArray(scenarioProject.upperSkills)) scenarioProject.upperSkills = [];
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
-  introEl.textContent = "ステータスパネルで習得する「上位スキル」を作ります（職業技とは別枠）。編集のしかたは職業技と同じで、固定フィールド、または「特殊スキル編集」のブロックで動作を決めます。習得のしかたは、ステータスパネルタブでマスの効果に「上位スキルを習得」を追加して指定します。戦闘中は、通常の「スキル」とは別の「上位スキル」の選択肢から使えます（習得した人にだけ表示）。発動にはSPではなく「焦力」を消費します（全員最大100。戦闘ごとに0から始まり、ターン経過+3／通常攻撃+5／攻撃を受ける+2／挑発・奇声+5ずつ増えます）。技ごとの消費焦力は各技の欄で決められます。";
+  introEl.textContent = "ステータスパネルで習得する「上位スキル」を作ります（職業技とは別枠）。編集のしかたは職業技と同じで、固定フィールド、または「特殊スキル編集」のブロックで動作を決めます。習得のしかたは、ステータスパネルタブでマスの効果に「上位スキルを習得」を追加して指定します。戦闘中は、通常の「スキル」とは別の「上位スキル」の選択肢から使えます（習得した人にだけ表示）。発動にはSPではなく「焦力」を消費します（全員最大100。メンバーごとに別々の値を持ち、戦闘が終わっても保持されます。ターン経過+3／通常攻撃+5／攻撃を受ける+2／挑発・奇声+5ずつ増えます）。技ごとの消費焦力は各技の欄で決められます。";
   container.appendChild(introEl);
   const formulaNoteEl = document.createElement("p");
   formulaNoteEl.className = "devmode-note";

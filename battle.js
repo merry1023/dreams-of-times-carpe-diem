@@ -268,7 +268,6 @@ async function startBattle(monsterKeys, options = {}) {
   };
   
   resetAllCompanionBattleBuffs(); // ★戦闘開始時に、仲間の自己バフ・攻撃回数カウント等をリセットしておく
-  resetAllShouryoku(); // ★要望対応：焦力も戦闘ごとに0から
   startBattleBGM(isBoss); // bgm.js
   showBattleHud();
   changeSpeaker("");
@@ -356,7 +355,6 @@ async function startTrialBattle(trialRank) {
   };
   
   resetAllCompanionBattleBuffs(); // ★戦闘開始時に、仲間の自己バフ・攻撃回数カウント等をリセットしておく
-  resetAllShouryoku(); // ★要望対応：焦力も戦闘ごとに0から
   startBattleBGM(true); // bgm.js
   showBattleHud();
   changeSpeaker("");
@@ -1461,7 +1459,7 @@ function getCompanionBuffState(companion) {
 
 // ===== 焦力（要望対応） =====
 //   上位スキルを発動するための専用パラメータ。主人公・仲間の全員が、最大100固定で持つ（職業・仲間を問わない）。
-//   戦闘ごとに0から始まり、ターン経過+3／通常攻撃+5／攻撃を受ける+2／挑発・奇声+5ずつ増える。
+//   メンバーごとに別々の値を持ち、戦闘が終わっても保持される（セーブにも含まれる。初期値は0）。ターン経過+3／通常攻撃+5／攻撃を受ける+2／挑発・奇声+5ずつ増える。
 //   上位スキルを使うと、スキルごとに決めた消費焦力量（shouryokuCost）が減る（SPは消費しない）
 const SHOURYOKU_MAX = 100;
 const SHOURYOKU_GAIN = { turn: 3, attack: 5, damaged: 2, taunt: 5, scream: 5 };
@@ -1476,12 +1474,6 @@ function addShouryoku(unit, amount) {
 function addShouryokuToParty(amount) {
   addShouryoku(player, amount);
   (player.companions || []).filter(c => c.alive).forEach(c => addShouryoku(c, amount));
-}
-function resetAllShouryoku() {
-  if (!player) return;
-  player._shouryoku = 0;
-  (player.companions || []).forEach(c => { c._shouryoku = 0; });
-  updateShouryokuHud();
 }
 function getSkillShouryokuCost(skill) {
   return Math.max(0, Math.min(SHOURYOKU_MAX, Number(skill && skill.shouryokuCost) || 0));
