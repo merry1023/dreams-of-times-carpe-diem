@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1792562126663,
+  "version": 1792745778760,
   "enemies": [
     {
       "id": "goblin",
@@ -2739,6 +2739,640 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "listedPrice": 160,
       "trueValue": 160,
       "builtin": true
+    },
+    {
+      "id": "fish_1792000000001_21",
+      "name": "ドロンコフナ",
+      "category": "fish",
+      "description": "泥の中に潜るのが好きな、どこにでもいる地味なフナ。泥臭いが火を通せば食べられる。",
+      "rank": "F",
+      "listedPrice": 15,
+      "trueValue": 15,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000002_22",
+      "name": "ホタルメダカ",
+      "category": "fish",
+      "description": "夜になると体がぼんやり光る小さなメダカ。群れで水面近くを漂っている。",
+      "rank": "F",
+      "listedPrice": 25,
+      "trueValue": 25,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000003_23",
+      "name": "ミズタマハゼ",
+      "category": "fish",
+      "description": "水玉模様の背びれを持つ小さなハゼ。揚げ物にするとサクサクで美味しい。",
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000004_24",
+      "name": "コケむしウナギ",
+      "category": "fish",
+      "description": "全身が苔に覆われたウナギ。ぬるぬるして掴みづらいが、身は脂がのっている。",
+      "rank": "E",
+      "listedPrice": 90,
+      "trueValue": 90,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000005_25",
+      "name": "ヒラヒラサヨリ",
+      "category": "fish",
+      "description": "長いヒレをヒラヒラ揺らして泳ぐ細身の魚。上品な白身で、癖がない。",
+      "rank": "E",
+      "listedPrice": 70,
+      "trueValue": 70,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000006_26",
+      "name": "トゲトゲカサゴ",
+      "category": "fish",
+      "description": "全身トゲだらけの魚。うかつに触ると痛い目を見るが、出汁がよく出る。",
+      "rank": "E",
+      "listedPrice": 110,
+      "trueValue": 110,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000007_27",
+      "name": "ニジイロマス",
+      "category": "fish",
+      "description": "朝日を浴びると虹色に輝くマス。バターとの相性が抜群。",
+      "rank": "D",
+      "listedPrice": 180,
+      "trueValue": 180,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000008_28",
+      "name": "ギンパクヒラメ",
+      "category": "fish",
+      "description": "銀の箔をまとったような美しいヒラメ。池の底でじっと獲物を待っている。",
+      "rank": "D",
+      "listedPrice": 240,
+      "trueValue": 240,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000009_29",
+      "name": "ハリネズミフグ",
+      "category": "fish",
+      "description": "危険を感じると針を逆立ててまん丸になる小さなフグ。観賞用としても人気。",
+      "rank": "D",
+      "listedPrice": 260,
+      "trueValue": 260,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000010_30",
+      "name": "ヨルヅキナマズ",
+      "category": "fish",
+      "description": "月夜にだけ姿を現す大きなナマズ。ふっくらした身は鍋にすると絶品。",
+      "rank": "C",
+      "listedPrice": 420,
+      "trueValue": 420,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000011_31",
+      "name": "ホウライコイ",
+      "category": "fish",
+      "description": "縁起が良いとされる、金と赤の模様を持つコイ。夕暮れ時によく跳ねる。",
+      "rank": "C",
+      "listedPrice": 500,
+      "trueValue": 500,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000012_32",
+      "name": "ガラスのシラウオ",
+      "category": "fish",
+      "description": "体が透き通って向こう側が見えるほど儚いシラウオ。雨の日にだけ水面に集まる。",
+      "rank": "C",
+      "listedPrice": 600,
+      "trueValue": 600,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000013_33",
+      "name": "カミナリブリ",
+      "category": "fish",
+      "description": "雷雨の日に荒々しく暴れまわる大型のブリ。その引きは並の釣竿では耐えられない。",
+      "rank": "B",
+      "listedPrice": 1100,
+      "trueValue": 1100,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000014_34",
+      "name": "ガマジルオオイワナ",
+      "category": "fish",
+      "description": "ガマジルの池の深みに棲む、全身ゴツゴツしたオオイワナ。釣り人の間では憧れの的。",
+      "rank": "B",
+      "listedPrice": 1500,
+      "trueValue": 1500,
+      "builtin": true
+    },
+    {
+      "id": "fish_1792000000015_35",
+      "name": "コガネヌシ",
+      "category": "fish",
+      "description": "池の主と噂される黄金色の巨大魚。一生に一度見られるかどうかと言われている。",
+      "rank": "A",
+      "listedPrice": 5000,
+      "trueValue": 5000,
+      "builtin": true
+    },
+    {
+      "id": "item_1792000000101_31",
+      "name": "ドロダンゴ",
+      "category": "tool",
+      "description": "泥を丸めて作った団子状の餌。ドロ科の魚が好んで食いつく。",
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30,
+      "unsellable": false,
+      "baitFishTypes": [
+        "ドロ科"
+      ],
+      "params": {
+        "希少度": 1
+      },
+      "isFishingBait": true,
+      "baitFishType": "ドロ科",
+      "baitBiteRate": 6
+    },
+    {
+      "id": "item_1792000000102_32",
+      "name": "ひかりゴケ",
+      "category": "tool",
+      "description": "ほんのり光る苔を練った餌。ピカリ科の魚を引き寄せる。",
+      "rank": "F",
+      "listedPrice": 40,
+      "trueValue": 40,
+      "unsellable": false,
+      "baitFishTypes": [
+        "ピカリ科"
+      ],
+      "params": {
+        "希少度": 1
+      },
+      "isFishingBait": true,
+      "baitFishType": "ピカリ科",
+      "baitBiteRate": 6
+    },
+    {
+      "id": "item_1792000000103_33",
+      "name": "ヒラヒラ毛鉤",
+      "category": "tool",
+      "description": "ヒラヒラ揺れる羽根飾り付きの毛鉤。ヒレナガ科の魚が反応する。",
+      "rank": "F",
+      "listedPrice": 50,
+      "trueValue": 50,
+      "unsellable": false,
+      "baitFishTypes": [
+        "ヒレナガ科"
+      ],
+      "params": {
+        "希少度": 1
+      },
+      "isFishingBait": true,
+      "baitFishType": "ヒレナガ科",
+      "baitBiteRate": 7
+    },
+    {
+      "id": "item_1792000000104_34",
+      "name": "トゲぬき小エビ",
+      "category": "tool",
+      "description": "トゲを抜いてある小エビ。トゲトゲ科の魚の大好物。",
+      "rank": "F",
+      "listedPrice": 50,
+      "trueValue": 50,
+      "unsellable": false,
+      "baitFishTypes": [
+        "トゲトゲ科"
+      ],
+      "params": {
+        "希少度": 1
+      },
+      "isFishingBait": true,
+      "baitFishType": "トゲトゲ科",
+      "baitBiteRate": 7
+    },
+    {
+      "id": "item_1792000000201_41",
+      "name": "食用油",
+      "category": "misc",
+      "description": "揚げ物や炒め物に欠かせない油。なぜか魔力が少しこもっている。",
+      "rank": "F",
+      "listedPrice": 25,
+      "trueValue": 25,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000202_42",
+      "name": "醤油",
+      "category": "misc",
+      "description": "豆から作る黒い調味料。焼くと香ばしい匂いがする。",
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000203_43",
+      "name": "味噌",
+      "category": "misc",
+      "description": "じっくり発酵させた旨味のかたまり。魚の臭みを消してくれる。",
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000204_44",
+      "name": "小麦粉",
+      "category": "misc",
+      "description": "衣や生地に使う白い粉。ふわっと軽い。",
+      "rank": "F",
+      "listedPrice": 20,
+      "trueValue": 20,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000205_45",
+      "name": "お米",
+      "category": "misc",
+      "description": "ふっくら炊けば力が出る、この世界の主食。",
+      "rank": "F",
+      "listedPrice": 25,
+      "trueValue": 25,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000206_46",
+      "name": "たまご",
+      "category": "misc",
+      "description": "どこかの鶏が産んだ新鮮なたまご。割ると黄身が元気に盛り上がる。",
+      "rank": "F",
+      "listedPrice": 15,
+      "trueValue": 15,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000207_47",
+      "name": "長ネギ",
+      "category": "misc",
+      "description": "香りが強く、火を通すと甘くなる野菜。",
+      "rank": "F",
+      "listedPrice": 15,
+      "trueValue": 15,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000208_48",
+      "name": "ショウガ",
+      "category": "misc",
+      "description": "ピリッと辛い根菜。体がポカポカ温まる。",
+      "rank": "F",
+      "listedPrice": 20,
+      "trueValue": 20,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000209_49",
+      "name": "ニンニク",
+      "category": "misc",
+      "description": "食欲をそそる強烈な香りの球根。食べたあとは少し自信がつく。",
+      "rank": "F",
+      "listedPrice": 20,
+      "trueValue": 20,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000210_50",
+      "name": "バター",
+      "category": "misc",
+      "description": "濃厚なコクを出せる乳製品。牧場の搾りたてミルクから作られている。",
+      "rank": "F",
+      "listedPrice": 45,
+      "trueValue": 45,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000211_51",
+      "name": "レモン",
+      "category": "misc",
+      "description": "酸っぱい黄色い果実。魚料理にひと搾りすると味が引き締まる。",
+      "rank": "F",
+      "listedPrice": 25,
+      "trueValue": 25,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000212_52",
+      "name": "トマト",
+      "category": "misc",
+      "description": "真っ赤に熟した、ジューシーな野菜。煮込むと旨味が増す。",
+      "rank": "F",
+      "listedPrice": 25,
+      "trueValue": 25,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000213_53",
+      "name": "昆布",
+      "category": "misc",
+      "description": "海で採れる出汁の素。池の魚との相性も悪くない。",
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1
+      },
+      "isRecipeItem": false,
+      "unlockRecipeId": "",
+      "stackable": true
+    },
+    {
+      "id": "item_1792000000301_61",
+      "name": "ドロンコフナの味噌煮",
+      "category": "food",
+      "description": "泥臭さを味噌でしっかり消した、素朴で優しい味の煮魚。",
+      "rank": "F",
+      "listedPrice": 60,
+      "trueValue": 60,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 80
+      },
+      "foodBuffKind": "regen",
+      "foodBuffDuration": 5,
+      "foodBuffPower": 0
+    },
+    {
+      "id": "item_1792000000302_62",
+      "name": "ホタルメダカのからあげ",
+      "category": "food",
+      "description": "丸ごとカラッと揚げた小魚。噛むとほんのり光る気がする。",
+      "rank": "F",
+      "listedPrice": 80,
+      "trueValue": 80,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "SP回復量": 20,
+        "回復量": 40
+      },
+      "foodBuffKind": "critUp",
+      "foodBuffDuration": 3,
+      "foodBuffPower": 20
+    },
+    {
+      "id": "item_1792000000303_63",
+      "name": "ミズタマハゼの天ぷら",
+      "category": "food",
+      "description": "衣はサクサク、身はふわふわ。揚げたてが一番美味い。",
+      "rank": "F",
+      "listedPrice": 100,
+      "trueValue": 100,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 60
+      },
+      "foodBuffKind": "atkUp",
+      "foodBuffDuration": 3,
+      "foodBuffPower": 5
+    },
+    {
+      "id": "item_1792000000304_64",
+      "name": "コケむしウナギの蒲焼き",
+      "category": "food",
+      "description": "甘辛いタレを絡めて香ばしく焼き上げた。スタミナ満点。",
+      "rank": "F",
+      "listedPrice": 220,
+      "trueValue": 220,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 120,
+        "疲労回復量": 30
+      },
+      "foodBuffKind": "atkUp",
+      "foodBuffDuration": 4,
+      "foodBuffPower": 8
+    },
+    {
+      "id": "item_1792000000305_65",
+      "name": "ヒラヒラサヨリのレモン昆布炒め",
+      "category": "food",
+      "description": "昆布の旨味とレモンの酸味で、上品に仕上げた炒め物。",
+      "rank": "F",
+      "listedPrice": 180,
+      "trueValue": 180,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 90
+      },
+      "foodBuffKind": "defUp",
+      "foodBuffDuration": 3,
+      "foodBuffPower": 30
+    },
+    {
+      "id": "item_1792000000306_66",
+      "name": "トゲトゲカサゴのアクアパッツァ風",
+      "category": "food",
+      "description": "トマトとニンニクで煮込んだ、豪快で香り高い一皿。",
+      "rank": "F",
+      "listedPrice": 260,
+      "trueValue": 260,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 150
+      },
+      "foodBuffKind": "all_stats_up",
+      "foodBuffDuration": 3,
+      "foodBuffPower": 15
+    },
+    {
+      "id": "item_1792000000307_67",
+      "name": "ニジイロマスのバターソテー",
+      "category": "food",
+      "description": "バターの香りが食欲をそそる。皮目までパリッと焼けている。",
+      "rank": "F",
+      "listedPrice": 340,
+      "trueValue": 340,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "SP回復量": 40,
+        "回復量": 100
+      },
+      "foodBuffKind": "heal_up",
+      "foodBuffDuration": 3,
+      "foodBuffPower": 10
+    },
+    {
+      "id": "item_1792000000308_68",
+      "name": "ギンパクヒラメのムニエル",
+      "category": "food",
+      "description": "小麦粉をまぶして焼いた、外はカリッと中はしっとりの逸品。",
+      "rank": "F",
+      "listedPrice": 400,
+      "trueValue": 400,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 180,
+        "疲労回復量": 40
+      },
+      "foodBuffKind": "regen",
+      "foodBuffDuration": 5,
+      "foodBuffPower": 0
+    },
+    {
+      "id": "item_1792000000309_69",
+      "name": "ヨルヅキナマズのネギ味噌焼き",
+      "category": "food",
+      "description": "月夜に釣れたナマズに、味噌とネギをたっぷり乗せて焼いた。",
+      "rank": "F",
+      "listedPrice": 700,
+      "trueValue": 700,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 250,
+        "疲労回復量": 40,
+        "眠気軽減割合": 0.1
+      },
+      "foodBuffKind": "statusImmune",
+      "foodBuffDuration": 5,
+      "foodBuffPower": 0
+    },
+    {
+      "id": "item_1792000000310_70",
+      "name": "コガネヌシの黄金丼",
+      "category": "food",
+      "description": "主と呼ばれた魚を、ご飯と卵でまとめ上げた伝説の丼。食べれば全身に力がみなぎる。",
+      "rank": "F",
+      "listedPrice": 3000,
+      "trueValue": 3000,
+      "unsellable": false,
+      "baitFishTypes": [],
+      "params": {
+        "希少度": 1,
+        "回復量": 400,
+        "SP回復量": 100
+      },
+      "foodBuffKind": "all_stats_up",
+      "foodBuffDuration": 5,
+      "foodBuffPower": 25
     }
   ],
   "furniture": [
@@ -2939,6 +3573,186 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "rank": "F",
       "listedPrice": 20,
       "trueValue": 20
+    },
+    {
+      "id": "fish_1792000000001_21",
+      "name": "ドロンコフナ",
+      "description": "泥の中に潜るのが好きな、どこにでもいる地味なフナ。泥臭いが火を通せば食べられる。",
+      "fishType": "ドロ科",
+      "power": 2,
+      "hp": 12,
+      "size": 8,
+      "rank": "F",
+      "listedPrice": 15,
+      "trueValue": 15
+    },
+    {
+      "id": "fish_1792000000002_22",
+      "name": "ホタルメダカ",
+      "description": "夜になると体がぼんやり光る小さなメダカ。群れで水面近くを漂っている。",
+      "fishType": "ピカリ科",
+      "power": 1,
+      "hp": 8,
+      "size": 3,
+      "rank": "F",
+      "listedPrice": 25,
+      "trueValue": 25
+    },
+    {
+      "id": "fish_1792000000003_23",
+      "name": "ミズタマハゼ",
+      "description": "水玉模様の背びれを持つ小さなハゼ。揚げ物にするとサクサクで美味しい。",
+      "fishType": "ドロ科",
+      "power": 3,
+      "hp": 16,
+      "size": 6,
+      "rank": "F",
+      "listedPrice": 30,
+      "trueValue": 30
+    },
+    {
+      "id": "fish_1792000000004_24",
+      "name": "コケむしウナギ",
+      "description": "全身が苔に覆われたウナギ。ぬるぬるして掴みづらいが、身は脂がのっている。",
+      "fishType": "ドロ科",
+      "power": 5,
+      "hp": 28,
+      "size": 45,
+      "rank": "E",
+      "listedPrice": 90,
+      "trueValue": 90
+    },
+    {
+      "id": "fish_1792000000005_25",
+      "name": "ヒラヒラサヨリ",
+      "description": "長いヒレをヒラヒラ揺らして泳ぐ細身の魚。上品な白身で、癖がない。",
+      "fishType": "ヒレナガ科",
+      "power": 4,
+      "hp": 20,
+      "size": 30,
+      "rank": "E",
+      "listedPrice": 70,
+      "trueValue": 70
+    },
+    {
+      "id": "fish_1792000000006_26",
+      "name": "トゲトゲカサゴ",
+      "description": "全身トゲだらけの魚。うかつに触ると痛い目を見るが、出汁がよく出る。",
+      "fishType": "トゲトゲ科",
+      "power": 6,
+      "hp": 26,
+      "size": 20,
+      "rank": "E",
+      "listedPrice": 110,
+      "trueValue": 110
+    },
+    {
+      "id": "fish_1792000000007_27",
+      "name": "ニジイロマス",
+      "description": "朝日を浴びると虹色に輝くマス。バターとの相性が抜群。",
+      "fishType": "ピカリ科",
+      "power": 6,
+      "hp": 35,
+      "size": 40,
+      "rank": "D",
+      "listedPrice": 180,
+      "trueValue": 180
+    },
+    {
+      "id": "fish_1792000000008_28",
+      "name": "ギンパクヒラメ",
+      "description": "銀の箔をまとったような美しいヒラメ。池の底でじっと獲物を待っている。",
+      "fishType": "ヒレナガ科",
+      "power": 7,
+      "hp": 40,
+      "size": 55,
+      "rank": "D",
+      "listedPrice": 240,
+      "trueValue": 240
+    },
+    {
+      "id": "fish_1792000000009_29",
+      "name": "ハリネズミフグ",
+      "description": "危険を感じると針を逆立ててまん丸になる小さなフグ。観賞用としても人気。",
+      "fishType": "トゲトゲ科",
+      "power": 8,
+      "hp": 38,
+      "size": 25,
+      "rank": "D",
+      "listedPrice": 260,
+      "trueValue": 260
+    },
+    {
+      "id": "fish_1792000000010_30",
+      "name": "ヨルヅキナマズ",
+      "description": "月夜にだけ姿を現す大きなナマズ。ふっくらした身は鍋にすると絶品。",
+      "fishType": "ドロ科",
+      "power": 9,
+      "hp": 55,
+      "size": 90,
+      "rank": "C",
+      "listedPrice": 420,
+      "trueValue": 420
+    },
+    {
+      "id": "fish_1792000000011_31",
+      "name": "ホウライコイ",
+      "description": "縁起が良いとされる、金と赤の模様を持つコイ。夕暮れ時によく跳ねる。",
+      "fishType": "ヒレナガ科",
+      "power": 8,
+      "hp": 60,
+      "size": 70,
+      "rank": "C",
+      "listedPrice": 500,
+      "trueValue": 500
+    },
+    {
+      "id": "fish_1792000000012_32",
+      "name": "ガラスのシラウオ",
+      "description": "体が透き通って向こう側が見えるほど儚いシラウオ。雨の日にだけ水面に集まる。",
+      "fishType": "ピカリ科",
+      "power": 5,
+      "hp": 30,
+      "size": 15,
+      "rank": "C",
+      "listedPrice": 600,
+      "trueValue": 600
+    },
+    {
+      "id": "fish_1792000000013_33",
+      "name": "カミナリブリ",
+      "description": "雷雨の日に荒々しく暴れまわる大型のブリ。その引きは並の釣竿では耐えられない。",
+      "fishType": "ヒレナガ科",
+      "power": 12,
+      "hp": 80,
+      "size": 110,
+      "rank": "B",
+      "listedPrice": 1100,
+      "trueValue": 1100
+    },
+    {
+      "id": "fish_1792000000014_34",
+      "name": "ガマジルオオイワナ",
+      "description": "ガマジルの池の深みに棲む、全身ゴツゴツしたオオイワナ。釣り人の間では憧れの的。",
+      "fishType": "トゲトゲ科",
+      "power": 13,
+      "hp": 95,
+      "size": 130,
+      "rank": "B",
+      "listedPrice": 1500,
+      "trueValue": 1500
+    },
+    {
+      "id": "fish_1792000000015_35",
+      "name": "コガネヌシ",
+      "description": "池の主と噂される黄金色の巨大魚。一生に一度見られるかどうかと言われている。",
+      "fishType": "ピカリ科",
+      "power": 15,
+      "hp": 120,
+      "size": 160,
+      "rank": "A",
+      "listedPrice": 5000,
+      "trueValue": 5000
     }
   ],
   "skills": [
