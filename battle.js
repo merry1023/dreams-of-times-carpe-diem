@@ -621,12 +621,27 @@ async function battleLoop() {
     
     while (battleState && actionsRemaining > 0) {
       const order = [null].concat((player.companions || []).filter(c => c.alive)); // null＝主人公
-      if (consecutivePasses >= order.length) break; // ★全員が続けてパス → このラウンドの味方の行動はここまで
+      // ★バグ修正：動けない主人公（戦闘不能・スタン等）は行動選択を聞かれない人なので、「全員パス」の判定人数から除く
+      //   （以前は動けない主人公も人数に含めて数えていたため、仲間が最後にパスしただけで、行動可能数が残っているのに敵のターンへ進んでいた）
+      const choosers = heroBlockedThisRound ? order.length - 1 : order.length;
+      if (consecutivePasses >= choosers) {
+        // ★全員が続けてパスした：行動可能数が残っているので、勝手に敵のターンへ進めず確認する（「いいえ」なら選択を続ける）
+        changeSpeaker("");
+        await displayMessage(`全員がパスした。（行動可能数が${actionsRemaining}残っている）`);
+        const endChoice = await displayChoices([
+          { text: "ターンを終了する", next: "end" },
+          { text: "行動を続ける", next: "continue" }
+        ]);
+        if (endChoice.next === "end") break;
+        consecutivePasses = 0;
+        cursor = 0;
+        continue;
+      }
       if (cursor >= order.length) cursor = 0;
       const actor = order[cursor];
       
       if (actor === null) {
-        if (heroBlockedThisRound) { cursor++; consecutivePasses++; continue; } // ★動けない主人公は2周目以降は黙って飛ばす
+        if (heroBlockedThisRound) { cursor++; continue; } // ★動けない主人公は2周目以降は黙って飛ばす（パスとしては数えない）
         const heroResult = await runHeroActionPhase();
         if (heroResult === "ended") return;
         if (heroResult === "cancelled") continue; // ★サブメニューから「戻る」で抜けただけ：回数を消費せずもう一度主人公の選択へ
@@ -637,7 +652,7 @@ async function battleLoop() {
         if (!battleState) return;
         if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
         actionsRemaining--; // heroResult === "acted" または "blocked"
-        if (heroResult === "blocked") { heroBlockedThisRound = true; consecutivePasses++; } else { consecutivePasses = 0; }
+        if (heroResult === "blocked") { heroBlockedThisRound = true; } else { consecutivePasses = 0; } // ★動けなかった場合はパス回数に数えない（回数自体は消費する）
         cursor++;
         updateBattleActionPoints(actionsRemaining, maxActions);
       } else {
@@ -648,7 +663,7 @@ async function battleLoop() {
         if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
         if (!battleState) return;
         if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
-        if (acted === true) { actionsRemaining--; consecutivePasses = 0; } else { consecutivePasses++; } // ★パス（false）は減らない
+        if (acted === false) { consecutivePasses++; } else { actionsRemaining--; consecutivePasses = 0; } // ★パス（false）だけ減らない。力尽きて行動を打ち切られた場合（undefined）をパス扱いにしない
         cursor++;
         updateBattleActionPoints(actionsRemaining, maxActions);
       }
