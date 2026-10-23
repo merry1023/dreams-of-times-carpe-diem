@@ -268,6 +268,7 @@ async function startBattle(monsterKeys, options = {}) {
   };
   
   resetAllCompanionBattleBuffs(); // ★戦闘開始時に、仲間の自己バフ・攻撃回数カウント等をリセットしておく
+  resetAllShouryoku(); // ★要望対応：焦力も戦闘ごとに0から
   startBattleBGM(isBoss); // bgm.js
   showBattleHud();
   changeSpeaker("");
@@ -355,6 +356,7 @@ async function startTrialBattle(trialRank) {
   };
   
   resetAllCompanionBattleBuffs(); // ★戦闘開始時に、仲間の自己バフ・攻撃回数カウント等をリセットしておく
+  resetAllShouryoku(); // ★要望対応：焦力も戦闘ごとに0から
   startBattleBGM(true); // bgm.js
   showBattleHud();
   changeSpeaker("");
@@ -731,6 +733,7 @@ async function battleLoop() {
     await tickAllCompanionTurnBasedBuffs();
     
     battleState.turnCount = (battleState.turnCount || 1) + 1; // ★1ラウンド終わるごとに、特殊スキル用のターン数を進める
+    addShouryokuToParty(SHOURYOKU_GAIN.turn); // ★要望対応：ターン経過で焦力+3（主人公と生きている仲間全員）
     
     // ★力尽きた？
     if (isPartyDefeated()) {
@@ -926,6 +929,7 @@ async function playerNormalAttack() {
   
   const target = await selectEnemyTarget(); // ★敵が2体以上いる時は←→キー（クリックでも可）で狙う相手を選ばせる
   if (!target) return false; // ★狙う相手を選ぶ前にキャンセルした：ターンを消費せず選び直せる
+  addShouryoku(player, SHOURYOKU_GAIN.attack); // ★要望対応：通常攻撃で焦力+5
   
   // ★状態異常「命中率低下」を受けていると、攻撃が外れることがある
   if (checkPlayerAttackMisses()) {
@@ -1316,6 +1320,7 @@ async function handleActionMenu() {
       enemy.enemyAtkBonus += 4;
       enemy.enemyAccuracyPenalty += 25;
     });
+    addShouryoku(player, SHOURYOKU_GAIN.taunt); // ★要望対応：挑発で焦力+5
     await displayMessage(aliveEnemies.length === 1
       ? `挑発した！ ${aliveEnemies[0].displayName}は攻撃的になったが、動きが雑になったようだ！`
       : "挑発した！ 敵全体が攻撃的になったが、動きが雑になったようだ！");
@@ -1326,6 +1331,7 @@ async function handleActionMenu() {
   if (choice.next === "scream") {
     // ★成功すれば「ドン引き」させて相手の次の行動を1回封じる
     const success = Math.random() < 0.6;
+    addShouryoku(player, SHOURYOKU_GAIN.scream); // ★要望対応：奇声をあげると焦力+5（成否に関わらず）
     if (success) {
       aliveEnemies.forEach(enemy => { enemy.enemyFlinched = true; });
       await displayMessage(aliveEnemies.length === 1
@@ -1451,6 +1457,54 @@ function getCompanionBuffState(companion) {
     };
   }
   return companion._battleBuffs;
+}
+
+// ===== 焦力（要望対応） =====
+//   上位スキルを発動するための専用パラメータ。主人公・仲間の全員が、最大100固定で持つ（職業・仲間を問わない）。
+//   戦闘ごとに0から始まり、ターン経過+3／通常攻撃+5／攻撃を受ける+2／挑発・奇声+5ずつ増える。
+//   上位スキルを使うと、スキルごとに決めた消費焦力量（shouryokuCost）が減る（SPは消費しない）
+const SHOURYOKU_MAX = 100;
+const SHOURYOKU_GAIN = { turn: 3, attack: 5, damaged: 2, taunt: 5, scream: 5 };
+function getShouryoku(unit) {
+  return unit ? Math.max(0, Math.min(SHOURYOKU_MAX, Number(unit._shouryoku) || 0)) : 0;
+}
+function addShouryoku(unit, amount) {
+  if (!unit) return;
+  unit._shouryoku = Math.max(0, Math.min(SHOURYOKU_MAX, getShouryoku(unit) + amount));
+  updateShouryokuHud();
+}
+function addShouryokuToParty(amount) {
+  addShouryoku(player, amount);
+  (player.companions || []).filter(c => c.alive).forEach(c => addShouryoku(c, amount));
+}
+function resetAllShouryoku() {
+  if (!player) return;
+  player._shouryoku = 0;
+  (player.companions || []).forEach(c => { c._shouryoku = 0; });
+  updateShouryokuHud();
+}
+function getSkillShouryokuCost(skill) {
+  return Math.max(0, Math.min(SHOURYOKU_MAX, Number(skill && skill.shouryokuCost) || 0));
+}
+// ★スキルの消費量の表示（上位スキルは焦力、それ以外はSP）
+function formatSkillCostLabel(skill) {
+  return skill.isUpper ? `焦力${getSkillShouryokuCost(skill)}` : `SP${skill.spCost}`;
+}
+function updateShouryokuHud() {
+  const el = document.getElementById("battle-shouryoku");
+  if (!el) return;
+  if (!battleState || !player) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  const parts = [`主人公 ${getShouryoku(player)}`];
+  (player.companions || []).filter(c => c.alive).forEach(c => parts.push(`${getCompanionDisplayName(c)} ${getShouryoku(c)}`));
+  el.textContent = `焦力　${parts.join("　")} ／${SHOURYOKU_MAX}`;
+  el.classList.toggle("battle-action-points-boss", !!battleState.isBoss);
+  el.classList.remove("hidden");
+}
+
+// ★仲間がスキルの対象選択をやめた時に、消費したコスト（上位スキルは焦力、それ以外はSP）を返す
+function refundCompanionSkillCost(companion, skill) {
+  if (skill.isUpper) addShouryoku(companion, getSkillShouryokuCost(skill));
+  else companion.gauges.sp.current += skill.spCost;
 }
 
 function resetAllCompanionBattleBuffs() {
@@ -1653,6 +1707,7 @@ async function performCompanionNormalAttack(companion) {
     return redoActed === false ? "passed" : "acted";
   }
   
+  addShouryoku(companion, SHOURYOKU_GAIN.attack); // ★要望対応：通常攻撃で焦力+5
   const stats = getCompanionEffectiveStats(companion); // player.js
   const name = getCompanionDisplayName(companion);
   const variance = Math.floor(Math.random() * 7) - 3; // -3〜+3の揺らぎ（主人公の通常攻撃と統一）
@@ -1686,7 +1741,7 @@ async function performCompanionSkillMenu(companion, options = {}) {
     return await performCompanionNormalAttack(companion); // ★同上：パスした結果を伝える
   }
   
-  const choices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description, elementId: s.element })); // ★elementId：選択肢の左上に属性バッジを出す（mainfunc.js renderChoiceBox）
+  const choices = skills.map(s => ({ text: `${s.name}（${formatSkillCostLabel(s)}）`, next: s.name, description: s.description, elementId: s.element })); // ★elementId：選択肢の左上に属性バッジを出す（mainfunc.js renderChoiceBox）
   choices.push({ text: "戻る", next: "back", isBack: true });
   const picked = await displayChoices(choices);
   if (picked.next === "back") {
@@ -1695,14 +1750,15 @@ async function performCompanionSkillMenu(companion, options = {}) {
   }
   
   const skill = skills.find(s => s.name === picked.next);
-  if (companion.gauges.sp.current < skill.spCost) {
+  if (skill.isUpper ? getShouryoku(companion) < getSkillShouryokuCost(skill) : companion.gauges.sp.current < skill.spCost) {
     changeSpeaker("");
-    await displayMessage("SPが足りない！");
+    await displayMessage(skill.isUpper ? `焦力が足りない！（必要${getSkillShouryokuCost(skill)}／現在${getShouryoku(companion)}）` : "SPが足りない！"); // ★要望対応：上位スキルは焦力で判定
     return await performCompanionSkillMenu(companion, options); // ★やり直し先で「パス」を選んだ結果を呼び出し元へ伝える（以前は捨てていたため、パスしたのに行動回数が減っていた）
     return;
   }
   
-  companion.gauges.sp.current -= skill.spCost;
+  if (skill.isUpper) addShouryoku(companion, -getSkillShouryokuCost(skill)); // ★要望対応：上位スキルは焦力を消費（SPは消費しない）
+  else companion.gauges.sp.current -= skill.spCost;
   if (battleState) battleState.lastCompanionSkill = skill; // ★コンボスキル用：仲間が撃った技
   changeSpeaker("");
   
@@ -1711,7 +1767,7 @@ async function performCompanionSkillMenu(companion, options = {}) {
   if (Array.isArray(skill.blocks) && skill.blocks.length > 0) {
     const success = await runSkillBlocksForCompanionTurn(companion, skill);
     if (!success) {
-      companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★対象選択をキャンセルしたので、消費したSPを返す
+      refundCompanionSkillCost(companion, skill); if (battleState) battleState.lastCompanionSkill = null; // ★対象選択をキャンセルしたので、消費したSPを返す
       renderStatusHUD();
       return await performCompanionSkillMenu(companion, options); // ★やり直し先で「パス」を選んだ結果を呼び出し元へ伝える（以前は捨てていたため、パスしたのに行動回数が減っていた）
       return;
@@ -1761,7 +1817,7 @@ async function performCompanionSkillMenu(companion, options = {}) {
         choices.push({ text: "やめる", next: "cancel", isBack: true });
         const picked = await displayChoices(choices);
         if (picked.next === "cancel") {
-          companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★やめたので、消費したSPを返す
+          refundCompanionSkillCost(companion, skill); if (battleState) battleState.lastCompanionSkill = null; // ★やめたので、消費したSPを返す
           renderStatusHUD();
           return await performCompanionSkillMenu(companion, options); // ★やり直し先で「パス」を選んだ結果を呼び出し元へ伝える（以前は捨てていたため、パスしたのに行動回数が減っていた）
           return;
@@ -1798,7 +1854,7 @@ async function performCompanionSkillMenu(companion, options = {}) {
   const aliveEnemies = getAliveEnemies();
   const targets = skill.target === "all" ? aliveEnemies : [await selectEnemyTarget()];
   if (!targets[0]) {
-    companion.gauges.sp.current += skill.spCost; if (battleState) battleState.lastCompanionSkill = null; // ★狙う相手を選ぶ前にキャンセルしたので、消費したSPを返す
+    refundCompanionSkillCost(companion, skill); if (battleState) battleState.lastCompanionSkill = null; // ★狙う相手を選ぶ前にキャンセルしたので、消費したSPを返す
     renderStatusHUD();
     return await performCompanionSkillMenu(companion, options); // ★やり直し先で「パス」を選んだ結果を呼び出し元へ伝える（以前は捨てていたため、パスしたのに行動回数が減っていた） // ★スキル選択からやり直す
     return;
@@ -2396,6 +2452,7 @@ async function runSingleEnemyTurn(enemy) {
     const companion = attackTarget.companion;
     const damage = applyEnemyAttackElementEffects(companion, "companion", enemy, Math.max(1, enemyAtk + variance)); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性
     companion.gauges.hp.current = Math.max(0, companion.gauges.hp.current - damage);
+    addShouryoku(companion, SHOURYOKU_GAIN.damaged); // ★要望対応：攻撃を受けると焦力+2
     player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
     renderStatusHUD();
     if (typeof triggerCameraShake === "function") triggerCameraShake(); // mainfunc.js
@@ -2416,6 +2473,7 @@ async function runSingleEnemyTurn(enemy) {
   }
   
   changeGauge("hp", -damage);
+  addShouryoku(player, SHOURYOKU_GAIN.damaged); // ★要望対応：攻撃を受けると焦力+2
   player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
   renderStatusHUD();
   if (typeof triggerCameraShake === "function") triggerCameraShake(); // mainfunc.js
@@ -2635,6 +2693,7 @@ async function executeMonsterUniqueSkill(enemy, skill) {
       const raw = Math.max(1, Math.round(levelMultiplier * (classSkill.power || 0)) + Math.round(atkPerHit) + variance);
       const hitDamage = applyPlayerDamageReduction(applyEnemyAttackElementEffects(player, "class", enemy, raw, classSkill.element)); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性（職業技ならその技の属性）
       changeGauge("hp", -hitDamage);
+      addShouryoku(player, SHOURYOKU_GAIN.damaged); // ★要望対応：攻撃を受けると焦力+2
       totalDamage += hitDamage;
     }
     player.totalDamageTaken = (player.totalDamageTaken || 0) + totalDamage; // ★実績システム用
@@ -2652,6 +2711,7 @@ async function executeMonsterUniqueSkill(enemy, skill) {
   const enemyAtk = enemy.atk + enemy.enemyAtkBonus + atkUpBonus;
   const damage = applyPlayerDamageReduction(applyEnemyAttackElementEffects(player, "class", enemy, Math.max(1, Math.round(enemyAtk * (skill.multiplier || 1))))); // ★ステータスパネルの属性耐性＋防具・盾の属性との相性
   changeGauge("hp", -damage);
+  addShouryoku(player, SHOURYOKU_GAIN.damaged); // ★要望対応：攻撃を受けると焦力+2
   player.totalDamageTaken = (player.totalDamageTaken || 0) + damage; // ★実績システム用（要望対応）
   if (typeof triggerCameraShake === "function") triggerCameraShake(); // mainfunc.js
   
@@ -3393,7 +3453,7 @@ async function runSkillBlocksForPlayerTurn(skill) {
   if (needsTarget) {
     target = await selectEnemyTarget();
     if (!target) {
-      changeGauge("sp", skill.spCost); // ★対象選択をキャンセルしたのでSPを返す
+      if (skill.isUpper) addShouryoku(player, getSkillShouryokuCost(skill)); else changeGauge("sp", skill.spCost); // ★対象選択をキャンセルしたので、消費したSP（上位スキルは焦力）を返す
       renderStatusHUD();
       return false;
     }
@@ -3496,7 +3556,7 @@ async function handleSkillMenu(options = {}) {
     return false;
   }
   
-  const skillChoices = skills.map(s => ({ text: `${s.name}（SP${s.spCost}）`, next: s.name, description: s.description, elementId: s.element })); // ★elementId：選択肢の左上に属性バッジを出す（mainfunc.js renderChoiceBox）
+  const skillChoices = skills.map(s => ({ text: `${s.name}（${formatSkillCostLabel(s)}）`, next: s.name, description: s.description, elementId: s.element })); // ★elementId：選択肢の左上に属性バッジを出す（mainfunc.js renderChoiceBox）
   skillChoices.push({ text: "戻る", next: "back", isBack: true });
   
   const picked = await displayChoices(skillChoices);
@@ -3516,7 +3576,14 @@ async function handleSkillMenu(options = {}) {
     return false;
   }
   
-  if (player.gauges.sp.current < skill.spCost) {
+  // ★要望対応：上位スキルはSPではなく焦力を消費して発動する
+  if (skill.isUpper) {
+    if (getShouryoku(player) < getSkillShouryokuCost(skill)) {
+      changeSpeaker("");
+      await displayMessage(`焦力が足りない！（必要${getSkillShouryokuCost(skill)}／現在${getShouryoku(player)}）`);
+      return false;
+    }
+  } else if (player.gauges.sp.current < skill.spCost) {
     changeSpeaker("");
     await displayMessage("SPが足りない！");
     return false;
@@ -3529,7 +3596,8 @@ async function handleSkillMenu(options = {}) {
     return true; // ★行動自体は失敗しても、ターンは消費する
   }
   
-  changeGauge("sp", -skill.spCost);
+  if (skill.isUpper) addShouryoku(player, -getSkillShouryokuCost(skill)); // ★要望対応：上位スキルは焦力を消費（SPは消費しない）
+  else changeGauge("sp", -skill.spCost);
   if (battleState) battleState.lastPlayerSkill = skill; // ★コンボスキル用：このターンに撃った技（対象選択キャンセル時は呼び出し元がdone=falseで無視する）
   checkZetsurinAutoRecover(); // ★性騎士の「絶倫」：SPが2割を切ったら自動回復（1戦闘3回まで）
   checkMagicalGirlForcedDetransform(); // ★SPが3割を切ったら変身が強制解除される
@@ -3637,7 +3705,7 @@ async function handleSkillMenu(options = {}) {
       if (!skill.randomTarget) {
         target = await selectEnemyTarget();
         if (!target) {
-          changeGauge("sp", skill.spCost); // ★狙う相手を選ぶ前にキャンセルしたので、消費したSPを返す
+          if (skill.isUpper) addShouryoku(player, getSkillShouryokuCost(skill)); else changeGauge("sp", skill.spCost); // ★狙う相手を選ぶ前にキャンセルしたので、消費したSP（上位スキルは焦力）を返す
           renderStatusHUD();
           return false; // ★ターンを消費せず選び直せる
         }
@@ -3700,7 +3768,7 @@ async function handleSkillMenu(options = {}) {
   } else {
     const resultMessage = await performSkillHealWithTargetSelection(skill); // mainfunc.js（対象選択→回復適用）
     if (resultMessage === null) {
-      changeGauge("sp", skill.spCost); // ★対象選択で「やめる」を選んだので、消費したSPを返す
+      if (skill.isUpper) addShouryoku(player, getSkillShouryokuCost(skill)); else changeGauge("sp", skill.spCost); // ★対象選択で「やめる」を選んだので、消費したSP（上位スキルは焦力）を返す
       renderStatusHUD();
       return false; // ★ターンを消費せず選び直せる
     }
@@ -4207,6 +4275,7 @@ function hideBattleHud() {
   const hud = document.getElementById("battle-hud");
   if (hud) hud.classList.add("hidden");
   updateBattleActionPoints(0, 0); // ★戦闘が終わったら行動可能数のアイコンも消す
+  updateShouryokuHud(); // ★焦力の表示も消す（battleStateが無い時は非表示になる）
 
   const container = document.getElementById("battle-enemies");
   if (container) container.innerHTML = "";
@@ -4352,6 +4421,7 @@ function renderBattleEnemies() {
 
 function updateBattleHud() {
   if (!battleState) return;
+  updateShouryokuHud(); // ★要望対応：焦力の表示も更新する
   
   // ★要望対応：HPが0になった直後にここが呼ばれるので、次の形態が残っているボスはここで確実に切り替える
   battleState.enemies.forEach(e => { if (e.hp <= 0) reviveBossToNextFormIfAvailable(e); });
