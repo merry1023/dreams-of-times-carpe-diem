@@ -297,8 +297,6 @@
       <div id="location-menu" class="location-menu hidden"></div>
       <!-- ★要望対応：戦闘中の味方の行動可能数（最大4つの横並びアイコン）。battle.jsのupdateBattleActionPointsが更新する -->
       <div id="battle-action-points" class="battle-action-points hidden"></div>
-      <!-- ★要望対応：戦闘中の焦力（上位スキルの消費パラメータ）。battle.jsのupdateShouryokuHudが更新する -->
-      <div id="battle-shouryoku" class="battle-shouryoku hidden"></div>
       <div id="battle-hud" class="battle-hud hidden">
         <p id="battle-enemy-name" class="battle-enemy-name"></p>
         <div class="gauge-bar"><div class="gauge-fill enemy-hp-fill" id="enemy-hp-fill"></div></div>
@@ -368,6 +366,10 @@
             <span class="main-tab-weather-arrow">→</span>
             <span id="main-tab-weather-next" class="main-tab-weather-next">次：☀️ 晴れ</span>
           </div>
+          
+          <!-- ★要望対応：焦力（上位スキルの消費パラメータ）を、時計の上に常時表示する。主人公と仲間ごとにゲージで表示。
+               battle.jsのupdateShouryokuHudが更新する（戦闘中も戦闘外も同じ場所。以前は戦闘中だけ画面上部に出していた） -->
+          <div id="main-tab-shouryoku" class="main-tab-shouryoku hidden"></div>
           
           <!-- ★メインタブの40%くらいの大きさのアナログ時計（針は時針・分針のみ）と、その下にデジタル時計（要望対応）。
                img/clock/clock.png（文字盤）・img/clock/hour.png（時針）・img/clock/minutes.png（分針）を重ねて表示する。
