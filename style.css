@@ -533,6 +533,67 @@ html, body {
     color: #aaa;
 }
 
+/* ★焦力ゲージ：時計の上に、主人公と仲間ごとに1本ずつ表示する（要望対応） */
+.main-tab-shouryoku {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 60%;
+    max-width: 280px;
+    min-width: 200px;
+    margin: 10px auto 0;
+}
+
+.main-tab-shouryoku.hidden {
+    display: none !important;
+}
+
+.main-tab-shouryoku-title {
+    font-size: 11px;
+    color: #ffd27a;
+    text-align: center;
+    letter-spacing: 0.1em;
+}
+
+.main-tab-shouryoku-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #ffd27a;
+}
+
+.main-tab-shouryoku-row.down {
+    opacity: 0.5;
+}
+
+.main-tab-shouryoku-name {
+    flex: 0 0 5.5em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.main-tab-shouryoku-bar {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.main-tab-shouryoku-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff9a3c, #ffd27a);
+    border-radius: 4px;
+    transition: width 0.25s ease;
+}
+
+.main-tab-shouryoku-value {
+    flex: 0 0 2.2em;
+    text-align: right;
+}
+
 /* ★メインタブの中央：アナログ時計（40%くらいの大きさ）＋その下にデジタル時計（要望対応） */
 .main-tab-clock-area {
     display: flex;
@@ -4323,25 +4384,6 @@ rt {
   background-color: rgba(0, 0, 0, 0.55);
   border-radius: 16px;
   pointer-events: none;
-}
-.battle-shouryoku {
-  position: absolute;
-  top: 56px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 12px;
-  background-color: rgba(0, 0, 0, 0.55);
-  color: #ffd27a;
-  border-radius: 12px;
-  font-size: 13px;
-  white-space: nowrap;
-  pointer-events: none;
-}
-.battle-shouryoku.hidden {
-  display: none !important;
-}
-.battle-shouryoku.battle-action-points-boss {
-  top: 92px;
 }
 .battle-action-points.hidden {
   display: none !important;

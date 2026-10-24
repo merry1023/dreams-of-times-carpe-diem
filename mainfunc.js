@@ -1732,6 +1732,7 @@ function renderStatusHUD() {
   if (!player) return;
   if (typeof refreshStatusPanelTabVisibility === "function") refreshStatusPanelTabVisibility(); // ★要望対応：パネルタブは30レベルに到達するまで隠す（statuspanel.js）
   if (typeof updateUnreadBadges === "function") updateUnreadBadges(); // ★要望対応：実績・チュートリアルの未確認バッジを、ロード直後なども含めて最新に保つ（convenience.js）
+  if (typeof updateShouryokuHud === "function") updateShouryokuHud(); // ★要望対応：時計の上の焦力ゲージも、ロード直後・仲間の増減なども含めて最新に保つ（battle.js）
   
   // ★パラメータ表示ブロック（#status-hud-wrapper）が、設定通りの場所（メインタブ内 or 常時左上）に
   //   ちゃんと置かれているか、呼ばれるたびに軽く確認しておく（既に正しい場所ならappendChildしても

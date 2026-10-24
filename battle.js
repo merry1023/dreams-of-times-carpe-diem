@@ -1497,14 +1497,43 @@ function getSkillShouryokuCost(skill) {
 function formatSkillCostLabel(skill) {
   return skill.isUpper ? `焦力${getSkillShouryokuCost(skill)}` : `SP${skill.spCost}`;
 }
+// ★要望対応：焦力は戦闘中だけでなく常時、メインタブの時計の上に、主人公と仲間ごとのゲージで表示する
+//   （以前は戦闘中だけ画面上部に文字で出していた）。値が変わった時（addShouryoku）と、
+//   HUD全体を更新する時（mainfunc.jsのrenderStatusHUD）に呼ばれる
 function updateShouryokuHud() {
-  const el = document.getElementById("battle-shouryoku");
+  const el = document.getElementById("main-tab-shouryoku");
   if (!el) return;
-  if (!battleState || !player) { el.classList.add("hidden"); el.innerHTML = ""; return; }
-  const parts = [`主人公 ${getShouryoku(player)}`];
-  (player.companions || []).filter(c => c.alive).forEach(c => parts.push(`${getCompanionDisplayName(c)} ${getShouryoku(c)}`));
-  el.textContent = `焦力　${parts.join("　")} ／${SHOURYOKU_MAX}`;
-  el.classList.toggle("battle-action-points-boss", !!battleState.isBoss);
+  if (!player) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  
+  const members = [{ name: "主人公", unit: player, down: false }].concat(
+    (player.companions || []).map(c => ({ name: getCompanionDisplayName(c), unit: c, down: !c.alive }))
+  );
+  el.innerHTML = "";
+  const title = document.createElement("div");
+  title.className = "main-tab-shouryoku-title";
+  title.textContent = "焦力";
+  el.appendChild(title);
+  members.forEach(m => {
+    const value = getShouryoku(m.unit);
+    const row = document.createElement("div");
+    row.className = "main-tab-shouryoku-row" + (m.down ? " down" : "");
+    const name = document.createElement("span");
+    name.className = "main-tab-shouryoku-name";
+    name.textContent = m.name;
+    const bar = document.createElement("div");
+    bar.className = "main-tab-shouryoku-bar";
+    const fill = document.createElement("div");
+    fill.className = "main-tab-shouryoku-fill";
+    fill.style.width = `${Math.round((value / SHOURYOKU_MAX) * 1000) / 10}%`;
+    bar.appendChild(fill);
+    const num = document.createElement("span");
+    num.className = "main-tab-shouryoku-value";
+    num.textContent = String(value);
+    row.appendChild(name);
+    row.appendChild(bar);
+    row.appendChild(num);
+    el.appendChild(row);
+  });
   el.classList.remove("hidden");
 }
 
@@ -4282,7 +4311,6 @@ function hideBattleHud() {
   const hud = document.getElementById("battle-hud");
   if (hud) hud.classList.add("hidden");
   updateBattleActionPoints(0, 0); // ★戦闘が終わったら行動可能数のアイコンも消す
-  updateShouryokuHud(); // ★焦力の表示も消す（battleStateが無い時は非表示になる）
 
   const container = document.getElementById("battle-enemies");
   if (container) container.innerHTML = "";
