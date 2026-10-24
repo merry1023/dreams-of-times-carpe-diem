@@ -783,7 +783,8 @@ function normalizeScenarioProject() {
       const master = ITEM_MASTER[key];
       scenarioProject.items.push({
         id: key, name: master.name, category: master.category, description: master.description,
-        rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue, builtin: true
+        rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue, builtin: true,
+        unsellable: !!master.unsellable // ★カジノコインなど、組み込みで「売れない」のものが、ensureCustomItemsRegisteredで売れる扱いに上書きされないように引き継ぐ
       });
     });
   }
@@ -9642,7 +9643,7 @@ function buildFacilityRow(facility) {
   } else if (facility.type === "casino") {
     const noteEl = document.createElement("p");
     noteEl.className = "devmode-note";
-    noteEl.textContent = "丁半博打・ルーレット・スロットの3種類で遊べます。賭け金は「カジノコイン」の枚数で設定してください（丁半博打・スロットでは1回の賭け金の上限、ルーレットでは1マスあたりに置けるチップの上限になります。いずれも実際の上限は、この設定枚数とプレイヤーの所持コインの低い方です）。コインは全カジノ共通で、「両替バニーガールちゃん」で陳と両替できます（100陳→1コイン、1コイン→50陳）。";
+    noteEl.textContent = "丁半博打・ルーレット・スロットの3種類で遊べます。賭け金は「カジノコイン」の枚数で設定してください（丁半博打・スロットでは1回の賭け金の上限、ルーレットでは1マスあたりに置けるチップの上限になります。いずれも実際の上限は、この設定枚数とプレイヤーの所持コインの低い方です）。コインは全カジノ共通の「カジノコイン」というアイテムで、持ち物に入ります。「両替バニーガールちゃん」で陳と両替できます（100陳→1コイン、1コイン→50陳）。";
     infoEl.appendChild(noteEl);
     
     const betRow = document.createElement("div");

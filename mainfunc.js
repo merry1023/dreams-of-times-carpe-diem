@@ -3097,7 +3097,7 @@ function reorganizeInventory() {
     const baseSeq = slots[0].acquiredSeq;
     const appraised = slots.some(s => s.appraised); // ★どれか1つでも鑑定済みなら鑑定済み扱いにする
     while (totalQty > 0) {
-      const qty = Math.min(MAX_STACK, totalQty);
+      const qty = Math.min(getItemMaxStack(ITEM_MASTER[itemId]), totalQty); // ★アイテムごとのスタック上限（カジノコインは9999）
       merged.push({ itemId, quantity: qty, appraised, acquiredSeq: baseSeq });
       totalQty -= qty;
     }

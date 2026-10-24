@@ -24,6 +24,12 @@ let nextEquipmentInstanceId = 1;
 // ★要望対応：インベントリの「入手順」並び替え用の連番。addItemで新しいスタック/個体ができるたびに払い出す
 let nextInventoryAcquiredSeq = 1;
 
+// ★アイテムごとのスタック上限。アイテムのmaxStackがあればそれ（カジノコインなど、大量に持つアイテム用）、無ければ共通のMAX_STACK
+function getItemMaxStack(master) {
+  const own = Math.floor(Number(master && master.maxStack));
+  return own >= 1 ? own : MAX_STACK;
+}
+
 function isStackable(master) {
   if (!master) return false;
   if (master.category === "weapon" || master.category === "armor") return false; // ★装備は常にスタックしない
@@ -94,8 +100,8 @@ function addItemCore(itemId, quantity = 1, options = {}) {
     // 1. 既存のスタックに空きがあれば、そこから埋めていく
     for (let i = 0; i < GRID_SIZE && remaining > 0; i++) {
       const slot = inventorySlots[i];
-      if (slot && slot.itemId === itemId && slot.quantity < MAX_STACK) {
-        const space = MAX_STACK - slot.quantity;
+      if (slot && slot.itemId === itemId && slot.quantity < getItemMaxStack(master)) {
+        const space = getItemMaxStack(master) - slot.quantity;
         const add = Math.min(space, remaining);
         slot.quantity += add;
         remaining -= add;
@@ -109,7 +115,7 @@ function addItemCore(itemId, quantity = 1, options = {}) {
         console.warn("インベントリが満杯です（これ以上入りません）");
         return false;
       }
-      const add = Math.min(MAX_STACK, remaining);
+      const add = Math.min(getItemMaxStack(master), remaining);
       inventorySlots[emptyIndex] = { itemId, quantity: add, appraised: false, acquiredSeq: nextInventoryAcquiredSeq++ }; // ★要望対応：入手順並び替え用
       remaining -= add;
     }

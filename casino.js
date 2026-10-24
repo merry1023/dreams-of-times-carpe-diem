@@ -21,26 +21,76 @@ function openCasino(facility, returnTo) {
 
 // ===== カジノコイン =====
 // ★要望対応：カジノの賭け金は「陳」を直接使うのではなく、専用の「カジノコイン」で賭ける方式にした。
-//   ・コインは全カジノ共通の1種類。所持数は player.casinoCoins に持たせる
-//     （playerはセーブ/ロード・追憶の館のスナップショットに丸ごと含まれるため、セーブ処理は変更不要。
-//       古いセーブには無い項目なので、未定義は0枚として扱う）
+//   ・コインは全カジノ共通の1種類で、「アイテム」として持ち物に入る（items.jsの casino_coin。1マスに9999枚まで積める。買取屋では売れない）。
+//     所持数は、持ち物の中のカジノコインの合計
+//   ・持ち物がいっぱいで受け取れない時は、受け取れた分だけを渡して、残りは受け取れなかったと伝える
+//     （両替は、先に入る分だけ両替できるようにして、陳が先に減ってコインが消えることがないようにしている）
+//   ・以前のバージョン（コインを player.casinoCoins という数値で持っていた時期）のセーブは、
+//     カジノに入った時にアイテムへ引き継ぐ（migrateLegacyCasinoCoins）
 //   ・両替：100陳 → 1コイン ／ 1コイン → 50陳（「両替バニーガールちゃん」）
 //   ・景品交換：コインをアイテムと交換（「景品交換バニーガールちゃん」）。
 //     景品は施設（facility.prizes）ごとに登録し、在庫無制限／個数制限ありを景品ごとに指定できる。
 //     個数制限の「売れた数」は player.casinoPrizeSold に記録する
+const CASINO_COIN_ITEM_ID = "casino_coin";
 const CASINO_COIN_BUY_RATE = 100;  // 100陳で1コイン
 const CASINO_COIN_SELL_RATE = 50;  // 1コインを50陳に戻せる
 const CASINO_EXCHANGE_NAME = "両替バニーガールちゃん";
 const CASINO_PRIZE_NAME = "景品交換バニーガールちゃん";
 
-function getCasinoCoins() {
-  if (!player || !Number.isFinite(player.casinoCoins)) return 0;
-  return Math.max(0, Math.floor(player.casinoCoins));
+// 持ち物の中のカジノコインの合計
+function countCasinoCoinsInInventory() {
+  return inventorySlots.reduce((sum, slot) => sum + (slot && slot.itemId === CASINO_COIN_ITEM_ID ? slot.quantity : 0), 0);
 }
 
+// 今、持ち物に追加で入れられるコインの最大枚数（既存の山の空き＋空きマス×1山の上限）
+function getCasinoCoinCapacity() {
+  const stackMax = getItemMaxStack(ITEM_MASTER[CASINO_COIN_ITEM_ID]);
+  let room = 0;
+  inventorySlots.forEach(slot => {
+    if (slot === null) room += stackMax;
+    else if (slot.itemId === CASINO_COIN_ITEM_ID) room += Math.max(0, stackMax - slot.quantity);
+  });
+  return room;
+}
+
+function getCasinoCoins() {
+  migrateLegacyCasinoCoins();
+  return countCasinoCoinsInInventory();
+}
+
+// コインを増減する。増やす時は、持ち物に入りきった枚数だけ増える。実際に増減した枚数（正の数）を返す
 function changeCasinoCoins(amount) {
-  if (!player) return;
-  player.casinoCoins = Math.max(0, getCasinoCoins() + amount);
+  amount = Math.floor(amount);
+  if (amount === 0) return 0;
+  if (amount > 0) {
+    const grant = Math.min(amount, getCasinoCoinCapacity());
+    if (grant > 0) addItem(CASINO_COIN_ITEM_ID, grant);
+    return grant;
+  }
+  const take = Math.min(-amount, countCasinoCoinsInInventory());
+  if (take > 0) removeItem(CASINO_COIN_ITEM_ID, take);
+  return take;
+}
+
+// 賞金などでコインを受け取る。持ち物がいっぱいで受け取れなかった分があれば、そのことを伝える
+async function grantCasinoCoins(amount) {
+  const granted = changeCasinoCoins(amount);
+  if (granted < amount) {
+    changeSpeaker("");
+    await displayMessage(`持ち物がいっぱいで、コイン${amount - granted}枚は受け取れなかった……`);
+  }
+  return granted;
+}
+
+// 旧セーブ（コインを player.casinoCoins の数値で持っていた時期）の分を、アイテムへ引き継ぐ。
+// 入りきらない分は数値のまま残し、次の機会にまた引き継ぐ
+function migrateLegacyCasinoCoins() {
+  if (!player || !(player.casinoCoins > 0)) return;
+  const legacy = Math.floor(player.casinoCoins);
+  const grant = Math.min(legacy, getCasinoCoinCapacity());
+  if (grant > 0) addItem(CASINO_COIN_ITEM_ID, grant);
+  const rest = legacy - grant;
+  if (rest > 0) player.casinoCoins = rest; else delete player.casinoCoins;
 }
 
 function showCasinoMenu() {
@@ -126,10 +176,12 @@ async function showCasinoExchangeMenu() {
   }
   
   if (picked.next === "buy") {
-    const maxCoins = Math.floor(gold / CASINO_COIN_BUY_RATE);
+    const maxCoins = Math.min(Math.floor(gold / CASINO_COIN_BUY_RATE), getCasinoCoinCapacity()); // ★持ち物に入りきる枚数まで
     if (maxCoins <= 0) {
       changeSpeaker(CASINO_EXCHANGE_NAME);
-      await displayMessage(`ごめんなさい、${CASINO_COIN_BUY_RATE}陳からでないと両替できないんです……`);
+      await displayMessage(getCasinoCoinCapacity() <= 0
+        ? "ごめんなさい、持ち物がいっぱいで、これ以上コインをお渡しできないんです……"
+        : `ごめんなさい、${CASINO_COIN_BUY_RATE}陳からでないと両替できないんです……`);
       await showCasinoExchangeMenu();
       return;
     }
@@ -298,8 +350,8 @@ async function startDiceGame() {
   await displayMessage(`サイコロの目は「${dice1}」と「${dice2}」……合計${total}で「${resultLabel}」だ！`);
   
   if (picked.next === resultKey) {
-    changeCasinoCoins(bet); // 等倍配当：賭け金と同額をそのまま儲けとして獲得
     await displayMessage(`大当たりだ！ コイン${bet}枚の儲けだ！`);
+    await grantCasinoCoins(bet); // 等倍配当：賭け金と同額をそのまま儲けとして獲得（持ち物がいっぱいなら受け取れた分だけ）
   } else {
     changeCasinoCoins(-bet);
     await displayMessage(`残念、外れだ。コイン${bet}枚は没収だな……`);
@@ -808,7 +860,10 @@ async function startSlotGame() {
     }
 
     if (result.type === "win") {
-      changeCasinoCoins(bet * result.payout);
+      // ★スロット画面の上ではメッセージウィンドウが使えないので、持ち物がいっぱいで受け取れなかった分は結果の文章に付け足す
+      const expected = bet * result.payout;
+      const granted = changeCasinoCoins(expected);
+      if (granted < expected && resultEl) resultEl.textContent += `（持ち物がいっぱいで、コイン${expected - granted}枚は受け取れなかった）`;
     }
     renderStatusHUD();
 
@@ -1285,8 +1340,8 @@ async function startRouletteGame() {
   }
 
   if (netResult > 0) {
-    changeCasinoCoins(netResult);
     await displayMessage(`合計でコイン${netResult}枚の儲けだ！`);
+    await grantCasinoCoins(netResult);
   } else {
     const loss = Math.abs(netResult);
     changeCasinoCoins(-loss);

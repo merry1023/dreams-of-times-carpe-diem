@@ -158,6 +158,21 @@ const ITEM_MASTER = {
     }
   },
   
+  // ===== カジノコイン（要望対応：カジノの賭け金・景品交換に使う専用コイン。casino.jsが所持数を持ち物から数える） =====
+  // ★アイテム扱い：持ち物に入り、1マスに9999枚まで積める（maxStack）。買取屋では売れない（unsellable）。
+  //   陳との両替は、カジノの「両替バニーガールちゃん」でのみできる
+  "casino_coin": {
+    name: "カジノコイン",
+    category: "material",
+    description: "カジノで使える専用のコイン。賭けに使えるほか、景品交換所でアイテムと交換できる。両替バニーガールちゃんに頼めば陳にも替えてもらえる。",
+    rank: "F",
+    listedPrice: 50,
+    trueValue: 50,
+    unsellable: true,
+    maxStack: 9999,
+    params: {}
+  },
+  
   // ===== 魔物素材 =====
   "material_001": {
     name: "ゴブリンの牙",
