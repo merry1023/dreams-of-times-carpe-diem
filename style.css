@@ -8258,3 +8258,129 @@ rt {
     border-color: #ffc107;
     font-weight: bold;
 }
+
+/* ===================================================================
+   冒険者協会「掃討作戦」迎撃モード（tower_defense.js）
+   高コントラスト：黒地に黄色のアクセント、白い太枠
+   =================================================================== */
+.td-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background-color: rgba(0, 0, 0, 0.92);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 199950;
+}
+.td-panel {
+  width: 100%;
+  max-width: 780px;
+  max-height: 100%;
+  overflow-y: auto;
+  background: #0b0f14;
+  border: 3px solid #ffd23f;
+  box-sizing: border-box;
+  padding: 8px;
+  color: #fff;
+  font-size: 14px;
+}
+.td-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffd23f;
+  color: #111;
+  font-weight: bold;
+  padding: 4px 8px;
+}
+.td-title { flex: 1; }
+.td-wave, .td-funds { background: #111; color: #ffd23f; padding: 1px 8px; }
+.td-basehp {
+  position: relative;
+  height: 20px;
+  margin: 6px 0;
+  background: #2a0f0f;
+  border: 2px solid #fff;
+}
+.td-basehp-fill { height: 100%; background: #e5484d; transition: width 0.15s; }
+.td-basehp-text {
+  position: absolute; top: 0; left: 0; width: 100%;
+  text-align: center; line-height: 20px; font-size: 12px; font-weight: bold;
+  text-shadow: 0 0 3px #000, 0 0 3px #000;
+}
+.td-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 720 / 400;
+  border: 2px solid #fff;
+  touch-action: none;
+  background: #10151c;
+}
+.td-info {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 0;
+  padding: 4px 8px;
+  background: #1b222c;
+  border-left: 5px solid #ffd23f;
+  font-size: 13px;
+}
+.td-units {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.td-combo {
+  margin: 6px 0;
+  padding: 4px 8px;
+  background: #1b222c;
+  border-left: 5px solid #fff;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.td-combo-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.td-combo-label { background: #ffd23f; color: #111; font-weight: bold; padding: 0 6px; margin-right: 4px; }
+.td-combo-none { color: #9aa4ad; }
+.td-combo-item { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.td-chip { display: inline-block; background: #111; color: #fff; border: 2px solid #fff; padding: 0 5px; font-weight: bold; }
+.td-arrow { color: #ffd23f; font-weight: bold; }
+.td-unit-btn {
+  background: #111;
+  color: #fff;
+  border: 3px solid #fff;
+  padding: 6px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.td-unit-btn.td-selected { background: #ffd23f; color: #111; }
+.td-unit-btn.td-disabled { opacity: 0.45; }
+.td-unit-name { font-weight: bold; }
+.td-unit-meta { font-size: 11px; }
+.td-controls { display: flex; gap: 6px; margin-top: 6px; }
+.td-btn {
+  flex: 1;
+  background: #111;
+  color: #ffd23f;
+  border: 2px solid #ffd23f;
+  padding: 8px 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.td-btn:disabled { opacity: 0.4; cursor: default; }
+.td-btn-start { background: #ffd23f; color: #111; flex: 2; }
+.td-btn-quit { color: #fff; border-color: #fff; }
+.td-btn-upgrade { flex: 0 0 auto; padding: 6px 12px; }
+@media (max-width: 520px) {
+  .td-units { grid-template-columns: repeat(3, 1fr); }
+}

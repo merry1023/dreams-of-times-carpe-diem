@@ -586,6 +586,14 @@ async function openCustomFacility(facility, returnTo) {
     return;
   }
   
+  // ★新規：冒険者協会（掃討作戦＝タワーディフェンス）。実際のメニュー・ミニゲームはtower_defense.jsにまとめてある
+  if (facility.type === "towerDefense") {
+    hideLocationMenu();
+    await runFacilityDialogueBlocks(facility, facility.enterBlocks, facility.ownerDialogue); // ★入った時のセリフ
+    openTowerDefenseFacility(facility, goBack); // tower_defense.js
+    return;
+  }
+  
   // ★要望対応：追憶の館。クリア済みの話を選んで再体験できる（memoryHall.jsにまとめてある）
   if (facility.type === "memoryHall") {
     hideLocationMenu();
