@@ -4,8 +4,8 @@
 // ===================================================================
 // ★施設編集タブで作れる「冒険者協会」タイプの施設（facility.type === "towerDefense"）の中身。
 //   openCustomFacility（town.js）から openTowerDefenseFacility() が呼ばれる。
-// ★今回は最小版：一本道・固定マス・ユニット4種・3ウェーブ・属性相性のみ。
-//   （コンボ／中ボス／事前強化／出撃モード／ウェーブ数選択は、企画書の順に後から足す）
+// ★現状：一本道・固定マス・3ウェーブ・属性ごとに1ユニット・属性相性・属性コンボ・ユニットごとの攻撃対象。
+//   （中ボス／事前強化／出撃モード／ウェーブ数選択は、企画書の順に後から足す）
 // ★ファイルの作り：
 //   ・上半分＝ゲームの中身（状態の作成・1コマ進める処理）。画面に触れない作りなので単体で動作確認できる
 //   ・下半分＝画面（オーバーレイ・描画・操作）と、施設のメニュー・報酬の受け渡し
@@ -28,6 +28,16 @@ const TD_WAVE_HP_GROWTH = 0.5;      // ウェーブが進むごとの敵HPの増
 const TD_BASE_HP_PER_ATK = 15;      // 拠点HP＝出てくる敵の平均攻撃力×この値（最低50）
 const TD_CLEAR_GOLD_BASE = 100;     // クリア報酬（陳）の基本額
 const TD_CLEAR_GOLD_PER_KILL = 5;   // 倒した数ごとの上乗せ
+// ----- コンボ（本編のコンボスキル定義をそのまま使う） -----
+const TD_COMBO_HISTORY_MAX = 8;     // 属性の履歴の上限（本編と同じ。発動した時だけリセット）
+const TD_COMBO_LOCK = 2.0;          // コンボ発動後、履歴を取らない秒数（連発しすぎないようにする）
+const TD_COMBO_BASE = 0.12;         // コンボ1発のダメージ＝敵の平均HP×（この値＋威力×下の値）
+const TD_COMBO_POWER_RATE = 0.01;
+// ----- 状態異常（コンボに付くもの。本編の「1ターン」を、こちらでは下の秒数に置き換える） -----
+const TD_STATUS_SEC_PER_TURN = 1.0;
+const TD_DOT_RATE = 0.04;           // 毒・火傷などの1秒あたりのダメージ＝敵の平均HP×威力×この値
+const TD_DEFDOWN_RATE = 1.3;        // 防御力低下中の敵が受けるダメージ倍率
+const TD_ATKDOWN_RATE = 0.6;        // 攻撃力低下中の敵がゴールした時に減らす拠点HPの倍率
 
 // 敵の通り道（左端から入って、右端がゴール＝拠点）
 const TD_PATH = [[-30, 80], [620, 80], [620, 200], [100, 200], [100, 320], [750, 320]];
@@ -82,19 +92,49 @@ function tdElementMultiplier(attackElementId, enemy) {
 }
 
 // ===== ユニットの種類 =====
-// ★属性は、シナリオエディタの「属性管理」にある属性を順番に割り当てる（属性が増えたら自動で反映される）。
+// ★属性管理にある属性ごとに1ユニットを自動で作る（属性が増えたら自動で反映される）。役割は下の4種類を順番に割り当てる。
+//   狙い方（targeting）：near＝射程内でユニットから一番近い敵／far＝射程内で一番遠い敵／all＝射程内の全ての敵
 //   与ダメージは「出てくる敵の平均HP」に対する割合で決めるので、敵のデータが変わってもバランスが崩れにくい
+const TD_TARGETING_LABELS = { near: "近い敵", far: "遠い敵", all: "全体" };
+const TD_ROLE_ARCHETYPES = [
+  { name: "弓兵",   role: "single", roleLabel: "単体", roleChar: "単", targeting: "near", dmgRatio: 0.22, range: 140, interval: 0.8, cost: 50 },
+  { name: "術師",   role: "area",   roleLabel: "範囲", roleChar: "範", targeting: "all",  dmgRatio: 0.09, range: 115, interval: 1.4, cost: 80 },
+  { name: "妨害師", role: "slow",   roleLabel: "遅延", roleChar: "遅", targeting: "far",  dmgRatio: 0.07, range: 120, interval: 1.0, cost: 70, slowRate: 0.5, slowSec: 1.5 },
+  { name: "砲手",   role: "single", roleLabel: "単体", roleChar: "砲", targeting: "far",  dmgRatio: 0.6,  range: 190, interval: 2.4, cost: 120 }
+];
 function tdBuildUnitTemplates() {
   const defs = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.elementDefs) && scenarioProject.elementDefs.length > 0)
     ? scenarioProject.elementDefs
     : [{ id: "無", name: "無" }];
-  const el = i => defs[i % defs.length];
-  return [
-    { key: "archer", label: `${el(0).name}の弓兵`, roleLabel: "単体", roleChar: "単", element: el(0).id, role: "single", dmgRatio: 0.22, range: 140, interval: 0.8, cost: 50 },
-    { key: "mage",   label: `${el(1).name}の術師`, roleLabel: "範囲", roleChar: "範", element: el(1).id, role: "area",   dmgRatio: 0.16, range: 120, interval: 1.4, splash: 55, cost: 80 },
-    { key: "frost",  label: `${el(2).name}の妨害師`, roleLabel: "遅延", roleChar: "遅", element: el(2).id, role: "slow", dmgRatio: 0.07, range: 120, interval: 1.0, slowRate: 0.5, slowSec: 1.5, cost: 70 },
-    { key: "cannon", label: `${el(3).name}の砲手`, roleLabel: "単体", roleChar: "砲", element: el(3).id, role: "single", dmgRatio: 0.6, range: 190, interval: 2.4, cost: 120 }
-  ];
+  return defs.slice(0, 12).map((def, i) => {
+    const arch = TD_ROLE_ARCHETYPES[i % TD_ROLE_ARCHETYPES.length];
+    return Object.assign({}, arch, { key: "u" + i, label: `${def.name}の${arch.name}`, element: def.id });
+  });
+}
+
+// ===== コンボ =====
+// ★本編（battle.js）のコンボスキル定義をそのまま使う。ユニットが攻撃するたびに、そのユニットの属性が履歴に積まれ、
+//   履歴の末尾が手順と一致するとコンボが発動する（同じ敵に当てなくてもよい）。本編と同じく、解禁済みのコンボだけが対象
+function tdGetUsableCombos() {
+  const list = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.comboSkills)) ? scenarioProject.comboSkills : [];
+  return list.filter(c => {
+    if (!c || c.enabled === false) return false;
+    if ((c.elements || []).filter(Boolean).length < 2) return false;
+    if (typeof isComboSkillUnlocked === "function") return isComboSkillUnlocked(c);
+    return true;
+  });
+}
+
+function tdFindCombo(st) {
+  let best = null;
+  st.combos.forEach(combo => {
+    const seq = (combo.elements || []).filter(Boolean);
+    if (seq.length > st.history.length) return;
+    const tail = st.history.slice(st.history.length - seq.length);
+    if (!seq.every((el, i) => el === tail[i])) return;
+    if (!best || seq.length > best.len) best = { combo, len: seq.length }; // 複数一致したら、長い手順のコンボを優先
+  });
+  return best ? best.combo : null;
 }
 
 // ===== 出てくる敵 =====
@@ -130,7 +170,11 @@ function tdCreateState(pool) {
     units: [],                // { slot, tpl, level, cool }
     enemies: [],
     spawnQueue: [], spawnTimer: 0,
-    fx: [], popups: []        // 画面に出す演出（撃った線・ダメージ数字）
+    fx: [], popups: [],       // 画面に出す演出（撃った線・ダメージ数字）
+    combos: tdGetUsableCombos(),   // 今回使えるコンボ（本編で解禁済みのもの）
+    history: [],                   // 攻撃した属性の履歴（コンボを発動した時だけリセット）
+    comboLockUntil: 0, comboCount: 0,
+    banners: []                    // コンボ発動の帯（{ text, t }）
   };
 }
 
@@ -188,8 +232,76 @@ function tdSpawnEnemy(st, key) {
     speed: TD_ENEMY_SPEED * (0.9 + Math.random() * 0.2),
     dist: 0, x: pos.x, y: pos.y,
     slowUntil: 0, slowRate: 1,
+    stunUntil: 0, dot: null, defDownUntil: 0, atkDownUntil: 0,   // 状態異常（足止め・継続ダメージ・防御低下・攻撃低下）
     reward: Math.max(6, Math.round((Number(m.exp) || 10) * 0.8)) // 倒した時にもらえる資金
   });
+}
+
+// ===== ダメージと状態異常 =====
+// 敵にダメージを与える共通処理（属性相性・防御力低下を反映し、ダメージ数字を出す）
+function tdDealDamage(st, enemy, base, elementId, color) {
+  let mult = tdElementMultiplier(elementId, enemy);
+  const weakMult = mult;
+  if (enemy.defDownUntil > st.time) mult *= TD_DEFDOWN_RATE;
+  const dmg = Math.max(1, Math.round(base * mult));
+  enemy.hp -= dmg;
+  st.popups.push({
+    x: enemy.x + (Math.random() * 14 - 7), y: enemy.y - 16, text: String(dmg),
+    color: weakMult > 1 ? "#ffffff" : (weakMult < 1 ? "#9aa4ad" : (color || "#ffffff")),
+    weak: weakMult > 1, resist: weakMult < 1, t: 0.6
+  });
+  return dmg;
+}
+
+// 状態異常の種類→仕組み（本編のカスタム状態異常も、登録された仕組みで動く）
+function tdStatusMechanic(kind) {
+  if (!kind) return null;
+  if (typeof resolveStatusAilmentDef === "function") {
+    const def = resolveStatusAilmentDef(kind);
+    if (def && def.mechanic) return def.mechanic;
+  }
+  return kind;
+}
+
+// コンボに付く状態異常を敵に与える。与えられたら表示用のラベルを返す
+// ★本編と同じく、敵ごとの「状態異常無効／耐性」を反映する。仕組みが分かるものだけ動かす：
+//   スタン・麻痺・混乱＝足止め／毒・火傷・鈍痛＝継続ダメージ／防御力低下＝受けるダメージ増／攻撃力低下＝ゴールした時の拠点ダメージ減
+function tdApplyStatus(st, enemy, effect) {
+  if (!effect || !effect.kind) return null;
+  const mech = tdStatusMechanic(effect.kind);
+  const master = (typeof MONSTER_MASTER !== "undefined") ? MONSTER_MASTER[enemy.key] : null;
+  if (master && Array.isArray(master.statusImmunities) && master.statusImmunities.includes(mech)) return null;
+  let chance = effect.chance != null ? Number(effect.chance) : 1;
+  if (master && master.statusResistances && typeof master.statusResistances[mech] === "number") chance *= Math.max(0, 1 - master.statusResistances[mech]);
+  if (Math.random() >= chance) return null;
+  const secs = Math.max(1, Number(effect.duration) || 1) * TD_STATUS_SEC_PER_TURN;
+  const power = Number(effect.power) || 3;
+  if (mech === "stun" || mech === "paralyze" || mech === "confuse") enemy.stunUntil = Math.max(enemy.stunUntil, st.time + secs);
+  else if (mech === "burn" || mech === "poison" || mech === "dullPain") enemy.dot = { until: st.time + secs, next: st.time + 1, dmg: Math.max(1, Math.round(st.refHp * power * TD_DOT_RATE)) };
+  else if (mech === "defDown") enemy.defDownUntil = Math.max(enemy.defDownUntil, st.time + secs);
+  else if (mech === "atkDown") enemy.atkDownUntil = Math.max(enemy.atkDownUntil, st.time + secs);
+  else return null;
+  let label = null;
+  if (typeof resolveStatusAilmentDef === "function") { const d = resolveStatusAilmentDef(effect.kind); if (d && d.label) label = d.label; }
+  if (!label && typeof STATUS_EFFECT_LABELS !== "undefined") label = STATUS_EFFECT_LABELS[effect.kind];
+  return label || effect.kind;
+}
+
+// ===== 攻撃対象の選び方 =====
+// ★ユニットごとの設定：near＝射程内で一番近い敵／far＝射程内で一番遠い敵／all＝射程内の全ての敵
+//   「近い・遠い」は、そのユニットから見た距離（ゴールまでの距離ではない）
+function tdPickTargets(st, unit, from, limitRange) {
+  const mode = unit.tpl.targeting;
+  const range = limitRange ? unit.tpl.range : Infinity;
+  const cands = st.enemies.filter(e => e.hp > 0 && Math.hypot(e.x - from.x, e.y - from.y) <= range);
+  if (cands.length === 0) return [];
+  if (mode === "all" && limitRange) return cands;
+  const distTo = e => Math.hypot(e.x - from.x, e.y - from.y);
+  let pick = cands[0];
+  cands.forEach(e => {
+    if (mode === "far" ? distTo(e) > distTo(pick) : distTo(e) < distTo(pick)) pick = e;   // allのコンボ単体は「近い敵」で代用
+  });
+  return [pick];
 }
 
 // 1コマ進める（dt＝経過秒。倍速の時は呼ぶ側で掛けておく）
@@ -200,6 +312,8 @@ function tdStep(st, dt) {
   st.fx = st.fx.filter(f => f.t > 0);
   st.popups.forEach(p => { p.t -= dt; });
   st.popups = st.popups.filter(p => p.t > 0);
+  st.banners.forEach(b => { b.t -= dt; });
+  st.banners = st.banners.filter(b => b.t > 0);
   if (st.phase !== "wave") return;
   
   // 敵の出現
@@ -211,14 +325,24 @@ function tdStep(st, dt) {
     }
   }
   
-  // 敵の移動（ゴールしたら拠点HPが減る）
+  // 敵の移動（足止め中は動かない／継続ダメージ／ゴールしたら拠点HPが減る）
   st.enemies.forEach(e => {
+    if (e.dot) {
+      while (e.dot && st.time >= e.dot.next) {
+        e.hp -= e.dot.dmg;
+        st.popups.push({ x: e.x, y: e.y - 16, text: String(e.dot.dmg), color: "#ff9a3c", weak: false, t: 0.5 });
+        e.dot.next += 1;
+        if (e.dot.next > e.dot.until + 0.0001) e.dot = null;
+      }
+    }
+    if (e.stunUntil > st.time) return;
     const slowed = e.slowUntil > st.time;
     e.dist += e.speed * (slowed ? e.slowRate : 1) * dt;
     if (e.dist >= TD_PATH_INFO.total) {
       e.reached = true;
-      st.baseHp -= e.atk;
-      st.popups.push({ x: 690, y: 300, text: `-${e.atk}`, color: "#ff5a5a", weak: false, t: 0.8 });
+      const leak = Math.max(1, Math.round(e.atk * (e.atkDownUntil > st.time ? TD_ATKDOWN_RATE : 1)));
+      st.baseHp -= leak;
+      st.popups.push({ x: 690, y: 300, text: `-${leak}`, color: "#ff5a5a", weak: false, t: 0.8 });
     } else {
       const pos = tdPathPosition(e.dist);
       e.x = pos.x; e.y = pos.y;
@@ -226,19 +350,14 @@ function tdStep(st, dt) {
   });
   st.enemies = st.enemies.filter(e => !e.reached);
   
-  // ユニットの攻撃（ゴールに一番近い敵を狙う）
+  // ユニットの攻撃（狙い方はユニットごとの設定に従う）
   st.units.forEach(u => {
     u.cool -= dt;
     if (u.cool > 0) return;
     const sp = tdSlotPos(u.slot);
-    let target = null;
-    st.enemies.forEach(e => {
-      if (e.hp <= 0) return;
-      if (Math.hypot(e.x - sp.x, e.y - sp.y) > u.tpl.range) return;
-      if (!target || e.dist > target.dist) target = e;
-    });
-    if (!target) { u.cool = 0; return; }
-    tdFire(st, u, target, sp);
+    const targets = tdPickTargets(st, u, sp, true);
+    if (targets.length === 0) { u.cool = 0; return; }
+    tdFire(st, u, targets, sp);
     u.cool = u.tpl.interval;
   });
   
@@ -269,22 +388,71 @@ function tdStep(st, dt) {
   }
 }
 
-function tdFire(st, unit, target, from) {
+function tdFire(st, unit, targets, from) {
   const tpl = unit.tpl;
   const base = tdUnitDamage(st, unit);
-  const hits = tpl.role === "area"
-    ? st.enemies.filter(e => e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) <= tpl.splash)
-    : [target];
   const color = (typeof getElementColor === "function") ? getElementColor(tpl.element) : "#ffffff";
-  hits.forEach(e => {
-    const mult = tdElementMultiplier(tpl.element, e);
-    const dmg = Math.max(1, Math.round(base * mult));
-    e.hp -= dmg;
-    st.popups.push({ x: e.x + (Math.random() * 14 - 7), y: e.y - 16, text: String(dmg), color: mult > 1 ? "#ffffff" : (mult < 1 ? "#9aa4ad" : color), weak: mult > 1, resist: mult < 1, t: 0.6 });
+  targets.forEach(e => {
+    tdDealDamage(st, e, base, tpl.element, color);
     if (tpl.role === "slow") { e.slowUntil = st.time + tpl.slowSec; e.slowRate = tpl.slowRate; }
+    st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.12 });
   });
-  st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: target.x, y2: target.y, color, t: 0.12 });
-  if (tpl.role === "area") st.fx.push({ kind: "ring", x1: target.x, y1: target.y, r: tpl.splash, color, t: 0.2 });
+  if (tpl.targeting === "all") st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: tpl.range, color, t: 0.18 });
+  tdRecordCombo(st, unit, from);
+}
+
+// ===== コンボ =====
+// ユニットが攻撃したら、その属性を履歴に積む。履歴の末尾がコンボの手順と一致したら発動する
+function tdRecordCombo(st, unit, from) {
+  if (st.combos.length === 0) return;
+  if (st.time < st.comboLockUntil) return;       // 発動直後は履歴を取らない
+  const el = unit.tpl.element;
+  if (!el) return;
+  st.history.push(el);
+  if (st.history.length > TD_COMBO_HISTORY_MAX) st.history.shift();
+  const combo = tdFindCombo(st);
+  if (!combo) return;
+  st.history = [];                                // ★発動した時だけ、履歴を空に戻す
+  st.comboLockUntil = st.time + TD_COMBO_LOCK;
+  tdExecuteCombo(st, combo, unit, from);
+}
+
+// コンボの効果を出す（ダメージ・状態異常・回復）。本編のコンボ定義（威力・全体/単体・連続回数・状態異常）をそのまま使う
+// ★ブロック式のコンボも、基本項目（威力・対象・連続回数・状態異常）の部分だけで動かす／自己強化は使わない（タワーには自分がいないため）
+function tdExecuteCombo(st, combo, unit, from) {
+  const name = combo.name || "名無しのコンボ";
+  const element = combo.element || "無";
+  const color = (typeof getElementColor === "function") ? getElementColor(element) : "#ffffff";
+  st.comboCount++;
+  st.banners.push({ text: combo.cutInText || name, t: 1.4 });
+  if ((combo.type || "attack") === "heal") {
+    const healed = Math.round(st.baseMaxHp * 0.1);
+    st.baseHp = Math.min(st.baseMaxHp, st.baseHp + healed);
+    st.popups.push({ x: 690, y: 300, text: `+${healed}`, color: "#59e07a", weak: false, t: 0.9 });
+    return;
+  }
+  const power = Number(combo.power) || 0;
+  const hitCount = Math.max(1, Number(combo.hitCount) || 1);
+  const base = st.refHp * (TD_COMBO_BASE + power * TD_COMBO_POWER_RATE);
+  const targets = combo.target === "all"
+    ? st.enemies.filter(e => e.hp > 0)
+    : tdPickTargets(st, unit, from, false);       // 単体：コンボを完成させたユニットの狙い方に従う（射程は問わない）
+  targets.forEach(e => {
+    for (let h = 0; h < hitCount; h++) {
+      if (e.hp <= 0) break;
+      tdDealDamage(st, e, base, element, color);
+    }
+    [
+      { kind: combo.statusEffectKind, chance: combo.statusEffectChance, duration: combo.statusEffectDuration, power: combo.statusEffectPower },
+      { kind: combo.statusEffect2Kind, chance: combo.statusEffect2Chance, duration: combo.statusEffect2Duration, power: combo.statusEffect2Power }
+    ].forEach(effect => {
+      if (e.hp <= 0) return;
+      const label = tdApplyStatus(st, e, effect);
+      if (label) st.popups.push({ x: e.x, y: e.y - 30, text: label, color: "#ffd23f", weak: false, t: 0.9 });
+    });
+    st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.3 });
+    st.fx.push({ kind: "ring", x1: e.x, y1: e.y, r: 26, color, t: 0.3 });
+  });
 }
 
 // ===================================================================
@@ -301,6 +469,16 @@ function tdGetImage(src) {
     tdImageCache[src] = entry;
   }
   return tdImageCache[src];
+}
+
+function tdElementName(elementId) {
+  const defs = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.elementDefs)) ? scenarioProject.elementDefs : [];
+  const def = defs.find(d => d.id === elementId);
+  return def ? def.name : String(elementId);
+}
+function tdElementChipHtml(elementId) {
+  const color = (typeof getElementColor === "function") ? getElementColor(elementId) : "#fff";
+  return `<span class="td-chip" style="border-color:${color}">${tdElementName(elementId)}</span>`;
 }
 
 function tdElementColor(elementId) {
@@ -330,6 +508,7 @@ function runTowerDefenseBattle(pool) {
         <div class="td-basehp"><div class="td-basehp-fill"></div><span class="td-basehp-text"></span></div>
         <canvas class="td-canvas" width="${TD_FIELD_W * 2}" height="${TD_FIELD_H * 2}"></canvas>
         <div class="td-info"></div>
+        <div class="td-combo"></div>
         <div class="td-units"></div>
         <div class="td-controls">
           <button type="button" class="td-btn td-btn-start"></button>
@@ -348,6 +527,7 @@ function runTowerDefenseBattle(pool) {
     const baseFillEl = overlay.querySelector(".td-basehp-fill");
     const baseTextEl = overlay.querySelector(".td-basehp-text");
     const infoEl = overlay.querySelector(".td-info");
+    const comboEl = overlay.querySelector(".td-combo");
     const unitsEl = overlay.querySelector(".td-units");
     const startBtn = overlay.querySelector(".td-btn-start");
     const speedBtn = overlay.querySelector(".td-btn-speed");
@@ -360,7 +540,7 @@ function runTowerDefenseBattle(pool) {
       btn.className = "td-unit-btn";
       btn.dataset.key = tpl.key;
       btn.style.borderColor = tdElementColor(tpl.element);
-      btn.innerHTML = `<span class="td-unit-name">${tpl.label}</span><span class="td-unit-meta">${tpl.roleLabel}　${tpl.cost}</span>`;
+      btn.innerHTML = `<span class="td-unit-name">${tpl.label}</span><span class="td-unit-meta">${tpl.roleLabel}・${TD_TARGETING_LABELS[tpl.targeting]}　${tpl.cost}</span>`;
       btn.onclick = () => {
         selectedType = (selectedType === tpl.key) ? null : tpl.key;
         selectedSlot = null; infoNote = "";
@@ -387,6 +567,15 @@ function runTowerDefenseBattle(pool) {
       speedBtn.textContent = `速度 ×${st.speed}`;
       quitBtn.textContent = quitArmed ? "本当にやめる？" : "やめる";
       
+      // コンボ欄：今の履歴と、使えるコンボの一覧
+      if (st.combos.length === 0) {
+        comboEl.innerHTML = `<span class="td-combo-label">COMBO</span><span class="td-combo-none">使えるコンボはまだない（本編でコンボを解禁すると使える）</span>`;
+      } else {
+        const hist = st.history.length > 0 ? st.history.map(tdElementChipHtml).join('<span class="td-arrow">→</span>') : '<span class="td-combo-none">なし</span>';
+        const list = st.combos.map(c => `<div class="td-combo-item"><b>${c.name || "名無しのコンボ"}</b> ${(c.elements || []).filter(Boolean).map(tdElementChipHtml).join('<span class="td-arrow">→</span>')}</div>`).join("");
+        comboEl.innerHTML = `<div class="td-combo-row"><span class="td-combo-label">履歴</span>${hist}</div>${list}`;
+      }
+      
       // 情報行
       const unit = selectedSlot !== null ? st.units.find(u => u.slot === selectedSlot) : null;
       if (infoNote) {
@@ -396,7 +585,7 @@ function runTowerDefenseBattle(pool) {
         const maxed = unit.level >= TD_UNIT_MAX_LEVEL;
         infoEl.innerHTML = "";
         const text = document.createElement("span");
-        text.textContent = `${tpl.label} Lv${unit.level}　攻撃${Math.round(tdUnitDamage(st, unit))}　射程${tpl.range}`;
+        text.textContent = `${tpl.label} Lv${unit.level}　攻撃${Math.round(tdUnitDamage(st, unit))}　射程${tpl.range}　狙い:${TD_TARGETING_LABELS[tpl.targeting]}`;
         infoEl.appendChild(text);
         const up = document.createElement("button");
         up.type = "button";
@@ -411,9 +600,9 @@ function runTowerDefenseBattle(pool) {
         infoEl.appendChild(up);
       } else if (selectedType) {
         const tpl = st.templates.find(t => t.key === selectedType);
-        infoEl.textContent = `${tpl.label}（${tpl.roleLabel}）：置きたい白い枠をタップ`;
+        infoEl.textContent = `${tpl.label}（${tpl.roleLabel}・狙い:${TD_TARGETING_LABELS[tpl.targeting]}）：置きたい白い枠をタップ`;
       } else {
-        infoEl.textContent = "下から仲間を選んで、白い枠に配置しよう。黄色い数字＝弱点、灰色＝耐性。";
+        infoEl.textContent = "下から仲間を選んで、白い枠に配置しよう。白い数字＝弱点、灰色＝耐性。";
       }
     }
     
@@ -530,6 +719,17 @@ function runTowerDefenseBattle(pool) {
         ctx.beginPath(); ctx.arc(e.x, e.y, size / 2, 0, Math.PI * 2);
         ctx.strokeStyle = ringColor; ctx.lineWidth = 2.5; ctx.stroke();
         if (e.slowUntil > st.time) { ctx.fillStyle = "#9be8ff"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.fillText("遅", e.x, e.y + size / 2 + 10); }
+        // 状態マーク（止＝足止め／継＝継続ダメージ／弱＝防御低下／攻↓＝攻撃低下）
+        const marks = [];
+        if (e.stunUntil > st.time) marks.push("止");
+        if (e.dot) marks.push("継");
+        if (e.defDownUntil > st.time) marks.push("弱");
+        if (e.atkDownUntil > st.time) marks.push("攻↓");
+        if (marks.length > 0) {
+          ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText(marks.join(" "), e.x, e.y + size / 2 + 20);
+          ctx.fillStyle = "#ffd23f"; ctx.fillText(marks.join(" "), e.x, e.y + size / 2 + 20);
+        }
         // HPバー
         ctx.fillStyle = "#000"; ctx.fillRect(e.x - 17, e.y - 28, 34, 6);
         ctx.fillStyle = "#59e07a"; ctx.fillRect(e.x - 16, e.y - 27, 32 * Math.max(0, e.hp / e.maxHp), 4);
@@ -543,6 +743,18 @@ function runTowerDefenseBattle(pool) {
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText(p.text, p.x, p.y - rise);
         ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y - rise);
+        ctx.globalAlpha = 1;
+      });
+      
+      // コンボ発動の帯
+      st.banners.forEach(b => {
+        ctx.globalAlpha = Math.min(1, b.t / 0.4);
+        ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0, 150, TD_FIELD_W, 56);
+        ctx.fillStyle = "#ffd23f"; ctx.fillRect(0, 150, TD_FIELD_W, 4); ctx.fillRect(0, 202, TD_FIELD_W, 4);
+        ctx.fillStyle = "#ffd23f"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        ctx.fillText("COMBO", 24, 178);
+        ctx.fillStyle = "#fff"; ctx.font = "bold 26px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(b.text, TD_FIELD_W / 2, 179);
         ctx.globalAlpha = 1;
       });
       
