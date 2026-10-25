@@ -500,6 +500,14 @@ function renderStatusPanelTab() {
     ownerRow.appendChild(btn);
   });
   root.appendChild(ownerRow);
+  
+  // ★要望対応：誰のパネルを見るかの切り替えがP/Qキーでもできることを案内する
+  if (owners.length > 1) {
+    const ownerHintEl = document.createElement("p");
+    ownerHintEl.className = "statuspanel-owner-hint";
+    ownerHintEl.textContent = "Q／Pキーで切り替え";
+    root.appendChild(ownerHintEl);
+  }
 
   const effectiveExp = calcTotalExpForLevel(unit.level, expNeededForLevel) + Math.max(0, Number(unit.exp) || 0);
   const infoEl = document.createElement("div");
@@ -740,6 +748,21 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
     event.stopImmediatePropagation();
     tryUnlockStatusPanelCellWithConfirm();
+  } else if (event.key === "q" || event.key === "Q" || event.key === "p" || event.key === "P") {
+    // ★要望対応：誰のパネルを見るか（主人公／仲間）の切り替えをP/Qキーでもできるようにする。
+    //   サブ画面タブの切り替えと同じQ/Eキーにすると、タブ切り替えと同時に起きてしまうため、
+    //   このパネルの中だけはQ（前へ）/P（次へ）を使う
+    if (event.repeat) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const owners = getStatusPanelOwners();
+    if (owners.length > 1) {
+      const dir = (event.key === "q" || event.key === "Q") ? -1 : 1;
+      statusPanelOwnerIndex = (statusPanelOwnerIndex + dir + owners.length) % owners.length;
+      statusPanelCursorRow = STATUS_PANEL_CENTER;
+      statusPanelCursorCol = STATUS_PANEL_CENTER;
+      renderStatusPanelTab();
+    }
   }
 });
 
