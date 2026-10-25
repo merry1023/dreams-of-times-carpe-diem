@@ -4,8 +4,9 @@
 // ===================================================================
 // ★施設編集タブで作れる「冒険者協会」タイプの施設（facility.type === "towerDefense"）の中身。
 //   openCustomFacility（town.js）から openTowerDefenseFacility() が呼ばれる。
-// ★現状：一本道・固定マス・3ウェーブ・属性ごとに1ユニット・属性相性・属性コンボ・ユニットごとの攻撃対象。
-//   （中ボス／事前強化／出撃モード／ウェーブ数選択は、企画書の順に後から足す）
+// ★現状：一本道・固定マス・属性ごとに1ユニット・属性相性・属性コンボ・ユニットごとの攻撃対象・
+//   ウェーブ数の選択・中ボス・クリア後に次のステージへ進む周回・事前強化（協会ポイント）。
+//   （出撃モード／ユニットのエディタ登録／素材・レア報酬は、企画書の順に後から足す）
 // ★ファイルの作り：
 //   ・上半分＝ゲームの中身（状態の作成・1コマ進める処理）。画面に触れない作りなので単体で動作確認できる
 //   ・下半分＝画面（オーバーレイ・描画・操作）と、施設のメニュー・報酬の受け渡し
@@ -14,20 +15,35 @@ let towerDefenseFacility = null;   // 今開いている冒険者協会のデー
 let towerDefenseReturnTo = null;   // 「戻る」で呼ぶ関数
 
 // ----- 調整用の数値（ここを書き換えるだけでバランスを変えられる） -----
-const TD_WAVES = 3;                 // ウェーブ数（最小版は固定）
+const TD_WAVE_OPTIONS = [3, 5, 10, 15]; // 選べるウェーブ数（3はお試し用）
 const TD_FIELD_W = 720;             // フィールドの広さ（内部座標）
 const TD_FIELD_H = 400;
 const TD_START_FUNDS = 160;         // 開始時の資金
 const TD_WAVE_CLEAR_BONUS = 40;     // ウェーブをしのぐごとにもらえる資金
-const TD_UNIT_MAX_LEVEL = 5;        // プレイ中のユニット強化の上限レベル
+const TD_UNIT_MAX_LEVEL = 8;        // プレイ中のユニット強化の上限レベル
 const TD_LEVEL_ATK_RATE = 0.2;      // レベルが1上がるごとに攻撃力＋20%
 const TD_UPGRADE_COST_RATE = 0.7;   // 強化費用＝購入価格×この値×現在のレベル（レベルが上がるほど高くなる）
 const TD_SPAWN_INTERVAL = 1.3;      // 敵が出てくる間隔（秒）
 const TD_ENEMY_SPEED = 70;          // 敵の移動速度（内部座標/秒）
-const TD_WAVE_HP_GROWTH = 0.5;      // ウェーブが進むごとの敵HPの増加率
+const TD_WAVE_HP_GROWTH = 0.40;     // ウェーブが進むごとの敵HPの増加率
 const TD_BASE_HP_PER_ATK = 15;      // 拠点HP＝出てくる敵の平均攻撃力×この値（最低50）
 const TD_CLEAR_GOLD_BASE = 100;     // クリア報酬（陳）の基本額
 const TD_CLEAR_GOLD_PER_KILL = 5;   // 倒した数ごとの上乗せ
+// ----- 中ボス・周回（次のステージ）・協会ポイント・事前強化 -----
+const TD_BOSS_EVERY = 5;            // 何ウェーブごとに中ボスが出るか（そのウェーブの最後に1体）
+const TD_BOSS_HP_RATE = 2.5;        // 中ボスのHP＝本編のHP×この値（さらにウェーブ・ステージで増える）
+const TD_BOSS_SPEED_RATE = 0.6;     // 中ボスの移動の遅さ
+const TD_BOSS_ATK_RATE = 2;         // 中ボスがゴールした時の拠点ダメージ倍率
+const TD_STAGE_HP_GROWTH = 0.35;    // 次のステージへ進むごとの敵HPの増加率
+const TD_STAGE_ATK_GROWTH = 0.15;   // 同・拠点ダメージの増加率
+const TD_STAGE_REWARD_GROWTH = 0.25; // 同・クリア報酬の増加率
+const TD_POINTS_PER_WAVE = 1;       // クリア時にもらえる協会ポイント（ウェーブ数×この値＋倒した中ボス×下の値）
+const TD_POINTS_PER_BOSS = 3;
+const TD_UPGRADE_MAX = 10;          // 事前強化の上限レベル
+const TD_UPGRADE_POINT_BASE = 10;   // 事前強化の費用＝この値×（現在のレベル＋1）ポイント
+const TD_UPG_HP_RATE = 0.10;        // 拠点HP：1レベルごとに＋10%
+const TD_UPG_FUNDS = 25;            // 開始時の資金：1レベルごとに＋25
+const TD_UPG_INCOME = 0.05;         // 資金の稼ぎやすさ：1レベルごとに、敵を倒した時の資金＋5%
 // ----- コンボ（本編のコンボスキル定義をそのまま使う） -----
 const TD_COMBO_HISTORY_MAX = 8;     // 属性の履歴の上限（本編と同じ。発動した時だけリセット）
 const TD_COMBO_LOCK = 2.0;          // コンボ発動後、履歴を取らない秒数（連発しすぎないようにする）
@@ -152,19 +168,70 @@ function tdGetEnemyPool() {
   return keys.slice(0, 5);
 }
 
+// ★中ボスは本編のボスから選ぶ。物語用の桁違いに強いボス（HPや攻撃力が敵の平均より極端に高いもの）は除き、体力の低い順に使う
+function tdGetBossPool(refHp, refAtk) {
+  if (typeof MONSTER_MASTER === "undefined") return [];
+  const ids = new Set();
+  if (typeof BOSS_MASTER !== "undefined") Object.keys(BOSS_MASTER).forEach(k => ids.add(k));
+  if (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.bosses)) scenarioProject.bosses.forEach(b => ids.add(b.id));
+  const keys = [...ids].filter(k => {
+    const m = MONSTER_MASTER[k];
+    return m && Number(m.maxHp) > 0 && Number(m.maxHp) <= refHp * 10 && (Number(m.atk) || 1) <= refAtk * 5;
+  });
+  keys.sort((a, b) => Number(MONSTER_MASTER[a].maxHp) - Number(MONSTER_MASTER[b].maxHp));
+  return keys;
+}
+
+// ===== 協会ポイントと事前強化 =====
+// ★セーブデータは player をそのまま保存する作りなので、player に持たせれば自動でセーブされる
+const TD_UPGRADE_DEFS = [
+  { key: "baseHp", label: "拠点HP",       describe: lv => `最大HP +${Math.round(lv * TD_UPG_HP_RATE * 100)}%` },
+  { key: "funds",  label: "開始時の資金", describe: lv => `開始資金 +${lv * TD_UPG_FUNDS}` },
+  { key: "income", label: "資金の稼ぎやすさ", describe: lv => `敵を倒した時の資金 +${Math.round(lv * TD_UPG_INCOME * 100)}%` }
+];
+function tdGuildState() {
+  if (typeof player === "undefined" || !player) return { points: 0, upgrades: { baseHp: 0, funds: 0, income: 0 } };
+  if (!player.adventurerGuild || typeof player.adventurerGuild !== "object") player.adventurerGuild = {};
+  const g = player.adventurerGuild;
+  if (!Number.isFinite(g.points)) g.points = 0;
+  if (!g.upgrades || typeof g.upgrades !== "object") g.upgrades = {};
+  TD_UPGRADE_DEFS.forEach(d => { if (!Number.isFinite(g.upgrades[d.key])) g.upgrades[d.key] = 0; });
+  return g;
+}
+function tdUpgradeCostPoints(level) { return TD_UPGRADE_POINT_BASE * (level + 1); }
+// ポイントで事前強化を1段階上げる。結果は { ok, reason }
+function tdBuyGuildUpgrade(key) {
+  const g = tdGuildState();
+  const def = TD_UPGRADE_DEFS.find(d => d.key === key);
+  if (!def) return { ok: false, reason: "その強化は存在しない" };
+  const lv = g.upgrades[key];
+  if (lv >= TD_UPGRADE_MAX) return { ok: false, reason: "これ以上強化できない" };
+  const cost = tdUpgradeCostPoints(lv);
+  if (g.points < cost) return { ok: false, reason: "協会ポイントが足りない" };
+  g.points -= cost;
+  g.upgrades[key] = lv + 1;
+  return { ok: true };
+}
+
 // ===== ゲームの状態 =====
-function tdCreateState(pool) {
+function tdCreateState(pool, opts) {
+  opts = opts || {};
+  const up = opts.upgrades || {};
   const masters = pool.map(k => MONSTER_MASTER[k]);
   const avg = f => masters.reduce((s, m) => s + (Number(f(m)) || 0), 0) / Math.max(1, masters.length);
   const refHp = Math.max(1, avg(m => m.maxHp));
   const refAtk = Math.max(1, avg(m => m.atk));
-  const baseMaxHp = Math.max(50, Math.round(refAtk * TD_BASE_HP_PER_ATK));
+  const baseMaxHp = Math.round(Math.max(50, Math.round(refAtk * TD_BASE_HP_PER_ATK)) * (1 + TD_UPG_HP_RATE * (up.baseHp || 0)));
   return {
     pool, refHp,
+    bossPool: tdGetBossPool(refHp, refAtk),
+    stage: Math.max(1, Number(opts.stage) || 1),
+    incomeRate: 1 + TD_UPG_INCOME * (up.income || 0),   // 敵を倒した時にもらえる資金の倍率（事前強化）
+    bossKills: 0,
     templates: tdBuildUnitTemplates(),
     phase: "prep",            // prep＝準備中／wave＝ウェーブ進行中／won／lost
-    wave: 1, wavesTotal: TD_WAVES,
-    funds: TD_START_FUNDS,
+    wave: 1, wavesTotal: Math.max(1, Number(opts.wavesTotal) || TD_WAVE_OPTIONS[0]),
+    funds: TD_START_FUNDS + TD_UPG_FUNDS * (up.funds || 0),
     baseMaxHp, baseHp: baseMaxHp,
     kills: 0, time: 0, speed: 1,
     units: [],                // { slot, tpl, level, cool }
@@ -191,14 +258,21 @@ function tdUpgradeCost(unit) {
 // ウェーブを始める（そのウェーブに出る敵を並べる）
 function tdStartWave(st) {
   if (st.phase !== "prep") return false;
-  const usable = st.pool.slice(0, Math.min(st.pool.length, 2 + st.wave));
-  const count = 8 + 4 * (st.wave - 1);
+  const usable = st.pool.slice(0, Math.min(st.pool.length, 2 + st.wave + (st.stage - 1)));
+  const count = Math.min(30, 8 + 3 * (st.wave - 1));
   st.spawnQueue = [];
   for (let i = 0; i < count; i++) st.spawnQueue.push(usable[Math.floor(Math.random() * usable.length)]);
+  // ★中ボス：TD_BOSS_EVERYウェーブごとに、最後に1体出てくる（本編のボスを、弱い順に使っていく）
+  if (tdIsBossWave(st, st.wave) && st.bossPool.length > 0) {
+    const idx = Math.min(st.bossPool.length - 1, Math.floor(st.wave / TD_BOSS_EVERY) - 1 + (st.stage - 1));
+    st.spawnQueue.push({ key: st.bossPool[Math.max(0, idx)], boss: true });
+  }
   st.spawnTimer = 0;
   st.phase = "wave";
   return true;
 }
+
+function tdIsBossWave(st, wave) { return wave % TD_BOSS_EVERY === 0; }
 
 function tdPlaceUnit(st, slotIndex, templateKey) {
   if (st.units.some(u => u.slot === slotIndex)) return { ok: false, reason: "そこにはもう置いてある" };
@@ -219,21 +293,25 @@ function tdUpgradeUnit(st, unit) {
   return { ok: true };
 }
 
-function tdSpawnEnemy(st, key) {
+function tdSpawnEnemy(st, entry) {
+  const isBoss = typeof entry === "object" && entry.boss === true;
+  const key = isBoss ? entry.key : entry;
   const m = MONSTER_MASTER[key];
-  const hp = Math.max(1, Math.round((Number(m.maxHp) || 10) * (1 + TD_WAVE_HP_GROWTH * (st.wave - 1))));
+  const growth = (1 + TD_WAVE_HP_GROWTH * (st.wave - 1)) * (1 + TD_STAGE_HP_GROWTH * (st.stage - 1));
+  const hp = Math.max(1, Math.round((Number(m.maxHp) || 10) * growth * (isBoss ? TD_BOSS_HP_RATE : 1)));
+  const atk = Math.max(1, Math.round((Number(m.atk) || 1) * (1 + TD_STAGE_ATK_GROWTH * (st.stage - 1)) * (isBoss ? TD_BOSS_ATK_RATE : 1)));
   const pos = tdPathPosition(0);
   st.enemies.push({
-    key, name: m.name || key, hp, maxHp: hp,
-    atk: Math.max(1, Number(m.atk) || 1),                      // ゴールした時に拠点HPが減る量（本編の攻撃力そのまま）
+    key, name: m.name || key, hp, maxHp: hp, isBoss,
+    atk,                                                       // ゴールした時に拠点HPが減る量（本編の攻撃力が元）
     elements: Array.isArray(m.elements) ? m.elements : [],
     ignoreAffinity: !!m.ignoreElementalAffinity,
     imagePath: m.imagePath || null,
-    speed: TD_ENEMY_SPEED * (0.9 + Math.random() * 0.2),
+    speed: TD_ENEMY_SPEED * (0.9 + Math.random() * 0.2) * (isBoss ? TD_BOSS_SPEED_RATE : 1),
     dist: 0, x: pos.x, y: pos.y,
     slowUntil: 0, slowRate: 1,
     stunUntil: 0, dot: null, defDownUntil: 0, atkDownUntil: 0,   // 状態異常（足止め・継続ダメージ・防御低下・攻撃低下）
-    reward: Math.max(6, Math.round((Number(m.exp) || 10) * 0.8)) // 倒した時にもらえる資金
+    reward: Math.max(6, Math.round((Number(m.exp) || 10) * 0.8 * st.incomeRate)) // 倒した時にもらえる資金（事前強化で増える）
   });
 }
 
@@ -367,6 +445,7 @@ function tdStep(st, dt) {
     if (e.hp > 0) { alive.push(e); return; }
     st.funds += e.reward;
     st.kills++;
+    if (e.isBoss) st.bossKills++;
     st.popups.push({ x: e.x, y: e.y - 20, text: `+${e.reward}`, color: "#ffd23f", weak: false, t: 0.8 });
   });
   st.enemies = alive;
@@ -486,9 +565,9 @@ function tdElementColor(elementId) {
 }
 
 // ミニゲーム本体。終わったら { result: "win" | "lose" | "quit", kills, wave } を返す
-function runTowerDefenseBattle(pool) {
+function runTowerDefenseBattle(pool, opts) {
   return new Promise(resolve => {
-    const st = tdCreateState(pool);
+    const st = tdCreateState(pool, opts);
     let finished = false;
     let selectedType = null;   // 配置しようとしているユニットの種類（key）
     let selectedSlot = null;   // 選んでいる配置済みユニットのマス
@@ -501,7 +580,7 @@ function runTowerDefenseBattle(pool) {
     overlay.innerHTML = `
       <div class="td-panel">
         <div class="td-header">
-          <span class="td-title">掃討作戦（迎撃）</span>
+          <span class="td-title">掃討作戦（迎撃） STAGE ${st.stage}</span>
           <span class="td-wave"></span>
           <span class="td-funds"></span>
         </div>
@@ -550,7 +629,7 @@ function runTowerDefenseBattle(pool) {
     });
     
     function refreshUI() {
-      waveEl.textContent = `WAVE ${st.wave}/${st.wavesTotal}`;
+      waveEl.textContent = `WAVE ${st.wave}/${st.wavesTotal}` + (tdIsBossWave(st, st.wave) && st.bossPool.length > 0 ? " ★BOSS" : "");
       fundsEl.textContent = `資金 ${st.funds}`;
       const ratio = Math.max(0, st.baseHp) / st.baseMaxHp;
       baseFillEl.style.width = `${Math.round(ratio * 100)}%`;
@@ -704,7 +783,7 @@ function runTowerDefenseBattle(pool) {
       
       // 敵
       st.enemies.forEach(e => {
-        const size = 34;
+        const size = e.isBoss ? 54 : 34;
         const src = e.imagePath || `img/敵/${e.name}.png`;
         const entry = tdGetImage(src);
         const ringColor = e.elements.length > 0 ? tdElementColor(e.elements[0]) : "#ffffff";
@@ -717,7 +796,11 @@ function runTowerDefenseBattle(pool) {
           ctx.fillText(String(e.name).charAt(0), e.x, e.y + 1);
         }
         ctx.beginPath(); ctx.arc(e.x, e.y, size / 2, 0, Math.PI * 2);
-        ctx.strokeStyle = ringColor; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.strokeStyle = e.isBoss ? "#ff3b3b" : ringColor; ctx.lineWidth = e.isBoss ? 4 : 2.5; ctx.stroke();
+        if (e.isBoss) {
+          ctx.fillStyle = "#ff3b3b"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText("BOSS " + e.name, e.x, e.y - size / 2 - 16); ctx.fillText("BOSS " + e.name, e.x, e.y - size / 2 - 16);
+        }
         if (e.slowUntil > st.time) { ctx.fillStyle = "#9be8ff"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.fillText("遅", e.x, e.y + size / 2 + 10); }
         // 状態マーク（止＝足止め／継＝継続ダメージ／弱＝防御低下／攻↓＝攻撃低下）
         const marks = [];
@@ -731,8 +814,9 @@ function runTowerDefenseBattle(pool) {
           ctx.fillStyle = "#ffd23f"; ctx.fillText(marks.join(" "), e.x, e.y + size / 2 + 20);
         }
         // HPバー
-        ctx.fillStyle = "#000"; ctx.fillRect(e.x - 17, e.y - 28, 34, 6);
-        ctx.fillStyle = "#59e07a"; ctx.fillRect(e.x - 16, e.y - 27, 32 * Math.max(0, e.hp / e.maxHp), 4);
+        const barW = e.isBoss ? 54 : 34, barY = e.y - size / 2 - 11;
+        ctx.fillStyle = "#000"; ctx.fillRect(e.x - barW / 2 - 1, barY, barW + 2, 6);
+        ctx.fillStyle = "#59e07a"; ctx.fillRect(e.x - barW / 2, barY + 1, barW * Math.max(0, e.hp / e.maxHp), 4);
       });
       
       // ダメージ数字
@@ -762,7 +846,7 @@ function runTowerDefenseBattle(pool) {
       if (st.phase === "prep") {
         ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(0, 0, TD_FIELD_W, 34);
         ctx.fillStyle = "#ffd23f"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(`WAVE ${st.wave} の準備中：仲間を配置して「開始」`, TD_FIELD_W / 2, 17);
+        ctx.fillText(`WAVE ${st.wave} の準備中：仲間を配置して「開始」` + (tdIsBossWave(st, st.wave) && st.bossPool.length > 0 ? "（中ボス出現！）" : ""), TD_FIELD_W / 2, 17);
       }
     }
     
@@ -792,7 +876,7 @@ function runTowerDefenseBattle(pool) {
       if (rafId) cancelAnimationFrame(rafId);
       if (quitTimer) clearTimeout(quitTimer);
       overlay.remove();
-      resolve({ result, kills: st.kills, wave: st.wave });
+      resolve({ result, kills: st.kills, wave: st.wave, bossKills: st.bossKills, stage: st.stage, wavesTotal: st.wavesTotal });
     }
     
     refreshUI();
@@ -818,22 +902,56 @@ function showTowerDefenseMainMenu() {
   showLocationMenu(options, (towerDefenseFacility && towerDefenseFacility.name) || "冒険者協会");
 }
 
-// 掃討作戦のモード選択（迎撃＝守る側／出撃＝攻める側）
+// 掃討作戦のモード選択（迎撃＝守る側／出撃＝攻める側）と、協会ポイントでの事前強化
 function showTowerDefenseModeMenu() {
+  const g = tdGuildState();
   const options = [
-    { label: "迎撃モード（守る）", action: () => startTowerDefenseDefense() },
+    { label: "迎撃モード（守る）", action: () => showTowerDefenseWaveMenu() },
     { label: "出撃モード（攻める）※準備中", action: async () => {
         hideLocationMenu();
         changeSpeaker("");
         await displayMessage("出撃モードは、まだ準備中のようだ。");
         showTowerDefenseModeMenu();
       } },
+    { label: `事前強化（協会ポイント ${g.points}）`, action: () => showTowerDefenseUpgradeMenu() },
     { label: "戻る", action: () => showTowerDefenseMainMenu() }
   ];
   showLocationMenu(options, "掃討作戦");
 }
 
-async function startTowerDefenseDefense() {
+// 迎撃のウェーブ数の選択
+function showTowerDefenseWaveMenu() {
+  const options = TD_WAVE_OPTIONS.map(n => {
+    const bosses = Math.floor(n / TD_BOSS_EVERY);
+    const note = n === TD_WAVE_OPTIONS[0] ? "（お試し）" : (bosses > 0 ? `（中ボス${bosses}体）` : "");
+    return { label: `${n}ウェーブ${note}`, action: () => startTowerDefenseDefense(n, 1) };
+  });
+  options.push({ label: "戻る", action: () => showTowerDefenseModeMenu() });
+  showLocationMenu(options, "迎撃モード：ウェーブ数を選ぶ");
+}
+
+// 事前強化（協会ポイントを使う）。買うたびにメニューを開き直して、最新のレベルと費用を見せる
+function showTowerDefenseUpgradeMenu() {
+  const g = tdGuildState();
+  const options = TD_UPGRADE_DEFS.map(def => {
+    const lv = g.upgrades[def.key];
+    const maxed = lv >= TD_UPGRADE_MAX;
+    const label = maxed ? `${def.label} Lv${lv}（最大）` : `${def.label} Lv${lv}→${lv + 1}（${tdUpgradeCostPoints(lv)}pt）`;
+    return { label, action: async () => {
+        hideLocationMenu();
+        changeSpeaker("");
+        const r = tdBuyGuildUpgrade(def.key);
+        if (r.ok) await displayMessage(`${def.label}を強化した！（${def.describe(g.upgrades[def.key])}）`);
+        else await displayMessage(`${r.reason}。`);
+        showTowerDefenseUpgradeMenu();
+      } };
+  });
+  options.push({ label: "戻る", action: () => showTowerDefenseModeMenu() });
+  showLocationMenu(options, `事前強化（協会ポイント ${g.points}）`);
+}
+
+// 迎撃モードを1ステージ遊ぶ。クリアしたら報酬を渡し、次のステージ（難易度が上がる）へ進むか選べる
+async function startTowerDefenseDefense(wavesTotal, stage) {
   hideLocationMenu();
   changeSpeaker("");
   const pool = tdGetEnemyPool();
@@ -842,12 +960,20 @@ async function startTowerDefenseDefense() {
     showTowerDefenseModeMenu();
     return;
   }
-  const outcome = await runTowerDefenseBattle(pool);
+  const g = tdGuildState();
+  const outcome = await runTowerDefenseBattle(pool, { wavesTotal, stage, upgrades: Object.assign({}, g.upgrades) });
   changeSpeaker("");
   if (outcome.result === "win") {
-    const reward = TD_CLEAR_GOLD_BASE + outcome.kills * TD_CLEAR_GOLD_PER_KILL;
+    const reward = Math.round((TD_CLEAR_GOLD_BASE + outcome.kills * TD_CLEAR_GOLD_PER_KILL) * (1 + TD_STAGE_REWARD_GROWTH * (stage - 1)));
+    const points = wavesTotal * TD_POINTS_PER_WAVE + outcome.bossKills * TD_POINTS_PER_BOSS;
     changeGold(reward);
-    await displayMessage(`掃討作戦、成功！　${outcome.kills}体を討ち取り、報酬として${reward}陳を受け取った。`);
+    g.points += points;
+    await displayMessage(`掃討作戦、成功！　${outcome.kills}体を討ち取り、報酬として${reward}陳と協会ポイント${points}を受け取った。`);
+    showLocationMenu([
+      { label: `次のステージへ進む（STAGE ${stage + 1}・敵が強くなる）`, action: () => startTowerDefenseDefense(wavesTotal, stage + 1) },
+      { label: "協会に戻る", action: () => showTowerDefenseModeMenu() }
+    ], `STAGE ${stage} クリア`);
+    return;
   } else if (outcome.result === "lose") {
     await displayMessage("拠点が陥落してしまった……。今回は報酬なしだ。");
   }
