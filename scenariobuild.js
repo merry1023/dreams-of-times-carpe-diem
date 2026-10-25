@@ -31,6 +31,7 @@ let scenarioProject = {
   items: [],      // [{ id, name, category, description, rank, listedPrice, trueValue }, ...]
   statusPanels: { classes: {}, companions: {} }, // ★要望対応：ステータスパネル（職業ごと・仲間ごとの9×9の盤）。statuspanel.js参照
   upperSkills: [], // ★要望対応：上位スキル（ステータスパネルで習得する、職業技とは別枠の技）。[{ id, name, type, element, spCost, power, ... }, ...]
+  towerUnits: [], // ★冒険者協会（掃討作戦・迎撃モード）で購入・配置するユニット。[{ id, name, element, role, targeting, power, range, interval, cost, ... }]（tower_defense_editor.js）
   comboSkills: [], // ★要望対応：コンボスキル（属性の順番で発動する追加効果）。[{ id, name, elements:[属性id...], requiredSkillNames:[...], requiredChapterId... }, ...]
   skills: [],     // [{ id, className, skillId, name, description, type, element, spCost, unlockLevel, power, target, hitCount, statusEffectKind... }, ...]
                   // ★将来的に「特殊スキル編集」ボタンから、話のブロックエディタと同じ要領で技の動作を
@@ -246,6 +247,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   if (Array.isArray(data.randomNamePool)) scenarioProject.randomNamePool = data.randomNamePool; // ★要望対応：ランダム名前管理タブ
   if (Array.isArray(data.elementDefs)) scenarioProject.elementDefs = data.elementDefs; // ★要望対応：属性管理タブ
   if (Array.isArray(data.comboSkills)) scenarioProject.comboSkills = data.comboSkills; // ★要望対応：コンボスキル
+  if (Array.isArray(data.towerUnits)) scenarioProject.towerUnits = data.towerUnits; // ★冒険者協会：タワーユニット
   if (Array.isArray(data.upperSkills)) scenarioProject.upperSkills = data.upperSkills; // ★要望対応：上位スキル
   if (data.statusPanels && typeof data.statusPanels === "object") scenarioProject.statusPanels = data.statusPanels; // ★要望対応：ステータスパネル
   if (data.elementMatchups && typeof data.elementMatchups === "object") scenarioProject.elementMatchups = data.elementMatchups;
@@ -455,6 +457,7 @@ function normalizeScenarioProject() {
   //   未設定は通常扱い）
   if (!Array.isArray(scenarioProject.elementDefs)) scenarioProject.elementDefs = []; // [{ id, name }, ...]
   if (!Array.isArray(scenarioProject.comboSkills)) scenarioProject.comboSkills = []; // ★要望対応：コンボスキル
+  if (!Array.isArray(scenarioProject.towerUnits)) scenarioProject.towerUnits = []; // ★冒険者協会：タワーユニット
   if (!Array.isArray(scenarioProject.upperSkills)) scenarioProject.upperSkills = []; // ★要望対応：上位スキル
   if (!scenarioProject.statusPanels || typeof scenarioProject.statusPanels !== "object") scenarioProject.statusPanels = { classes: {}, companions: {} }; // ★要望対応：ステータスパネル
   if (!scenarioProject.statusPanels.classes) scenarioProject.statusPanels.classes = {};
@@ -1550,6 +1553,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "skills", label: "スキル管理" },
   { view: "upperskills", label: "上位スキル" }, // ★要望対応：ステータスパネルで習得する、職業技とは別枠の技
   { view: "combos", label: "コンボスキル" }, // ★要望対応：属性の順番で発動する追加効果の技
+  { view: "towerunits", label: "タワーユニット" }, // ★冒険者協会：掃討作戦（迎撃モード）のユニット登録
   { view: "statuspanels", label: "ステータスパネル" }, // ★要望対応：職業・仲間ごとの育成用マス目の盤
   { view: "statuses", label: "状態管理" },
   { view: "flags", label: "フラグ管理" },
@@ -1698,6 +1702,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
   else if (scenarioBuildSubView === "combos") renderComboSkillManager(bodyEl); // ★要望対応：コンボスキル
+  else if (scenarioBuildSubView === "towerunits") renderTowerUnitManager(bodyEl); // ★冒険者協会：タワーユニット（tower_defense_editor.js）
   else if (scenarioBuildSubView === "upperskills") renderUpperSkillManager(bodyEl); // ★要望対応：上位スキル
   else if (scenarioBuildSubView === "statuspanels") renderStatusPanelManager(bodyEl); // ★要望対応：ステータスパネル
   else if (scenarioBuildSubView === "statuses") renderStatusManager(bodyEl);
@@ -13267,6 +13272,7 @@ function exportGameSettingsAsJsFile() {
     elementDefs: scenarioProject.elementDefs, // ★要望対応：属性管理タブ
     elementMatchups: scenarioProject.elementMatchups,
     comboSkills: scenarioProject.comboSkills, // ★要望対応：コンボスキル
+    towerUnits: scenarioProject.towerUnits, // ★冒険者協会：タワーユニット
     upperSkills: scenarioProject.upperSkills, // ★要望対応：上位スキル
     statusPanels: scenarioProject.statusPanels, // ★要望対応：ステータスパネル
     bgmTracks: scenarioProject.bgmTracks,
