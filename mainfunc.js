@@ -1126,6 +1126,10 @@ let currentChoiceListFocus = "main";
 //   わざわざtab-mainに切り替えないと選べない問題があった
 let choiceBoxAllowSubFocus = false;
 let choiceBoxDisableArrowPaging = false; // ★戦闘の敵選択など、←→キーを他の用途（ターゲットカーソル移動）に使いたい時はtrueにする
+// ★要望対応：魔物図鑑の「種類（通常／ボス）切り替え」など、サブ画面の中でQ/Eキーを別の用途に使いたい時は
+//   trueにする。種類の切り替えとタブの切り替えが同時に起きてしまわないよう、その間はサブ画面タブの
+//   Q/E切り替えを止める（使い終わったら必ずfalseに戻すこと）
+let subTabSwitchBlocked = false;
 // ★1ページに表示する選択肢の数。これを超えたらページ送りにする。
 //   ★スマホの縦画面（CSSの@media (max-aspect-ratio: 4/5)と同じ判定条件）だけは、
 //     ボタンが画面を圧迫しないよう1ページ3個までにする
@@ -1600,6 +1604,7 @@ window.addEventListener("keydown", (event) => {
   if (event.repeat) return;
   if (isGameDialogOpen) return; // ★確認ダイアログが開いている間は、そちらを優先する
   if (controlFocus !== "sub") return; // ★メイン画面ではQ/Eでタブを動かさない
+  if (subTabSwitchBlocked) return; // ★要望対応：魔物図鑑の種類切り替えなど、サブ画面内でQ/Eを別用途に使っている間はタブを動かさない
 
   const currentActive = document.querySelector('.tab-content.active');
   if (!currentActive) return;

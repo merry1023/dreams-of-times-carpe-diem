@@ -137,6 +137,7 @@ function closeAllConvenienceSubPanels() {
   if (progressPanel) progressPanel.classList.add("hidden");
   if (tutorialPanel) tutorialPanel.classList.add("hidden");
   if (achievementsPanel) achievementsPanel.classList.add("hidden");
+  subTabSwitchBlocked = false; // ★要望対応：図鑑の分類切り替え用に止めていたタブ切り替えのQ/Eも、ここで必ず元に戻す
 }
 
 // 便利タブを開いた時（switchTabから呼ばれる）：常にアイコン一覧の状態に戻す
@@ -338,7 +339,9 @@ let codexViewMode = "list"; // "list"（一覧） | "detail"（選んだ魔物�
 //   ・魚／料理／アイテム：player.obtainedItemIds（初めて入手したアイテムの記録。inventory.js の addItem が付ける）
 //     ※古いセーブでは、持ち物に残っているものだけが発見済みとして引き継がれる
 //   ・家具：購入した時に player.discoveredFurnitureIds へ記録（持っている家具も発見済みとして数える）
-//   操作：←→で分類を切り替え、↑↓で選び、Zキーで詳細、Xキーで閉じる
+//   操作：Q/Eキーで分類を切り替え、↑↓で選び、Zキーで詳細、Xキーで閉じる
+//   ★要望対応：以前は←→で分類を切り替えていたが、サブ画面タブのQ/E切り替えと役割を合わせるためQ/Eに変更。
+//   図鑑を開いている間は、サブ画面タブ自体のQ/E切り替え（分類の切り替えと同時に起きると紛らわしいため）を止める（subTabSwitchBlocked）
 const CODEX_TABS = [
   { id: "monster", label: "魔物" },
   { id: "fish", label: "魚" },
@@ -481,7 +484,7 @@ function renderCodexGenericList(panel) {
   
   const hintEl = document.createElement("p");
   hintEl.className = "monster-codex-hint";
-  hintEl.textContent = "←→で分類を切り替え／Zキーで詳細を見る／Xキーで閉じる";
+  hintEl.textContent = "Q・Eキーで分類を切り替え／Zキーで詳細を見る／Xキーで閉じる";
   panel.appendChild(hintEl);
   
   const backBtn = document.createElement("button");
@@ -545,10 +548,12 @@ async function openMonsterCodex() {
   renderMonsterCodex();
   window.removeEventListener("keydown", handleMonsterCodexKeyDown); // 二重登録防止
   window.addEventListener("keydown", handleMonsterCodexKeyDown);
+  subTabSwitchBlocked = true; // ★要望対応：図鑑を開いている間は、分類切り替え（Q/E）とサブ画面タブ切り替え（Q/E）が同時に起きないよう、タブ切り替えを止める
 }
 
 function closeMonsterCodex() {
   window.removeEventListener("keydown", handleMonsterCodexKeyDown);
+  subTabSwitchBlocked = false; // ★要望対応：図鑑を閉じたら、タブ切り替えのQ/Eを元に戻す
   renderConvenienceIcons();
 }
 
@@ -1079,7 +1084,13 @@ function renderTutorialPanel() {
     emptyEl.className = "devmode-note";
     emptyEl.textContent = "まだチュートリアルが登録されていません。";
     list.appendChild(emptyEl);
-  } else {
+  }
+  
+  // ★バグ修正：以前はまだpanelに挿入される前のlist（画面にまだ存在しない状態）に対してrow.scrollIntoView()を
+  //   呼んでいたため、何も起きていなかった（スクロールがカーソルに追従していなかった）。
+  //   list／panelへの挿入を終えてから、カーソル行の位置を実際に計算してスクロールするように直す
+  let tutorialCursorRowEl = null;
+  if (groups.length > 0) {
     let flatIndex = 0;
     groups.forEach(group => {
       const headerEl = document.createElement("p");
@@ -1106,13 +1117,24 @@ function renderTutorialPanel() {
         };
         
         list.appendChild(row);
-        if (currentIndex === tutorialCursorIndex) row.scrollIntoView({ block: "nearest" }); // ★カーソルに合わせて自動スクロール
+        if (currentIndex === tutorialCursorIndex) tutorialCursorRowEl = row;
         flatIndex++;
       });
     });
   }
   
   panel.appendChild(list);
+  
+  // ★要望対応：カーソルに合わせて一覧をスクロールする（list／panelへの挿入が終わった後で計算する）
+  if (tutorialCursorRowEl) {
+    const containerRect = list.getBoundingClientRect();
+    const rowRect = tutorialCursorRowEl.getBoundingClientRect();
+    if (rowRect.top < containerRect.top) {
+      list.scrollTop -= (containerRect.top - rowRect.top);
+    } else if (rowRect.bottom > containerRect.bottom) {
+      list.scrollTop += (rowRect.bottom - containerRect.bottom);
+    }
+  }
   
   const backBtn = document.createElement("button");
   backBtn.className = "monster-codex-back-btn";
@@ -1686,7 +1708,7 @@ function renderMonsterCodex() {
   
   const hintEl = document.createElement("p");
   hintEl.className = "monster-codex-hint";
-  hintEl.textContent = "←→で分類を切り替え／Zキーで詳細を見る／Xキーで閉じる";
+  hintEl.textContent = "Q・Eキーで分類を切り替え／Zキーで詳細を見る／Xキーで閉じる";
   panel.appendChild(hintEl);
   
   const backBtn = document.createElement("button");
@@ -1855,11 +1877,13 @@ function handleMonsterCodexKeyDown(event) {
     return;
   }
   
-  // ★分類の切り替え（一覧の時だけ。←→）
-  if (codexViewMode === "list" && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+  // ★要望対応：分類の切り替え（一覧の時だけ）。以前は←→だったが、サブ画面タブのQ/E切り替えと
+  //   役割を合わせるためQ/Eに変更。図鑑を開いている間はsubTabSwitchBlockedでタブ自体のQ/E切り替えを
+  //   止めているので、ここでQ/Eが分類切り替えとタブ切り替えの両方に取られてしまうことは無い
+  if (codexViewMode === "list" && (KEY_CONFIG.tabLeftKey.includes(event.key) || KEY_CONFIG.tabRightKey.includes(event.key))) {
     event.preventDefault();
     const currentIndex = CODEX_TABS.findIndex(t => t.id === codexTab);
-    const nextIndex = (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + CODEX_TABS.length) % CODEX_TABS.length;
+    const nextIndex = (currentIndex + (KEY_CONFIG.tabRightKey.includes(event.key) ? 1 : -1) + CODEX_TABS.length) % CODEX_TABS.length;
     switchCodexTab(CODEX_TABS[nextIndex].id);
     return;
   }

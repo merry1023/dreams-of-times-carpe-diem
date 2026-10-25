@@ -8059,6 +8059,12 @@ rt {
   border-color: #ffb84d;
   background: rgba(255, 140, 30, 0.2);
 }
+.statuspanel-owner-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #999;
+  flex-shrink: 0;
+}
 .statuspanel-info {
   margin: 6px 0 2px;
   font-size: 12px;
