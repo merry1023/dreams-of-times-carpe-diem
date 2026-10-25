@@ -1737,6 +1737,7 @@ function renderStatusHUD() {
   if (!player) return;
   if (typeof refreshStatusPanelTabVisibility === "function") refreshStatusPanelTabVisibility(); // ★要望対応：パネルタブは30レベルに到達するまで隠す（statuspanel.js）
   if (typeof updateUnreadBadges === "function") updateUnreadBadges(); // ★要望対応：実績・チュートリアルの未確認バッジを、ロード直後なども含めて最新に保つ（convenience.js）
+  if (typeof updateShouryokuHud === "function") updateShouryokuHud(); // ★要望対応：時計の上の焦力ゲージも、ロード直後・仲間の増減なども含めて最新に保つ（battle.js）
   
   // ★パラメータ表示ブロック（#status-hud-wrapper）が、設定通りの場所（メインタブ内 or 常時左上）に
   //   ちゃんと置かれているか、呼ばれるたびに軽く確認しておく（既に正しい場所ならappendChildしても
@@ -3101,7 +3102,7 @@ function reorganizeInventory() {
     const baseSeq = slots[0].acquiredSeq;
     const appraised = slots.some(s => s.appraised); // ★どれか1つでも鑑定済みなら鑑定済み扱いにする
     while (totalQty > 0) {
-      const qty = Math.min(MAX_STACK, totalQty);
+      const qty = Math.min(getItemMaxStack(ITEM_MASTER[itemId]), totalQty); // ★アイテムごとのスタック上限（カジノコインは9999）
       merged.push({ itemId, quantity: qty, appraised, acquiredSeq: baseSeq });
       totalQty -= qty;
     }

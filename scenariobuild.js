@@ -783,7 +783,8 @@ function normalizeScenarioProject() {
       const master = ITEM_MASTER[key];
       scenarioProject.items.push({
         id: key, name: master.name, category: master.category, description: master.description,
-        rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue, builtin: true
+        rank: master.rank, listedPrice: master.listedPrice, trueValue: master.trueValue, builtin: true,
+        unsellable: !!master.unsellable // ★カジノコインなど、組み込みで「売れない」のものが、ensureCustomItemsRegisteredで売れる扱いに上書きされないように引き継ぐ
       });
     });
   }
@@ -9296,7 +9297,7 @@ function buildClassStatsRow(className) {
 // ===================================================================
 // ===== サブ画面：施設編集（村に追加できる「酒場/宿屋/店/冒険する」以外の施設） =====
 // ===================================================================
-const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", realEstate: "不動産屋系（家・店の売買・賃貸）", furnitureShop: "家具屋系（家具・倉庫の販売）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", memoryHall: "追憶の館系（クリア済みの話を再体験できる）", flavor: "その他（セリフのみ）" };
+const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", realEstate: "不動産屋系（家・店の売買・賃貸）", furnitureShop: "家具屋系（家具・倉庫の販売）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", memoryHall: "追憶の館系（クリア済みの話を再体験できる）", towerDefense: "冒険者協会系（掃討作戦＝タワーディフェンス）", flavor: "その他（セリフのみ）" };
 
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
@@ -9642,7 +9643,7 @@ function buildFacilityRow(facility) {
   } else if (facility.type === "casino") {
     const noteEl = document.createElement("p");
     noteEl.className = "devmode-note";
-    noteEl.textContent = "丁半博打・ルーレット・スロットの3種類で遊べます。賭け金は「カジノコイン」の枚数で設定してください（丁半博打・スロットでは1回の賭け金の上限、ルーレットでは1マスあたりに置けるチップの上限になります。いずれも実際の上限は、この設定枚数とプレイヤーの所持コインの低い方です）。コインは全カジノ共通で、「両替バニーガールちゃん」で陳と両替できます（100陳→1コイン、1コイン→50陳）。";
+    noteEl.textContent = "丁半博打・ルーレット・スロットの3種類で遊べます。賭け金は「カジノコイン」の枚数で設定してください（丁半博打・スロットでは1回の賭け金の上限、ルーレットでは1マスあたりに置けるチップの上限になります。いずれも実際の上限は、この設定枚数とプレイヤーの所持コインの低い方です）。コインは全カジノ共通の「カジノコイン」というアイテムで、持ち物に入ります。「両替バニーガールちゃん」で陳と両替できます（100陳→1コイン、1コイン→50陳）。";
     infoEl.appendChild(noteEl);
     
     const betRow = document.createElement("div");
