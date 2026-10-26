@@ -570,6 +570,7 @@ function tdExecuteCombo(st, combo, unit, from) {
   st.comboCount++;
   st.banners.push({ text: combo.cutInText || name, t: 1.4 });
   if ((combo.type || "attack") === "heal") {
+    if (typeof st.onComboHeal === "function") { st.onComboHeal(); return; }   // 出撃モード（tower_raid.js）：味方を回復する
     const healed = Math.round(st.baseMaxHp * 0.1);
     st.baseHp = Math.min(st.baseMaxHp, st.baseHp + healed);
     st.popups.push({ x: 690, y: 300, text: `+${healed}`, color: "#59e07a", weak: false, t: 0.9 });
@@ -988,7 +989,8 @@ function showTowerDefenseModeMenu() {
   const g = tdGuildState();
   const options = [
     { label: "迎撃モード（守る）", action: () => showTowerDefenseWaveMenu() },
-    { label: "出撃モード（攻める）※準備中", action: async () => {
+    { label: "出撃モード（攻める）", action: async () => {
+        if (typeof startTowerRaid === "function") { startTowerRaid(1); return; }   // tower_raid.js
         hideLocationMenu();
         changeSpeaker("");
         await displayMessage("出撃モードは、まだ準備中のようだ。");

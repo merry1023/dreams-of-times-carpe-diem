@@ -8390,3 +8390,22 @@ rt {
 @media (max-width: 520px) {
   .td-units { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ===================================================================
+   出撃モード（tower_raid.js）：リソース表示と手札（カード）
+   =================================================================== */
+.td-res { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.td-res-chip { background: #111; border: 2px solid #ffd23f; color: #fff; padding: 1px 6px; font-size: 12px; font-weight: bold; }
+.td-res-chip b { color: #ffd23f; margin-left: 2px; }
+.td-hand { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.td-card { background: #111; border: 3px solid #fff; padding: 4px; display: flex; flex-direction: column; gap: 3px; font-size: 11px; }
+.td-card-out { background: #14261a; }
+.td-card-dead { opacity: 0.65; background: #2a1717; }
+.td-card-head { display: flex; justify-content: space-between; gap: 4px; font-weight: bold; }
+.td-card-cost { color: #ffd23f; line-height: 1.3; min-height: 2.6em; }
+.td-short { color: #ff6b6b; }
+.td-card-btns { display: flex; flex-direction: column; gap: 3px; }
+.td-card-btns .td-btn { flex: none; padding: 4px 2px; font-size: 11px; }
+@media (max-width: 520px) {
+  .td-hand { grid-template-columns: repeat(2, 1fr); }
+}
