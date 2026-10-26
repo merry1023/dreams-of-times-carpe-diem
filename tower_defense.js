@@ -111,14 +111,16 @@ function tdElementMultiplier(attackElementId, enemy) {
 // ★属性管理にある属性ごとに1ユニットを自動で作る（属性が増えたら自動で反映される）。役割は下の4種類を順番に割り当てる。
 //   狙い方（targeting）：near＝射程内でユニットから一番近い敵／far＝射程内で一番遠い敵／all＝射程内の全ての敵
 //   与ダメージは「出てくる敵の平均HP」に対する割合で決めるので、敵のデータが変わってもバランスが崩れにくい
-const TD_TARGETING_LABELS = { near: "近い敵", far: "遠い敵", all: "全体" };
+const TD_TARGETING_LABELS = { near: "近い敵", far: "遠い敵", all: "全体", none: "味方を強化" };
+const TD_SUPPORT_BONUS_MAX = 1.5;   // サポートによる攻撃力アップの合計の上限（＋150%）
 const TD_ROLE_ARCHETYPES = [
   { name: "弓兵",   role: "single", roleLabel: "単体", roleChar: "単", targeting: "near", dmgRatio: 0.22, range: 140, interval: 0.8, cost: 50 },
   { name: "術師",   role: "area",   roleLabel: "範囲", roleChar: "範", targeting: "all",  dmgRatio: 0.09, range: 115, interval: 1.4, cost: 80 },
   { name: "妨害師", role: "slow",   roleLabel: "遅延", roleChar: "遅", targeting: "far",  dmgRatio: 0.07, range: 120, interval: 1.0, cost: 70, slowRate: 0.5, slowSec: 1.5 },
   { name: "砲手",   role: "single", roleLabel: "単体", roleChar: "砲", targeting: "far",  dmgRatio: 0.6,  range: 190, interval: 2.4, cost: 120 }
 ];
-function tdBuildUnitTemplates() {
+// 属性ごとに1ユニットを自動で作る（エディタで何も登録していない時に使う）
+function tdAutoUnitTemplates() {
   const defs = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.elementDefs) && scenarioProject.elementDefs.length > 0)
     ? scenarioProject.elementDefs
     : [{ id: "無", name: "無" }];
@@ -126,6 +128,55 @@ function tdBuildUnitTemplates() {
     const arch = TD_ROLE_ARCHETYPES[i % TD_ROLE_ARCHETYPES.length];
     return Object.assign({}, arch, { key: "u" + i, label: `${def.name}の${arch.name}`, element: def.id });
   });
+}
+
+// エディタ「タワーユニット」タブで登録されたユニット（有効なものだけ）
+const TD_ROLE_INFO = {
+  single:  { roleLabel: "単体",     roleChar: "単" },
+  area:    { roleLabel: "範囲",     roleChar: "範" },
+  slow:    { roleLabel: "遅延",     roleChar: "遅" },
+  support: { roleLabel: "サポート", roleChar: "援" }
+};
+function tdClamp(v, min, max, fallback) {
+  const n = Number(v);
+  return Math.min(max, Math.max(min, Number.isFinite(n) ? n : fallback));
+}
+function tdCustomUnitTemplates() {
+  const list = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.towerUnits)) ? scenarioProject.towerUnits : [];
+  return list.filter(u => u && u.enabled !== false).slice(0, 24).map((u, i) => {
+    const role = TD_ROLE_INFO[u.role] ? u.role : "single";
+    const targeting = role === "support" ? "none" : (role === "area" ? "all" : (TD_TARGETING_LABELS[u.targeting] && u.targeting !== "none" ? u.targeting : "near")); // 範囲は常に「射程内の全て」
+    return {
+      key: "c" + i, label: u.name || "名無しのユニット", element: u.element || "無",
+      role, roleLabel: TD_ROLE_INFO[role].roleLabel, roleChar: TD_ROLE_INFO[role].roleChar, targeting,
+      dmgRatio: tdClamp(u.power, 1, 500, 20) / 100,
+      range: tdClamp(u.range, 20, 400, 140), interval: tdClamp(u.interval, 0.2, 10, 1),
+      cost: Math.round(tdClamp(u.cost, 1, 99999, 50)),
+      slowRate: 1 - tdClamp(u.slowPercent, 1, 95, 50) / 100, slowSec: tdClamp(u.slowSec, 0.2, 10, 1.5),
+      supportRate: tdClamp(u.supportPercent, 1, 300, 25) / 100,
+      imagePath: u.imagePath || ""
+    };
+  });
+}
+
+function tdBuildUnitTemplates() {
+  const custom = tdCustomUnitTemplates();
+  return custom.length > 0 ? custom : tdAutoUnitTemplates();
+}
+
+// エディタの「標準のユニットを登録する」ボタン用：自動生成と同じ内容を、編集できる形で返す（サポートの見本を1つ足す）
+function tdBuildDefaultUnitData() {
+  const idOf = i => (typeof generateId === "function") ? generateId("towerunit") : "towerunit_" + i;
+  const list = tdAutoUnitTemplates().map((t, i) => ({
+    id: idOf(i), name: t.label, enabled: true, element: t.element, role: t.role, targeting: t.targeting,
+    power: Math.round(t.dmgRatio * 100), range: t.range, interval: t.interval, cost: t.cost,
+    slowPercent: t.slowRate != null ? Math.round((1 - t.slowRate) * 100) : 50, slowSec: t.slowSec || 1.5,
+    supportPercent: 25, imagePath: ""
+  }));
+  const firstElement = list.length > 0 ? list[0].element : "無";
+  list.push({ id: idOf(list.length), name: "支援兵", enabled: true, element: firstElement, role: "support", targeting: "near",
+    power: 0, range: 130, interval: 1, cost: 90, slowPercent: 50, slowSec: 1.5, supportPercent: 25, imagePath: "" });
+  return list;
 }
 
 // ===== コンボ =====
@@ -247,8 +298,21 @@ function tdCreateState(pool, opts) {
 
 function tdSlotPos(slotIndex) { return { x: TD_SLOTS[slotIndex][0], y: TD_SLOTS[slotIndex][1] }; }
 
+// サポートの効果：射程の中にいるサポートの強化率を足し合わせる（上限あり）
+function tdSupportBonus(st, unit) {
+  if (unit.tpl.role === "support") return 0;
+  const sp = tdSlotPos(unit.slot);
+  let bonus = 0;
+  st.units.forEach(other => {
+    if (other === unit || other.tpl.role !== "support") return;
+    const op = tdSlotPos(other.slot);
+    if (Math.hypot(op.x - sp.x, op.y - sp.y) <= other.tpl.range) bonus += other.tpl.supportRate * (1 + TD_LEVEL_ATK_RATE * (other.level - 1));
+  });
+  return Math.min(TD_SUPPORT_BONUS_MAX, bonus);
+}
+
 function tdUnitDamage(st, unit) {
-  return unit.tpl.dmgRatio * st.refHp * (1 + TD_LEVEL_ATK_RATE * (unit.level - 1));
+  return unit.tpl.dmgRatio * st.refHp * (1 + TD_LEVEL_ATK_RATE * (unit.level - 1)) * (1 + tdSupportBonus(st, unit));
 }
 
 function tdUpgradeCost(unit) {
@@ -430,6 +494,7 @@ function tdStep(st, dt) {
   
   // ユニットの攻撃（狙い方はユニットごとの設定に従う）
   st.units.forEach(u => {
+    if (u.tpl.role === "support") return;           // サポートは攻撃しない
     u.cool -= dt;
     if (u.cool > 0) return;
     const sp = tdSlotPos(u.slot);
@@ -505,6 +570,7 @@ function tdExecuteCombo(st, combo, unit, from) {
   st.comboCount++;
   st.banners.push({ text: combo.cutInText || name, t: 1.4 });
   if ((combo.type || "attack") === "heal") {
+    if (typeof st.onComboHeal === "function") { st.onComboHeal(); return; }   // 出撃モード（tower_raid.js）：味方を回復する
     const healed = Math.round(st.baseMaxHp * 0.1);
     st.baseHp = Math.min(st.baseMaxHp, st.baseHp + healed);
     st.popups.push({ x: 690, y: 300, text: `+${healed}`, color: "#59e07a", weak: false, t: 0.9 });
@@ -548,6 +614,12 @@ function tdGetImage(src) {
     tdImageCache[src] = entry;
   }
   return tdImageCache[src];
+}
+
+// ユニットの役割・狙い・効果を1行で表す（ボタンや案内に使う）
+function tdUnitSummary(tpl) {
+  if (tpl.role === "support") return `サポート・攻撃+${Math.round(tpl.supportRate * 100)}%`;
+  return `${tpl.roleLabel}・${TD_TARGETING_LABELS[tpl.targeting]}`;
 }
 
 function tdElementName(elementId) {
@@ -619,7 +691,7 @@ function runTowerDefenseBattle(pool, opts) {
       btn.className = "td-unit-btn";
       btn.dataset.key = tpl.key;
       btn.style.borderColor = tdElementColor(tpl.element);
-      btn.innerHTML = `<span class="td-unit-name">${tpl.label}</span><span class="td-unit-meta">${tpl.roleLabel}・${TD_TARGETING_LABELS[tpl.targeting]}　${tpl.cost}</span>`;
+      btn.innerHTML = `<span class="td-unit-name">${tpl.label}</span><span class="td-unit-meta">${tdUnitSummary(tpl)}　${tpl.cost}</span>`;
       btn.onclick = () => {
         selectedType = (selectedType === tpl.key) ? null : tpl.key;
         selectedSlot = null; infoNote = "";
@@ -664,7 +736,9 @@ function runTowerDefenseBattle(pool, opts) {
         const maxed = unit.level >= TD_UNIT_MAX_LEVEL;
         infoEl.innerHTML = "";
         const text = document.createElement("span");
-        text.textContent = `${tpl.label} Lv${unit.level}　攻撃${Math.round(tdUnitDamage(st, unit))}　射程${tpl.range}　狙い:${TD_TARGETING_LABELS[tpl.targeting]}`;
+        text.textContent = tpl.role === "support"
+          ? `${tpl.label} Lv${unit.level}　味方の攻撃+${Math.round(tpl.supportRate * (1 + TD_LEVEL_ATK_RATE * (unit.level - 1)) * 100)}%　射程${tpl.range}`
+          : `${tpl.label} Lv${unit.level}　攻撃${Math.round(tdUnitDamage(st, unit))}　射程${tpl.range}　狙い:${TD_TARGETING_LABELS[tpl.targeting]}` + (tdSupportBonus(st, unit) > 0 ? `　サポート+${Math.round(tdSupportBonus(st, unit) * 100)}%` : "");
         infoEl.appendChild(text);
         const up = document.createElement("button");
         up.type = "button";
@@ -679,7 +753,7 @@ function runTowerDefenseBattle(pool, opts) {
         infoEl.appendChild(up);
       } else if (selectedType) {
         const tpl = st.templates.find(t => t.key === selectedType);
-        infoEl.textContent = `${tpl.label}（${tpl.roleLabel}・狙い:${TD_TARGETING_LABELS[tpl.targeting]}）：置きたい白い枠をタップ`;
+        infoEl.textContent = `${tpl.label}（${tdUnitSummary(tpl)}）：置きたい白い枠をタップ`;
       } else {
         infoEl.textContent = "下から仲間を選んで、白い枠に配置しよう。白い数字＝弱点、灰色＝耐性。";
       }
@@ -764,8 +838,16 @@ function runTowerDefenseBattle(pool, opts) {
         ctx.beginPath(); ctx.arc(sp.x, sp.y, 19, 0, Math.PI * 2);
         ctx.fillStyle = color; ctx.fill();
         ctx.lineWidth = 3; ctx.strokeStyle = (u.slot === selectedSlot) ? "#ffd23f" : "#fff"; ctx.stroke();
-        ctx.fillStyle = "#111"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(u.tpl.roleChar, sp.x, sp.y + 1);
+        const unitImg = u.tpl.imagePath ? tdGetImage(u.tpl.imagePath) : null;
+        if (unitImg && unitImg.ok) {
+          ctx.save();
+          ctx.beginPath(); ctx.arc(sp.x, sp.y, 17, 0, Math.PI * 2); ctx.clip();
+          ctx.drawImage(unitImg.img, sp.x - 17, sp.y - 17, 34, 34);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = "#111"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(u.tpl.roleChar, sp.x, sp.y + 1);
+        }
         if (u.level > 1) {
           ctx.fillStyle = "#000"; ctx.fillRect(sp.x + 6, sp.y + 8, 22, 13);
           ctx.fillStyle = "#ffd23f"; ctx.font = "bold 10px sans-serif"; ctx.fillText(`Lv${u.level}`, sp.x + 17, sp.y + 15);
@@ -907,7 +989,8 @@ function showTowerDefenseModeMenu() {
   const g = tdGuildState();
   const options = [
     { label: "迎撃モード（守る）", action: () => showTowerDefenseWaveMenu() },
-    { label: "出撃モード（攻める）※準備中", action: async () => {
+    { label: "出撃モード（攻める）", action: async () => {
+        if (typeof startTowerRaid === "function") { startTowerRaid(1); return; }   // tower_raid.js
         hideLocationMenu();
         changeSpeaker("");
         await displayMessage("出撃モードは、まだ準備中のようだ。");
