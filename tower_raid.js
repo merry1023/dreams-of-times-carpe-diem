@@ -190,7 +190,7 @@ function trCreateState(rosterDefs, opts) {
     party: [],                                                  // 出撃したキャラ（倒れたものも、再出撃するまで残る）
     res: Object.assign({}, TR_START_RES),
     defenders: [], enemies: [],                                 // enemies は defenders と同じもの（迎撃モードの部品が enemies を見るため）
-    currentWave: 1, waveActive: false, kills: 0, bossKills: 0,
+    currentWave: 1, waveActive: false, kills: 0, bossKills: 0, killKeys: [],   // killKeys＝倒した魔物の種類のID（クリア時のドロップ判定に使う）
     pool, bossPool: tdGetBossPool(refHp, refAtk), refHp, refAtk, refExp, partyAvgHp, wavesTotal: TR_WAVES,
     combos: tdGetUsableCombos(), history: [], comboLockUntil: 0, comboCount: 0,
     fx: [], popups: [], banners: []
@@ -466,6 +466,7 @@ function trStep(st, dt) {
   st.defenders.forEach(e => {
     if (e.hp > 0) { alive.push(e); return; }
     st.kills++;
+    if (e.key) st.killKeys.push(e.key);
     st.res.exp += (e.exp || 0) * TR_EXP_PER_KILL_RATE;
     if (e.kind === "monster") st.res.funds += TR_FUNDS_PER_KILL;
     if (e.kind === "tower") st.res.stone += TR_STONE_PER_TOWER;
@@ -815,7 +816,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
       if (rafId) cancelAnimationFrame(rafId);
       if (quitTimer) clearTimeout(quitTimer);
       overlay.remove();
-      resolve({ result, kills: st.kills, bossKills: st.bossKills, stage: st.stage });
+      resolve({ result, kills: st.kills, bossKills: st.bossKills, stage: st.stage, wavesTotal: TR_WAVES, killKeys: st.killKeys });
     }
     refreshUI();
     draw();
@@ -843,11 +844,12 @@ async function startTowerRaid(stage) {
   const outcome = await runTowerRaidBattle(party, { stage, upgrades: Object.assign({}, g.upgrades) });   // party＝手札になるキャラ（最大8枚）
   changeSpeaker("");
   if (outcome.result === "win") {
-    const reward = Math.round((TD_CLEAR_GOLD_BASE + outcome.kills * TD_CLEAR_GOLD_PER_KILL) * (1 + TD_STAGE_REWARD_GROWTH * (stage - 1)));
-    const points = TR_WAVES * TD_POINTS_PER_WAVE + outcome.bossKills * TD_POINTS_PER_BOSS;
-    changeGold(reward);
-    g.points += points;
-    await displayMessage(`出撃成功！　${outcome.kills}体を討ち倒し、報酬として${reward}陳と協会ポイント${points}を受け取った。`);
+    // ★報酬（陳・協会ポイント・ガチャ石・アイテム）は tower_rewards.js の共通の仕組みで計算して渡す
+    const rewards = tdComputeClearRewards("raid", outcome);
+    tdGrantClearRewards(rewards);
+    const lines = tdDescribeRewards(rewards);
+    await displayMessage(`出撃成功！　${outcome.kills}体を討ち倒し、報酬として${lines[0]}を受け取った。`);
+    if (lines[1]) await displayMessage(lines[1]);
     showLocationMenu([
       { label: `次のステージへ進む（STAGE ${stage + 1}・敵が強くなる）`, action: () => startTowerRaid(stage + 1) },
       { label: "協会に戻る", action: () => showTowerDefenseModeMenu() }
