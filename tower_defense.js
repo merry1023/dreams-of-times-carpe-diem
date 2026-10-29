@@ -4,7 +4,7 @@
 // ===================================================================
 // ★施設編集タブで作れる「冒険者協会」タイプの施設（facility.type === "towerDefense"）の中身。
 //   openCustomFacility（town.js）から openTowerDefenseFacility() が呼ばれる。
-// ★現状：一本道・固定マス・属性ごとに1ユニット・属性相性・属性コンボ・ユニットごとの攻撃対象・
+// ★現状：下に拠点・味方陣地のマスに自由に配置・上から敵が来る（敵は味方ユニットも攻撃する）・属性ごとに1ユニット・属性相性・属性コンボ・ユニットごとの攻撃対象・
 //   ウェーブ数の選択・中ボス・クリア後に次のステージへ進む周回・事前強化（協会ポイント）。
 //   （出撃モード／ユニットのエディタ登録／素材・レア報酬は、企画書の順に後から足す）
 // ★ファイルの作り：
@@ -18,21 +18,24 @@ let towerDefenseReturnTo = null;   // 「戻る」で呼ぶ関数
 const TD_WAVE_OPTIONS = [3, 5, 10, 15]; // 選べるウェーブ数（3はお試し用）
 const TD_FIELD_W = 720;             // フィールドの広さ（内部座標）
 const TD_FIELD_H = 400;
-const TD_START_FUNDS = 160;         // 開始時の資金
+const TD_START_FUNDS = 300;         // 開始時の資金
 const TD_WAVE_CLEAR_BONUS = 40;     // ウェーブをしのぐごとにもらえる資金
 const TD_UNIT_MAX_LEVEL = 8;        // プレイ中のユニット強化の上限レベル
 const TD_LEVEL_ATK_RATE = 0.2;      // レベルが1上がるごとに攻撃力＋20%
+const TD_DAMAGE_SCALE = 2.0;         // ユニットの与ダメージの全体倍率（エディタの「攻撃力%」は、この倍率を掛ける前の値。迎撃モード全体の難しさを一括で調整できる）
 const TD_UPGRADE_COST_RATE = 0.7;   // 強化費用＝購入価格×この値×現在のレベル（レベルが上がるほど高くなる）
-const TD_SPAWN_INTERVAL = 1.3;      // 敵が出てくる間隔（秒）
-const TD_ENEMY_SPEED = 70;          // 敵の移動速度（内部座標/秒）
-const TD_WAVE_HP_GROWTH = 0.40;     // ウェーブが進むごとの敵HPの増加率
-const TD_BASE_HP_PER_ATK = 15;      // 拠点HP＝出てくる敵の平均攻撃力×この値（最低50）
+const TD_SPAWN_INTERVAL = 1.8;      // 敵が出てくる間隔（秒）
+const TD_ENEMY_SPEED = 38;          // 敵の移動速度（内部座標/秒）
+const TD_WAVE_HP_GROWTH = 0.30;     // ウェーブが進むごとの敵HPの増加率
+const TD_WAVE_COUNT_BASE = 6;        // 1ウェーブ目に出てくる敵の数
+const TD_WAVE_COUNT_PER_WAVE = 2;   // ウェーブが進むごとに増える敵の数（最大30）
+const TD_BASE_HP_PER_ATK = 60;      // 拠点HP＝出てくる敵の平均攻撃力×この値（最低120）。敵は拠点を攻撃し続けるので、以前より大きい
 // ----- 中ボス・周回（次のステージ）・協会ポイント・事前強化 -----
 // （クリア報酬の陳・ガチャ石・アイテムの設定は、tower_rewards.js とエディタの「掃討作戦の報酬」タブに移した）
 const TD_BOSS_EVERY = 5;            // 何ウェーブごとに中ボスが出るか（そのウェーブの最後に1体）
-const TD_BOSS_HP_RATE = 2.5;        // 中ボスのHP＝本編のHP×この値（さらにウェーブ・ステージで増える）
+const TD_BOSS_HP_RATE = 2;        // 中ボスのHP＝本編のHP×この値（さらにウェーブ・ステージで増える）
 const TD_BOSS_SPEED_RATE = 0.6;     // 中ボスの移動の遅さ
-const TD_BOSS_ATK_RATE = 2;         // 中ボスがゴールした時の拠点ダメージ倍率
+const TD_BOSS_ATK_RATE = 1.2;         // 中ボスがゴールした時の拠点ダメージ倍率
 const TD_STAGE_HP_GROWTH = 0.35;    // 次のステージへ進むごとの敵HPの増加率
 const TD_STAGE_ATK_GROWTH = 0.15;   // 同・拠点ダメージの増加率
 const TD_POINTS_PER_WAVE = 1;       // クリア時にもらえる協会ポイント（ウェーブ数×この値＋倒した中ボス×下の値）
@@ -56,8 +59,54 @@ const TD_ATKDOWN_RATE = 0.6;        // 攻撃力低下中の敵がゴールし�
 // 敵の通り道（左端から入って、右端がゴール＝拠点）
 const TD_PATH = [[-30, 80], [620, 80], [620, 200], [100, 200], [100, 320], [750, 320]];
 // ユニットを置ける固定マス（道の横）
-const TD_SLOTS = [[200, 140], [420, 140], [680, 140], [40, 260], [250, 260], [470, 260], [360, 30], [560, 370]];
-const TD_SLOT_RADIUS = 24;
+// ★出撃モード（tower_raid.js）は、まだこの道を使っている（次のPRで、迎撃と同じ考え方に作り直す）
+// ----- 迎撃モードのフィールド -----
+// 縦に長い世界（上＝敵の出てくる側、下＝自分の拠点）を、横長の窓（スマホだけ縦長）でカメラが追いかける。
+//   味方陣地のマス（TD_GRID_COLS×TD_GRID_ROWS）の好きな所にユニットを置く。敵は上から拠点へ直進し、途中の味方も攻撃する。
+const TD_WORLD_W = 720;
+const TD_WORLD_H = 1060;
+const TD_VIEW_LANDSCAPE = { w: 720, h: 480 };   // 横長の窓（PC・タブレット）
+const TD_VIEW_PORTRAIT = { w: 720, h: 1000 };   // 縦長の窓（スマホだけ）
+const TD_GRID_COLS = 7;             // 味方陣地のマス（横）
+const TD_GRID_ROWS = 4;             // 同（縦）
+const TD_CELL = 92;                 // マス1つの大きさ
+const TD_GRID_X0 = (TD_WORLD_W - TD_GRID_COLS * TD_CELL) / 2;
+const TD_GRID_Y0 = 600;
+const TD_BASE_TOP = 985;            // 拠点の上端（ここから下が拠点）
+const TD_SPAWN_Y = -20;             // 敵が出てくる位置
+const TD_SLOTS = [];                // ユニットを置けるマスの中心（左上から右へ、上から下へ）
+for (let r = 0; r < TD_GRID_ROWS; r++) for (let c = 0; c < TD_GRID_COLS; c++) TD_SLOTS.push([TD_GRID_X0 + c * TD_CELL + TD_CELL / 2, TD_GRID_Y0 + r * TD_CELL + TD_CELL / 2]);
+const TD_SLOT_RADIUS = TD_CELL / 2 - 4;
+const TD_UNIT_HP_RATE = 4;          // 味方ユニットのHP＝敵の平均HP×この値（レベルで増える）
+const TD_ENEMY_DMG_RATE = 0.6;      // 敵の1発のダメージ倍率（本編の攻撃力に掛ける。ユニットにも拠点にも同じ）
+const TD_ENEMY_RANGE = 44;          // 敵の攻撃距離
+const TD_ENEMY_INTERVAL = 1.2;      // 敵の攻撃間隔（秒）
+const TD_BOSS_RANGE = 70;           // 中ボスの攻撃距離
+const TD_CAMERA_SPEED = 3;          // カメラが追いかける速さ
+const TD_BASE_ATK_RATIO = 0.15;     // 拠点の自動反撃：1発＝敵の平均HP×この値（手詰まり防止。ユニットが届かない敵にも、少しずつ反撃する）
+const TD_BASE_ATK_INTERVAL = 1.5;   // 拠点の反撃の間隔（秒）
+const TD_BASE_ATK_RANGE = 170;      // 拠点の反撃の射程
+
+// スマホかどうか（スマホの時だけ、画面を縦長にする）
+function tdIsPhone() {
+  try {
+    const ua = (typeof navigator !== "undefined" && navigator.userAgent) ? navigator.userAgent : "";
+    if (/iPhone|iPod|Android.+Mobile|Windows Phone/i.test(ua)) return true;
+    return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 520px)").matches;
+  } catch (e) { return false; }
+}
+
+// カメラが見る縦位置の目標（窓の上端）。準備中は陣地と拠点を映し、ウェーブ中は「敵の先頭あたりと陣地の中間」を映す
+function tdCameraTarget(st, view, homeOnly) {
+  const home = (TD_GRID_Y0 + TD_WORLD_H) / 2;        // 陣地と拠点の中心
+  let focus = home;
+  const alive = st.enemies.filter(e => e.hp > 0);
+  if (!homeOnly && st.phase === "wave" && alive.length > 0) {
+    const ys = alive.map(e => e.y).sort((a, b) => b - a).slice(0, 5);   // 拠点に近い側の敵5体
+    focus = (ys.reduce((sum, v) => sum + v, 0) / ys.length + home) / 2;
+  }
+  return Math.max(0, Math.min(TD_WORLD_H - view.h, focus - view.h / 2));
+}
 
 // ----- 道の長さ・位置の計算 -----
 const TD_PATH_INFO = (() => {
@@ -270,7 +319,7 @@ function tdCreateState(pool, opts) {
   const avg = f => masters.reduce((s, m) => s + (Number(f(m)) || 0), 0) / Math.max(1, masters.length);
   const refHp = Math.max(1, avg(m => m.maxHp));
   const refAtk = Math.max(1, avg(m => m.atk));
-  const baseMaxHp = Math.round(Math.max(50, Math.round(refAtk * TD_BASE_HP_PER_ATK)) * (1 + TD_UPG_HP_RATE * (up.baseHp || 0)));
+  const baseMaxHp = Math.round(Math.max(120, Math.round(refAtk * TD_BASE_HP_PER_ATK)) * (1 + TD_UPG_HP_RATE * (up.baseHp || 0)));
   return {
     pool, refHp,
     bossPool: tdGetBossPool(refHp, refAtk),
@@ -283,7 +332,7 @@ function tdCreateState(pool, opts) {
     funds: TD_START_FUNDS + TD_UPG_FUNDS * (up.funds || 0),
     baseMaxHp, baseHp: baseMaxHp,
     kills: 0, time: 0, speed: 1, killKeys: [],            // killKeys＝倒した魔物の種類のID（クリア時のドロップ判定に使う）
-    units: [],                // { slot, tpl, level, cool }
+    units: [],                // { slot, tpl, level, cool, hp, maxHp }
     enemies: [],
     spawnQueue: [], spawnTimer: 0,
     fx: [], popups: [],       // 画面に出す演出（撃った線・ダメージ数字）
@@ -295,6 +344,11 @@ function tdCreateState(pool, opts) {
 }
 
 function tdSlotPos(slotIndex) { return { x: TD_SLOTS[slotIndex][0], y: TD_SLOTS[slotIndex][1] }; }
+
+// ユニットのHP（レベルで増える）
+function tdUnitMaxHp(st, level) {
+  return Math.max(1, Math.round(st.refHp * TD_UNIT_HP_RATE * (1 + TD_LEVEL_ATK_RATE * (level - 1))));
+}
 
 // サポートの効果：射程の中にいるサポートの強化率を足し合わせる（上限あり）
 function tdSupportBonus(st, unit) {
@@ -310,7 +364,7 @@ function tdSupportBonus(st, unit) {
 }
 
 function tdUnitDamage(st, unit) {
-  return unit.tpl.dmgRatio * st.refHp * (1 + TD_LEVEL_ATK_RATE * (unit.level - 1)) * (1 + tdSupportBonus(st, unit));
+  return unit.tpl.dmgRatio * st.refHp * TD_DAMAGE_SCALE * (1 + TD_LEVEL_ATK_RATE * (unit.level - 1)) * (1 + tdSupportBonus(st, unit));
 }
 
 function tdUpgradeCost(unit) {
@@ -321,7 +375,7 @@ function tdUpgradeCost(unit) {
 function tdStartWave(st) {
   if (st.phase !== "prep") return false;
   const usable = st.pool.slice(0, Math.min(st.pool.length, 2 + st.wave + (st.stage - 1)));
-  const count = Math.min(30, 8 + 3 * (st.wave - 1));
+  const count = Math.min(30, TD_WAVE_COUNT_BASE + TD_WAVE_COUNT_PER_WAVE * (st.wave - 1));
   st.spawnQueue = [];
   for (let i = 0; i < count; i++) st.spawnQueue.push(usable[Math.floor(Math.random() * usable.length)]);
   // ★中ボス：TD_BOSS_EVERYウェーブごとに、最後に1体出てくる（本編のボスを、弱い順に使っていく）
@@ -342,7 +396,8 @@ function tdPlaceUnit(st, slotIndex, templateKey) {
   if (!tpl) return { ok: false, reason: "ユニットが選ばれていない" };
   if (st.funds < tpl.cost) return { ok: false, reason: "資金が足りない" };
   st.funds -= tpl.cost;
-  st.units.push({ slot: slotIndex, tpl, level: 1, cool: 0 });
+  const maxHp = tdUnitMaxHp(st, 1);
+  st.units.push({ slot: slotIndex, tpl, level: 1, cool: 0, hp: maxHp, maxHp });
   return { ok: true };
 }
 
@@ -352,6 +407,9 @@ function tdUpgradeUnit(st, unit) {
   if (st.funds < cost) return { ok: false, reason: "資金が足りない" };
   st.funds -= cost;
   unit.level++;
+  const newMax = tdUnitMaxHp(st, unit.level);
+  unit.hp += newMax - unit.maxHp;        // 増えた分のHPは、その場で回復する
+  unit.maxHp = newMax;
   return { ok: true };
 }
 
@@ -362,15 +420,15 @@ function tdSpawnEnemy(st, entry) {
   const growth = (1 + TD_WAVE_HP_GROWTH * (st.wave - 1)) * (1 + TD_STAGE_HP_GROWTH * (st.stage - 1));
   const hp = Math.max(1, Math.round((Number(m.maxHp) || 10) * growth * (isBoss ? TD_BOSS_HP_RATE : 1)));
   const atk = Math.max(1, Math.round((Number(m.atk) || 1) * (1 + TD_STAGE_ATK_GROWTH * (st.stage - 1)) * (isBoss ? TD_BOSS_ATK_RATE : 1)));
-  const pos = tdPathPosition(0);
   st.enemies.push({
     key, name: m.name || key, hp, maxHp: hp, isBoss,
-    atk,                                                       // ゴールした時に拠点HPが減る量（本編の攻撃力が元）
+    atk,                                                       // 1発のダメージ（本編の攻撃力が元。ユニットにも拠点にも）
     elements: Array.isArray(m.elements) ? m.elements : [],
     ignoreAffinity: !!m.ignoreElementalAffinity,
     imagePath: m.imagePath || null,
     speed: TD_ENEMY_SPEED * (0.9 + Math.random() * 0.2) * (isBoss ? TD_BOSS_SPEED_RATE : 1),
-    dist: 0, x: pos.x, y: pos.y,
+    x: TD_GRID_X0 + TD_CELL * 0.5 + Math.random() * (TD_GRID_COLS - 1) * TD_CELL, y: TD_SPAWN_Y,   // 陣地の幅の中の、上のどこかから出てきて、真下の拠点へ向かう
+    range: isBoss ? TD_BOSS_RANGE : TD_ENEMY_RANGE, interval: TD_ENEMY_INTERVAL, cool: Math.random() * TD_ENEMY_INTERVAL,
     slowUntil: 0, slowRate: 1,
     stunUntil: 0, dot: null, defDownUntil: 0, atkDownUntil: 0,   // 状態異常（足止め・継続ダメージ・防御低下・攻撃低下）
     reward: Math.max(6, Math.round((Number(m.exp) || 10) * 0.8 * st.incomeRate)) // 倒した時にもらえる資金（事前強化で増える）
@@ -465,7 +523,7 @@ function tdStep(st, dt) {
     }
   }
   
-  // 敵の移動（足止め中は動かない／継続ダメージ／ゴールしたら拠点HPが減る）
+  // 敵の行動（継続ダメージ→足止め中は何もしない→射程内の味方がいれば攻撃→拠点に着いていれば拠点を攻撃→それ以外は真下へ進む）
   st.enemies.forEach(e => {
     if (e.dot) {
       while (e.dot && st.time >= e.dot.next) {
@@ -475,20 +533,47 @@ function tdStep(st, dt) {
         if (e.dot.next > e.dot.until + 0.0001) e.dot = null;
       }
     }
-    if (e.stunUntil > st.time) return;
-    const slowed = e.slowUntil > st.time;
-    e.dist += e.speed * (slowed ? e.slowRate : 1) * dt;
-    if (e.dist >= TD_PATH_INFO.total) {
-      e.reached = true;
-      const leak = Math.max(1, Math.round(e.atk * (e.atkDownUntil > st.time ? TD_ATKDOWN_RATE : 1)));
-      st.baseHp -= leak;
-      st.popups.push({ x: 690, y: 300, text: `-${leak}`, color: "#ff5a5a", weak: false, t: 0.8 });
-    } else {
-      const pos = tdPathPosition(e.dist);
-      e.x = pos.x; e.y = pos.y;
+    if (e.hp <= 0 || e.stunUntil > st.time) return;
+    e.cool -= dt;
+    const dmgBase = e.atk * TD_ENEMY_DMG_RATE * (e.atkDownUntil > st.time ? TD_ATKDOWN_RATE : 1);
+    // 射程内でいちばん近い味方ユニット（途中にいる味方は、敵の行く手をふさぐ）
+    let target = null;
+    st.units.forEach(u => {
+      const sp = tdSlotPos(u.slot);
+      const d = Math.hypot(e.x - sp.x, e.y - sp.y);
+      if (d <= e.range && (!target || d < target.d)) target = { u, d, sp };
+    });
+    if (target) {
+      if (e.cool <= 0) {
+        const attackEl = (e.elements && e.elements.length > 0) ? e.elements[0] : "無";
+        const mult = tdElementMultiplier(attackEl, { elements: [target.u.tpl.element] });
+        const dmg = Math.max(1, Math.round(dmgBase * mult));
+        target.u.hp -= dmg;
+        e.cool = e.interval;
+        st.popups.push({ x: target.sp.x, y: target.sp.y - 22, text: String(dmg), color: "#ff6b6b", weak: false, t: 0.5 });
+      }
+      return;
     }
+    if (e.y >= TD_BASE_TOP - e.range * 0.6) {         // 拠点に着いた：拠点を攻撃する
+      if (e.cool <= 0) {
+        const dmg = Math.max(1, Math.round(dmgBase));
+        st.baseHp -= dmg;
+        e.cool = e.interval;
+        st.popups.push({ x: Math.max(60, Math.min(TD_WORLD_W - 60, e.x)), y: TD_BASE_TOP + 20, text: `-${dmg}`, color: "#ff5a5a", weak: false, t: 0.8 });
+      }
+      return;
+    }
+    const slowed = e.slowUntil > st.time;
+    e.y += e.speed * (slowed ? e.slowRate : 1) * dt;
   });
-  st.enemies = st.enemies.filter(e => !e.reached);
+  
+  // 倒された味方ユニットは、マスが空く
+  st.units = st.units.filter(u => {
+    if (u.hp > 0) return true;
+    const sp = tdSlotPos(u.slot);
+    st.popups.push({ x: sp.x, y: sp.y - 26, text: "撃破された", color: "#9aa4ad", weak: false, t: 1.0 });
+    return false;
+  });
   
   // ユニットの攻撃（狙い方はユニットごとの設定に従う）
   st.units.forEach(u => {
@@ -501,6 +586,24 @@ function tdStep(st, dt) {
     tdFire(st, u, targets, sp);
     u.cool = u.tpl.interval;
   });
+  
+  // 拠点の自動反撃：射程内でいちばん拠点に近い敵（先頭の敵）に、少しずつダメージを与える（ユニットが届かない敵への手詰まり防止）
+  st.baseCool = (st.baseCool || 0) - dt;
+  if (st.baseCool <= 0) {
+    let tgt = null;
+    st.enemies.forEach(e => {
+      if (e.hp <= 0) return;
+      if (Math.hypot(e.x - TD_WORLD_W / 2, e.y - (TD_BASE_TOP + 20)) > TD_BASE_ATK_RANGE + 200) return;   // 拠点の幅を考えた射程
+      if (!tgt || e.y > tgt.y) tgt = e;
+    });
+    if (tgt) {
+      const dmg = Math.max(1, Math.round(st.refHp * TD_BASE_ATK_RATIO));
+      tgt.hp -= dmg;
+      st.popups.push({ x: tgt.x, y: tgt.y - 16, text: String(dmg), color: "#ffffff", weak: false, t: 0.5 });
+      st.fx.push({ kind: "line", x1: TD_WORLD_W / 2, y1: TD_BASE_TOP + 10, x2: tgt.x, y2: tgt.y, color: "#ffd23f", t: 0.1 });
+      st.baseCool = TD_BASE_ATK_INTERVAL;
+    } else st.baseCool = 0;
+  }
   
   // 倒した敵の処理
   const alive = [];
@@ -639,6 +742,9 @@ function tdElementColor(elementId) {
 function runTowerDefenseBattle(pool, opts) {
   return new Promise(resolve => {
     const st = tdCreateState(pool, opts);
+    const view = tdIsPhone() ? TD_VIEW_PORTRAIT : TD_VIEW_LANDSCAPE;   // 横長の窓（スマホだけ縦長）
+    let cam = tdCameraTarget(st, view, true);                          // カメラ（窓の上端の位置）
+    let camAuto = true;                                                // true＝敵と味方の中心を追いかける／false＝陣地に固定
     let finished = false;
     let selectedType = null;   // 配置しようとしているユニットの種類（key）
     let selectedSlot = null;   // 選んでいる配置済みユニットのマス
@@ -656,13 +762,14 @@ function runTowerDefenseBattle(pool, opts) {
           <span class="td-funds"></span>
         </div>
         <div class="td-basehp"><div class="td-basehp-fill"></div><span class="td-basehp-text"></span></div>
-        <canvas class="td-canvas" width="${TD_FIELD_W * 2}" height="${TD_FIELD_H * 2}"></canvas>
+        <canvas class="td-canvas" width="${view.w * 2}" height="${view.h * 2}" style="aspect-ratio: ${view.w} / ${view.h};"></canvas>
         <div class="td-info"></div>
         <div class="td-combo"></div>
         <div class="td-units"></div>
         <div class="td-controls">
           <button type="button" class="td-btn td-btn-start"></button>
           <button type="button" class="td-btn td-btn-speed"></button>
+          <button type="button" class="td-btn td-btn-cam"></button>
           <button type="button" class="td-btn td-btn-quit"></button>
         </div>
       </div>
@@ -681,6 +788,7 @@ function runTowerDefenseBattle(pool, opts) {
     const unitsEl = overlay.querySelector(".td-units");
     const startBtn = overlay.querySelector(".td-btn-start");
     const speedBtn = overlay.querySelector(".td-btn-speed");
+    const camBtn = overlay.querySelector(".td-btn-cam");
     const quitBtn = overlay.querySelector(".td-btn-quit");
     
     // ユニット選択ボタン
@@ -715,6 +823,7 @@ function runTowerDefenseBattle(pool, opts) {
       startBtn.textContent = st.phase === "prep" ? `WAVE ${st.wave} 開始` : (st.phase === "wave" ? "迎撃中……" : "終了");
       startBtn.disabled = st.phase !== "prep";
       speedBtn.textContent = `速度 ×${st.speed}`;
+      camBtn.textContent = camAuto ? "カメラ：自動" : "カメラ：陣地";
       quitBtn.textContent = quitArmed ? "本当にやめる？" : "やめる";
       
       // コンボ欄：今の履歴と、使えるコンボの一覧
@@ -735,9 +844,10 @@ function runTowerDefenseBattle(pool, opts) {
         const maxed = unit.level >= TD_UNIT_MAX_LEVEL;
         infoEl.innerHTML = "";
         const text = document.createElement("span");
-        text.textContent = tpl.role === "support"
+        text.textContent = (tpl.role === "support"
           ? `${tpl.label} Lv${unit.level}　味方の攻撃+${Math.round(tpl.supportRate * (1 + TD_LEVEL_ATK_RATE * (unit.level - 1)) * 100)}%　射程${tpl.range}`
-          : `${tpl.label} Lv${unit.level}　攻撃${Math.round(tdUnitDamage(st, unit))}　射程${tpl.range}　狙い:${TD_TARGETING_LABELS[tpl.targeting]}` + (tdSupportBonus(st, unit) > 0 ? `　サポート+${Math.round(tdSupportBonus(st, unit) * 100)}%` : "");
+          : `${tpl.label} Lv${unit.level}　攻撃${Math.round(tdUnitDamage(st, unit))}　射程${tpl.range}　狙い:${TD_TARGETING_LABELS[tpl.targeting]}` + (tdSupportBonus(st, unit) > 0 ? `　サポート+${Math.round(tdSupportBonus(st, unit) * 100)}%` : ""))
+          + `　HP${Math.max(0, Math.round(unit.hp))}/${unit.maxHp}`;
         infoEl.appendChild(text);
         const up = document.createElement("button");
         up.type = "button";
@@ -752,22 +862,26 @@ function runTowerDefenseBattle(pool, opts) {
         infoEl.appendChild(up);
       } else if (selectedType) {
         const tpl = st.templates.find(t => t.key === selectedType);
-        infoEl.textContent = `${tpl.label}（${tdUnitSummary(tpl)}）：置きたい白い枠をタップ`;
+        infoEl.textContent = `${tpl.label}（${tdUnitSummary(tpl)}）：置きたい陣地のマスをタップ`;
       } else {
-        infoEl.textContent = "下から仲間を選んで、白い枠に配置しよう。白い数字＝弱点、灰色＝耐性。";
+        infoEl.textContent = "下から仲間を選んで、陣地のマスに置こう。敵は上から来て、味方も攻撃してくる。白い数字＝弱点、灰色＝耐性。";
       }
     }
     
-    // ----- 操作 -----
-    function toField(ev) {
+    // ----- 操作（タップした位置を、世界の座標に直してから、マスを調べる） -----
+    function toWorld(ev) {
       const rect = canvas.getBoundingClientRect();
-      return { x: (ev.clientX - rect.left) / rect.width * TD_FIELD_W, y: (ev.clientY - rect.top) / rect.height * TD_FIELD_H };
+      return { x: (ev.clientX - rect.left) / rect.width * view.w, y: cam + (ev.clientY - rect.top) / rect.height * view.h };
+    }
+    function cellAt(p) {
+      const c = Math.floor((p.x - TD_GRID_X0) / TD_CELL), r = Math.floor((p.y - TD_GRID_Y0) / TD_CELL);
+      if (c < 0 || c >= TD_GRID_COLS || r < 0 || r >= TD_GRID_ROWS) return -1;
+      return r * TD_GRID_COLS + c;
     }
     canvas.addEventListener("pointerdown", ev => {
       ev.preventDefault();
       if (finished || st.phase === "won" || st.phase === "lost") return;
-      const p = toField(ev);
-      const slotIndex = TD_SLOTS.findIndex(s => Math.hypot(p.x - s[0], p.y - s[1]) <= TD_SLOT_RADIUS + 8);
+      const slotIndex = cellAt(toWorld(ev));
       infoNote = "";
       if (slotIndex < 0) { selectedSlot = null; selectedType = null; refreshUI(); return; }
       const existing = st.units.find(u => u.slot === slotIndex);
@@ -782,6 +896,7 @@ function runTowerDefenseBattle(pool, opts) {
     });
     startBtn.onclick = () => { if (tdStartWave(st)) { infoNote = ""; refreshUI(); } };
     speedBtn.onclick = () => { st.speed = st.speed === 1 ? 2 : 1; refreshUI(); };
+    camBtn.onclick = () => { camAuto = !camAuto; refreshUI(); };
     quitBtn.onclick = () => {
       if (!quitArmed) {
         quitArmed = true;
@@ -792,32 +907,44 @@ function runTowerDefenseBattle(pool, opts) {
       finish("quit");
     };
     
-    // ----- 描画 -----
+    // ----- 描画（世界をカメラの位置だけずらして描き、そのあと画面に固定の表示を重ねる） -----
+    function drawBar(x, y, w, ratio, color) {
+      ctx.fillStyle = "#000"; ctx.fillRect(x - 1, y, w + 2, 6);
+      ctx.fillStyle = color; ctx.fillRect(x, y + 1, w * Math.max(0, ratio), 4);
+    }
     function draw() {
-      ctx.clearRect(0, 0, TD_FIELD_W, TD_FIELD_H);
-      ctx.fillStyle = "#10151c";
-      ctx.fillRect(0, 0, TD_FIELD_W, TD_FIELD_H);
-      
-      // 道
-      ctx.lineCap = "round"; ctx.lineJoin = "round";
-      ctx.beginPath();
-      TD_PATH.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]));
-      ctx.strokeStyle = "#000"; ctx.lineWidth = 44; ctx.stroke();
-      ctx.strokeStyle = "#d8c7a0"; ctx.lineWidth = 36; ctx.stroke();
-      // ゴール（拠点）
-      ctx.fillStyle = "#ff5a5a"; ctx.fillRect(TD_FIELD_W - 14, 296, 14, 48);
-      ctx.fillStyle = "#fff"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "right";
-      ctx.fillText("拠点", TD_FIELD_W - 18, 292);
-      
-      // 配置マス
-      TD_SLOTS.forEach((s, i) => {
+      ctx.clearRect(0, 0, view.w, view.h);
+      ctx.save();
+      ctx.translate(0, -cam);
+      // 地面：上（敵の出てくる側）から下（拠点）へ、少しずつ色が変わる。横線で、カメラが動いたことが分かるようにする
+      const grad = ctx.createLinearGradient(0, 0, 0, TD_WORLD_H);
+      grad.addColorStop(0, "#1a1424"); grad.addColorStop(0.6, "#12202a"); grad.addColorStop(1, "#0f2a1e");
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, TD_WORLD_W, TD_WORLD_H);
+      ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
+      for (let y = 40; y < TD_WORLD_H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(TD_WORLD_W, y); ctx.stroke(); }
+      // 敵の出てくる口
+      ctx.fillStyle = "rgba(229,72,77,0.35)"; ctx.fillRect(0, 0, TD_WORLD_W, 26);
+      ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("▼ 敵の出現口 ▼", TD_WORLD_W / 2, 13);
+      // 味方陣地のマス
+      ctx.fillStyle = "rgba(255,255,255,0.05)"; ctx.fillRect(TD_GRID_X0, TD_GRID_Y0, TD_GRID_COLS * TD_CELL, TD_GRID_ROWS * TD_CELL);
+      TD_SLOTS.forEach((sl, i) => {
         const occupied = st.units.some(u => u.slot === i);
+        const x = sl[0] - TD_CELL / 2 + 3, y = sl[1] - TD_CELL / 2 + 3, w = TD_CELL - 6;
+        if (selectedType && !occupied) { ctx.fillStyle = "rgba(255,210,63,0.12)"; ctx.fillRect(x, y, w, w); }
         ctx.setLineDash([5, 4]);
-        ctx.strokeStyle = occupied ? "rgba(255,255,255,0.25)" : "#ffffff";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(s[0] - TD_SLOT_RADIUS, s[1] - TD_SLOT_RADIUS, TD_SLOT_RADIUS * 2, TD_SLOT_RADIUS * 2);
+        ctx.strokeStyle = occupied ? "rgba(255,255,255,0.2)" : (selectedType ? "#ffd23f" : "#ffffff");
+        ctx.lineWidth = 2; ctx.strokeRect(x, y, w, w);
         ctx.setLineDash([]);
       });
+      // 拠点
+      const bg = ctx.createLinearGradient(0, TD_BASE_TOP, 0, TD_WORLD_H);
+      bg.addColorStop(0, "#3a2f4a"); bg.addColorStop(1, "#1b1626");
+      ctx.fillStyle = bg; ctx.fillRect(40, TD_BASE_TOP, TD_WORLD_W - 80, TD_WORLD_H - TD_BASE_TOP);
+      ctx.lineWidth = 4; ctx.strokeStyle = "#ffd23f"; ctx.strokeRect(40, TD_BASE_TOP, TD_WORLD_W - 80, TD_WORLD_H - TD_BASE_TOP);
+      ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(`拠点　HP ${Math.max(0, Math.round(st.baseHp))}/${st.baseMaxHp}`, TD_WORLD_W / 2, TD_BASE_TOP + 22);
+      drawBar(TD_WORLD_W / 2 - 150, TD_BASE_TOP + 40, 300, st.baseHp / st.baseMaxHp, "#e5484d");
       
       // 選択中ユニットの射程
       if (selectedSlot !== null) {
@@ -834,22 +961,23 @@ function runTowerDefenseBattle(pool, opts) {
       st.units.forEach(u => {
         const sp = tdSlotPos(u.slot);
         const color = tdElementColor(u.tpl.element);
-        ctx.beginPath(); ctx.arc(sp.x, sp.y, 19, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(sp.x, sp.y, 22, 0, Math.PI * 2);
         ctx.fillStyle = color; ctx.fill();
         ctx.lineWidth = 3; ctx.strokeStyle = (u.slot === selectedSlot) ? "#ffd23f" : "#fff"; ctx.stroke();
         const unitImg = u.tpl.imagePath ? tdGetImage(u.tpl.imagePath) : null;
         if (unitImg && unitImg.ok) {
           ctx.save();
-          ctx.beginPath(); ctx.arc(sp.x, sp.y, 17, 0, Math.PI * 2); ctx.clip();
-          ctx.drawImage(unitImg.img, sp.x - 17, sp.y - 17, 34, 34);
+          ctx.beginPath(); ctx.arc(sp.x, sp.y, 20, 0, Math.PI * 2); ctx.clip();
+          ctx.drawImage(unitImg.img, sp.x - 20, sp.y - 20, 40, 40);
           ctx.restore();
         } else {
-          ctx.fillStyle = "#111"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillStyle = "#111"; ctx.font = "bold 18px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.fillText(u.tpl.roleChar, sp.x, sp.y + 1);
         }
+        drawBar(sp.x - 20, sp.y + 24, 40, u.hp / u.maxHp, "#59e07a");
         if (u.level > 1) {
-          ctx.fillStyle = "#000"; ctx.fillRect(sp.x + 6, sp.y + 8, 22, 13);
-          ctx.fillStyle = "#ffd23f"; ctx.font = "bold 10px sans-serif"; ctx.fillText(`Lv${u.level}`, sp.x + 17, sp.y + 15);
+          ctx.fillStyle = "#000"; ctx.fillRect(sp.x + 8, sp.y - 30, 24, 13);
+          ctx.fillStyle = "#ffd23f"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(`Lv${u.level}`, sp.x + 20, sp.y - 23);
         }
       });
       
@@ -882,22 +1010,19 @@ function runTowerDefenseBattle(pool, opts) {
           ctx.fillStyle = "#ff3b3b"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText("BOSS " + e.name, e.x, e.y - size / 2 - 16); ctx.fillText("BOSS " + e.name, e.x, e.y - size / 2 - 16);
         }
-        if (e.slowUntil > st.time) { ctx.fillStyle = "#9be8ff"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.fillText("遅", e.x, e.y + size / 2 + 10); }
-        // 状態マーク（止＝足止め／継＝継続ダメージ／弱＝防御低下／攻↓＝攻撃低下）
+        // 状態マーク（止＝足止め／継＝継続ダメージ／弱＝防御低下／攻↓＝攻撃低下／遅＝足が遅い）
         const marks = [];
         if (e.stunUntil > st.time) marks.push("止");
         if (e.dot) marks.push("継");
         if (e.defDownUntil > st.time) marks.push("弱");
         if (e.atkDownUntil > st.time) marks.push("攻↓");
+        if (e.slowUntil > st.time) marks.push("遅");
         if (marks.length > 0) {
           ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText(marks.join(" "), e.x, e.y + size / 2 + 20);
-          ctx.fillStyle = "#ffd23f"; ctx.fillText(marks.join(" "), e.x, e.y + size / 2 + 20);
+          ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText(marks.join(" "), e.x, e.y + size / 2 + 10);
+          ctx.fillStyle = "#ffd23f"; ctx.fillText(marks.join(" "), e.x, e.y + size / 2 + 10);
         }
-        // HPバー
-        const barW = e.isBoss ? 54 : 34, barY = e.y - size / 2 - 11;
-        ctx.fillStyle = "#000"; ctx.fillRect(e.x - barW / 2 - 1, barY, barW + 2, 6);
-        ctx.fillStyle = "#59e07a"; ctx.fillRect(e.x - barW / 2, barY + 1, barW * Math.max(0, e.hp / e.maxHp), 4);
+        drawBar(e.x - size / 2, e.y - size / 2 - 11, size, e.hp / e.maxHp, "#e5484d");
       });
       
       // ダメージ数字
@@ -910,24 +1035,31 @@ function runTowerDefenseBattle(pool, opts) {
         ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y - rise);
         ctx.globalAlpha = 1;
       });
+      ctx.restore();
       
-      // コンボ発動の帯
+      // ここから画面に固定の表示
+      // 右端の小さな全体図：世界の縦の長さに対して、今の窓の位置と、敵（赤）・味方（緑）・拠点の位置を示す
+      const mapX = view.w - 14, mapY = 40, mapH = view.h - 54, k = mapH / TD_WORLD_H;
+      ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(mapX - 2, mapY - 2, 12, mapH + 4);
+      ctx.fillStyle = "rgba(255,210,63,0.35)"; ctx.fillRect(mapX - 2, mapY + cam * k, 12, view.h * k);
+      ctx.fillStyle = "#59e07a"; st.units.forEach(u => { const sp = tdSlotPos(u.slot); ctx.fillRect(mapX + 2, mapY + sp.y * k - 1, 4, 2); });
+      ctx.fillStyle = "#ff6b6b"; st.enemies.forEach(e => { ctx.fillRect(mapX + 1, mapY + e.y * k - 1, 6, 2); });
+      ctx.fillStyle = "#ffd23f"; ctx.fillRect(mapX - 2, mapY + TD_BASE_TOP * k, 12, 3);
+      
       st.banners.forEach(b => {
         ctx.globalAlpha = Math.min(1, b.t / 0.4);
-        ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0, 150, TD_FIELD_W, 56);
-        ctx.fillStyle = "#ffd23f"; ctx.fillRect(0, 150, TD_FIELD_W, 4); ctx.fillRect(0, 202, TD_FIELD_W, 4);
+        ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0, view.h / 2 - 28, view.w, 56);
+        ctx.fillStyle = "#ffd23f"; ctx.fillRect(0, view.h / 2 - 28, view.w, 4); ctx.fillRect(0, view.h / 2 + 24, view.w, 4);
         ctx.fillStyle = "#ffd23f"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-        ctx.fillText("COMBO", 24, 178);
+        ctx.fillText("COMBO", 24, view.h / 2);
         ctx.fillStyle = "#fff"; ctx.font = "bold 26px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText(b.text, TD_FIELD_W / 2, 179);
+        ctx.fillText(b.text, view.w / 2, view.h / 2 + 1);
         ctx.globalAlpha = 1;
       });
-      
-      // 準備中の案内
       if (st.phase === "prep") {
-        ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(0, 0, TD_FIELD_W, 34);
+        ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(0, 0, view.w, 34);
         ctx.fillStyle = "#ffd23f"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(`WAVE ${st.wave} の準備中：仲間を配置して「開始」` + (tdIsBossWave(st, st.wave) && st.bossPool.length > 0 ? "（中ボス出現！）" : ""), TD_FIELD_W / 2, 17);
+        ctx.fillText(`WAVE ${st.wave} の準備中：仲間を置いて「開始」` + (tdIsBossWave(st, st.wave) && st.bossPool.length > 0 ? "（中ボス出現！）" : ""), view.w / 2, 17);
       }
     }
     
@@ -940,8 +1072,11 @@ function runTowerDefenseBattle(pool, opts) {
       lastTs = ts;
       const prevPhase = st.phase;
       tdStep(st, realDt * st.speed);
+      // カメラ：目標の位置へ、なめらかに近づく
+      const target = tdCameraTarget(st, view, !camAuto);
+      cam += (target - cam) * Math.min(1, realDt * TD_CAMERA_SPEED);
       uiAccum += realDt;
-      if (st.phase !== prevPhase || uiAccum > 0.15) { uiAccum = 0; refreshUI(); }
+      if (st.phase !== prevPhase || uiAccum > 0.15) { uiAccum = 0; if (selectedSlot !== null && !st.units.some(u => u.slot === selectedSlot)) selectedSlot = null; refreshUI(); }
       draw();
       if (st.phase === "won" || st.phase === "lost") {
         setTimeout(() => finish(st.phase === "won" ? "win" : "lose"), 700);
