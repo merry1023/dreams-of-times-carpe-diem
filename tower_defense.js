@@ -16,8 +16,6 @@ let towerDefenseReturnTo = null;   // 「戻る」で呼ぶ関数
 
 // ----- 調整用の数値（ここを書き換えるだけでバランスを変えられる） -----
 const TD_WAVE_OPTIONS = [3, 5, 10, 15]; // 選べるウェーブ数（3はお試し用）
-const TD_FIELD_W = 720;             // フィールドの広さ（内部座標）
-const TD_FIELD_H = 400;
 const TD_START_FUNDS = 300;         // 開始時の資金
 const TD_WAVE_CLEAR_BONUS = 40;     // ウェーブをしのぐごとにもらえる資金
 const TD_UNIT_MAX_LEVEL = 8;        // プレイ中のユニット強化の上限レベル
@@ -56,10 +54,6 @@ const TD_DOT_RATE = 0.04;           // 毒・火傷などの1秒あたりのダ�
 const TD_DEFDOWN_RATE = 1.3;        // 防御力低下中の敵が受けるダメージ倍率
 const TD_ATKDOWN_RATE = 0.6;        // 攻撃力低下中の敵がゴールした時に減らす拠点HPの倍率
 
-// 敵の通り道（左端から入って、右端がゴール＝拠点）
-const TD_PATH = [[-30, 80], [620, 80], [620, 200], [100, 200], [100, 320], [750, 320]];
-// ユニットを置ける固定マス（道の横）
-// ★出撃モード（tower_raid.js）は、まだこの道を使っている（次のPRで、迎撃と同じ考え方に作り直す）
 // ----- 迎撃モードのフィールド -----
 // 縦に長い世界（上＝敵の出てくる側、下＝自分の拠点）を、横長の窓（スマホだけ縦長）でカメラが追いかける。
 //   味方陣地のマス（TD_GRID_COLS×TD_GRID_ROWS）の好きな所にユニットを置く。敵は上から拠点へ直進し、途中の味方も攻撃する。
@@ -106,34 +100,6 @@ function tdCameraTarget(st, view, homeOnly) {
     focus = (ys.reduce((sum, v) => sum + v, 0) / ys.length + home) / 2;
   }
   return Math.max(0, Math.min(TD_WORLD_H - view.h, focus - view.h / 2));
-}
-
-// ----- 道の長さ・位置の計算 -----
-const TD_PATH_INFO = (() => {
-  const segs = [];
-  let acc = 0;
-  for (let i = 0; i < TD_PATH.length - 1; i++) {
-    const [x1, y1] = TD_PATH[i];
-    const [x2, y2] = TD_PATH[i + 1];
-    const l = Math.hypot(x2 - x1, y2 - y1);
-    segs.push({ x1, y1, x2, y2, l, start: acc });
-    acc += l;
-  }
-  return { segs, total: acc };
-})();
-
-// 道の先頭からの距離 d にいる時の座標
-function tdPathPosition(d) {
-  const info = TD_PATH_INFO;
-  if (d <= 0) return { x: info.segs[0].x1, y: info.segs[0].y1 };
-  for (const seg of info.segs) {
-    if (d <= seg.start + seg.l) {
-      const t = (d - seg.start) / seg.l;
-      return { x: seg.x1 + (seg.x2 - seg.x1) * t, y: seg.y1 + (seg.y2 - seg.y1) * t };
-    }
-  }
-  const last = info.segs[info.segs.length - 1];
-  return { x: last.x2, y: last.y2 };
 }
 
 // ===== 属性相性 =====
