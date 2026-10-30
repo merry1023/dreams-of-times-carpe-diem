@@ -422,3 +422,118 @@ function buildRaidUnitRow(unit, index) {
   row.appendChild(buttonsEl);
   return row;
 }
+
+// ===================================================================
+// ===== 「掃討作戦の報酬」タブ（クリア報酬の陳・ガチャ石・アイテムの設定） =====
+// ===================================================================
+// ★設定は scenarioProject.guildRewards に入り、tower_rewards.js がクリア時の報酬の計算に使う。
+//   何も設定しなければ、標準の値（tower_rewards.js の TD_REWARD_DEFAULTS）で動く。
+//   倒した魔物にもともと登録されているドロップ（アイテムと確率）は、標準で報酬に加わる（下のチェックでオフにできる）。
+const TD_REWARD_MODES = [
+  { key: "defense", label: "迎撃モード（守る側）" },
+  { key: "raid",    label: "出撃モード（攻める側）" }
+];
+
+// 設定の入れ物を用意する（足りない数値は、標準の値で埋めて見えるようにする）
+function tdEnsureRewardRoot() {
+  if (!scenarioProject.guildRewards || typeof scenarioProject.guildRewards !== "object") scenarioProject.guildRewards = {};
+  const root = scenarioProject.guildRewards;
+  TD_REWARD_MODES.forEach(m => {
+    if (!root[m.key] || typeof root[m.key] !== "object") root[m.key] = {};
+    if (!Array.isArray(root[m.key].items)) root[m.key].items = [];
+    const cfg = tdGetRewardConfig(m.key);
+    ["goldBase", "goldPerKill", "stageGrowth", "stonesBase", "stonesPerBoss"].forEach(k => {
+      if (!Number.isFinite(Number(root[m.key][k])) || root[m.key][k] === "" || root[m.key][k] == null) root[m.key][k] = cfg[k];
+    });
+  });
+  return root;
+}
+
+function renderGuildRewardManager(container) {
+  const root = tdEnsureRewardRoot();
+  const persist = () => markScenarioBuildDirty();
+  const introEl = document.createElement("p");
+  introEl.className = "devmode-note";
+  introEl.textContent = "冒険者協会「掃討作戦」をクリアした時にもらえる報酬を設定します。陳（お金）・ガチャ石（仮）・アイテムを、迎撃モードと出撃モードで別々に決められます。協会ポイント（事前強化に使う）は、ウェーブ数と中ボスの数で決まります。";
+  container.appendChild(introEl);
+
+  // ----- 全体の設定 -----
+  const common = document.createElement("div");
+  common.className = "scenariobuild-chapter-row";
+  const commonId = document.createElement("span"); commonId.className = "scenariobuild-chapter-number"; commonId.textContent = "全体";
+  common.appendChild(commonId);
+  const commonInfo = document.createElement("div"); commonInfo.className = "scenariobuild-chapter-info";
+  const ct = tdEditorFieldTools(root, commonInfo, persist);
+  const cr1 = ct.addRow();
+  const dropLabel = document.createElement("label");
+  dropLabel.style.cursor = "pointer";
+  const dropCheck = document.createElement("input");
+  dropCheck.type = "checkbox";
+  dropCheck.checked = root.useMonsterDrops !== false;
+  dropCheck.onchange = () => { root.useMonsterDrops = dropCheck.checked; persist(); };
+  dropLabel.appendChild(dropCheck);
+  dropLabel.appendChild(document.createTextNode(" 倒した魔物に登録されているドロップ（アイテムと確率）も、報酬に加える"));
+  cr1.appendChild(dropLabel);
+  const cr2 = ct.addRow();
+  ct.textField(cr2, "gachaStoneName", "ガチャ石の名前（仮）", "ガチャ石");
+  const stoneNote = document.createElement("span");
+  stoneNote.className = "devmode-note";
+  stoneNote.textContent = "今後追加予定の「技ガチャ」で使う石です。今は、手に入れて持っておけるだけです（所持数は player.gachaStones）。";
+  cr2.appendChild(stoneNote);
+  common.appendChild(commonInfo);
+  container.appendChild(common);
+
+  // ----- モードごとの設定 -----
+  TD_REWARD_MODES.forEach(mode => {
+    const cfg = root[mode.key];
+    const row = document.createElement("div");
+    row.className = "scenariobuild-chapter-row";
+    const idEl = document.createElement("span"); idEl.className = "scenariobuild-chapter-number"; idEl.textContent = mode.key === "defense" ? "迎撃" : "出撃";
+    row.appendChild(idEl);
+    const info = document.createElement("div"); info.className = "scenariobuild-chapter-info";
+    const tools = tdEditorFieldTools(cfg, info, persist);
+    const titleRow = tools.addRow();
+    const title = document.createElement("b"); title.textContent = `${mode.label}のクリア報酬`;
+    titleRow.appendChild(title);
+    const r1 = tools.addRow();
+    tools.numberField(r1, "goldBase", "基本の陳", 0, 9999999, 10);
+    tools.numberField(r1, "goldPerKill", "倒した敵1体ごとの陳", 0, 99999, 1);
+    tools.numberField(r1, "stageGrowth", "次のステージごとの増加（%）", 0, 1000, 1);
+    const r2 = tools.addRow();
+    tools.numberField(r2, "stonesBase", `${tdGachaStoneName()}（クリア時）`, 0, 99999, 1);
+    tools.numberField(r2, "stonesPerBoss", `${tdGachaStoneName()}（ボスを倒すごとに追加）`, 0, 99999, 1);
+
+    const itemsTitleRow = tools.addRow();
+    const itemsTitle = document.createElement("b"); itemsTitle.textContent = "追加アイテム（クリア時に、確率で判定して渡す）";
+    itemsTitleRow.appendChild(itemsTitle);
+    const itemOptions = (scenarioProject.items || []).map(it => ({ value: it.id, label: `${it.name}（${it.id}）` }));
+    cfg.items.forEach((item, index) => {
+      const it = tdEditorFieldTools(item, info, persist);
+      const ir = it.addRow();
+      const noEl = document.createElement("span"); noEl.className = "scenariobuild-chapter-number"; noEl.textContent = `#${index + 1}`; ir.appendChild(noEl);
+      if (itemOptions.length > 0) it.selectField(ir, "itemId", "アイテム", itemOptions);
+      else it.textField(ir, "itemId", "アイテムID", "例：herb_001");
+      it.numberField(ir, "chance", "確率（%）", 0, 100, 1);
+      it.numberField(ir, "min", "最小個数", 1, 999, 1);
+      it.numberField(ir, "max", "最大個数", 1, 999, 1);
+      const bossLabel = document.createElement("label"); bossLabel.style.cursor = "pointer";
+      const bossCheck = document.createElement("input"); bossCheck.type = "checkbox"; bossCheck.checked = !!item.perBoss;
+      bossCheck.onchange = () => { item.perBoss = bossCheck.checked; persist(); };
+      bossLabel.appendChild(bossCheck); bossLabel.appendChild(document.createTextNode(" ボスを倒した数だけ判定"));
+      ir.appendChild(bossLabel);
+      const delBtn = document.createElement("button"); delBtn.className = "devmode-btn devmode-btn-danger"; delBtn.textContent = "削除";
+      delBtn.onclick = () => { pushUndoSnapshot(); cfg.items.splice(index, 1); persist(); renderScenarioBuildPanel(); };
+      ir.appendChild(delBtn);
+    });
+    const addRow = tools.addRow();
+    const addBtn = document.createElement("button"); addBtn.className = "devmode-btn"; addBtn.textContent = "＋追加アイテムを足す";
+    addBtn.onclick = () => {
+      pushUndoSnapshot();
+      cfg.items.push({ itemId: itemOptions.length > 0 ? itemOptions[0].value : "", chance: 100, min: 1, max: 1, perBoss: false });
+      persist(); renderScenarioBuildPanel();
+    };
+    addRow.appendChild(addBtn);
+    row.appendChild(info);
+    container.appendChild(row);
+  });
+}

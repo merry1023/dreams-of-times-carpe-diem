@@ -27,16 +27,14 @@ const TD_SPAWN_INTERVAL = 1.3;      // 敵が出てくる間隔（秒）
 const TD_ENEMY_SPEED = 70;          // 敵の移動速度（内部座標/秒）
 const TD_WAVE_HP_GROWTH = 0.40;     // ウェーブが進むごとの敵HPの増加率
 const TD_BASE_HP_PER_ATK = 15;      // 拠点HP＝出てくる敵の平均攻撃力×この値（最低50）
-const TD_CLEAR_GOLD_BASE = 100;     // クリア報酬（陳）の基本額
-const TD_CLEAR_GOLD_PER_KILL = 5;   // 倒した数ごとの上乗せ
 // ----- 中ボス・周回（次のステージ）・協会ポイント・事前強化 -----
+// （クリア報酬の陳・ガチャ石・アイテムの設定は、tower_rewards.js とエディタの「掃討作戦の報酬」タブに移した）
 const TD_BOSS_EVERY = 5;            // 何ウェーブごとに中ボスが出るか（そのウェーブの最後に1体）
 const TD_BOSS_HP_RATE = 2.5;        // 中ボスのHP＝本編のHP×この値（さらにウェーブ・ステージで増える）
 const TD_BOSS_SPEED_RATE = 0.6;     // 中ボスの移動の遅さ
 const TD_BOSS_ATK_RATE = 2;         // 中ボスがゴールした時の拠点ダメージ倍率
 const TD_STAGE_HP_GROWTH = 0.35;    // 次のステージへ進むごとの敵HPの増加率
 const TD_STAGE_ATK_GROWTH = 0.15;   // 同・拠点ダメージの増加率
-const TD_STAGE_REWARD_GROWTH = 0.25; // 同・クリア報酬の増加率
 const TD_POINTS_PER_WAVE = 1;       // クリア時にもらえる協会ポイント（ウェーブ数×この値＋倒した中ボス×下の値）
 const TD_POINTS_PER_BOSS = 3;
 const TD_UPGRADE_MAX = 10;          // 事前強化の上限レベル
@@ -284,7 +282,7 @@ function tdCreateState(pool, opts) {
     wave: 1, wavesTotal: Math.max(1, Number(opts.wavesTotal) || TD_WAVE_OPTIONS[0]),
     funds: TD_START_FUNDS + TD_UPG_FUNDS * (up.funds || 0),
     baseMaxHp, baseHp: baseMaxHp,
-    kills: 0, time: 0, speed: 1,
+    kills: 0, time: 0, speed: 1, killKeys: [],            // killKeys＝倒した魔物の種類のID（クリア時のドロップ判定に使う）
     units: [],                // { slot, tpl, level, cool }
     enemies: [],
     spawnQueue: [], spawnTimer: 0,
@@ -510,6 +508,7 @@ function tdStep(st, dt) {
     if (e.hp > 0) { alive.push(e); return; }
     st.funds += e.reward;
     st.kills++;
+    if (e.key) st.killKeys.push(e.key);
     if (e.isBoss) st.bossKills++;
     st.popups.push({ x: e.x, y: e.y - 20, text: `+${e.reward}`, color: "#ffd23f", weak: false, t: 0.8 });
   });
@@ -958,7 +957,7 @@ function runTowerDefenseBattle(pool, opts) {
       if (rafId) cancelAnimationFrame(rafId);
       if (quitTimer) clearTimeout(quitTimer);
       overlay.remove();
-      resolve({ result, kills: st.kills, wave: st.wave, bossKills: st.bossKills, stage: st.stage, wavesTotal: st.wavesTotal });
+      resolve({ result, kills: st.kills, wave: st.wave, bossKills: st.bossKills, stage: st.stage, wavesTotal: st.wavesTotal, killKeys: st.killKeys });
     }
     
     refreshUI();
@@ -999,7 +998,7 @@ function showTowerDefenseModeMenu() {
     { label: `事前強化（協会ポイント ${g.points}）`, action: () => showTowerDefenseUpgradeMenu() },
     { label: "戻る", action: () => showTowerDefenseMainMenu() }
   ];
-  showLocationMenu(options, "掃討作戦");
+  showLocationMenu(options, `掃討作戦（${tdGachaStoneName()} ${tdGetGachaStones()}）`);
 }
 
 // 迎撃のウェーブ数の選択
@@ -1047,11 +1046,12 @@ async function startTowerDefenseDefense(wavesTotal, stage) {
   const outcome = await runTowerDefenseBattle(pool, { wavesTotal, stage, upgrades: Object.assign({}, g.upgrades) });
   changeSpeaker("");
   if (outcome.result === "win") {
-    const reward = Math.round((TD_CLEAR_GOLD_BASE + outcome.kills * TD_CLEAR_GOLD_PER_KILL) * (1 + TD_STAGE_REWARD_GROWTH * (stage - 1)));
-    const points = wavesTotal * TD_POINTS_PER_WAVE + outcome.bossKills * TD_POINTS_PER_BOSS;
-    changeGold(reward);
-    g.points += points;
-    await displayMessage(`掃討作戦、成功！　${outcome.kills}体を討ち取り、報酬として${reward}陳と協会ポイント${points}を受け取った。`);
+    // ★報酬（陳・協会ポイント・ガチャ石・アイテム）は tower_rewards.js の共通の仕組みで計算して渡す
+    const rewards = tdComputeClearRewards("defense", outcome);
+    tdGrantClearRewards(rewards);
+    const lines = tdDescribeRewards(rewards);
+    await displayMessage(`掃討作戦、成功！　${outcome.kills}体を討ち取り、報酬として${lines[0]}を受け取った。`);
+    if (lines[1]) await displayMessage(lines[1]);
     showLocationMenu([
       { label: `次のステージへ進む（STAGE ${stage + 1}・敵が強くなる）`, action: () => startTowerDefenseDefense(wavesTotal, stage + 1) },
       { label: "協会に戻る", action: () => showTowerDefenseModeMenu() }
