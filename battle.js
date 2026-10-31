@@ -813,6 +813,7 @@ async function handleFightMenu() {
   if (!restrictions.noNormal) fightChoices.push({ text: "通常攻撃", next: "normal" });
   if (!restrictions.noSkill) fightChoices.push({ text: "スキル", next: "skill" });
   if (!restrictions.noUpper && typeof getPlayerUpperSkills === "function" && getPlayerUpperSkills().length > 0) fightChoices.push({ text: "上位スキル", next: "upperskill" }); // ★要望対応：パネルで習得した上位スキル専用の選択肢
+  if (!restrictions.noSkill && typeof getPlayerGachaSkills === "function" && getPlayerGachaSkills().length > 0) fightChoices.push({ text: "ガチャ技", next: "gachaskill" }); // ★技ガチャ：セットした技（gacha.js）
   if (!restrictions.noWeaponSkill && activeWeaponSkills.length > 0) fightChoices.push({ text: "武器スキル", next: "weaponskill" });
   if (!battleState.isColosseum) fightChoices.push({ text: "道具", next: "item" }); // ★要望対応：コロシアムはアイテム使用禁止
   fightChoices.push({ text: "戻る", next: "back", isBack: true });
@@ -824,9 +825,9 @@ async function handleFightMenu() {
     return await playerNormalAttack();
   }
   
-  if (choice.next === "skill" || choice.next === "upperskill") {
+  if (choice.next === "skill" || choice.next === "upperskill" || choice.next === "gachaskill") {
     if (battleState) battleState.lastPlayerSkill = null;
-    const done = await handleSkillMenu({ upper: choice.next === "upperskill" }); // ★上位スキルも、通常のスキルと同じ発動の流れ（SP消費・属性・コンボ履歴）に乗せる
+    const done = await handleSkillMenu({ upper: choice.next === "upperskill", gacha: choice.next === "gachaskill" }); // ★上位スキルも、通常のスキルと同じ発動の流れ（SP消費・属性・コンボ履歴）に乗せる
     // ★要望対応：コンボスキル。実際に技を撃ったターンだけ、その属性を履歴に積んで発動判定をする
     if (done && battleState && battleState.lastPlayerSkill) {
       const usedSkill = battleState.lastPlayerSkill;
@@ -1673,6 +1674,7 @@ async function performCompanionAction(companion) {
   if (!restrictions.noNormal) actionChoices.push({ text: "たたかう", next: "fight" });
   if (!restrictions.noSkill) actionChoices.push({ text: "スキル", next: "skill" });
   if (!restrictions.noUpper && typeof getCompanionUpperSkills === "function" && getCompanionUpperSkills(companion).length > 0) actionChoices.push({ text: "上位スキル", next: "upperskill" }); // ★要望対応：パネルで習得した上位スキル専用の選択肢
+  if (!restrictions.noSkill && typeof getCompanionGachaSkills === "function" && getCompanionGachaSkills(companion).length > 0) actionChoices.push({ text: "ガチャ技", next: "gachaskill" }); // ★技ガチャ：セットした技（gacha.js）
   if (!restrictions.noWeaponSkill && activeWeaponSkills.length > 0) actionChoices.push({ text: "武器スキル", next: "weaponskill" });
   if (!battleState.isColosseum) actionChoices.push({ text: "道具", next: "item" }); // ★要望対応：以前は主人公のターンでしか道具を使えなかったが、仲間の行動選択でも使えるようにする（コロシアムはアイテム使用禁止）
   actionChoices.push({ text: "パス", next: "pass" }); // ★要望対応：この仲間の行動をパスできるようにする。パスすると行動回数を消費せず次の仲間へ進む
@@ -1694,7 +1696,7 @@ async function performCompanionAction(companion) {
     if (!success) return await performCompanionAction(companion); // ★対象選択をキャンセル／戻るを選んだ場合は、行動選択からやり直す
   } else {
     if (battleState) battleState.lastCompanionSkill = null;
-    if (await performCompanionSkillMenu(companion, { upper: action.next === "upperskill" }) === "passed") return false;
+    if (await performCompanionSkillMenu(companion, { upper: action.next === "upperskill", gacha: action.next === "gachaskill" }) === "passed") return false;
     if (battleState && battleState.lastCompanionSkill) {
       const usedSkill = battleState.lastCompanionSkill;
       battleState.lastCompanionSkill = null;
@@ -1767,7 +1769,9 @@ async function performCompanionSkillMenu(companion, options = {}) {
   //   （passive等）のままだと、この絞り込みで弾かれて仲間の技一覧に一切出てこなかった
   //   （例：狂戦士の技をブロック編集してもケツァナが使えるようにならないバグ）。
   //   ブロックが1つでもある技は、type に関わらず使える技として扱う
-  const skills = options.upper
+  const skills = options.gacha
+    ? getCompanionGachaSkills(companion) // ★技ガチャ：セットした技だけ（gacha.js）
+    : options.upper
     ? getCompanionUpperSkills(companion) // ★要望対応：上位スキル専用のメニュー（statuspanel.js）
     : getCompanionSkills(companion).filter(s => s.type === "attack" || s.type === "heal" || s.type === "buff" || (Array.isArray(s.blocks) && s.blocks.length > 0)); // player.js
   
@@ -3046,6 +3050,7 @@ function buildSkillExprContext(skill, context) {
     "自分攻撃力": stats.atk,
     "自分魔力": stats.skillPower,
     "技威力": skill.power || 0,
+    "凸数": skill.limitBreak || 0, // ★技ガチャの技の凸数（0〜5）。ガチャ技以外は0。ifブロックで凸数による分岐ができる
     "ターン数": (battleState && battleState.turnCount) || 1,
     // ★要望対応：システム変数（プログラム側が持っている値）も式の中で参照できるようにする
     "眠気": (player && player.gauges && player.gauges.sleepiness) ? player.gauges.sleepiness.current : 0,
@@ -3581,7 +3586,9 @@ async function triggerPassiveEquipmentSkills(caster, isPlayer) {
 // ★習得済みのスキル（攻撃・回復・自己強化技に加え、魔法少女の「マジカル変身」だけは特殊技だが戦闘中に使うので一覧に含める）を表示し、実際に効果を発動する
 async function handleSkillMenu(options = {}) {
   // ★要望対応：options.upper＝上位スキル専用のメニュー（パネルで習得した技だけ。職業技とは別）
-  const skills = options.upper
+  const skills = options.gacha
+    ? getPlayerGachaSkills() // ★技ガチャ：セットした技だけ（gacha.js）。SPか焦力かは、技ごとに決まっている
+    : options.upper
     ? getPlayerUpperSkills() // statuspanel.js
     : (typeof getUnlockedSkills === "function" ? getUnlockedSkills() : [])
       .filter(s => s.type === "attack" || s.type === "heal" || s.type === "buff" || (s.type === "special" && s.id === "magical_transform"));
@@ -3606,7 +3613,7 @@ async function handleSkillMenu(options = {}) {
   }
   
   // ★魔法少女は「マジカル変身」中でないと、攻撃・回復の魔法技を使えない（通常攻撃は変身前でも可）
-  if (!options.upper && player.class === "魔法少女" && !isMagicalGirlTransformed()) { // ★上位スキルは、この変身制限の対象外
+  if (!options.upper && !options.gacha && player.class === "魔法少女" && !isMagicalGirlTransformed()) { // ★上位スキル・ガチャ技は、この変身制限の対象外
     changeSpeaker("");
     await displayMessage(`「${skill.name}」は魔法少女に変身しないと使えないようだ。まずは「ケアリー☆キューティー♡マジカル変身」を使おう。`);
     return false;

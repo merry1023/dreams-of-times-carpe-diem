@@ -478,7 +478,7 @@ function renderGuildRewardManager(container) {
   ct.textField(cr2, "gachaStoneName", "ガチャ石の名前（仮）", "ガチャ石");
   const stoneNote = document.createElement("span");
   stoneNote.className = "devmode-note";
-  stoneNote.textContent = "今後追加予定の「技ガチャ」で使う石です。今は、手に入れて持っておけるだけです（所持数は player.gachaStones）。";
+  stoneNote.textContent = "冒険者協会の「技ガチャ」で使う石です（所持数は player.gachaStones）。1回に使う数などは「技ガチャ」タブで決めます。";
   cr2.appendChild(stoneNote);
   common.appendChild(commonInfo);
   container.appendChild(common);

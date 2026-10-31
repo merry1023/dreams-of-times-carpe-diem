@@ -30,6 +30,8 @@ let scenarioProject = {
   bosses: [],     // [{ id, name, maxHp, atk, exp, level, bgmTrack, bgmFinalTrack, bgmCrisisTrack, invincibilityItemId }, ...]
   items: [],      // [{ id, name, category, description, rank, listedPrice, trueValue }, ...]
   statusPanels: { classes: {}, companions: {} }, // ★要望対応：ステータスパネル（職業ごと・仲間ごとの9×9の盤）。statuspanel.js参照
+  gachaSkills: [], // ★技ガチャ：ガチャ専用の技。[{ id, name, rarity(N/R/SR), costType(sp/shouryoku), limitBreaks:[[{param,value}x最大3]x5], ... }]（gacha_editor.js / gacha.js）
+  gachaConfig: {}, // ★技ガチャ：確率・消費数・天井・開催期間・ハズレ枠・重複時の返却の設定（gacha_editor.js / gacha.js）
   upperSkills: [], // ★要望対応：上位スキル（ステータスパネルで習得する、職業技とは別枠の技）。[{ id, name, type, element, spCost, power, ... }, ...]
   guildRewards: {}, // ★冒険者協会（掃討作戦）のクリア報酬の設定。{ useMonsterDrops, gachaStoneName, defense:{...}, raid:{...} }（tower_defense_editor.js / tower_rewards.js）
   raidUnits: [], // ★冒険者協会（掃討作戦・出撃モード）で送り込むキャラ。[{ id, name, element, hp, atk, range, interval, speed, skillKind, ... }]（tower_defense_editor.js）
@@ -253,6 +255,8 @@ function applyImportedSettingsFileIfUpdated(force) {
   if (Array.isArray(data.raidUnits)) scenarioProject.raidUnits = data.raidUnits; // ★冒険者協会：出撃キャラ
   if (data.guildRewards && typeof data.guildRewards === "object" && !Array.isArray(data.guildRewards)) scenarioProject.guildRewards = data.guildRewards; // ★冒険者協会：クリア報酬の設定
   if (Array.isArray(data.upperSkills)) scenarioProject.upperSkills = data.upperSkills; // ★要望対応：上位スキル
+  if (Array.isArray(data.gachaSkills)) scenarioProject.gachaSkills = data.gachaSkills; // ★技ガチャ：ガチャ専用の技
+  if (data.gachaConfig && typeof data.gachaConfig === "object" && !Array.isArray(data.gachaConfig)) scenarioProject.gachaConfig = data.gachaConfig; // ★技ガチャ：設定
   if (data.statusPanels && typeof data.statusPanels === "object") scenarioProject.statusPanels = data.statusPanels; // ★要望対応：ステータスパネル
   if (data.elementMatchups && typeof data.elementMatchups === "object") scenarioProject.elementMatchups = data.elementMatchups;
   scenarioProject.bgmTracks = data.bgmTracks || [];
@@ -465,6 +469,8 @@ function normalizeScenarioProject() {
   if (!Array.isArray(scenarioProject.raidUnits)) scenarioProject.raidUnits = []; // ★冒険者協会：出撃キャラ
   if (!scenarioProject.guildRewards || typeof scenarioProject.guildRewards !== "object" || Array.isArray(scenarioProject.guildRewards)) scenarioProject.guildRewards = {}; // ★冒険者協会：クリア報酬の設定
   if (!Array.isArray(scenarioProject.upperSkills)) scenarioProject.upperSkills = []; // ★要望対応：上位スキル
+  if (!Array.isArray(scenarioProject.gachaSkills)) scenarioProject.gachaSkills = []; // ★技ガチャ：ガチャ専用の技
+  if (!scenarioProject.gachaConfig || typeof scenarioProject.gachaConfig !== "object" || Array.isArray(scenarioProject.gachaConfig)) scenarioProject.gachaConfig = {}; // ★技ガチャ：設定
   if (!scenarioProject.statusPanels || typeof scenarioProject.statusPanels !== "object") scenarioProject.statusPanels = { classes: {}, companions: {} }; // ★要望対応：ステータスパネル
   if (!scenarioProject.statusPanels.classes) scenarioProject.statusPanels.classes = {};
   if (!scenarioProject.statusPanels.companions) scenarioProject.statusPanels.companions = {};
@@ -1558,6 +1564,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "tutorials", label: "チュートリアル管理" },
   { view: "skills", label: "スキル管理" },
   { view: "upperskills", label: "上位スキル" }, // ★要望対応：ステータスパネルで習得する、職業技とは別枠の技
+  { view: "gachaskills", label: "技ガチャ" }, // ★技ガチャ：ガチャ専用の技と、確率・期間などの設定
   { view: "combos", label: "コンボスキル" }, // ★要望対応：属性の順番で発動する追加効果の技
   { view: "towerunits", label: "タワーユニット" }, // ★冒険者協会：掃討作戦（迎撃モード）のユニット登録
   { view: "raidunits", label: "出撃キャラ" }, // ★冒険者協会：掃討作戦（出撃モード）で送り込むキャラの登録
@@ -1714,6 +1721,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "raidunits") renderRaidUnitManager(bodyEl); // ★冒険者協会：出撃キャラ（tower_defense_editor.js）
   else if (scenarioBuildSubView === "guildrewards") renderGuildRewardManager(bodyEl); // ★冒険者協会：掃討作戦の報酬（tower_defense_editor.js）
   else if (scenarioBuildSubView === "upperskills") renderUpperSkillManager(bodyEl); // ★要望対応：上位スキル
+  else if (scenarioBuildSubView === "gachaskills") renderGachaManager(bodyEl); // ★技ガチャ（gacha_editor.js）
   else if (scenarioBuildSubView === "statuspanels") renderStatusPanelManager(bodyEl); // ★要望対応：ステータスパネル
   else if (scenarioBuildSubView === "statuses") renderStatusManager(bodyEl);
   else if (scenarioBuildSubView === "flags") renderFlagManager(bodyEl);
@@ -1815,6 +1823,7 @@ function renderSkillVariableReference(container) {
     ["自分攻撃力", "装備・強化込みの、今の攻撃力"],
     ["自分魔力", "装備・強化込みの、今の魔力"],
     ["技威力", "今使っている技自身の威力（skill.power）"],
+    ["凸数", "技ガチャの技の凸数（0〜5）。ガチャ技以外では常に0。「凸数 >= 3」のように、ifで凸数による分岐ができる"],
     ["乱数", "0以上100未満のランダムな実数。式を評価するたびに新しく引き直されます"]
   ]);
   
@@ -7543,7 +7552,8 @@ function getEditingSkill() {
   // ★要望対応：コンボスキルも「特殊スキル編集」のブロックエディタをそのまま使い回す（idで技→コンボの順に探す）
   return scenarioProject.skills.find(s => s.id === scenarioBuildEditingSkillId)
     || (scenarioProject.comboSkills || []).find(s => s.id === scenarioBuildEditingSkillId)
-    || (scenarioProject.upperSkills || []).find(s => s.id === scenarioBuildEditingSkillId) || null;
+    || (scenarioProject.upperSkills || []).find(s => s.id === scenarioBuildEditingSkillId)
+    || (scenarioProject.gachaSkills || []).find(s => s.id === scenarioBuildEditingSkillId) || null; // ★技ガチャの技も、ブロックエディタを使い回す
 }
 
 // ===== ステータスパネル管理（要望対応） =====
@@ -7862,8 +7872,10 @@ function renderUpperSkillManager(container) {
   container.appendChild(listEl);
 }
 
-function buildUpperSkillRow(entry, index) {
-  const list = scenarioProject.upperSkills;
+// ★opts（技ガチャの編集でも、この行の作りを使い回すための差し替え口）：list＝並べ替え・削除の対象の配列／hideSources＝習得パネルの表示を隠す／
+//   buildTopRow(infoEl)＝説明の下に行を足す／buildCostRow(infoEl)＝消費量の行を差し替える／appendExtra(infoEl, entry)＝末尾に足す／deleteMessage(entry)＝削除の確認文
+function buildUpperSkillRow(entry, index, opts = {}) {
+  const list = opts.list || scenarioProject.upperSkills;
   const row = document.createElement("div");
   row.className = "scenariobuild-chapter-row";
   const idEl = document.createElement("span");
@@ -7881,6 +7893,7 @@ function buildUpperSkillRow(entry, index) {
   descRow.className = "scenariobuild-condition-row";
   buildSkillTextInput(entry, "description", "説明", descRow);
   infoEl.appendChild(descRow);
+  if (opts.buildTopRow) opts.buildTopRow(infoEl);
 
   // ★どのパネルで習得できるか（読み取り専用）
   const sources = describeUpperSkillSources(entry.id);
@@ -7888,7 +7901,7 @@ function buildUpperSkillRow(entry, index) {
   sourceEl.className = "devmode-note";
   sourceEl.style.margin = "0";
   sourceEl.textContent = sources.length ? `習得できるパネル：${sources.join("、")}` : "習得できるパネル：まだ無し（ステータスパネルのマスの効果で「上位スキルを習得」を設定してください）";
-  infoEl.appendChild(sourceEl);
+  if (!opts.hideSources) infoEl.appendChild(sourceEl);
 
   const hasBlocks = Array.isArray(entry.blocks) && entry.blocks.length > 0;
   const isBlockMode = entry.useBlocks === true || (entry.useBlocks == null && hasBlocks);
@@ -7929,8 +7942,12 @@ function buildUpperSkillRow(entry, index) {
   // ★要望対応：上位スキルはSPではなく「焦力」を消費する。ブロックモードでも無視されないので、固定フィールドの枠の外に置く
   const spRow = document.createElement("div");
   spRow.className = "scenariobuild-condition-row";
-  spRow.appendChild(buildSkillNumberInline(entry, "shouryokuCost", "消費焦力（0〜100、全員の焦力は最大100）", 30));
-  infoEl.appendChild(spRow);
+  if (opts.buildCostRow) {
+    opts.buildCostRow(infoEl);
+  } else {
+    spRow.appendChild(buildSkillNumberInline(entry, "shouryokuCost", "消費焦力（0〜100、全員の焦力は最大100）", 30));
+    infoEl.appendChild(spRow);
+  }
 
   const fixedWrap = document.createElement("div");
   fixedWrap.className = isBlockMode ? "scenariobuild-skill-fixed-fields-disabled" : "";
@@ -7991,6 +8008,7 @@ function buildUpperSkillRow(entry, index) {
   details.appendChild(selfBuff2Row);
   fixedWrap.appendChild(details);
   infoEl.appendChild(fixedWrap);
+  if (opts.appendExtra) opts.appendExtra(infoEl, entry);
   row.appendChild(infoEl);
 
   const buttonsEl = document.createElement("div");
@@ -8014,7 +8032,7 @@ function buildUpperSkillRow(entry, index) {
   delBtn.textContent = "削除";
   delBtn.onclick = async (event) => {
     event.stopPropagation();
-    const ok = await showGameConfirm(`上位スキル「${entry.name || "名無し"}」を削除しますか？（パネルの効果に設定していた場合、そのマスは何も習得しなくなります）`);
+    const ok = await showGameConfirm(opts.deleteMessage ? opts.deleteMessage(entry) : `上位スキル「${entry.name || "名無し"}」を削除しますか？（パネルの効果に設定していた場合、そのマスは何も習得しなくなります）`);
     if (!ok) return;
     pushUndoSnapshot();
     list.splice(index, 1);
@@ -8380,7 +8398,7 @@ function renderSkillBlockEditor(container) {
   
   const backBtn = document.createElement("button");
   backBtn.className = "devmode-btn";
-  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : (scenarioBuildSubView === "combos" ? "← コンボスキルに戻る" : (scenarioBuildSubView === "upperskills" ? "← 上位スキルに戻る" : "← スキル管理に戻る"));
+  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : (scenarioBuildSubView === "combos" ? "← コンボスキルに戻る" : (scenarioBuildSubView === "upperskills" ? "← 上位スキルに戻る" : (scenarioBuildSubView === "gachaskills" ? "← 技ガチャに戻る" : "← スキル管理に戻る")));
   backBtn.onclick = (event) => {
     event.stopPropagation();
     scenarioBuildSkillInsertMenuTarget = null;
@@ -13286,6 +13304,8 @@ function exportGameSettingsAsJsFile() {
     raidUnits: scenarioProject.raidUnits, // ★冒険者協会：出撃キャラ
     guildRewards: scenarioProject.guildRewards, // ★冒険者協会：クリア報酬の設定
     upperSkills: scenarioProject.upperSkills, // ★要望対応：上位スキル
+    gachaSkills: scenarioProject.gachaSkills, // ★技ガチャ：ガチャ専用の技
+    gachaConfig: scenarioProject.gachaConfig, // ★技ガチャ：設定
     statusPanels: scenarioProject.statusPanels, // ★要望対応：ステータスパネル
     bgmTracks: scenarioProject.bgmTracks,
     mapAreas: scenarioProject.mapAreas,

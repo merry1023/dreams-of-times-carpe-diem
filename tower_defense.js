@@ -1079,6 +1079,7 @@ function openTowerDefenseFacility(facility, returnTo) {
 function showTowerDefenseMainMenu() {
   const options = [
     { label: "掃討作戦", action: () => showTowerDefenseModeMenu() },
+    { label: "技ガチャ", action: () => openGachaMenu(() => showTowerDefenseMainMenu()) },   // gacha.js
     { label: "戻る", action: () => towerDefenseReturnTo() }
   ];
   showLocationMenu(options, (towerDefenseFacility && towerDefenseFacility.name) || "冒険者協会");
