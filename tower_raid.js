@@ -574,7 +574,7 @@ function trSelectParty(roster) {
 function runTowerRaidBattle(rosterDefs, opts) {
   return new Promise(resolve => {
     const st = trCreateState(rosterDefs, opts);
-    const view = tdIsPhone() ? TD_VIEW_PORTRAIT : TD_VIEW_LANDSCAPE;   // 横長の窓（スマホだけ縦長）。迎撃モードと同じ
+    const view = tdUsePortraitView() ? TD_VIEW_PORTRAIT : TD_VIEW_LANDSCAPE;   // 横長の窓（スマホだけ縦長）。迎撃モードと同じ
     let cam = trCameraTarget(st, view);                                // カメラ（窓の上端の位置）
     let finished = false, rafId = null, lastTs = null, uiAccum = 0;
     let quitArmed = false, quitTimer = null;
@@ -591,14 +591,20 @@ function runTowerRaidBattle(rosterDefs, opts) {
         </div>
         <div class="td-res"></div>
         <div class="td-basehp"><div class="td-basehp-fill td-party-fill"></div><span class="td-basehp-text"></span></div>
-        <canvas class="td-canvas" width="${view.w * 2}" height="${view.h * 2}" style="aspect-ratio: ${view.w} / ${view.h};"></canvas>
-        <div class="td-info"></div>
-        <div class="td-hand"></div>
-        <div class="td-combo"></div>
-        <div class="td-controls">
-          <button type="button" class="td-btn td-btn-start"></button>
-          <button type="button" class="td-btn td-btn-speed"></button>
-          <button type="button" class="td-btn td-btn-quit"></button>
+        <div class="td-body">
+          <div class="td-side">
+            <div class="td-info"></div>
+            <div class="td-hand"></div>
+            <div class="td-combo"></div>
+            <div class="td-controls">
+              <button type="button" class="td-btn td-btn-start"></button>
+              <button type="button" class="td-btn td-btn-speed"></button>
+              <button type="button" class="td-btn td-btn-quit"></button>
+            </div>
+          </div>
+          <div class="td-main">
+            <canvas class="td-canvas" width="${view.w * 2}" height="${view.h * 2}" style="aspect-ratio: ${view.w} / ${view.h}; --td-ar: ${view.w / view.h};"></canvas>
+          </div>
         </div>
       </div>`;
     document.body.appendChild(overlay);

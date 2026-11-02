@@ -90,6 +90,14 @@ function tdIsPhone() {
   } catch (e) { return false; }
 }
 
+// 縦長の窓を使うか（スマホを縦に持っている時だけ。横画面なら端末を問わず横長の窓＋左右レイアウト）
+function tdUsePortraitView() {
+  try {
+    if (!tdIsPhone()) return false;
+    return !(typeof window !== "undefined" && window.innerWidth > window.innerHeight);
+  } catch (e) { return false; }
+}
+
 // カメラが見る縦位置の目標（窓の上端）。準備中は陣地と拠点を映し、ウェーブ中は「敵の先頭あたりと陣地の中間」を映す
 function tdCameraTarget(st, view, homeOnly) {
   const home = (TD_GRID_Y0 + TD_WORLD_H) / 2;        // 陣地と拠点の中心
@@ -708,7 +716,7 @@ function tdElementColor(elementId) {
 function runTowerDefenseBattle(pool, opts) {
   return new Promise(resolve => {
     const st = tdCreateState(pool, opts);
-    const view = tdIsPhone() ? TD_VIEW_PORTRAIT : TD_VIEW_LANDSCAPE;   // 横長の窓（スマホだけ縦長）
+    const view = tdUsePortraitView() ? TD_VIEW_PORTRAIT : TD_VIEW_LANDSCAPE;   // 横長の窓（スマホだけ縦長）
     let cam = tdCameraTarget(st, view, true);                          // カメラ（窓の上端の位置）
     let camAuto = true;                                                // true＝敵と味方の中心を追いかける／false＝陣地に固定
     let finished = false;
@@ -728,15 +736,21 @@ function runTowerDefenseBattle(pool, opts) {
           <span class="td-funds"></span>
         </div>
         <div class="td-basehp"><div class="td-basehp-fill"></div><span class="td-basehp-text"></span></div>
-        <canvas class="td-canvas" width="${view.w * 2}" height="${view.h * 2}" style="aspect-ratio: ${view.w} / ${view.h};"></canvas>
-        <div class="td-info"></div>
-        <div class="td-combo"></div>
-        <div class="td-units"></div>
-        <div class="td-controls">
-          <button type="button" class="td-btn td-btn-start"></button>
-          <button type="button" class="td-btn td-btn-speed"></button>
-          <button type="button" class="td-btn td-btn-cam"></button>
-          <button type="button" class="td-btn td-btn-quit"></button>
+        <div class="td-body">
+          <div class="td-side">
+            <div class="td-info"></div>
+            <div class="td-combo"></div>
+            <div class="td-units"></div>
+            <div class="td-controls">
+              <button type="button" class="td-btn td-btn-start"></button>
+              <button type="button" class="td-btn td-btn-speed"></button>
+              <button type="button" class="td-btn td-btn-cam"></button>
+              <button type="button" class="td-btn td-btn-quit"></button>
+            </div>
+          </div>
+          <div class="td-main">
+            <canvas class="td-canvas" width="${view.w * 2}" height="${view.h * 2}" style="aspect-ratio: ${view.w} / ${view.h}; --td-ar: ${view.w / view.h};"></canvas>
+          </div>
         </div>
       </div>
     `;
