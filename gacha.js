@@ -1,6 +1,6 @@
 // gacha.js
 // ===================================================================
-// ===== 技ガチャ（冒険者協会の機能。ガチャ石を使って、ガチャ専用の技を引く） =====
+// ===== 技ガチャ（便利タブ「冒険者協会」アプリの項目。ガチャ石を使って、ガチャ専用の技を引く） =====
 // ===================================================================
 // ★仕様（企画書の決定事項）
 //   ・ガチャ石（仮）を1回10個で引く。排出されるのは「ガチャ専用の技」（エディタ「技ガチャ」タブで登録）
@@ -26,7 +26,11 @@ const GACHA_EQUIP_MAX = 2;      // キャラ1人にセットできる数
 
 // 標準の設定（エディタで何も設定しなければ、これで動く）
 const GACHA_DEFAULTS = {
-  name: "技ガチャ",
+  name: "技ガチャ",                          // 協会のメニューに出る名前（「ガチャ」がメタっぽい時は、世界観に合う名前に変える）
+  skillLabel: "ガチャ技",                    // 戦闘のコマンドに出る名前
+  breakLabel: "凸",                          // 「3凸」の「凸」の部分
+  pityLabel: "天井",                         // 「天井まであと◯回」の「天井」の部分
+  pullLabel: "引く",                         // 「1回引く」の「引く」の部分
   cost: 10,                                  // 1回あたりのガチャ石の数
   rates: { N: 70, R: 25, SR: 5 },            // レア度ごとの確率（%）
   missRate: 20,                              // ハズレ枠の確率（%）。ノーマルの確率の中から割り当てる
@@ -66,6 +70,10 @@ function gachaConfig() {
   const rates = saved.rates || {}, dupStones = saved.dupStones || {};
   return {
     name: (typeof saved.name === "string" && saved.name.trim()) ? saved.name.trim() : d.name,
+    skillLabel: (typeof saved.skillLabel === "string" && saved.skillLabel.trim()) ? saved.skillLabel.trim() : d.skillLabel,
+    breakLabel: (typeof saved.breakLabel === "string" && saved.breakLabel.trim()) ? saved.breakLabel.trim() : d.breakLabel,
+    pityLabel: (typeof saved.pityLabel === "string" && saved.pityLabel.trim()) ? saved.pityLabel.trim() : d.pityLabel,
+    pullLabel: (typeof saved.pullLabel === "string" && saved.pullLabel.trim()) ? saved.pullLabel.trim() : d.pullLabel,
     cost: Math.round(gachaNum(saved.cost, d.cost, 1, 99999)),
     rates: {
       N: gachaNum(rates.N, d.rates.N, 0, 100), R: gachaNum(rates.R, d.rates.R, 0, 100), SR: gachaNum(rates.SR, d.rates.SR, 0, 100)
@@ -276,26 +284,24 @@ function gachaPullOnce(cfg) {
   const name = (typeof stripRubyNotation === "function") ? stripRubyNotation(entry.name || "名無しの技") : (entry.name || "名無しの技");
   const before = gachaOwnedBreak(entry.id);
   const lines = [];
-  if (roll.pityHit) lines.push(`${cfg.pity}連目！ 天井でスーパーレアが確定した！`);
+  if (roll.pityHit) lines.push(`${cfg.pity}連目！ ${cfg.pityLabel}で${gachaRarityLabel("SR")}が確定した！`);
   if (before < 0) {
     st.owned[entry.id] = 0;
     lines.push(`${tag}「${name}」を手に入れた！（NEW）`);
   } else if (before < GACHA_MAX_BREAK) {
     st.owned[entry.id] = before + 1;
-    lines.push(`${tag}「${name}」がもう1つ出た！ ${before + 1}凸になった！${before + 1 >= GACHA_MAX_BREAK ? "（最大）" : ""}`);
+    lines.push(`${tag}「${name}」がもう1つ出た！ ${before + 1}${cfg.breakLabel}になった！${before + 1 >= GACHA_MAX_BREAK ? "（最大）" : ""}`);
   } else {
     const back = gachaGrantDuplicate(cfg, rarity);
     const parts = [];
     if (back.stones > 0) parts.push(`${(typeof tdGachaStoneName === "function") ? tdGachaStoneName() : "ガチャ石"}×${back.stones}`);
     if (back.gold > 0) parts.push(`${back.gold}陳`);
-    lines.push(`${tag}「${name}」は、すでに${GACHA_MAX_BREAK}凸。代わりに${parts.length ? parts.join("と") : "何も"}手に入れた。`);
+    lines.push(`${tag}「${name}」は、すでに${GACHA_MAX_BREAK}${cfg.breakLabel}。代わりに${parts.length ? parts.join("と") : "何も"}手に入れた。`);
   }
   return lines;
 }
 
-// ===== 画面（冒険者協会の「技ガチャ」） =====
-let gachaReturnTo = null;   // 協会のトップへ戻る関数
-
+// ===== 画面から使う、画面に依存しない補助（画面は guild_app.js。便利タブの「冒険者協会」アプリ） =====
 function gachaStoneLabel() { return (typeof tdGachaStoneName === "function") ? tdGachaStoneName() : "ガチャ石"; }
 function gachaStonesHeld() { return (typeof tdGetGachaStones === "function") ? tdGetGachaStones() : 0; }
 function gachaSkillName(entry) {
@@ -303,131 +309,68 @@ function gachaSkillName(entry) {
   return (typeof stripRubyNotation === "function") ? stripRubyNotation(raw) : raw;
 }
 
-// 協会のトップから呼ぶ入口
-function openGachaMenu(returnTo) {
-  gachaReturnTo = typeof returnTo === "function" ? returnTo : null;
-  showGachaMenu();
-}
-
-async function gachaSay(text) {
-  hideLocationMenu();
-  changeSpeaker("");
-  await displayMessage(text);
-}
-
-function showGachaMenu() {
-  const cfg = gachaConfig();
-  const st = gachaState();
-  const period = gachaPeriodStatus();
-  const open = period.state === "open";
-  const pityLeft = cfg.pity > 0 ? Math.max(1, cfg.pity - st.pity) : 0;
-  const suffix = open ? "" : (period.state === "before" ? "（開催前）" : "（開催終了）");
-  const options = [
-    { label: `1回引く（${gachaStoneLabel()}${cfg.cost}個）${suffix}`, action: () => gachaPullFlow(1) },
-    { label: `10回引く（${gachaStoneLabel()}${cfg.cost * 10}個）${suffix}`, action: () => gachaPullFlow(10) },
-    { label: "排出内容を見る", action: () => showGachaInfo() },
-    { label: "技をセットする", action: () => showGachaEquipMenu() },
-    { label: "戻る", action: () => { if (gachaReturnTo) gachaReturnTo(); else hideLocationMenu(); } }
-  ];
-  const pityNote = cfg.pity > 0 ? `／天井まであと${pityLeft}回` : "";
-  showLocationMenu(options, `${cfg.name}（${gachaStoneLabel()} ${gachaStonesHeld()}${pityNote}）`);
-}
-
-async function gachaPullFlow(count) {
+// 引く。ガチャ石の消費と、結果の反映までここで行う。
+// 戻り値：{ ok:false, message } ＝引けなかった理由／{ ok:true, lines } ＝結果の文章の配列
+function gachaTryPull(count) {
   const cfg = gachaConfig();
   const period = gachaPeriodStatus();
   if (period.state !== "open") {
-    await gachaSay(period.state === "before" ? "このガチャは、まだ開催前のようだ。" : "このガチャは、開催期間が終わってしまったようだ。");
-    showGachaMenu();
-    return;
+    return { ok: false, message: period.state === "before" ? `${cfg.name}は、まだ開催前のようだ。` : `${cfg.name}は、開催期間が終わってしまったようだ。` };
   }
   if (gachaAllEntries().filter(e => e && e.enabled !== false).length === 0) {
-    await gachaSay("ガチャの景品は、まだ準備中のようだ。");
-    showGachaMenu();
-    return;
+    return { ok: false, message: `${cfg.name}の中身は、まだ準備中のようだ。` };
   }
   const need = cfg.cost * count;
   if (gachaStonesHeld() < need) {
-    await gachaSay(`${gachaStoneLabel()}が足りない！（必要${need}個／所持${gachaStonesHeld()}個）`);
-    showGachaMenu();
-    return;
+    return { ok: false, message: `${gachaStoneLabel()}が足りない！（必要${need}個／所持${gachaStonesHeld()}個）` };
   }
-  // ガチャ石を消費してから、引く（tdAddGachaStones は増やす専用なので、直接減らす）
+  // ガチャ石を消費してから引く（tdAddGachaStones は増やす専用なので、直接減らす）
   player.gachaStones = gachaStonesHeld() - need;
-  hideLocationMenu();
-  changeSpeaker("");
-  await displayMessage(count === 1 ? "ガチャを引いた……！" : `${count}回、続けてガチャを引いた……！`);
-  const showFn = count > 1 && typeof displayMessageAutoAdvance === "function" ? displayMessageAutoAdvance : displayMessage;
+  const lines = [];
   for (let i = 0; i < count; i++) {
-    const lines = gachaPullOnce(cfg);
-    for (const line of lines) await showFn(count > 1 ? `${i + 1}回目：${line}` : line);
+    gachaPullOnce(cfg).forEach(line => lines.push(count > 1 ? `${i + 1}回目：${line}` : line));
   }
-  showGachaMenu();
+  return { ok: true, lines };
 }
 
-// 排出の確率・ラインナップ・ルールの説明
-async function showGachaInfo() {
+// 排出の確率・ラインナップ・ルールの説明（文章の配列）
+function gachaInfoLines() {
   const cfg = gachaConfig();
   const total = (cfg.rates.N + cfg.rates.R + cfg.rates.SR) || 100;
   const pct = v => `${Math.round(v / total * 1000) / 10}%`;
   const missP = Math.min(cfg.rates.N, cfg.missRate / 100 * total);
-  await gachaSay(gachaPeriodText());
-  await displayMessage(`確率：スーパーレア${pct(cfg.rates.SR)}／レア${pct(cfg.rates.R)}／ノーマル${pct(cfg.rates.N - missP)}／ハズレ${pct(missP)}` + (cfg.pity > 0 ? `。${cfg.pity}連目までスーパーレアが出なければ、${cfg.pity}連目で確定。` : "。"));
-  const lineup = GACHA_RARITIES.slice().reverse().map(r => {
+  const lines = [gachaPeriodText()];
+  lines.push(`確率：スーパーレア${pct(cfg.rates.SR)}／レア${pct(cfg.rates.R)}／ノーマル${pct(cfg.rates.N - missP)}／ハズレ${pct(missP)}`
+    + (cfg.pity > 0 ? `。${cfg.pity}回目までスーパーレアが出なければ、${cfg.pity}回目で確定（${cfg.pityLabel}）。` : "。"));
+  GACHA_RARITIES.slice().reverse().forEach(r => {
     const names = gachaPoolFor(r.key).map(gachaSkillName);
-    return `${r.label}：${names.length ? names.join("、") : "（なし）"}`;
+    lines.push(`${r.label}：${names.length ? names.join("、") : "（なし）"}`);
   });
-  for (const line of lineup) await displayMessage(line);
-  await displayMessage(`同じ技が出ると凸が増える（最大${GACHA_MAX_BREAK}凸）。${GACHA_MAX_BREAK}凸のあとに出ると、${gachaStoneLabel()}と陳に変わる。`);
-  showGachaMenu();
+  lines.push(`同じ技が出ると${cfg.breakLabel}が増える（最大${GACHA_MAX_BREAK}${cfg.breakLabel}）。${GACHA_MAX_BREAK}${cfg.breakLabel}のあとに出ると、${gachaStoneLabel()}と陳に変わる。`);
+  return lines;
 }
 
-// ----- セット画面 -----
+// セットできるキャラの一覧（主人公と仲間）
 function gachaMembers() {
   const list = [{ name: "主人公", unit: player }];
   (player.companions || []).forEach(c => list.push({ name: (typeof getCompanionDisplayName === "function") ? getCompanionDisplayName(c) : (c.name || "仲間"), unit: c }));
   return list;
 }
 
-function showGachaEquipMenu() {
-  const options = gachaMembers().map(m => {
-    const names = gachaEquipIds(m.unit).filter(Boolean).map(id => gachaSkillName(gachaEntryById(id)));
-    return { label: `${m.name}：${names.length ? names.join("／") : "（なし）"}`, action: () => showGachaEquipUnitMenu(m) };
-  });
-  options.push({ label: "戻る", action: () => showGachaMenu() });
-  showLocationMenu(options, "技をセットする：誰にセットする？");
-}
-
-function showGachaEquipUnitMenu(member) {
-  const ids = gachaEquipIds(member.unit);
-  const options = ids.map((id, i) => {
-    const entry = id ? gachaEntryById(id) : null;
-    const label = entry ? `${gachaSkillName(entry)}（${gachaOwnedBreak(id)}凸）` : "（空き）";
-    return { label: `枠${i + 1}：${label}`, action: () => showGachaEquipPickMenu(member, i) };
-  });
-  options.push({ label: "戻る", action: () => showGachaEquipMenu() });
-  showLocationMenu(options, `${member.name}にセットする技（最大${GACHA_EQUIP_MAX}つ）`);
-}
-
-function showGachaEquipPickMenu(member, slot) {
-  const g = gachaState();
-  const ids = gachaEquipIds(member.unit);
-  const otherId = ids[slot === 0 ? 1 : 0];
-  const owned = Object.keys(g.owned).map(gachaEntryById).filter(e => e && e.id !== otherId);
-  const options = owned.map(entry => {
-    const costLabel = entry.costType === "shouryoku" ? `焦力${Math.round(Number(entry.shouryokuCost) || 0)}` : `SP${Math.round(Number(entry.spCost) || 0)}`;
-    return {
-      label: `【${gachaRarityLabel(gachaRarityOf(entry))}】${gachaSkillName(entry)}（${gachaOwnedBreak(entry.id)}凸・${costLabel}）`,
-      action: () => { setGachaEquip(member.unit, slot, entry.id); showGachaEquipUnitMenu(member); }
-    };
-  });
-  if (ids[slot]) options.push({ label: "この枠の技を外す", action: () => { setGachaEquip(member.unit, slot, null); showGachaEquipUnitMenu(member); } });
-  options.push({ label: "戻る", action: () => showGachaEquipUnitMenu(member) });
-  showLocationMenu(options, owned.length ? `枠${slot + 1}にセットする技を選ぶ` : "まだセットできる技を持っていない");
-}
-
 function setGachaEquip(unit, slot, id) {
   const ids = gachaEquipIds(unit);
   ids[slot] = id;
   unit.gachaEquip = ids;
+}
+
+// 手に入れている技の一覧（レア度の高い順）
+function gachaOwnedEntries() {
+  const g = gachaState();
+  const rank = { SR: 0, R: 1, N: 2 };
+  return Object.keys(g.owned).map(gachaEntryById).filter(Boolean)
+    .sort((x, y) => (rank[gachaRarityOf(x)] - rank[gachaRarityOf(y)]) || 0);
+}
+// 技の消費の表示（SP○／焦力○）
+function gachaCostLabel(entry) {
+  return entry.costType === "shouryoku" ? `焦力${Math.round(Number(entry.shouryokuCost) || 0)}` : `SP${Math.round(Number(entry.spCost) || 0)}`;
 }

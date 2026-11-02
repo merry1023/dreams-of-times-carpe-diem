@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1792745778760,
+  "version": 1793581798672,
   "enemies": [
     {
       "id": "goblin",
@@ -20615,5 +20615,713 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     "companions": [],
     "quests": [],
     "classes": []
+  },
+  "gachaSkills": [
+    {
+      "description": "［テスト用・レア・通常スキル］2回攻撃。凸で威力と回数が伸びる。",
+      "enabled": true,
+      "rarity": "R",
+      "costType": "sp",
+      "spCost": 6,
+      "shouryokuCost": 30,
+      "type": "attack",
+      "element": "element_1790419127202_4",
+      "power": 15,
+      "target": "single",
+      "hitCount": 2,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": false,
+      "blocks": [],
+      "variables": {},
+      "id": "gacha_test_01",
+      "name": "【テスト】連撃の型",
+      "limitBreaks": [
+        [
+          {
+            "param": "power",
+            "value": 3
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "hitCount",
+            "value": 1
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "spCost",
+            "value": -1
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 10
+          },
+          {
+            "param": "hitCount",
+            "value": 1
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・レア・通常スキル］炎属性。火傷の確率・持続・威力が凸で伸びる。",
+      "enabled": true,
+      "rarity": "R",
+      "costType": "sp",
+      "spCost": 10,
+      "shouryokuCost": 30,
+      "type": "attack",
+      "element": "element_1790419127202_5",
+      "power": 25,
+      "target": "single",
+      "hitCount": 1,
+      "atkType": "magical",
+      "cleanse": false,
+      "statusEffectKind": "burn",
+      "statusEffectChance": 0.3,
+      "statusEffectDuration": 2,
+      "statusEffectPower": 5,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": false,
+      "blocks": [],
+      "variables": {},
+      "id": "gacha_test_02",
+      "name": "【テスト】燃える一撃",
+      "limitBreaks": [
+        [
+          {
+            "param": "statusEffectChance",
+            "value": 0.15
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "statusEffectDuration",
+            "value": 1
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "statusEffectPower",
+            "value": 3
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "statusEffectChance",
+            "value": 0.15
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 10
+          },
+          {
+            "param": "statusEffectChance",
+            "value": 0.1
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・レア・通常スキル］味方全体のHPを回復。凸数が多いほど回復量が増え、3凸以上で再生も付く（ifブロックの確認用）。",
+      "enabled": true,
+      "rarity": "R",
+      "costType": "sp",
+      "spCost": 12,
+      "shouryokuCost": 30,
+      "type": "heal",
+      "element": "無",
+      "power": 0,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_gachatest_1",
+          "type": "message",
+          "speaker": "",
+          "text": "やわらかな灯火が仲間を包み込む。"
+        },
+        {
+          "id": "skillblock_gachatest_2",
+          "type": "heal",
+          "target": "all",
+          "gauge": "hp",
+          "amount": "20 + 凸数 * 5",
+          "amountIsPercent": true
+        },
+        {
+          "id": "skillblock_gachatest_5",
+          "type": "if",
+          "expression": "凸数 >= 3",
+          "trueBlocks": [
+            {
+              "id": "skillblock_gachatest_3",
+              "type": "message",
+              "speaker": "",
+              "text": "（3凸以上）灯火が持続的な癒しに変わる！"
+            },
+            {
+              "id": "skillblock_gachatest_4",
+              "type": "applyStatus",
+              "targetSide": "allies",
+              "target": "all",
+              "statusId": "regen",
+              "duration": "3",
+              "power": "30",
+              "chance": "1"
+            }
+          ],
+          "falseBlocks": [],
+          "trueJumpBlockId": null,
+          "falseJumpBlockId": null
+        },
+        {
+          "id": "skillblock_gachatest_6",
+          "type": "end"
+        }
+      ],
+      "variables": {},
+      "id": "gacha_test_03",
+      "name": "【テスト】癒しの灯火"
+    },
+    {
+      "description": "［テスト用・スーパーレア・上位スキル］雷属性の全体攻撃。焦力を消費する。",
+      "enabled": true,
+      "rarity": "SR",
+      "costType": "shouryoku",
+      "spCost": 8,
+      "shouryokuCost": 50,
+      "type": "attack",
+      "element": "element_1790419127202_6",
+      "power": 45,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "magical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": false,
+      "blocks": [],
+      "variables": {},
+      "id": "gacha_test_04",
+      "name": "{/雷霆の裁き}={\\らいていのさばき}",
+      "limitBreaks": [
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "shouryokuCost",
+            "value": -10
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 10
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "hitCount",
+            "value": 1
+          },
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・スーパーレア・上位スキル］ifブロックで凸数による分岐を確認する技。3凸以上で気絶を狙い、5凸で追撃が入る。",
+      "enabled": true,
+      "rarity": "SR",
+      "costType": "shouryoku",
+      "spCost": 8,
+      "shouryokuCost": 40,
+      "type": "attack",
+      "element": "element_1790419127202_4",
+      "power": 30,
+      "target": "single",
+      "hitCount": 1,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_gachatest_7",
+          "type": "message",
+          "speaker": "",
+          "text": "舞うような連続攻撃！"
+        },
+        {
+          "id": "skillblock_gachatest_8",
+          "type": "damage",
+          "target": "single",
+          "powerMultiplier": "技威力 + 凸数 * 5",
+          "atkType": "physical"
+        },
+        {
+          "id": "skillblock_gachatest_11",
+          "type": "if",
+          "expression": "凸数 >= 3",
+          "trueBlocks": [
+            {
+              "id": "skillblock_gachatest_9",
+              "type": "message",
+              "speaker": "",
+              "text": "（3凸以上）鋭い一撃が相手の動きを止める！"
+            },
+            {
+              "id": "skillblock_gachatest_10",
+              "type": "applyStatus",
+              "targetSide": "enemy",
+              "target": "single",
+              "statusId": "stun",
+              "duration": "1",
+              "power": "0",
+              "chance": "0.5"
+            }
+          ],
+          "falseBlocks": [],
+          "trueJumpBlockId": null,
+          "falseJumpBlockId": null
+        },
+        {
+          "id": "skillblock_gachatest_14",
+          "type": "if",
+          "expression": "凸数 >= 5",
+          "trueBlocks": [
+            {
+              "id": "skillblock_gachatest_12",
+              "type": "message",
+              "speaker": "",
+              "text": "（5凸）舞は止まらない――全体への追撃！"
+            },
+            {
+              "id": "skillblock_gachatest_13",
+              "type": "damage",
+              "target": "all",
+              "powerMultiplier": "技威力 * 0.5",
+              "atkType": "physical"
+            }
+          ],
+          "falseBlocks": [],
+          "trueJumpBlockId": null,
+          "falseJumpBlockId": null
+        },
+        {
+          "id": "skillblock_gachatest_15",
+          "type": "end"
+        }
+      ],
+      "variables": {},
+      "id": "gacha_test_05",
+      "name": "【テスト】凸数の舞",
+      "limitBreaks": [
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "shouryokuCost",
+            "value": -5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 10
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・スーパーレア・上位スキル］炎属性の全体攻撃＋火傷。凸で火傷の確率と威力が伸びる。",
+      "enabled": true,
+      "rarity": "SR",
+      "costType": "shouryoku",
+      "spCost": 8,
+      "shouryokuCost": 60,
+      "type": "attack",
+      "element": "element_1790419127202_5",
+      "power": 40,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "magical",
+      "cleanse": false,
+      "statusEffectKind": "burn",
+      "statusEffectChance": 0.6,
+      "statusEffectDuration": 3,
+      "statusEffectPower": 5,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": false,
+      "blocks": [],
+      "variables": {},
+      "id": "gacha_test_06",
+      "name": "{/紅蓮の終焉}={\\ぐれんのしゅうえん}",
+      "limitBreaks": [
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "statusEffectChance",
+            "value": 0.1
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "statusEffectPower",
+            "value": 3
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "statusEffectChance",
+            "value": 0.1
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 15
+          },
+          {
+            "param": "statusEffectDuration",
+            "value": 1
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    }
+  ],
+  "gachaConfig": {
+    "missPool": [
+      {
+        "kind": "gold",
+        "itemId": "",
+        "count": 1,
+        "amount": 500,
+        "weight": 3
+      },
+      {
+        "kind": "gold",
+        "itemId": "",
+        "count": 1,
+        "amount": 2000,
+        "weight": 1
+      }
+    ]
   }
 };
