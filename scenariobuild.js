@@ -291,15 +291,17 @@ async function checkDataFileVersionAndConfirm() {
   await checkOneDataFileVersionAndConfirm(
     (typeof window !== "undefined") ? window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA : null,
     SCENARIOBUILD_SCENARIO_DECIDED_VERSION_KEY, "話・キャラクターのデータファイル",
-    () => applyImportedScenarioFileIfUpdated(true)
+    () => applyImportedScenarioFileIfUpdated(true),
+    "scenario"
   );
   await checkOneDataFileVersionAndConfirm(
     (typeof window !== "undefined") ? window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA : null,
     SCENARIOBUILD_SETTINGS_DECIDED_VERSION_KEY, "ゲームの基本設定（敵・ボス・アイテム・技等）のデータファイル",
-    () => applyImportedSettingsFileIfUpdated(true)
+    () => applyImportedSettingsFileIfUpdated(true),
+    "settings"
   );
 }
-async function checkOneDataFileVersionAndConfirm(data, decidedKey, label, forceApplyFn) {
+async function checkOneDataFileVersionAndConfirm(data, decidedKey, label, forceApplyFn, mergeDomain) {
   if (!data || data.version == null) return;
   const lastEditedAt = Number(localStorage.getItem(SCENARIOBUILD_LAST_EDITED_KEY)) || 0;
   if (!lastEditedAt) return; // ★ブラウザに何もデータが無い最初の起動時は、確認なしでそのまま取り込む（apply関数側で処理済み）
@@ -320,10 +322,19 @@ async function checkOneDataFileVersionAndConfirm(data, decidedKey, label, forceA
   }
   
   const message = `${label}が、今このブラウザに保存されている内容と異なっています（ファイルの方が${isNewer ? "新しい" : "古い"}バージョンです）。\nこのデータファイルを読み込みますか？\n（「いいえ」を選ぶと、今のブラウザのデータをそのまま使い続けます）`;
-  const ok = (typeof showGameConfirm === "function") ? await showGameConfirm(message) : false; // mainfunc.js
-  localStorage.setItem(decidedKey, String(data.version)); // ★読み込む/読み込まない、どちらを選んでも「このバージョンは確認済み」として記録する
+  // ★要望対応：「マージして取り込む」を第3の選択肢に追加（datamerge.js。無い環境では従来のはい/いいえ）
+  let choice;
+  if (typeof dmAskLoadChoice === "function" && mergeDomain) choice = await dmAskLoadChoice(message);
+  else choice = ((typeof showGameConfirm === "function") ? await showGameConfirm(message) : false) ? "load" : "skip"; // mainfunc.js
+  localStorage.setItem(decidedKey, String(data.version)); // ★読み込む/読み込まない/マージ、どれを選んでも「このバージョンは確認済み」として記録する
+  if (choice === "merge") {
+    await dmMergeExternal(mergeDomain, data, "repo", "リポジトリのJS"); // 反映・保存・登録し直しまで datamerge.js 側で行う
+    return;
+  }
+  const ok = choice === "load";
   if (ok) {
     forceApplyFn();
+    if (typeof dmMarkSynced === "function" && mergeDomain) dmMarkSynced("repo", mergeDomain, data); // 全部上書き＝今のデータはファイルと同じ内容になったので、その時点を土台にする
     localStorage.setItem(SCENARIOBUILD_LAST_EDITED_KEY, String(data.version)); // ★取り込んだ内容を「今の状態」として記録する
     if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
   }
@@ -376,6 +387,7 @@ async function commitScenarioBuildSave() {
     }
   }
   saveCustomScenarioData();
+  if (typeof dmAutoCommitAfterSave === "function") dmAutoCommitAfterSave(); // datamerge.js：保存のたびに変更のあった項目だけをコミット履歴に記録
   scenarioBuildHasUnsavedChanges = false;
   updateScenarioBuildSaveButton();
 }
@@ -1497,6 +1509,7 @@ function openScenarioBuildMode() {
     updateUndoRedoButtons();
     updateScenarioBuildSaveButton();
     renderScenarioBuildPanel();
+    if (typeof dmCloudCheckOnOpen === "function") dmCloudCheckOnOpen(); // datamerge_cloud.js：クラウドに更新があればお知らせ（取り込みは手動）
   } catch (e) {
     console.error("シナリオエディタの表示中にエラーが発生しました", e);
     const mainEl = document.getElementById("scenariobuild-main");
@@ -13232,6 +13245,8 @@ function renderDataManager(container) {
   };
   container.appendChild(jsExportSettingsBtn);
   
+  if (typeof renderDataMergeSection === "function") renderDataMergeSection(container); // datamerge.js：履歴・ファイルとのマージ
+  
   const statsEl = document.createElement("p");
   statsEl.className = "devmode-note";
   statsEl.textContent = `現在：話${scenarioProject.chapters.length}件／キャラ${scenarioProject.characters.length}件／敵${scenarioProject.enemies.length}件／ボス${scenarioProject.bosses.length}件／アイテム${scenarioProject.items.length}件／魚${(scenarioProject.fishItems || []).length}件／技${scenarioProject.skills.length}件／仲間${scenarioProject.companions.length}件／マップ${scenarioProject.mapAreas.length}件／フラグ${scenarioProject.flagDefs.length}件／変数${scenarioProject.variableDefs.length}件／レシピ${scenarioProject.recipes.length}件／ランダム名前${scenarioProject.randomNamePool.length}件`;
@@ -13267,6 +13282,7 @@ function exportScenarioOnlyAsJsFile() {
     }
   };
   const lines = [];
+  if (typeof dmMarkSynced === "function") dmMarkSynced("import", "scenario", data); // datamerge.js：書き出した時点を「共通の土台」として記録
   lines.push("// scenario_only_data.js");
   lines.push("// ★シナリオビルドの「データ管理」タブから書き出された、シナリオ（話・キャラ）専用のファイルです。");
   lines.push("// index.html の <script src=\"battle.js\"> より後ろに");
@@ -13330,6 +13346,7 @@ function exportGameSettingsAsJsFile() {
     }
   };
   const lines = [];
+  if (typeof dmMarkSynced === "function") dmMarkSynced("import", "settings", data); // datamerge.js：書き出した時点を「共通の土台」として記録
   lines.push("// game_settings_data.js");
   lines.push("// ★シナリオビルドの「データ管理」タブから書き出された、ゲームの基本設定");
   lines.push("//   （敵・ボス・アイテム・技・仲間・職業ステータス・施設・BGM・マップ）専用のファイルです。");

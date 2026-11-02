@@ -8459,6 +8459,50 @@ rt {
   .td-side .td-basehp { margin: 4px 0; }
 }
 
+/* ===================================================================
+   データのバージョン管理・マージ画面（datamerge.js）高コントラスト：黒地＋黄色、白い太枠
+   =================================================================== */
+.dm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 200100; display: flex; align-items: center; justify-content: center; }
+.dm-dialog { background: #0b0f14; border: 3px solid #ffd23f; color: #fff; padding: 14px; max-width: 520px; width: calc(100% - 24px); }
+.dm-dialog-msg { white-space: pre-wrap; line-height: 1.6; font-size: 14px; margin-bottom: 12px; }
+.dm-dialog-btns { display: flex; flex-direction: column; gap: 6px; }
+.dm-panel { background: #0b0f14; border: 3px solid #ffd23f; color: #fff; width: min(1100px, 100%); max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; }
+.dm-head { background: #ffd23f; color: #111; font-weight: bold; padding: 6px 10px; }
+.dm-body { flex: 1; min-height: 0; overflow: auto; padding: 8px; }
+.dm-foot { display: flex; gap: 8px; padding: 8px; border-top: 2px solid #ffd23f; }
+.dm-foot .dm-btn { flex: 1; }
+.dm-btn { background: #111; color: #ffd23f; border: 2px solid #ffd23f; padding: 8px 10px; font-weight: bold; cursor: pointer; }
+.dm-btn:disabled { opacity: 0.45; cursor: default; }
+.dm-btn-main { background: #ffd23f; color: #111; }
+.dm-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.dm-chip { background: #111; border: 2px solid #fff; padding: 2px 8px; font-size: 13px; }
+.dm-chip b { color: #ffd23f; }
+.dm-chip-warn { border-color: #ff6b6b; }
+.dm-note { background: #1b222c; border-left: 5px solid #ffd23f; padding: 4px 8px; margin-bottom: 8px; font-size: 12px; }
+.dm-auto { margin-bottom: 8px; }
+.dm-auto summary { cursor: pointer; color: #ffd23f; }
+.dm-auto-row { font-size: 12px; padding: 1px 6px; border-left: 3px solid #555; margin: 1px 0; }
+.dm-bulk { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.dm-grid { display: grid; grid-template-columns: 110px 1fr 1fr 1fr; gap: 4px; margin-bottom: 4px; }
+.dm-grid-head { font-weight: bold; color: #ffd23f; position: sticky; top: 0; background: #0b0f14; z-index: 1; }
+.dm-conflict { border: 2px solid #fff; padding: 4px; margin-bottom: 8px; }
+.dm-conflict-title { font-weight: bold; background: #1b222c; padding: 2px 6px; margin-bottom: 4px; }
+.dm-cell { background: #111; border: 2px solid #444; padding: 3px 5px; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 140px; overflow: auto; }
+.dm-cell-label { color: #ffd23f; font-weight: bold; border-color: transparent; background: transparent; }
+.dm-pick { cursor: pointer; }
+.dm-pick:hover { border-color: #fff; }
+.dm-pick.dm-selected { background: #ffd23f; color: #111; border-color: #ffd23f; }
+.dm-section { margin: 10px 0; }
+.dm-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.dm-msg { flex: 1; min-width: 160px; }
+.dm-hist-row { border-left: 4px solid #ffd23f; padding: 3px 8px; margin: 4px 0; background: rgba(255,210,63,0.06); }
+.dm-hist-info { font-size: 13px; }
+@media (max-width: 700px) { .dm-grid { grid-template-columns: 1fr; } }
+
+/* クラウド更新のお知らせ（datamerge_cloud.js） */
+.dm-cloud-banner { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 50; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #0b0f14; color: #fff; border: 3px solid #ffd23f; padding: 6px 10px; font-weight: bold; }
+.dm-cloud-banner span { flex: 1; min-width: 200px; }
+
 /* ★便利タブ「冒険者協会」アプリ（guild_app.js） */
 .guild-app-btn {
     display: flex;
