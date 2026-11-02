@@ -15,7 +15,7 @@ function gachaEditorEnsureRoot() {
   const root = scenarioProject.gachaConfig;
   const cfg = gachaConfig();   // gacha.js（標準の値で補った設定）
   const fill = (obj, key, value) => { if (obj[key] == null || obj[key] === "") obj[key] = value; };
-  ["name", "cost", "missRate", "pity", "dupGoldPercent", "dupGoldMin", "dupGoldMax"].forEach(k => fill(root, k, cfg[k]));
+  ["name", "skillLabel", "breakLabel", "pityLabel", "pullLabel", "cost", "missRate", "pity", "dupGoldPercent", "dupGoldMin", "dupGoldMax"].forEach(k => fill(root, k, cfg[k]));
   if (!root.rates || typeof root.rates !== "object") root.rates = {};
   if (!root.dupStones || typeof root.dupStones !== "object") root.dupStones = {};
   GACHA_RARITIES.forEach(r => { fill(root.rates, r.key, cfg.rates[r.key]); fill(root.dupStones, r.key, cfg.dupStones[r.key]); });
@@ -83,6 +83,16 @@ function renderGachaManager(container) {
   tools.textField(r1, "name", "ガチャの名前", "技ガチャ");
   tools.numberField(r1, "cost", "1回に使うガチャ石の数", 1, 99999, 1);
   tools.numberField(r1, "pity", "天井（この回数で、スーパーレア確定。0で天井なし）", 0, 9999, 1);
+
+  const rl = tools.addRow();
+  tools.textField(rl, "skillLabel", "戦闘コマンドの名前", "ガチャ技");
+  tools.textField(rl, "breakLabel", "「凸」の呼び方", "凸");
+  tools.textField(rl, "pityLabel", "「天井」の呼び方", "天井");
+  tools.textField(rl, "pullLabel", "「引く」の呼び方", "引く");
+  const labelNote = document.createElement("span");
+  labelNote.className = "devmode-note";
+  labelNote.textContent = "ゲーム内に出る呼び名です。「ガチャ」がメタっぽい時は、世界観に合う言葉に変えられます（ガチャ石の名前は「掃討作戦の報酬」タブで変えます）。";
+  rl.appendChild(labelNote);
 
   const r2 = tools.addRow();
   GACHA_RARITIES.forEach(r => ratesTools.numberField(r2, r.key, `${r.label}の確率（%）`, 0, 100, 1));
