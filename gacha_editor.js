@@ -66,7 +66,7 @@ function renderGachaManager(container) {
 
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
-  introEl.textContent = "冒険者協会の「技ガチャ」の設定と、ガチャ専用の技を作ります。ガチャ石は「掃討作戦の報酬」タブで決めた石を使います。ガチャ専用の技は職業に関係なく使え、通常スキルと上位スキルのどちらの動きも作れます（SPで使うか、焦力で使うかは、技ごとに決めます）。キャラ1人につき2つまでセットできます。";
+  introEl.textContent = "便利タブの「冒険者協会」アプリにある、ガチャの設定と、ガチャ専用の技を作ります。ガチャ石は「掃討作戦の報酬」タブで決めた石を使います。ガチャ専用の技は職業に関係なく使え、通常スキルと上位スキルのどちらの動きも作れます（SPで使うか、焦力で使うかは、技ごとに決めます）。キャラ1人につき2つまでセットできます。";
   container.appendChild(introEl);
 
   // ===== ガチャの設定 =====
