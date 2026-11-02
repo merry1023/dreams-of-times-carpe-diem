@@ -2575,6 +2575,19 @@ const SCENARIO_BLOCK_TYPES = {
   levelcap: "レベル上限" // ★要望対応：ここから先、指定レベルを超えて成長しないようにする
 };
 
+// ★要望対応：ブロック追加メニューを、種類ごとのカテゴリに分けて見やすくする
+//   （ここに載っていない種類が将来増えても、自動で「その他」に入るので追加漏れでメニューから消えることはない）
+const SCENARIO_BLOCK_CATEGORIES = [
+  { label: "文章", types: ["dialogue", "narration", "telop"] },
+  { label: "BGM・効果音・画面演出", types: ["bgm", "bgmstop", "se", "background", "effect"] },
+  { label: "立ち絵", types: ["portrait_show", "portrait_expression", "portrait_move", "portrait_motion"] },
+  { label: "分岐・進行管理", types: ["choice", "if", "jump", "flag", "setvar", "increment_area_visit"] },
+  { label: "戦闘", types: ["battle", "bossbattle"] },
+  { label: "アイテム・仲間・パラメータ", types: ["give", "takeitem", "addcompanion", "removecompanion", "changeparam", "setrank", "levelcap", "classselect"] },
+  { label: "話の区切り・終了", types: ["clearchapter", "ending", "gameover"] },
+  { label: "ボス演出（ボスの戦闘イベント用）", types: ["bossRemoveInvincibility", "bossSummonAlly", "bossHeal", "bossUseSkill"] }
+];
+
 function getEditingChapter() {
   return scenarioProject.chapters.find(c => c.id === scenarioBuildEditingChapterId) || null;
 }
@@ -3036,19 +3049,38 @@ function buildBlockInsertSlot(chapter, insertIndex) {
   if (scenarioBuildInsertMenuIndex === insertIndex) {
     const menu = document.createElement("div");
     menu.className = "scenariobuild-insert-menu";
-    Object.keys(SCENARIO_BLOCK_TYPES).forEach(type => {
-      const btn = document.createElement("button");
-      btn.className = "devmode-btn";
-      btn.textContent = SCENARIO_BLOCK_TYPES[type];
-      btn.onclick = (event) => {
-        event.stopPropagation();
-        pushUndoSnapshot();
-        chapter.blocks.splice(insertIndex, 0, createBlock(type));
-        markScenarioBuildDirty();
-        scenarioBuildInsertMenuIndex = null;
-        renderScenarioBuildPanel();
-      };
-      menu.appendChild(btn);
+    // ★カテゴリごとに見出し＋ボタン群を並べる
+    const categorized = new Set();
+    const groups = SCENARIO_BLOCK_CATEGORIES.map(c => ({ label: c.label, types: c.types.filter(t => SCENARIO_BLOCK_TYPES[t]) }));
+    SCENARIO_BLOCK_CATEGORIES.forEach(c => c.types.forEach(t => categorized.add(t)));
+    const otherTypes = Object.keys(SCENARIO_BLOCK_TYPES).filter(t => !categorized.has(t));
+    if (otherTypes.length > 0) groups.push({ label: "その他", types: otherTypes });
+    groups.forEach(group => {
+      if (group.types.length === 0) return;
+      const groupEl = document.createElement("div");
+      groupEl.className = "scenariobuild-insert-group";
+      const labelEl = document.createElement("div");
+      labelEl.className = "scenariobuild-insert-group-label";
+      labelEl.textContent = group.label;
+      groupEl.appendChild(labelEl);
+      const btnsEl = document.createElement("div");
+      btnsEl.className = "scenariobuild-insert-group-buttons";
+      group.types.forEach(type => {
+        const btn = document.createElement("button");
+        btn.className = "devmode-btn";
+        btn.textContent = SCENARIO_BLOCK_TYPES[type];
+        btn.onclick = (event) => {
+          event.stopPropagation();
+          pushUndoSnapshot();
+          chapter.blocks.splice(insertIndex, 0, createBlock(type));
+          markScenarioBuildDirty();
+          scenarioBuildInsertMenuIndex = null;
+          renderScenarioBuildPanel();
+        };
+        btnsEl.appendChild(btn);
+      });
+      groupEl.appendChild(btnsEl);
+      menu.appendChild(groupEl);
     });
     const cancelBtn = document.createElement("button");
     cancelBtn.className = "devmode-btn";
@@ -3303,6 +3335,7 @@ function buildScenarioBlockRow(chapter, block, index) {
 
 // ★ブロックのドラッグ&ドロップによる並び替え
 let scenarioBlockDragFromIndex = null;
+let scenarioBuildPendingFocusBlockId = null; // ★Ctrl+Enterで挿入した直後のブロックに、再描画後に入力カーソルを移すためのID
 function dropScenarioBlock(chapter, fromIndex, toIndex) {
   pushUndoSnapshot();
   const [moved] = chapter.blocks.splice(fromIndex, 1);
@@ -3555,6 +3588,105 @@ function attachRubyHelper(wrap, textArea) {
   wrap.appendChild(previewEl);
 }
 
+// ★要望対応：会話/地の文の文章編集中に Ctrl+Enter で、直下に空欄の同じ種類のブロックを挿入する。
+//   Ctrl+Shift+Enter だと、挿入するブロックの種類を選ぶメニューが開く（Macは Cmd も可）。
+//   flushToBlock() は、編集中でまだ block に反映されていない入力欄の値（change未発火の分）を block に書き込む
+function attachBlockInsertShortcut(chapter, block, inputEls, flushToBlock) {
+  inputEls.forEach(el => {
+    el.addEventListener("keydown", (event) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key !== "Enter") return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.repeat) return;
+      flushToBlock(); // ★change未発火の入力内容をblockに反映してから、一覧を再描画する
+      if (event.shiftKey) openBlockInsertAfterMenu(chapter, block);
+      else insertBlockAfter(chapter, block, "same-type");
+    });
+  });
+}
+
+// ★block の直下に新しいブロックを挿入する。mode：
+//   "same-type"＝同じ種類の空欄（会話は話者も空欄）／"dialogue-same-speaker"＝会話ブロック（話者は現在と同じ）
+//   "dialogue"＝会話ブロック（話者空欄）／"narration"＝地の文ブロック／"copy"＝内容まで全く同じ
+function insertBlockAfter(chapter, block, mode) {
+  const index = chapter.blocks.indexOf(block);
+  if (index < 0) return;
+  let newBlock;
+  if (mode === "copy") {
+    newBlock = JSON.parse(JSON.stringify(block));
+    newBlock.id = generateId("block");
+  } else if (mode === "dialogue-same-speaker") {
+    newBlock = createBlock("dialogue");
+    newBlock.speaker = block.type === "dialogue" ? block.speaker : "";
+  } else if (mode === "dialogue") {
+    newBlock = createBlock("dialogue");
+  } else if (mode === "narration") {
+    newBlock = createBlock("narration");
+  } else {
+    newBlock = createBlock(block.type === "dialogue" ? "dialogue" : block.type === "narration" ? "narration" : block.type);
+  }
+  pushUndoSnapshot();
+  chapter.blocks.splice(index + 1, 0, newBlock);
+  scenarioBuildPendingFocusBlockId = newBlock.id;
+  markScenarioBuildDirty();
+  renderScenarioBuildPanel();
+}
+
+// ★Ctrl+Shift+Enter で開く、挿入ブロックの選択メニュー（1〜5キーでも選べる。Escでキャンセル）
+function openBlockInsertAfterMenu(chapter, block) {
+  const isDialogue = block.type === "dialogue";
+  const speakerLabel = isDialogue && block.speaker ? `「${block.speaker}」` : "（話者なし）";
+  const options = [
+    { label: `会話ブロック：話者を同じにする ${speakerLabel}`, mode: "dialogue-same-speaker" },
+    { label: "会話ブロック：話者は空欄", mode: "dialogue" },
+    { label: "地の文ブロック", mode: "narration" },
+    { label: "内容まで全く同じブロックをコピー", mode: "copy" },
+    { label: "キャンセル", mode: null }
+  ];
+  const overlay = document.createElement("div");
+  overlay.className = "scenariobuild-insert-after-overlay";
+  const box = document.createElement("div");
+  box.className = "scenariobuild-insert-after-box";
+  const titleEl = document.createElement("div");
+  titleEl.className = "scenariobuild-insert-after-title";
+  titleEl.textContent = "この下にどんなブロックを追加しますか？";
+  box.appendChild(titleEl);
+  const close = () => {
+    document.removeEventListener("keydown", onKey, true);
+    overlay.remove();
+  };
+  const choose = (opt) => {
+    close();
+    if (opt.mode) insertBlockAfter(chapter, block, opt.mode);
+  };
+  const onKey = (event) => {
+    if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(); return; }
+    const n = Number(event.key);
+    if (n >= 1 && n <= options.length) { event.preventDefault(); event.stopPropagation(); choose(options[n - 1]); }
+  };
+  options.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.className = "devmode-btn";
+    btn.textContent = `${i + 1}. ${opt.label}`;
+    btn.onclick = (event) => { event.stopPropagation(); choose(opt); };
+    box.appendChild(btn);
+  });
+  overlay.appendChild(box);
+  overlay.addEventListener("click", close);
+  document.addEventListener("keydown", onKey, true);
+  document.body.appendChild(overlay);
+}
+
+// ★挿入直後のブロックに入力カーソルを移す（再描画後に呼ぶ）
+function focusPendingBlockInput(block, el) {
+  if (scenarioBuildPendingFocusBlockId !== block.id) return;
+  scenarioBuildPendingFocusBlockId = null;
+  setTimeout(() => {
+    el.focus();
+    if (el.scrollIntoView) el.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, 0);
+}
+
 function buildBlockFormFields(chapter, block) {
   const wrap = document.createElement("div");
   wrap.className = "scenariobuild-block-fields";
@@ -3578,6 +3710,8 @@ function buildBlockFormFields(chapter, block) {
     wrap.appendChild(speakerInput);
     wrap.appendChild(textArea);
     attachRubyHelper(wrap, textArea); // ★ルビの書き方の説明・ボタン・プレビュー
+    attachBlockInsertShortcut(chapter, block, [textArea, speakerInput], () => { block.speaker = speakerInput.value; block.text = textArea.value; }); // ★Ctrl+Enterで直下にブロック挿入
+    focusPendingBlockInput(block, textArea);
     return wrap;
   }
   
@@ -3589,6 +3723,8 @@ function buildBlockFormFields(chapter, block) {
     textArea.onchange = () => { block.text = textArea.value; persist(); };
     wrap.appendChild(textArea);
     attachRubyHelper(wrap, textArea); // ★ルビの書き方の説明・ボタン・プレビュー
+    attachBlockInsertShortcut(chapter, block, [textArea], () => { block.text = textArea.value; }); // ★Ctrl+Enterで直下にブロック挿入
+    focusPendingBlockInput(block, textArea);
     return wrap;
   }
   

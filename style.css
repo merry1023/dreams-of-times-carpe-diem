@@ -6231,13 +6231,59 @@ rt {
 
 .scenariobuild-insert-menu {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  padding: 6px;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
   background-color: #2a2a2a;
   border: 1px solid #555;
   border-radius: 6px;
+}
+
+/* ★ブロック追加メニューのカテゴリ分け */
+.scenariobuild-insert-group-label {
+  font-size: 12px;
+  color: #ffd23f;
+  margin-bottom: 3px;
+  padding-left: 2px;
+  border-left: 3px solid #ffd23f;
+  padding-left: 6px;
+}
+
+.scenariobuild-insert-group-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ★Ctrl+Enter+Z で開く「この下に追加するブロックの選択」メニュー */
+.scenariobuild-insert-after-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.scenariobuild-insert-after-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 260px;
+  max-width: 90vw;
+  padding: 14px;
+  background-color: #2a2a2a;
+  border: 1px solid #888;
+  border-radius: 8px;
+}
+
+.scenariobuild-insert-after-title {
+  color: #fff;
+  font-size: 14px;
+  margin-bottom: 2px;
 }
 
 /* ===== 演出ブロック：カメラシェイク・ヒットフラッシュ ===== */
