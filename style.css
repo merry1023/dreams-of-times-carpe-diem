@@ -8498,3 +8498,7 @@ rt {
 .dm-hist-row { border-left: 4px solid #ffd23f; padding: 3px 8px; margin: 4px 0; background: rgba(255,210,63,0.06); }
 .dm-hist-info { font-size: 13px; }
 @media (max-width: 700px) { .dm-grid { grid-template-columns: 1fr; } }
+
+/* クラウド更新のお知らせ（datamerge_cloud.js） */
+.dm-cloud-banner { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 50; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #0b0f14; color: #fff; border: 3px solid #ffd23f; padding: 6px 10px; font-weight: bold; }
+.dm-cloud-banner span { flex: 1; min-width: 200px; }

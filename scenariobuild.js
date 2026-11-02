@@ -1509,6 +1509,7 @@ function openScenarioBuildMode() {
     updateUndoRedoButtons();
     updateScenarioBuildSaveButton();
     renderScenarioBuildPanel();
+    if (typeof dmCloudCheckOnOpen === "function") dmCloudCheckOnOpen(); // datamerge_cloud.js：クラウドに更新があればお知らせ（取り込みは手動）
   } catch (e) {
     console.error("シナリオエディタの表示中にエラーが発生しました", e);
     const mainEl = document.getElementById("scenariobuild-main");
