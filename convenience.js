@@ -88,6 +88,7 @@ const CONVENIENCE_APPS = [
   { id: "achievements", label: "実績", icon: "🏆", action: () => openAchievementsPanel() },
   { id: "elementCombo", label: "属性コンボ", icon: "⚡", action: () => openElementComboPanel() }, // ★要望対応：今使えるコンボと属性の順番の一覧
   { id: "elementChart", label: "属性表", icon: "📋", action: () => openElementChartPanel() }, // ★要望対応：属性同士の相性一覧（特攻・耐性）
+  { id: "guildApp", label: "冒険者協会", icon: "🛡️", action: () => openGuildAppPanel() }, // ★冒険者協会アプリ（guild_app.js）。項目に「ガチャ」がある
   { id: "tutorial", label: "チュートリアル", icon: "❓", action: () => openTutorialPanel() },
   { id: "credits", label: "クレジット", icon: "📜", action: () => openCredits() }
 ];
@@ -121,6 +122,8 @@ function closeAllConvenienceSubPanels() {
   const progressPanel = document.getElementById("progress-panel");
   const tutorialPanel = document.getElementById("tutorial-panel");
   const achievementsPanel = document.getElementById("achievements-panel");
+  const guildAppPanel = document.getElementById("guild-app-panel");
+  if (typeof handleGuildAppKeyDown === "function") window.removeEventListener("keydown", handleGuildAppKeyDown); // guild_app.js
   window.removeEventListener("keydown", handleElementComboKeyDown);
   window.removeEventListener("keydown", handleElementChartKeyDown);
   window.removeEventListener("keydown", handleSaveLoadKeyDown);
@@ -137,6 +140,7 @@ function closeAllConvenienceSubPanels() {
   if (progressPanel) progressPanel.classList.add("hidden");
   if (tutorialPanel) tutorialPanel.classList.add("hidden");
   if (achievementsPanel) achievementsPanel.classList.add("hidden");
+  if (guildAppPanel) guildAppPanel.classList.add("hidden");
   subTabSwitchBlocked = false; // ★要望対応：図鑑の分類切り替え用に止めていたタブ切り替えのQ/Eも、ここで必ず元に戻す
 }
 
