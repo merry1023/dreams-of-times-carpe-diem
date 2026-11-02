@@ -406,7 +406,7 @@ async function dmMarkSynced(source, domain, data) {
 function dmDomainLabel(domain) { return domain === "scenario" ? "話・キャラクター" : "ゲームの基本設定"; }
 
 // 戻り値：true＝マージして反映した／false＝キャンセル・失敗
-async function dmMergeExternal(domain, data, source, sourceLabel) {
+async function dmMergeExternal(domain, data, source, sourceLabel, quiet) {
   try {
     if (!data || typeof data !== "object") throw new Error("データがありません");
     const theirsFull = dmExtractState(data, domain);
@@ -427,7 +427,7 @@ async function dmMergeExternal(domain, data, source, sourceLabel) {
     const res = dmMerge3(base, mine, theirs);
     if (res.conflicts.length === 0 && res.auto.length === 0) {
       await dmMarkSynced(source, domain, data);
-      await showGameAlert(`${dmDomainLabel(domain)}：マージするものはありませんでした（相手との差分なし／自分だけの変更のみ）。`);
+      if (!quiet) await showGameAlert(`${dmDomainLabel(domain)}：マージするものはありませんでした（相手との差分なし／自分だけの変更のみ）。`);
       return true;
     }
     const ok = await dmShowMergeUI(res, `${sourceLabel}｜${dmDomainLabel(domain)}`, !baseRec);
@@ -674,5 +674,11 @@ function renderDataMergeSection(container) {
     };
     reader.readAsText(file);
   };
+  // ☁ クラウド欄（datamerge_cloud.js。段階2）
+  if (typeof renderDataMergeCloudSection === "function") {
+    const cloudHost = document.createElement("div");
+    renderDataMergeCloudSection(cloudHost, refreshHistory);
+    wrap.insertBefore(cloudHost, hist);
+  }
   refreshHistory();
 }
