@@ -3589,38 +3589,19 @@ function attachRubyHelper(wrap, textArea) {
 }
 
 // ★要望対応：会話/地の文の文章編集中に Ctrl+Enter で、直下に空欄の同じ種類のブロックを挿入する。
-//   Ctrl+Enter を押したまま Z を押すと、挿入するブロックの種類を選ぶメニューが開く。
-//   （Enterを離した時点で確定する。Zを押した場合のみメニューに切り替わる＝Ctrl+Z単体の通常の「元に戻す」は妨げない）
+//   Ctrl+Shift+Enter だと、挿入するブロックの種類を選ぶメニューが開く（Macは Cmd も可）。
 //   flushToBlock() は、編集中でまだ block に反映されていない入力欄の値（change未発火の分）を block に書き込む
 function attachBlockInsertShortcut(chapter, block, inputEls, flushToBlock) {
-  let enterHeld = false;
-  let zPressed = false;
-  const reset = () => { enterHeld = false; zPressed = false; };
   inputEls.forEach(el => {
     el.addEventListener("keydown", (event) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-        event.preventDefault();
-        event.stopPropagation();
-        if (!event.repeat) { enterHeld = true; zPressed = false; }
-        return;
-      }
-      if (enterHeld && (event.key === "z" || event.key === "Z")) {
-        event.preventDefault(); // ★文字入力や「元に戻す」にならないようにする
-        event.stopPropagation();
-        zPressed = true;
-      }
+      if (!(event.ctrlKey || event.metaKey) || event.key !== "Enter") return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.repeat) return;
+      flushToBlock(); // ★change未発火の入力内容をblockに反映してから、一覧を再描画する
+      if (event.shiftKey) openBlockInsertAfterMenu(chapter, block);
+      else insertBlockAfter(chapter, block, "same-type");
     });
-    el.addEventListener("keyup", (event) => {
-      if (!enterHeld) return;
-      if (event.key === "Enter" || event.key === "Control" || event.key === "Meta") {
-        const openMenu = zPressed;
-        reset();
-        flushToBlock(); // ★change未発火の入力内容をblockに反映してから、一覧を再描画する
-        if (openMenu) openBlockInsertAfterMenu(chapter, block);
-        else insertBlockAfter(chapter, block, "same-type");
-      }
-    });
-    el.addEventListener("blur", reset);
   });
 }
 
@@ -3651,7 +3632,7 @@ function insertBlockAfter(chapter, block, mode) {
   renderScenarioBuildPanel();
 }
 
-// ★Ctrl+Enter+Z で開く、挿入ブロックの選択メニュー（1〜5キーでも選べる。Escでキャンセル）
+// ★Ctrl+Shift+Enter で開く、挿入ブロックの選択メニュー（1〜5キーでも選べる。Escでキャンセル）
 function openBlockInsertAfterMenu(chapter, block) {
   const isDialogue = block.type === "dialogue";
   const speakerLabel = isDialogue && block.speaker ? `「${block.speaker}」` : "（話者なし）";
