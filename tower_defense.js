@@ -712,6 +712,128 @@ function tdElementColor(elementId) {
   return (typeof getElementColor === "function") ? getElementColor(elementId) : "#ffffff";
 }
 
+// ===== 掃討作戦（迎撃・出撃・出撃キャラ選択）のキーボード操作（3つの画面で共通） =====
+// ・矢印キー：ボタン間のカーソル移動（画面上の位置で「いちばん近い」ボタンへ移る）
+// ・決定キー（Space / Z / Enter）：カーソルのボタンを押す
+// ・取消キー（X）：onCancel（「やめる」ボタン）。迎撃では陣地を操作中ならボタン側へ戻る
+// ・Tab：（迎撃のみ）ボタン操作 ⇔ 陣地のマス操作 を切り替える。右／下に動かせるボタンが無い時も陣地へ移る
+// DOMのフォーカスは使わず、カーソルは枠線（.td-kcursor）で見せる。ボタンが作り直されても、同じ種類のボタンへカーソルを引き継ぐ
+// opts: { initial: 最初にカーソルを置くボタンのセレクタ, onCancel: fn, field: { cols, rows, start, onDecide(index) } }
+// 戻り値: { detach(), get fieldActive(), get fieldIndex() }
+const TD_KEY_STATE_CLASSES = ["td-kcursor", "td-selected", "td-disabled", "td-card-out", "td-card-dead"];
+function tdAttachKeyboard(overlay, opts) {
+  opts = opts || {};
+  const field = opts.field || null;
+  let cursorEl = null;
+  let cursorSig = "";
+  let fieldActive = false;
+  let fieldIndex = field ? (field.start || 0) : 0;
+  
+  const sigOf = (el) => Array.from(el.classList).filter(c => !TD_KEY_STATE_CLASSES.includes(c)).join(" ") + "|" + ((el.dataset && el.dataset.key) || "");
+  const getButtons = () => Array.from(overlay.querySelectorAll("button")).filter(b => {
+    if (b.disabled || b.hidden) return false;
+    const r = b.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  });
+  const resolveCursor = () => {
+    const list = getButtons();
+    if (cursorEl && overlay.contains(cursorEl) && list.includes(cursorEl)) return cursorEl;
+    // ★作り直された／無効になった場合は、同じ種類のボタンへ。無ければ最初のボタンへ
+    let next = cursorSig ? list.find(b => sigOf(b) === cursorSig) : null;
+    if (!next && opts.initial && !cursorEl) next = list.find(b => b.matches(opts.initial)) || null;
+    if (!next) next = list[0] || null;
+    cursorEl = next;
+    if (next) cursorSig = sigOf(next);
+    return next;
+  };
+  const applyCursor = () => {
+    overlay.querySelectorAll(".td-kcursor").forEach(el => el.classList.remove("td-kcursor"));
+    if (fieldActive) return;
+    const cur = resolveCursor();
+    if (cur) cur.classList.add("td-kcursor");
+  };
+  
+  // 画面上の位置で、押した方向にいちばん近いボタンへ移る（見つからなければ false）
+  const moveCursor = (dir) => {
+    const cur = resolveCursor();
+    if (!cur) return false;
+    const r0 = cur.getBoundingClientRect();
+    const cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
+    let best = null, bestScore = Infinity;
+    getButtons().forEach(b => {
+      if (b === cur) return;
+      const r = b.getBoundingClientRect();
+      const dx = (r.left + r.width / 2) - cx, dy = (r.top + r.height / 2) - cy;
+      let primary, cross;
+      if (dir === "ArrowRight") { primary = dx; cross = Math.abs(dy); }
+      else if (dir === "ArrowLeft") { primary = -dx; cross = Math.abs(dy); }
+      else if (dir === "ArrowDown") { primary = dy; cross = Math.abs(dx); }
+      else { primary = -dy; cross = Math.abs(dx); }
+      if (primary <= 1) return;
+      const score = primary + cross * 2;
+      if (score < bestScore) { bestScore = score; best = b; }
+    });
+    if (!best) return false;
+    cursorEl = best;
+    cursorSig = sigOf(best);
+    return true;
+  };
+  
+  const moveField = (dir) => {
+    const cols = field.cols, rows = field.rows;
+    let r = Math.floor(fieldIndex / cols), c = fieldIndex % cols;
+    if (dir === "ArrowLeft") { if (c === 0) { fieldActive = false; return; } c--; }   // 左端でさらに左→ボタン操作へ戻る
+    else if (dir === "ArrowRight") c = Math.min(cols - 1, c + 1);
+    else if (dir === "ArrowUp") r = Math.max(0, r - 1);
+    else r = Math.min(rows - 1, r + 1);
+    fieldIndex = r * cols + c;
+  };
+  
+  const onKey = (event) => {
+    if (!overlay.isConnected) return;
+    if (event.ctrlKey || event.altKey || event.metaKey) return;
+    const k = event.key;
+    const isArrow = k === "ArrowUp" || k === "ArrowDown" || k === "ArrowLeft" || k === "ArrowRight";
+    const isDecide = (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(k)) || k === "Enter";
+    const isCancel = typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(k);
+    const isTab = k === "Tab" && !!field;
+    if (!isArrow && !isDecide && !isCancel && !isTab) return;
+    
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    // ★マウスで押したボタンにフォーカスが残っていると、Spaceで二重に反応するので外しておく
+    if (document.activeElement && overlay.contains(document.activeElement) && document.activeElement.blur) document.activeElement.blur();
+    
+    if (isArrow) {
+      if (fieldActive) moveField(k);
+      else if (!moveCursor(k) && field && (k === "ArrowRight" || k === "ArrowDown")) fieldActive = true;
+    } else if (isTab) {
+      fieldActive = !fieldActive;
+    } else if (isDecide) {
+      if (event.repeat) return;
+      if (fieldActive) field.onDecide(fieldIndex);
+      else { const cur = resolveCursor(); if (cur) cur.click(); }
+    } else if (isCancel) {
+      if (event.repeat) return;
+      if (fieldActive) fieldActive = false;
+      else if (typeof opts.onCancel === "function") opts.onCancel();
+    }
+    applyCursor();
+  };
+  
+  window.addEventListener("keydown", onKey, true);
+  // ★画面が作り直された時（ボタンの入れ替え）に、カーソルの枠線を付け直す
+  const observer = new MutationObserver(() => applyCursor());
+  observer.observe(overlay, { childList: true, subtree: true });
+  applyCursor();
+  
+  return {
+    detach() { window.removeEventListener("keydown", onKey, true); observer.disconnect(); },
+    get fieldActive() { return fieldActive; },
+    get fieldIndex() { return fieldIndex; }
+  };
+}
+
 // ミニゲーム本体。終わったら { result: "win" | "lose" | "quit", kills, wave } を返す
 function runTowerDefenseBattle(pool, opts) {
   return new Promise(resolve => {
@@ -844,7 +966,7 @@ function runTowerDefenseBattle(pool, opts) {
         const tpl = st.templates.find(t => t.key === selectedType);
         infoEl.textContent = `${tpl.label}（${tdUnitSummary(tpl)}）：置きたい陣地のマスをタップ`;
       } else {
-        infoEl.textContent = "下から仲間を選んで、陣地のマスに置こう。敵は上から来て、味方も攻撃してくる。白い数字＝弱点、灰色＝耐性。";
+        infoEl.textContent = "下から仲間を選んで、陣地のマスに置こう。敵は上から来て、味方も攻撃してくる。白い数字＝弱点、灰色＝耐性。（キー操作：矢印＝移動／Space・Z＝決定／Tab＝陣地とボタンの切替／X＝やめる）";
       }
     }
     
@@ -858,10 +980,9 @@ function runTowerDefenseBattle(pool, opts) {
       if (c < 0 || c >= TD_GRID_COLS || r < 0 || r >= TD_GRID_ROWS) return -1;
       return r * TD_GRID_COLS + c;
     }
-    canvas.addEventListener("pointerdown", ev => {
-      ev.preventDefault();
+    // ★マスを選んだ時の処理（マウス／タップ・キーボード共通）
+    function handleCell(slotIndex) {
       if (finished || st.phase === "won" || st.phase === "lost") return;
-      const slotIndex = cellAt(toWorld(ev));
       infoNote = "";
       if (slotIndex < 0) { selectedSlot = null; selectedType = null; refreshUI(); return; }
       const existing = st.units.find(u => u.slot === slotIndex);
@@ -873,6 +994,10 @@ function runTowerDefenseBattle(pool, opts) {
         infoNote = "先に下から配置する仲間を選んでください";
       }
       refreshUI();
+    }
+    canvas.addEventListener("pointerdown", ev => {
+      ev.preventDefault();
+      handleCell(cellAt(toWorld(ev)));
     });
     startBtn.onclick = () => { if (tdStartWave(st)) { infoNote = ""; refreshUI(); } };
     speedBtn.onclick = () => { st.speed = st.speed === 1 ? 2 : 1; refreshUI(); };
@@ -886,6 +1011,12 @@ function runTowerDefenseBattle(pool, opts) {
       }
       finish("quit");
     };
+    // ★キーボード操作（矢印＝移動／Space・Z＝決定／Tab＝陣地とボタンの切替／X＝やめる）
+    const kb = tdAttachKeyboard(overlay, {
+      initial: ".td-btn-start",
+      onCancel: () => quitBtn.click(),
+      field: { cols: TD_GRID_COLS, rows: TD_GRID_ROWS, start: Math.floor(TD_GRID_ROWS / 2) * TD_GRID_COLS + Math.floor(TD_GRID_COLS / 2), onDecide: (index) => handleCell(index) }
+    });
     
     // ----- 描画（世界をカメラの位置だけずらして描き、そのあと画面に固定の表示を重ねる） -----
     function drawBar(x, y, w, ratio, color) {
@@ -1015,6 +1146,12 @@ function runTowerDefenseBattle(pool, opts) {
         ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y - rise);
         ctx.globalAlpha = 1;
       });
+      // ★キーボードで陣地のマスを選んでいる時の枠
+      if (kb && kb.fieldActive) {
+        const fc = kb.fieldIndex % TD_GRID_COLS, fr = Math.floor(kb.fieldIndex / TD_GRID_COLS);
+        ctx.strokeStyle = "#00e5ff"; ctx.lineWidth = 4;
+        ctx.strokeRect(TD_GRID_X0 + fc * TD_CELL + 2, TD_GRID_Y0 + fr * TD_CELL + 2, TD_CELL - 4, TD_CELL - 4);
+      }
       ctx.restore();
       
       // ここから画面に固定の表示
@@ -1071,6 +1208,7 @@ function runTowerDefenseBattle(pool, opts) {
       finished = true;
       if (rafId) cancelAnimationFrame(rafId);
       if (quitTimer) clearTimeout(quitTimer);
+      if (kb) kb.detach();
       overlay.remove();
       resolve({ result, kills: st.kills, wave: st.wave, bossKills: st.bossKills, stage: st.stage, wavesTotal: st.wavesTotal, killKeys: st.killKeys });
     }

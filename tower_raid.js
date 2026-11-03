@@ -550,7 +550,7 @@ function trSelectParty(roster) {
       goBtn.disabled = chosen.size === 0;
       gridEl.querySelectorAll(".td-unit-btn").forEach(btn => btn.classList.toggle("td-selected", chosen.has(btn.dataset.key)));
     }
-    infoEl.textContent = `最大${TR_PARTY_MAX}枚まで選べます（出撃の手札になります）。タップで選ぶ／外す。`;
+    infoEl.textContent = `最大${TR_PARTY_MAX}枚まで選べます（出撃の手札になります）。タップで選ぶ／外す。（キー操作：矢印＝移動／Space・Z＝決定／X＝やめる）`;
     roster.forEach(d => {
       const btn = document.createElement("button");
       btn.type = "button"; btn.className = "td-unit-btn"; btn.dataset.key = d.key;
@@ -564,8 +564,10 @@ function trSelectParty(roster) {
       };
       gridEl.appendChild(btn);
     });
-    goBtn.onclick = () => { overlay.remove(); resolve(roster.filter(d => chosen.has(d.key))); };
-    overlay.querySelector(".td-btn-quit").onclick = () => { overlay.remove(); resolve(null); };
+    // ★キーボード操作（矢印＝移動／Space・Z＝決定／X＝やめる）
+    const kb = tdAttachKeyboard(overlay, { initial: ".td-unit-btn", onCancel: () => overlay.querySelector(".td-btn-quit").click() });
+    goBtn.onclick = () => { kb.detach(); overlay.remove(); resolve(roster.filter(d => chosen.has(d.key))); };
+    overlay.querySelector(".td-btn-quit").onclick = () => { kb.detach(); overlay.remove(); resolve(null); };
     refresh();
   });
 }
@@ -698,7 +700,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
       });
       
       if (infoNote && performance.now() < infoNoteUntil) infoEl.textContent = infoNote;
-      else if (st.phase === "prep") infoEl.textContent = `準備中：手札から「出撃」「Lv↑」を選んで、「進軍開始」。リソースは進軍中に時間と撃破で貯まります。`;
+      else if (st.phase === "prep") infoEl.textContent = `準備中：手札から「出撃」「Lv↑」を選んで、「進軍開始」。リソースは進軍中に時間と撃破で貯まります。（キー操作：矢印＝移動／Space・Z＝決定／X＝やめる）`;
       else if (st.phase === "play") infoEl.textContent = "進軍中：自動で進みます。スキルは各キャラのボタンで発動。ウェーブを突破すると準備中に戻ります。";
       else infoEl.textContent = "";
       
@@ -719,6 +721,8 @@ function runTowerRaidBattle(rosterDefs, opts) {
       if (!quitArmed) { quitArmed = true; quitTimer = setTimeout(() => { quitArmed = false; refreshUI(); }, 3000); refreshUI(); return; }
       finish("quit");
     };
+    // ★キーボード操作（矢印＝移動／Space・Z＝決定／X＝やめる）。手札のボタン・進軍・速度・やめるを選べる
+    const kb = tdAttachKeyboard(overlay, { initial: ".td-btn-start", onCancel: () => quitBtn.click() });
     
     // ----- 描画（世界をカメラの位置だけずらして描き、そのあと画面に固定の表示を重ねる） -----
     function drawBar(x, y, w, ratio, color) {
@@ -889,6 +893,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
       finished = true;
       if (rafId) cancelAnimationFrame(rafId);
       if (quitTimer) clearTimeout(quitTimer);
+      if (kb) kb.detach();
       overlay.remove();
       resolve({ result, kills: st.kills, bossKills: st.bossKills, stage: st.stage, wavesTotal: TR_WAVES, killKeys: st.killKeys });
     }
