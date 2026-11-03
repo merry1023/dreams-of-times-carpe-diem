@@ -8433,6 +8433,13 @@ rt {
 .td-btn-start { background: #ffd23f; color: #111; flex: 2; }
 .td-btn-quit { color: #fff; border-color: #fff; }
 .td-btn-upgrade { flex: 0 0 auto; padding: 6px 12px; }
+/* ★キーボード操作中のカーソル（掃討作戦の迎撃・出撃・出撃キャラ選択で共通） */
+.td-overlay .td-kcursor {
+  outline: 3px solid #00e5ff;
+  outline-offset: 2px;
+  position: relative;
+  z-index: 1;
+}
 @media (max-width: 520px) {
   .td-units { grid-template-columns: repeat(3, 1fr); }
 }
