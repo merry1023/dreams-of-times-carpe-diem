@@ -294,7 +294,11 @@ function gachaGrantDuplicate(cfg, rarity) {
 }
 
 // 1回引く。ガチャ石の消費は呼び出し側で済ませておく。戻り値：結果の文章の配列
-// 戻り値は文章の配列。配列の rarity に、結果のレア度（"N"/"R"/"SR"。ハズレは "N"）を付けてある（演出の色の決定に使う）
+// 戻り値は文章の配列。配列に次の2つを付けてある
+//   ・rarity：結果のレア度（"N"/"R"/"SR"。ハズレは "N"）…演出の色の決定に使う
+//   ・info：1連ぶんの結果の中身（1連ずつのポップアップ演出に使う）
+//       { type:"new"|"up"|"dup"|"miss", rarity, entryId, name, breakCount（今回の結果の凸数）, isMax,
+//         pityText（天井で確定した時だけ）, stones / gold（type:"dup" の時の返却）, text（type:"miss" の時の文章） }
 function gachaPullOnce(cfg) {
   const kind = cfg.kind === "beast" ? "beast" : "skill";
   const kindDef = gachaKindDef(kind);
@@ -302,31 +306,45 @@ function gachaPullOnce(cfg) {
   const roll = gachaRollRarity(cfg, st);
   st.pulls += 1;
   st.pity = (roll.rarity === "SR") ? 0 : st.pity + 1;   // スーパーレアが出たら、天井のカウントをリセット
-  const withRarity = (lines, rarity) => { lines.rarity = rarity; return lines; };
-  if (roll.miss) return withRarity([gachaGrantMiss(cfg)], "N");
+  const withRarity = (lines, rarity, info) => { lines.rarity = rarity; lines.info = info; return lines; };
+  const missResult = () => {
+    const text = gachaGrantMiss(cfg);
+    return withRarity([text], "N", { type: "miss", rarity: "N", text });
+  };
+  if (roll.miss) return missResult();
   const entry = gachaPickEntry(roll.rarity, kind);
-  if (!entry) return withRarity([gachaGrantMiss(cfg)], "N");   // 景品が1つも登録されていない時の保険
+  if (!entry) return missResult();   // 景品が1つも登録されていない時の保険
   const rarity = gachaRarityOf(entry);        // 該当のレア度が空で、1つ下から選んだ場合も、実際の景品のレア度で表示する
   const tag = `【${gachaRarityLabel(rarity)}】`;
   const noNameText = `名無しの${kindDef.noun}`;
   const name = (typeof stripRubyNotation === "function") ? stripRubyNotation(entry.name || noNameText) : (entry.name || noNameText);
   const before = gachaOwnedBreak(entry.id, kind);
   const lines = [];
-  if (roll.pityHit) lines.push(`${cfg.pity}連目！ ${cfg.pityLabel}で${gachaRarityLabel("SR")}が確定した！`);
+  const pityText = roll.pityHit ? `${cfg.pity}連目！ ${cfg.pityLabel}で${gachaRarityLabel("SR")}が確定した！` : "";
+  if (pityText) lines.push(pityText);
+  const info = { type: "new", rarity, entryId: entry.id, name, breakCount: 0, isMax: false, pityText };
   if (before < 0) {
     st.owned[entry.id] = 0;
     lines.push(kindDef.msgNew(tag, name));
   } else if (before < GACHA_MAX_BREAK) {
     st.owned[entry.id] = before + 1;
     lines.push(kindDef.msgUp(tag, name, before + 1, cfg.breakLabel, before + 1 >= GACHA_MAX_BREAK));
+    info.type = "up";
+    info.breakCount = before + 1;
+    info.isMax = before + 1 >= GACHA_MAX_BREAK;
   } else {
     const back = gachaGrantDuplicate(cfg, rarity);
     const parts = [];
     if (back.stones > 0) parts.push(`${(typeof tdGachaStoneName === "function") ? tdGachaStoneName() : "ガチャ石"}×${back.stones}`);
     if (back.gold > 0) parts.push(`${back.gold}陳`);
     lines.push(`${tag}「${name}」は、すでに${GACHA_MAX_BREAK}${cfg.breakLabel}。代わりに${parts.length ? parts.join("と") : "何も"}手に入れた。`);
+    info.type = "dup";
+    info.breakCount = GACHA_MAX_BREAK;
+    info.isMax = true;
+    info.stones = back.stones;
+    info.gold = back.gold;
   }
-  return withRarity(lines, rarity);
+  return withRarity(lines, rarity, info);
 }
 
 // ===== 画面から使う、画面に依存しない補助（画面は guild_app.js。便利タブの「冒険者協会」アプリ） =====
@@ -355,14 +373,16 @@ function gachaTryPull(count, kind = "skill") {
   // ガチャ石を消費してから引く（tdAddGachaStones は増やす専用なので、直接減らす）
   player.gachaStones = gachaStonesHeld() - need;
   const lines = [];
+  const pulls = [];      // 1連ごとの結果の中身（1連ずつのポップアップ演出に使う）
   const rank = { N: 0, R: 1, SR: 2 };
   let topRarity = "N";   // 今回の結果で一番高いレア度（演出の色の決定に使う）
   for (let i = 0; i < count; i++) {
     const one = gachaPullOnce(cfg);
     if (one.rarity && rank[one.rarity] > rank[topRarity]) topRarity = one.rarity;
+    if (one.info) pulls.push(one.info);
     one.forEach(line => lines.push(count > 1 ? `${i + 1}回目：${line}` : line));
   }
-  return { ok: true, lines, topRarity };
+  return { ok: true, lines, topRarity, pulls };
 }
 
 // 排出の確率・ラインナップ・ルールの説明（文章の配列）
