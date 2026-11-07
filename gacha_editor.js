@@ -9,12 +9,13 @@
 // ★中身を読んで動かすのは gacha.js。ブロックのifでは、式の変数「凸数」で凸による分岐ができる（battle.js）。
 //   使う入力部品は tower_defense_editor.js の tdEditorFieldTools と、scenariobuild.js の buildUpperSkillRow を使い回している
 
-// 設定の入れ物を用意する（足りない項目は、標準の値で埋めて、画面に見えるようにする）
-function gachaEditorEnsureRoot() {
-  if (!scenarioProject.gachaConfig || typeof scenarioProject.gachaConfig !== "object" || Array.isArray(scenarioProject.gachaConfig)) scenarioProject.gachaConfig = {};
-  const root = scenarioProject.gachaConfig;
-  const cfg = gachaConfig();   // gacha.js（標準の値で補った設定）
-  const fill = (obj, key, value) => { if (obj[key] == null || obj[key] === "") obj[key] = value; };
+// 設定の入れ物を用意する（足りない項目は、標準の値で埋めて、画面に見えるようにする）。kind＝"skill"（技ガチャ）／"beast"（魔獣召喚）
+function gachaEditorEnsureRoot(kind = "skill") {
+  const key = gachaKindDef(kind).configKey;   // gacha.js
+  if (!scenarioProject[key] || typeof scenarioProject[key] !== "object" || Array.isArray(scenarioProject[key])) scenarioProject[key] = {};
+  const root = scenarioProject[key];
+  const cfg = gachaConfig(kind);   // gacha.js（標準の値で補った設定）
+  const fill = (obj, k, value) => { if (obj[k] == null || obj[k] === "") obj[k] = value; };
   ["name", "skillLabel", "breakLabel", "pityLabel", "pullLabel", "cost", "missRate", "pity", "dupGoldPercent", "dupGoldMin", "dupGoldMax"].forEach(k => fill(root, k, cfg[k]));
   if (!root.rates || typeof root.rates !== "object") root.rates = {};
   if (!root.dupStones || typeof root.dupStones !== "object") root.dupStones = {};
@@ -59,17 +60,13 @@ function gachaEditorDateField(row, obj, key, label, persist) {
   row.appendChild(wrap);
 }
 
-function renderGachaManager(container) {
-  const root = gachaEditorEnsureRoot();
-  if (!Array.isArray(scenarioProject.gachaSkills)) scenarioProject.gachaSkills = [];
+// ガチャの設定の部分（技ガチャ・魔獣召喚で共用）。container に1つのカードとして足す
+// options：showSkillLabel＝「戦闘コマンドの名前」を出すか／extra(info, root, tools)＝カードの末尾に足す項目（魔獣召喚の「凸ごとの能力の倍率」など）
+function gachaEditorBuildConfig(container, kind, options = {}) {
+  const root = gachaEditorEnsureRoot(kind);
   const persist = () => markScenarioBuildDirty();
-
-  const introEl = document.createElement("p");
-  introEl.className = "devmode-note";
-  introEl.textContent = "便利タブの「冒険者協会」アプリにある、ガチャの設定と、ガチャ専用の技を作ります。ガチャ石は「掃討作戦の報酬」タブで決めた石を使います。ガチャ専用の技は職業に関係なく使え、通常スキルと上位スキルのどちらの動きも作れます（SPで使うか、焦力で使うかは、技ごとに決めます）。キャラ1人につき2つまでセットできます。";
-  container.appendChild(introEl);
-
-  // ===== ガチャの設定 =====
+  const noun = gachaKindDef(kind).noun;
+  const itemOptions = (scenarioProject.items || []).map(it => ({ value: it.id, label: `${it.name}（${it.id}）` }));
   const cfgRow = document.createElement("div");
   cfgRow.className = "scenariobuild-chapter-row";
   const cfgId = document.createElement("span"); cfgId.className = "scenariobuild-chapter-number"; cfgId.textContent = "設定";
@@ -85,13 +82,13 @@ function renderGachaManager(container) {
   tools.numberField(r1, "pity", "天井（この回数で、スーパーレア確定。0で天井なし）", 0, 9999, 1);
 
   const rl = tools.addRow();
-  tools.textField(rl, "skillLabel", "戦闘コマンドの名前", "ガチャ技");
+  if (options.showSkillLabel) tools.textField(rl, "skillLabel", "戦闘コマンドの名前", "ガチャ技");
   tools.textField(rl, "breakLabel", "「凸」の呼び方", "凸");
   tools.textField(rl, "pityLabel", "「天井」の呼び方", "天井");
   tools.textField(rl, "pullLabel", "「引く」の呼び方", "引く");
   const labelNote = document.createElement("span");
   labelNote.className = "devmode-note";
-  labelNote.textContent = "ゲーム内に出る呼び名です。「ガチャ」がメタっぽい時は、世界観に合う言葉に変えられます（ガチャ石の名前は「掃討作戦の報酬」タブで変えます）。";
+  labelNote.textContent = "ゲーム内に出る呼び名です。「ガチャ」がメタっぽい時は、世界観に合う言葉に変えられます（ガチャ石の名前は「掃討作戦の報酬」タブで変えます。技ガチャと魔獣召喚は、同じ石を使います）。";
   rl.appendChild(labelNote);
 
   const r2 = tools.addRow();
@@ -111,7 +108,7 @@ function renderGachaManager(container) {
   r3.appendChild(periodNote);
 
   const dupTitle = tools.addRow();
-  const dupB = document.createElement("b"); dupB.textContent = "5凸のあとに同じ技が出た時の返却";
+  const dupB = document.createElement("b"); dupB.textContent = `5凸のあとに同じ${noun}が出た時の返却`;
   dupTitle.appendChild(dupB);
   const r4 = tools.addRow();
   GACHA_RARITIES.forEach(r => dupTools.numberField(r4, r.key, `ガチャ石（${r.label}）`, 0, 99999, 1));
@@ -124,7 +121,6 @@ function renderGachaManager(container) {
   const missTitle = tools.addRow();
   const missB = document.createElement("b"); missB.textContent = "ハズレ枠の中身（アイテムまたは陳。重みの割合で、どれかが出る）";
   missTitle.appendChild(missB);
-  const itemOptions = (scenarioProject.items || []).map(it => ({ value: it.id, label: `${it.name}（${it.id}）` }));
   root.missPool.forEach((m, index) => {
     const mt = tdEditorFieldTools(m, info, persist);
     const mr = mt.addRow();
@@ -156,8 +152,22 @@ function renderGachaManager(container) {
   missNote.textContent = "何も登録しなかった場合、ハズレは1000陳になります。";
   missAddRow.appendChild(missNote);
 
+  if (options.extra) options.extra(info, root, tools);
   cfgRow.appendChild(info);
   container.appendChild(cfgRow);
+}
+
+function renderGachaManager(container) {
+  if (!Array.isArray(scenarioProject.gachaSkills)) scenarioProject.gachaSkills = [];
+  const persist = () => markScenarioBuildDirty();
+
+  const introEl = document.createElement("p");
+  introEl.className = "devmode-note";
+  introEl.textContent = "便利タブの「冒険者協会」アプリにある、ガチャの設定と、ガチャ専用の技を作ります。ガチャ石は「掃討作戦の報酬」タブで決めた石を使います。ガチャ専用の技は職業に関係なく使え、通常スキルと上位スキルのどちらの動きも作れます（SPで使うか、焦力で使うかは、技ごとに決めます）。キャラ1人につき2つまでセットできます。";
+  container.appendChild(introEl);
+
+  gachaEditorBuildConfig(container, "skill", { showSkillLabel: true });   // 設定の部分は、魔獣召喚（beast_editor.js）と共用
+
 
   // ===== ガチャ専用の技 =====
   const addBtn = document.createElement("button");

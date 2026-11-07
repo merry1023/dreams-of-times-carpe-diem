@@ -32,6 +32,8 @@ let scenarioProject = {
   statusPanels: { classes: {}, companions: {} }, // ★要望対応：ステータスパネル（職業ごと・仲間ごとの9×9の盤）。statuspanel.js参照
   gachaSkills: [], // ★技ガチャ：ガチャ専用の技。[{ id, name, rarity(N/R/SR), costType(sp/shouryoku), limitBreaks:[[{param,value}x最大3]x5], ... }]（gacha_editor.js / gacha.js）
   gachaConfig: {}, // ★技ガチャ：確率・消費数・天井・開催期間・ハズレ枠・重複時の返却の設定（gacha_editor.js / gacha.js）
+  beasts: [], // ★おとも魔獣：魔獣召喚の景品（戦闘で一緒に戦う魔獣）。[{ id, name, rarity(N/R/SR), role, element, image, baseStats, growthPerLevel, limitBreaks, affinities, ... }]（beast_editor.js / beast.js）
+  summonConfig: {}, // ★おとも魔獣：魔獣召喚の設定（技ガチャの gachaConfig と同じ項目＋凸ごとの能力の倍率 breakMultipliers）
   upperSkills: [], // ★要望対応：上位スキル（ステータスパネルで習得する、職業技とは別枠の技）。[{ id, name, type, element, spCost, power, ... }, ...]
   guildRewards: {}, // ★冒険者協会（掃討作戦）のクリア報酬の設定。{ useMonsterDrops, gachaStoneName, defense:{...}, raid:{...} }（tower_defense_editor.js / tower_rewards.js）
   raidUnits: [], // ★冒険者協会（掃討作戦・出撃モード）で送り込むキャラ。[{ id, name, element, hp, atk, range, interval, speed, skillKind, ... }]（tower_defense_editor.js）
@@ -257,6 +259,8 @@ function applyImportedSettingsFileIfUpdated(force) {
   if (Array.isArray(data.upperSkills)) scenarioProject.upperSkills = data.upperSkills; // ★要望対応：上位スキル
   if (Array.isArray(data.gachaSkills)) scenarioProject.gachaSkills = data.gachaSkills; // ★技ガチャ：ガチャ専用の技
   if (data.gachaConfig && typeof data.gachaConfig === "object" && !Array.isArray(data.gachaConfig)) scenarioProject.gachaConfig = data.gachaConfig; // ★技ガチャ：設定
+  if (Array.isArray(data.beasts)) scenarioProject.beasts = data.beasts; // ★おとも魔獣
+  if (data.summonConfig && typeof data.summonConfig === "object" && !Array.isArray(data.summonConfig)) scenarioProject.summonConfig = data.summonConfig; // ★魔獣召喚の設定
   if (data.statusPanels && typeof data.statusPanels === "object") scenarioProject.statusPanels = data.statusPanels; // ★要望対応：ステータスパネル
   if (data.elementMatchups && typeof data.elementMatchups === "object") scenarioProject.elementMatchups = data.elementMatchups;
   scenarioProject.bgmTracks = data.bgmTracks || [];
@@ -482,7 +486,9 @@ function normalizeScenarioProject() {
   if (!scenarioProject.guildRewards || typeof scenarioProject.guildRewards !== "object" || Array.isArray(scenarioProject.guildRewards)) scenarioProject.guildRewards = {}; // ★冒険者協会：クリア報酬の設定
   if (!Array.isArray(scenarioProject.upperSkills)) scenarioProject.upperSkills = []; // ★要望対応：上位スキル
   if (!Array.isArray(scenarioProject.gachaSkills)) scenarioProject.gachaSkills = []; // ★技ガチャ：ガチャ専用の技
-  if (!scenarioProject.gachaConfig || typeof scenarioProject.gachaConfig !== "object" || Array.isArray(scenarioProject.gachaConfig)) scenarioProject.gachaConfig = {}; // ★技ガチャ：設定
+  if (!scenarioProject.gachaConfig || typeof scenarioProject.gachaConfig !== "object" || Array.isArray(scenarioProject.gachaConfig)) scenarioProject.gachaConfig = {};
+  if (!Array.isArray(scenarioProject.beasts)) scenarioProject.beasts = []; // ★おとも魔獣
+  if (!scenarioProject.summonConfig || typeof scenarioProject.summonConfig !== "object" || Array.isArray(scenarioProject.summonConfig)) scenarioProject.summonConfig = {}; // ★魔獣召喚の設定 // ★技ガチャ：設定
   if (!scenarioProject.statusPanels || typeof scenarioProject.statusPanels !== "object") scenarioProject.statusPanels = { classes: {}, companions: {} }; // ★要望対応：ステータスパネル
   if (!scenarioProject.statusPanels.classes) scenarioProject.statusPanels.classes = {};
   if (!scenarioProject.statusPanels.companions) scenarioProject.statusPanels.companions = {};
@@ -1578,6 +1584,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "skills", label: "スキル管理" },
   { view: "upperskills", label: "上位スキル" }, // ★要望対応：ステータスパネルで習得する、職業技とは別枠の技
   { view: "gachaskills", label: "技ガチャ" }, // ★技ガチャ：ガチャ専用の技と、確率・期間などの設定
+  { view: "beasts", label: "おとも魔獣" }, // ★おとも魔獣：魔獣召喚の設定と、魔獣のデータ（beast_editor.js）
   { view: "combos", label: "コンボスキル" }, // ★要望対応：属性の順番で発動する追加効果の技
   { view: "towerunits", label: "タワーユニット" }, // ★冒険者協会：掃討作戦（迎撃モード）のユニット登録
   { view: "raidunits", label: "出撃キャラ" }, // ★冒険者協会：掃討作戦（出撃モード）で送り込むキャラの登録
@@ -1735,6 +1742,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "guildrewards") renderGuildRewardManager(bodyEl); // ★冒険者協会：掃討作戦の報酬（tower_defense_editor.js）
   else if (scenarioBuildSubView === "upperskills") renderUpperSkillManager(bodyEl); // ★要望対応：上位スキル
   else if (scenarioBuildSubView === "gachaskills") renderGachaManager(bodyEl); // ★技ガチャ（gacha_editor.js）
+  else if (scenarioBuildSubView === "beasts") renderBeastManager(bodyEl); // ★おとも魔獣（beast_editor.js）
   else if (scenarioBuildSubView === "statuspanels") renderStatusPanelManager(bodyEl); // ★要望対応：ステータスパネル
   else if (scenarioBuildSubView === "statuses") renderStatusManager(bodyEl);
   else if (scenarioBuildSubView === "flags") renderFlagManager(bodyEl);
@@ -13458,6 +13466,8 @@ function exportGameSettingsAsJsFile() {
     upperSkills: scenarioProject.upperSkills, // ★要望対応：上位スキル
     gachaSkills: scenarioProject.gachaSkills, // ★技ガチャ：ガチャ専用の技
     gachaConfig: scenarioProject.gachaConfig, // ★技ガチャ：設定
+    beasts: scenarioProject.beasts, // ★おとも魔獣
+    summonConfig: scenarioProject.summonConfig, // ★魔獣召喚の設定
     statusPanels: scenarioProject.statusPanels, // ★要望対応：ステータスパネル
     bgmTracks: scenarioProject.bgmTracks,
     mapAreas: scenarioProject.mapAreas,
