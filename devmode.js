@@ -150,6 +150,36 @@ function renderDevModePanel() {
   itemGrantRow.appendChild(qtyInput);
   itemGrantRow.appendChild(grantBtn);
   container.appendChild(itemGrantRow);
+
+  // ★要望対応：開発者用に、ガチャ石を指定した数だけその場で受け取れるようにする（アイテム付与と同じ作り）
+  container.appendChild(buildDevModeHeading(`即時${typeof tdGachaStoneName === "function" ? tdGachaStoneName() : "ガチャ石"}付与（デバッグ）`));
+  const stoneGrantNote = document.createElement("p");
+  stoneGrantNote.className = "devmode-note";
+  stoneGrantNote.textContent = `指定した数のガチャ石を、その場で直接受け取ります。（現在の所持数：${typeof tdGetGachaStones === "function" ? tdGetGachaStones() : 0}個）`;
+  container.appendChild(stoneGrantNote);
+
+  const stoneGrantRow = document.createElement("div");
+  stoneGrantRow.className = "devmode-row";
+
+  const stoneQtyInput = document.createElement("input");
+  stoneQtyInput.type = "number";
+  stoneQtyInput.min = "1";
+  stoneQtyInput.value = "100";
+  stoneQtyInput.className = "devmode-condition-input";
+
+  const stoneGrantBtn = document.createElement("button");
+  stoneGrantBtn.className = "devmode-btn";
+  stoneGrantBtn.textContent = "その場で受け取る";
+  stoneGrantBtn.onclick = (event) => {
+    event.stopPropagation();
+    debugGiveGachaStones(stoneQtyInput.value);
+    renderStatusHUD();
+    renderDevModePanel(); // 所持数の表示を更新する
+  };
+
+  stoneGrantRow.appendChild(stoneQtyInput);
+  stoneGrantRow.appendChild(stoneGrantBtn);
+  container.appendChild(stoneGrantRow);
   
   // ★要望対応：仲間のレベルを、開発者モードから直接変更できるようにする
   //   （パーティー内・一時離脱中の両方。ステータス・HP/SP上限も、変更後のレベルで作り直す）
@@ -444,6 +474,17 @@ function debugGiveItem(itemId, quantity) {
     const master = (typeof ITEM_MASTER !== "undefined" && ITEM_MASTER[itemId]) || null;
     const label = master ? master.name : itemId;
     displayMessage(`${label}を${qty}個受け取った。`);
+  }
+}
+
+// ★ガチャ石を指定数だけ直接受け取る（tower_rewards.js の tdAddGachaStones を使う）
+function debugGiveGachaStones(quantity) {
+  if (typeof tdAddGachaStones !== "function") return;
+  const qty = Math.max(1, Math.floor(Number(quantity) || 1));
+  tdAddGachaStones(qty);
+  if (typeof displayMessage === "function") {
+    const label = typeof tdGachaStoneName === "function" ? tdGachaStoneName() : "ガチャ石";
+    displayMessage(`${label}を${qty}個受け取った。（所持数：${tdGetGachaStones()}個）`);
   }
 }
 
