@@ -475,7 +475,7 @@ function renderGuildRewardManager(container) {
   dropLabel.appendChild(document.createTextNode(" 倒した魔物に登録されているドロップ（アイテムと確率）も、報酬に加える"));
   cr1.appendChild(dropLabel);
   const cr2 = ct.addRow();
-  ct.textField(cr2, "gachaStoneName", "ガチャ石の名前（仮）", "ガチャ石");
+  ct.textField(cr2, "gachaStoneName", "魔晶石の名前（ゲーム内の呼び名）", "魔晶石");
   const stoneNote = document.createElement("span");
   stoneNote.className = "devmode-note";
   stoneNote.textContent = "便利タブの「冒険者協会」アプリのガチャで使う石です（所持数は player.gachaStones）。1回に使う数などは「技ガチャ」タブで決めます。";
