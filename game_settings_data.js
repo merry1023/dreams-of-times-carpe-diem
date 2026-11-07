@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1793581798672,
+  "version": 1793871234869,
   "enemies": [
     {
       "id": "goblin",
@@ -21322,6 +21322,495 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "amount": 2000,
         "weight": 1
       }
+    ]
+  },
+  "beasts": [
+    {
+      "description": "［テスト用・ノーマル・支援］小さな体で、そっと寄り添う魔獣。",
+      "enabled": true,
+      "rarity": "N",
+      "role": "support",
+      "element": "無",
+      "image": "",
+      "affinities": [
+        {
+          "target": "player",
+          "bonuses": [
+            {
+              "param": "maxHp",
+              "value": 10
+            },
+            {
+              "param": "",
+              "value": 0
+            },
+            {
+              "param": "",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "idleActions": [],
+      "links": [],
+      "id": "beast_test_01",
+      "name": "【テスト】守り猫",
+      "baseStats": {
+        "maxHp": 18,
+        "atk": 3,
+        "skillPower": 4,
+        "agi": 4
+      },
+      "growthPerLevel": {
+        "maxHp": 2.17,
+        "atk": 0.23,
+        "skillPower": 0.34,
+        "agi": 0.16
+      },
+      "limitBreaks": [
+        [
+          {
+            "param": "maxHp",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "agi",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "maxHp",
+            "value": 8
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "skillPower",
+            "value": 8
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "maxHp",
+            "value": 10
+          },
+          {
+            "param": "skillPower",
+            "value": 8
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・レア・攻撃］炎をまとう若い狼。ケツァナと相性が良い。",
+      "enabled": true,
+      "rarity": "R",
+      "role": "attack",
+      "element": "element_1790419127202_5",
+      "image": "",
+      "affinities": [
+        {
+          "target": "ketsuna",
+          "bonuses": [
+            {
+              "param": "atk",
+              "value": 10
+            },
+            {
+              "param": "agi",
+              "value": 5
+            },
+            {
+              "param": "",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "idleActions": [],
+      "links": [],
+      "id": "beast_test_02",
+      "name": "【テスト】炎狼の仔",
+      "baseStats": {
+        "maxHp": 31,
+        "atk": 9,
+        "skillPower": 3,
+        "agi": 6
+      },
+      "growthPerLevel": {
+        "maxHp": 3.91,
+        "atk": 0.74,
+        "skillPower": 0.31,
+        "agi": 0.27
+      },
+      "limitBreaks": [
+        [
+          {
+            "param": "atk",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "agi",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "maxHp",
+            "value": 8
+          },
+          {
+            "param": "atk",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "atk",
+            "value": 6
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "atk",
+            "value": 10
+          },
+          {
+            "param": "maxHp",
+            "value": 10
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・レア・回復］光の鱗を持つ幼い竜。ロリルと相性が良い。",
+      "enabled": true,
+      "rarity": "R",
+      "role": "heal",
+      "element": "element_1789993536302_4",
+      "image": "",
+      "affinities": [
+        {
+          "target": "companion_1788390422466_28",
+          "bonuses": [
+            {
+              "param": "skillPower",
+              "value": 10
+            },
+            {
+              "param": "maxHp",
+              "value": 5
+            },
+            {
+              "param": "",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "idleActions": [],
+      "links": [],
+      "id": "beast_test_03",
+      "name": "【テスト】癒しの幼竜",
+      "baseStats": {
+        "maxHp": 35,
+        "atk": 2,
+        "skillPower": 7,
+        "agi": 4
+      },
+      "growthPerLevel": {
+        "maxHp": 4.16,
+        "atk": 0.18,
+        "skillPower": 0.57,
+        "agi": 0.18
+      },
+      "limitBreaks": [
+        [
+          {
+            "param": "skillPower",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "maxHp",
+            "value": 6
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "skillPower",
+            "value": 8
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "maxHp",
+            "value": 8
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "skillPower",
+            "value": 12
+          },
+          {
+            "param": "agi",
+            "value": 6
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・スーパーレア・攻撃］雷を纏う、古い星の魔獣。主人公とも、ケツァナとも相性が良い。",
+      "enabled": true,
+      "rarity": "SR",
+      "role": "attack",
+      "element": "element_1790419127202_6",
+      "image": "",
+      "affinities": [
+        {
+          "target": "player",
+          "bonuses": [
+            {
+              "param": "skillPower",
+              "value": 8
+            },
+            {
+              "param": "",
+              "value": 0
+            },
+            {
+              "param": "",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "target": "ketsuna",
+          "bonuses": [
+            {
+              "param": "atk",
+              "value": 8
+            },
+            {
+              "param": "",
+              "value": 0
+            },
+            {
+              "param": "",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "idleActions": [],
+      "links": [],
+      "id": "beast_test_04",
+      "name": "{/星喰らいの獣}={\\ほしぐらいのけもの}",
+      "baseStats": {
+        "maxHp": 38,
+        "atk": 11,
+        "skillPower": 9,
+        "agi": 7
+      },
+      "growthPerLevel": {
+        "maxHp": 4.57,
+        "atk": 0.82,
+        "skillPower": 0.74,
+        "agi": 0.33
+      },
+      "limitBreaks": [
+        [
+          {
+            "param": "atk",
+            "value": 4
+          },
+          {
+            "param": "skillPower",
+            "value": 4
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "maxHp",
+            "value": 6
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "atk",
+            "value": 6
+          },
+          {
+            "param": "skillPower",
+            "value": 6
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "agi",
+            "value": 6
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "atk",
+            "value": 10
+          },
+          {
+            "param": "skillPower",
+            "value": 10
+          },
+          {
+            "param": "maxHp",
+            "value": 8
+          }
+        ]
+      ]
+    }
+  ],
+  "summonConfig": {
+    "breakMultipliers": [
+      60,
+      68,
+      76,
+      84,
+      92,
+      100
     ]
   }
 };

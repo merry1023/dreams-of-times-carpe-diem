@@ -8612,3 +8612,136 @@ rt {
 .guild-app-result-r { color: #8fc8ff; }
 .guild-app-result-sr { color: #ffd76b; font-weight: bold; }
 .guild-app-info-line { font-size: 12px; color: #ddd; line-height: 1.5; }
+
+/* ★魔獣召喚の演出：魔法陣が妖しく光る（guild_app.js の guildAppPlaySummon）。画像は使わず、SVGとCSSだけで描く */
+.summon-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 45%, rgba(40, 10, 60, 0.96), rgba(6, 2, 12, 0.99));
+    overflow: hidden;
+    cursor: pointer;
+    transition: opacity 0.18s ease;
+    --c1: #a46bff;
+    --c2: #4a1d8a;
+}
+.summon-overlay.summon-fade { opacity: 0; }
+.summon-mist {
+    position: absolute;
+    inset: -20%;
+    background: radial-gradient(circle at 50% 50%, var(--c2) 0%, transparent 60%);
+    opacity: 0;
+    animation: summon-mist var(--dur) ease-in-out forwards;
+}
+@keyframes summon-mist {
+    0% { opacity: 0; transform: scale(0.6); }
+    40% { opacity: 0.35; }
+    70% { opacity: 0.6; }
+    100% { opacity: 0.9; transform: scale(1.15); }
+}
+.summon-circle {
+    position: relative;
+    width: min(78%, 300px);
+    aspect-ratio: 1;
+    filter: drop-shadow(0 0 5px var(--c1)) drop-shadow(0 0 18px var(--c2));
+    animation: summon-glow 1.1s ease-in-out infinite alternate;
+}
+.summon-SR .summon-circle { animation-duration: 0.55s; }
+@keyframes summon-glow {
+    0% { opacity: 0.75; filter: drop-shadow(0 0 4px var(--c1)) drop-shadow(0 0 12px var(--c2)); }
+    35% { opacity: 1; }
+    55% { opacity: 0.68; }
+    100% { opacity: 1; filter: drop-shadow(0 0 9px var(--c1)) drop-shadow(0 0 30px var(--c2)); }
+}
+.summon-circle circle,
+.summon-circle polygon {
+    fill: none;
+    stroke: var(--c1);
+    stroke-width: 1.2;
+}
+.summon-circle .summon-draw {
+    stroke-dasharray: 600;
+    stroke-dashoffset: 600;
+    animation: summon-draw calc(var(--dur) * 0.45) ease-out forwards;
+}
+@keyframes summon-draw { to { stroke-dashoffset: 0; } }
+.summon-ring { transform-origin: 100px 100px; }
+.summon-ring-a { animation: summon-rot 16s linear infinite; }
+.summon-ring-b { animation: summon-rot 11s linear infinite reverse; }
+.summon-ring-c { animation: summon-rot 22s linear infinite; }
+@keyframes summon-rot { to { transform: rotate(360deg); } }
+.summon-circle .summon-eye {
+    fill: var(--c1);
+    stroke: none;
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: summon-eye var(--dur) ease-in forwards;
+}
+@keyframes summon-eye {
+    0%, 55% { opacity: 0; transform: scaleY(0.1); }
+    78% { opacity: 0.9; transform: scaleY(1); }
+    100% { opacity: 1; transform: scale(1.8); }
+}
+.summon-caption {
+    position: relative;
+    margin-top: 14px;
+    font-size: 13px;
+    color: #e9dcff;
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 8px var(--c1);
+    animation: summon-caption 1.6s ease-in-out infinite alternate;
+}
+@keyframes summon-caption { from { opacity: 0.55; } to { opacity: 1; } }
+.summon-overlay.summon-burst::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 45%, #fff 0%, var(--c1) 30%, transparent 72%);
+    animation: summon-burst 0.6s ease-out forwards;
+}
+@keyframes summon-burst {
+    0% { opacity: 0; transform: scale(0.4); }
+    45% { opacity: 1; }
+    100% { opacity: 0.85; transform: scale(1.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .summon-circle, .summon-ring, .summon-caption { animation: none; }
+}
+
+/* ★おとも魔獣（beast.js / beast_app.js）：仮の見た目（画像は後から設定）と、魔獣の一覧 */
+.beast-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 2px solid #8e5bd6;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+.beast-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.beast-avatar-placeholder { overflow: visible; }
+.beast-avatar-initial { color: #fff; font-weight: bold; text-shadow: 0 0 6px rgba(0, 0, 0, 0.85); }
+.beast-avatar-placeholder .beast-avatar-element {
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
+}
+.guild-app-btn.beast-entry-btn {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+.beast-entry-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.beast-entry-name { font-weight: bold; }
+.beast-affinity-on { color: #ffd76b; }

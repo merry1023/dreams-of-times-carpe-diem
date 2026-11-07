@@ -12,12 +12,12 @@
 const DM_ID_ARRAYS = [
   "enemies", "bosses", "items", "furniture", "fishItems", "skills", "statusAilments", "statusBuffs",
   "companions", "quests", "achievements", "tutorials", "facilities", "portraitCharacters", "recipes",
-  "elementDefs", "comboSkills", "towerUnits", "raidUnits", "upperSkills", "gachaSkills", "bgmTracks", "mapAreas",
+  "elementDefs", "comboSkills", "towerUnits", "raidUnits", "upperSkills", "gachaSkills", "beasts", "bgmTracks", "mapAreas",
   "chapters", "chapterArcs", "characters", "flagDefs", "variableDefs"
 ];
 const DM_DICTS = [
   "classStats", "elementMatchups", "statusPanels", "trialGuardianOverrides", "fameThresholds",
-  "companionChatSettings", "scenarioBuildTabVisibility", "guildRewards", "gachaConfig", "deletedBuiltinIds"
+  "companionChatSettings", "scenarioBuildTabVisibility", "guildRewards", "gachaConfig", "summonConfig", "deletedBuiltinIds"
 ];
 const DM_WHOLES = ["randomNamePool", "mapEdges", "loginBonusDays", "creditsText", "introText"];
 const DM_SCENARIO_KEYS = ["chapters", "chapterArcs", "characters", "flagDefs", "variableDefs"];
@@ -29,10 +29,10 @@ const DM_LABELS = {
   statusAilments: "状態異常", statusBuffs: "状態強化", companions: "仲間", quests: "クエスト", achievements: "実績",
   tutorials: "チュートリアル", facilities: "施設", portraitCharacters: "立ち絵キャラ", recipes: "レシピ",
   elementDefs: "属性", comboSkills: "コンボ", towerUnits: "タワーユニット", raidUnits: "出撃キャラ", upperSkills: "上位スキル",
-  gachaSkills: "ガチャ技", bgmTracks: "BGM", mapAreas: "マップ", chapters: "話", chapterArcs: "章", characters: "キャラ",
+  gachaSkills: "ガチャ技", beasts: "おとも魔獣", bgmTracks: "BGM", mapAreas: "マップ", chapters: "話", chapterArcs: "章", characters: "キャラ",
   flagDefs: "フラグ", variableDefs: "変数", classStats: "職業ステータス", elementMatchups: "属性相性", statusPanels: "ステータスパネル",
   trialGuardianOverrides: "試練の守護者", fameThresholds: "名声しきい値", companionChatSettings: "会話AI設定",
-  scenarioBuildTabVisibility: "タブ表示設定", guildRewards: "協会報酬", gachaConfig: "ガチャ設定", deletedBuiltinIds: "削除済み組み込み",
+  scenarioBuildTabVisibility: "タブ表示設定", guildRewards: "協会報酬", gachaConfig: "ガチャ設定", summonConfig: "魔獣召喚設定", deletedBuiltinIds: "削除済み組み込み",
   randomNamePool: "ランダム名前", mapEdges: "マップ接続", loginBonusDays: "ログインボーナス", creditsText: "クレジット文面", introText: "注意書き文面"
 };
 
