@@ -16,7 +16,7 @@ const TD_REWARD_DEFAULTS = {
   defense: { goldBase: 100, goldPerKill: 5, stageGrowth: 25, stonesBase: 1, stonesPerBoss: 1 },
   raid:    { goldBase: 100, goldPerKill: 5, stageGrowth: 25, stonesBase: 2, stonesPerBoss: 3 }
 };
-const TD_GACHA_STONE_DEFAULT_NAME = "ガチャ石";
+const TD_GACHA_STONE_DEFAULT_NAME = "魔晶石";
 
 function tdRewardRoot() {
   return (typeof scenarioProject !== "undefined" && scenarioProject && scenarioProject.guildRewards && typeof scenarioProject.guildRewards === "object")

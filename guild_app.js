@@ -4,21 +4,22 @@
 // ===================================================================
 // ★スマホのホーム画面のようなアイコン（convenience.js の CONVENIENCE_APPS）のひとつ。
 //   （本当のスマホではないが、分かりやすくするために「アプリ」と呼んでいる）
-//   アプリを開くと、項目の一覧が出る。今ある項目は「技ガチャ」と「魔獣召喚」。項目を増やす時は GUILD_APP_ITEMS に足す。
+//   アプリを開くと、項目の一覧が出る。今ある項目は「覚醒の儀（技）」と「魔獣召喚」。項目を増やす時は GUILD_APP_ITEMS に足す。
+// ★手に入れた技のセット・詳細は、別アプリ「覚醒技能」（waza_app.js）に移した。ここは技を手に入れるところだけ
 // ★ガチャの中身（抽選・天井・凸など）は gacha.js。ここは画面だけを持つ。
 //   画面はメッセージ送りではなく、便利タブの他のアプリと同じ「パネル」（#guild-app-panel）で動くので、
-//   場面を問わずいつでも開ける。ただし、戦闘中は技のセットだけ変えられない
+//   場面を問わずいつでも開ける
 // ★キー操作：上下＝ボタンの移動／決定キー＝押す／キャンセルキー＝ひとつ前の画面へ
 
 // アプリの中の項目。label は呼び名が設定で変わるので関数にしている
-// kind＝ガチャの種類（"skill"＝技ガチャ／"beast"＝魔獣召喚）。同じガチャの画面を、種類を切り替えて使う
+// kind＝ガチャの種類（"skill"＝覚醒の儀（技）／"beast"＝魔獣召喚）。同じガチャの画面を、種類を切り替えて使う
 const GUILD_APP_ITEMS = [
   { id: "gacha", kind: "skill", label: () => gachaConfig("skill").name, note: () => `${gachaStoneLabel()} ${gachaStonesHeld()}個`, view: "gacha" },
   { id: "summon", kind: "beast", label: () => gachaConfig("beast").name, note: () => `${gachaStoneLabel()} ${gachaStonesHeld()}個`, view: "gacha" }
 ];
 
 // 画面（view）と、「戻る」で行き先の対応表
-const GUILD_APP_PARENT = { gacha: "home", info: "gacha", equip: "gacha", equipUnit: "equip", equipPick: "equipUnit" };
+const GUILD_APP_PARENT = { gacha: "home", info: "gacha" };
 
 let guildAppView = "home";
 let guildAppResults = null;      // 直前にガチャを引いた結果（文章の配列）。ガチャの画面を離れたら消す
@@ -33,13 +34,6 @@ let guildAppSession = 0;         // アプリを開き直すたびに増やす�
 // 演出のスキップに使うキー。メッセージの早送り（mainfunc.js の fastForwardKey＝同じHキー）とは混ぜない：
 // 演出の最中は、こちらが先にHキーを受け取り、早送りのON/OFFには届かせない
 const GUILD_APP_SKIP_KEYS = ["h", "H"];
-let guildAppEquipMemberIndex = 0;
-let guildAppEquipSlot = 0;
-
-function guildAppIsInBattle() {
-  return typeof battleState !== "undefined" && !!battleState;
-}
-
 // ===== 開く・閉じる =====
 function openGuildAppPanel() {
   const grid = document.getElementById("convenience-icon-grid");
@@ -163,7 +157,7 @@ function renderGuildAppPanel(focusIndex = 0) {
   if (!panel) return;
   panel.classList.remove("hidden");
   panel.innerHTML = "";
-  const renderers = { home: guildAppRenderHome, gacha: guildAppRenderGacha, info: guildAppRenderInfo, equip: guildAppRenderEquip, equipUnit: guildAppRenderEquipUnit, equipPick: guildAppRenderEquipPick };
+  const renderers = { home: guildAppRenderHome, gacha: guildAppRenderGacha, info: guildAppRenderInfo };
   (renderers[guildAppView] || guildAppRenderHome)(panel);
   if (guildAppNotice) {
     const noticeEl = guildAppEl("p", "guild-app-notice", guildAppNotice);
@@ -233,7 +227,7 @@ function guildAppRenderGacha(panel) {
   if (cfg.pity > 0) status.appendChild(guildAppEl("div", "element-combo-note", `${cfg.pityLabel}まであと${Math.max(1, cfg.pity - st.pity)}回`));
   panel.appendChild(status);
 
-  const closedNote = open ? "" : (period.state === "before" ? "（開催前）" : "（開催終了）");
+  const closedNote = open ? "" : (period.state === "before" ? "（まだ行えません）" : "（受付終了）");
   [1, 10].forEach(count => {
     panel.appendChild(guildAppButton(`${count}回${cfg.pullLabel}（${gachaStoneLabel()}${cfg.cost * count}個）${closedNote}`, () => {
       guildAppDoPull(count, kind);
@@ -244,88 +238,28 @@ function guildAppRenderGacha(panel) {
     const box = guildAppEl("div", "guild-app-results");
     box.appendChild(guildAppEl("div", "element-combo-name", "結果"));
     guildAppResults.forEach(line => {
-      const cls = line.includes("【スーパーレア】") ? "guild-app-result-sr" : (line.includes("【レア】") ? "guild-app-result-r" : "");
+      const cls = line.includes(`【${gachaRarityLabel("SR")}】`) ? "guild-app-result-sr" : (line.includes(`【${gachaRarityLabel("R")}】`) ? "guild-app-result-r" : "");
       box.appendChild(guildAppEl("div", "guild-app-result-line " + cls, line));
     });
     panel.appendChild(box);
   }
 
-  panel.appendChild(guildAppButton("排出内容を見る", () => guildAppGo("info")));
+  panel.appendChild(guildAppButton("授かる力の一覧を見る", () => guildAppGo("info")));
   if (kind === "beast") {
     panel.appendChild(guildAppEl("p", "element-combo-note", "手に入れた魔獣は、アプリ「おとも魔獣」でセットできます。"));
   } else {
-    panel.appendChild(guildAppButton("技をセットする", () => guildAppGo("equip")));
+    panel.appendChild(guildAppEl("p", "element-combo-note", "目覚めた技は、アプリ「覚醒技能」でセットできます。"));
   }
   guildAppBackButton(panel);
 }
 
 function guildAppRenderInfo(panel) {
-  panel.appendChild(guildAppEl("h3", "monster-codex-title", `${gachaConfig(guildAppKind).name}：排出内容`));
+  panel.appendChild(guildAppEl("h3", "monster-codex-title", `${gachaConfig(guildAppKind).name}：授かる力の一覧`));
   gachaInfoLines(guildAppKind).forEach(line => {
     const item = guildAppEl("div", "element-combo-item");
     item.appendChild(guildAppEl("div", "guild-app-info-line", line));
     panel.appendChild(item);
   });
-  guildAppBackButton(panel);
-}
-
-// ----- 技のセット -----
-function guildAppRenderEquip(panel) {
-  panel.appendChild(guildAppEl("h3", "monster-codex-title", "技をセットする"));
-  if (guildAppIsInBattle()) {
-    panel.appendChild(guildAppEl("p", "guild-app-notice", "戦闘中は、技のセットを変えられません。"));
-  }
-  panel.appendChild(guildAppEl("p", "element-combo-note", `キャラ1人につき${GACHA_EQUIP_MAX}つまで。誰が使っても、職業に関係なく使えます。`));
-  gachaMembers().forEach((member, index) => {
-    const names = gachaEquipIds(member.unit).filter(Boolean).map(id => gachaSkillName(gachaEntryById(id)));
-    const btn = guildAppButton(member.name, () => { guildAppEquipMemberIndex = index; guildAppGo("equipUnit"); }, { disabled: guildAppIsInBattle() });
-    btn.appendChild(guildAppEl("span", "guild-app-btn-note", names.length ? names.join("／") : "（なし）"));
-    panel.appendChild(btn);
-  });
-  guildAppBackButton(panel);
-}
-
-function guildAppEquipMember() {
-  const members = gachaMembers();
-  return members[Math.min(guildAppEquipMemberIndex, members.length - 1)];
-}
-
-function guildAppRenderEquipUnit(panel) {
-  const member = guildAppEquipMember();
-  panel.appendChild(guildAppEl("h3", "monster-codex-title", `${member.name}にセットする技`));
-  const cfg = gachaConfig();
-  gachaEquipIds(member.unit).forEach((id, slot) => {
-    const entry = id ? gachaEntryById(id) : null;
-    const btn = guildAppButton(`枠${slot + 1}`, () => { guildAppEquipSlot = slot; guildAppGo("equipPick"); });
-    btn.appendChild(guildAppEl("span", "guild-app-btn-note", entry ? `${gachaSkillName(entry)}（${gachaOwnedBreak(id)}${cfg.breakLabel}・${gachaCostLabel(entry)}）` : "（空き）"));
-    panel.appendChild(btn);
-  });
-  guildAppBackButton(panel);
-}
-
-function guildAppRenderEquipPick(panel) {
-  const member = guildAppEquipMember();
-  const cfg = gachaConfig();
-  panel.appendChild(guildAppEl("h3", "monster-codex-title", `${member.name}：枠${guildAppEquipSlot + 1}`));
-  const ids = gachaEquipIds(member.unit);
-  const otherId = ids[guildAppEquipSlot === 0 ? 1 : 0];   // 同じキャラに、同じ技を2つはセットできない
-  const owned = gachaOwnedEntries().filter(e => e.id !== otherId);
-  if (owned.length === 0) panel.appendChild(guildAppEl("p", "element-combo-empty", "セットできる技を、まだ持っていません。"));
-  owned.forEach(entry => {
-    const rarity = gachaRarityOf(entry);
-    const btn = guildAppButton(`【${gachaRarityLabel(rarity)}】${gachaSkillName(entry)}`, () => {
-      setGachaEquip(member.unit, guildAppEquipSlot, entry.id);
-      guildAppGo("equipUnit");
-    }, { className: rarity === "SR" ? "guild-app-btn-sr" : (rarity === "R" ? "guild-app-btn-r" : "") });
-    btn.appendChild(guildAppEl("span", "guild-app-btn-note", `${gachaOwnedBreak(entry.id)}${cfg.breakLabel}・${gachaCostLabel(entry)}${entry.description ? "｜" + stripRubyNotation(entry.description) : ""}`));
-    panel.appendChild(btn);
-  });
-  if (ids[guildAppEquipSlot]) {
-    panel.appendChild(guildAppButton("この枠の技を外す", () => {
-      setGachaEquip(member.unit, guildAppEquipSlot, null);
-      guildAppGo("equipUnit");
-    }));
-  }
   guildAppBackButton(panel);
 }
 
@@ -539,13 +473,13 @@ function guildAppBuildRevealCard(info, kind, cfg) {
   if (info && info.pityText) inner.appendChild(guildAppEl("div", "gacha-card-pity", info.pityText));
 
   if (type === "miss") {
-    inner.appendChild(guildAppEl("div", "gacha-card-badge", "ハズレ"));
-    inner.appendChild(guildAppEl("div", "gacha-card-miss-text", info && info.text ? info.text : "ハズレ……"));
+    inner.appendChild(guildAppEl("div", "gacha-card-badge", "空振り"));
+    inner.appendChild(guildAppEl("div", "gacha-card-miss-text", info && info.text ? info.text : "今回は何も目覚めなかった……"));
     return wrap;
   }
 
   const entry = gachaEntryById(info.entryId, kind);
-  let badgeText = "NEW!";
+  let badgeText = "新たな力！";
   if (type === "up") badgeText = `${info.breakCount}${cfg.breakLabel}${info.isMax ? "（最大）" : ""}`;
   else if (type === "dup") badgeText = `すでに${info.breakCount}${cfg.breakLabel}`;
   inner.appendChild(guildAppEl("div", "gacha-card-badge gacha-card-badge-" + type, badgeText));
@@ -563,7 +497,7 @@ function guildAppBuildRevealCard(info, kind, cfg) {
   if (kind === "skill" && entry) inner.appendChild(guildAppEl("div", "gacha-card-sub", `消費：${gachaCostLabel(entry)}`));
 
   if (type === "up") {
-    inner.appendChild(guildAppEl("div", "gacha-card-note", `${info.breakCount}${cfg.breakLabel}になった！`));
+    inner.appendChild(guildAppEl("div", "gacha-card-note", `${info.breakCount}${cfg.breakLabel}に深まった！`));
   } else if (type === "dup") {
     const parts = [];
     if (info.stones > 0) parts.push(`${gachaStoneLabel()}×${info.stones}`);

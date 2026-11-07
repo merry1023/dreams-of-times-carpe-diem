@@ -152,7 +152,7 @@ function renderDevModePanel() {
   container.appendChild(itemGrantRow);
 
   // ★要望対応：開発者用に、ガチャ石を指定した数だけその場で受け取れるようにする（アイテム付与と同じ作り）
-  container.appendChild(buildDevModeHeading(`即時${typeof tdGachaStoneName === "function" ? tdGachaStoneName() : "ガチャ石"}付与（デバッグ）`));
+  container.appendChild(buildDevModeHeading(`即時${typeof tdGachaStoneName === "function" ? tdGachaStoneName() : "魔晶石"}付与（デバッグ）`));
   const stoneGrantNote = document.createElement("p");
   stoneGrantNote.className = "devmode-note";
   stoneGrantNote.textContent = `指定した数のガチャ石を、その場で直接受け取ります。（現在の所持数：${typeof tdGetGachaStones === "function" ? tdGetGachaStones() : 0}個）`;
@@ -483,7 +483,7 @@ function debugGiveGachaStones(quantity) {
   const qty = Math.max(1, Math.floor(Number(quantity) || 1));
   tdAddGachaStones(qty);
   if (typeof displayMessage === "function") {
-    const label = typeof tdGachaStoneName === "function" ? tdGachaStoneName() : "ガチャ石";
+    const label = typeof tdGachaStoneName === "function" ? tdGachaStoneName() : "魔晶石";
     displayMessage(`${label}を${qty}個受け取った。（所持数：${tdGetGachaStones()}個）`);
   }
 }
