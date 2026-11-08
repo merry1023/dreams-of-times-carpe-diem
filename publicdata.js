@@ -33,6 +33,9 @@
 //   }
 
 const PUBLIC_DATA_COLLECTION = "publicdata";
+const PUBLIC_DATA_HISTORY_DOC = "history";   // ★公開の履歴（バージョン番号・日時・コメント）を置くドキュメント
+const PUBLIC_DATA_HISTORY_MAX = 50;          // ★履歴に残す件数（古いものから消える）
+const PUBLIC_DATA_NOTE_MAX = 200;            // ★コメントの最大文字数
 const PUBLIC_DATA_CHUNK_CHARS = 250000; // 日本語は1文字最大3バイト＝約750KB。1MiBの上限に余裕を持たせる（devdataと同じ）
 const PUBLIC_DATA_IDB_NAME = "demoge_publicdata";
 const PUBLIC_DATA_IDB_STORE = "kv";
@@ -80,7 +83,13 @@ async function publicDataGetMeta() {
   return snap.exists ? snap.data() : null;
 }
 
-async function publicDataPublish() {
+async function publicDataGetHistory() {
+  const snap = await publicDataDb().collection(PUBLIC_DATA_COLLECTION).doc(PUBLIC_DATA_HISTORY_DOC).get();
+  return snap.exists && Array.isArray(snap.data().list) ? snap.data().list : [];
+}
+
+async function publicDataPublish(note) {
+  note = String(note || "").trim().slice(0, PUBLIC_DATA_NOTE_MAX); // ★管理者向けのコメント（任意）
   await publicDataAuthReady();
   if (!publicDataIsDeveloper()) { await showGameAlert("開発者アカウントでGoogleログインしている時だけ使えます。"); return false; }
   const db = publicDataDb();
@@ -94,7 +103,7 @@ async function publicDataPublish() {
     }
     const text = JSON.stringify(payload);
     const counts = `話${payload.scenario.chapters.length}／キャラ${payload.scenario.characters.length}／敵${(payload.settings.enemies || []).length}／アイテム${(payload.settings.items || []).length}／技${(payload.settings.skills || []).length}`;
-    const ok = await showGameConfirm(`今のデータ（保存していない変更も含む、エディタ上の内容）を、全プレイヤーに公開します。\n（${counts}／約${Math.round(text.length / 1000)}KB）\nプレイヤーには、次にゲームを起動した時から反映されます。よろしいですか？`);
+    const ok = await showGameConfirm(`今のデータ（保存していない変更も含む、エディタ上の内容）を、全プレイヤーに公開します。\n（${counts}／約${Math.round(text.length / 1000)}KB）\nコメント：${note || "（なし）"}\nプレイヤーには、次にゲームを起動した時から反映されます。よろしいですか？`);
     if (!ok) return false;
 
     const chunks = [];
@@ -102,20 +111,23 @@ async function publicDataPublish() {
     const col = db.collection(PUBLIC_DATA_COLLECTION);
     // 1つのトランザクションで書く＝プレイヤーが「半分だけ新しい」データを読むことがない。
     // 各チャンクにもrevを持たせ、プレイヤー側で、メタと同じrevのチャンクだけが揃っているかを確かめる
+    const by = (typeof currentUser !== "undefined" && currentUser && currentUser.email) || ""; // auth.js
     const newRev = await db.runTransaction(async tx => {
       const snap = await tx.get(col.doc("main"));
+      const histSnap = await tx.get(col.doc(PUBLIC_DATA_HISTORY_DOC));
       const cur = snap.exists ? snap.data() : null;
-      const rev = (cur ? Number(cur.rev) || 0 : 0) + 1;
+      const rev = (cur ? Number(cur.rev) || 0 : 0) + 1;   // ★バージョン番号は、公開するたびに自動で+1される
       chunks.forEach((c, i) => tx.set(col.doc("main_c" + i), { i, rev, text: c }));
       const oldCount = cur ? Number(cur.chunks) || 0 : 0;
       for (let i = chunks.length; i < oldCount; i++) tx.delete(col.doc("main_c" + i));
-      tx.set(col.doc("main"), {
-        rev, ts, chunks: chunks.length, chars: text.length,
-        by: (typeof currentUser !== "undefined" && currentUser && currentUser.email) || "" // auth.js
-      });
+      tx.set(col.doc("main"), { rev, ts, chunks: chunks.length, chars: text.length, by, note });
+      // ★公開の履歴（新しい順）。バージョン・日時・更新者・コメント・中身の件数を残す
+      const oldList = histSnap.exists && Array.isArray(histSnap.data().list) ? histSnap.data().list : [];
+      const entry = { rev, ts, by, note, counts };
+      tx.set(col.doc(PUBLIC_DATA_HISTORY_DOC), { list: [entry].concat(oldList).slice(0, PUBLIC_DATA_HISTORY_MAX) });
       return rev;
     });
-    await showGameAlert(`プレイヤーに公開しました（rev ${newRev}）。次にゲームを起動した時から反映されます。`);
+    await showGameAlert(`プレイヤーに公開しました（バージョン ${newRev}）。次にゲームを起動した時から反映されます。`);
     return true;
   } catch (e) {
     console.error("公開に失敗しました", e);
@@ -130,25 +142,53 @@ function renderPublicDataSection(container) {
   wrap.className = "dm-section";
   wrap.innerHTML = `<h4 class="scenariobuild-subheading">🚀 プレイヤーへの公開（自動配信）</h4>
     <p class="devmode-note">押すと、今のデータ（話・キャラ・敵・アイテムなど、JSファイルの書き出しと同じ内容）が全プレイヤーに公開されます。プレイヤーは何も操作せず、<b>次にゲームを起動した時</b>から最新のデータで遊べます（JSファイルの書き出し・デプロイは不要です。クラウドが読めない時は、これまでどおりJSファイルのデータで動きます）。上の「☁ クラウドで同期」（開発者どうしの作業用）とは別の場所に置かれます。</p>
+    <div class="dm-row"><input type="text" class="dm-msg dm-public-note" maxlength="${PUBLIC_DATA_NOTE_MAX}" placeholder="公開コメント（任意。例：第六話追加・戦闘バランス調整）"></div>
     <div class="dm-row"><button type="button" class="devmode-btn dm-public-btn">🚀 プレイヤーに公開</button></div>
-    <div class="devmode-note dm-public-status">状態を確認中…</div>`;
+    <div class="devmode-note dm-public-status">状態を確認中…</div>
+    <div class="dm-public-history"></div>`;
   container.appendChild(wrap);
   const status = wrap.querySelector(".dm-public-status");
   const btn = wrap.querySelector(".dm-public-btn");
+  const noteInput = wrap.querySelector(".dm-public-note");
+  const histEl = wrap.querySelector(".dm-public-history");
+  const fmtTime = (ts) => ts ? new Date(Number(ts)).toLocaleString("ja-JP") : "?";
   async function refreshStatus() {
     await publicDataAuthReady();
-    if (!publicDataIsDeveloper()) { status.textContent = "開発者アカウントでGoogleログインしている時だけ使えます。"; btn.disabled = true; return; }
-    if (!publicDataDb()) { status.textContent = "Firestoreが利用できません。"; btn.disabled = true; return; }
+    if (!publicDataIsDeveloper()) { status.textContent = "開発者アカウントでGoogleログインしている時だけ使えます。"; btn.disabled = true; noteInput.disabled = true; return; }
+    if (!publicDataDb()) { status.textContent = "Firestoreが利用できません。"; btn.disabled = true; noteInput.disabled = true; return; }
     try {
       const meta = await publicDataGetMeta();
       status.textContent = meta
-        ? `公開中：rev ${meta.rev}（${meta.ts ? new Date(Number(meta.ts)).toLocaleString("ja-JP") : "?"}／${meta.by || "?"}）`
+        ? `現在公開中：バージョン ${meta.rev}（${fmtTime(meta.ts)}／${meta.by || "?"}）　コメント：${meta.note || "（なし）"}`
         : "まだ一度も公開していません。";
     } catch (e) { status.textContent = publicDataErrorText(e); }
+    try {
+      const list = await publicDataGetHistory();
+      histEl.innerHTML = "";
+      if (list.length === 0) return;
+      const det = document.createElement("details");
+      const sum = document.createElement("summary");
+      sum.textContent = `公開の履歴（直近${list.length}件）`;
+      det.appendChild(sum);
+      list.forEach(h => {
+        const row = document.createElement("div");
+        row.className = "dm-hist-row";
+        const info = document.createElement("div");
+        info.className = "dm-hist-info";
+        info.textContent = `バージョン ${h.rev}｜${fmtTime(h.ts)}｜${h.by || "?"}\n${h.note || "（コメントなし）"}${h.counts ? "\n" + h.counts : ""}`;
+        info.style.whiteSpace = "pre-wrap";
+        row.appendChild(info);
+        det.appendChild(row);
+      });
+      histEl.appendChild(det);
+    } catch (e) { /* 履歴が読めなくても、公開自体には影響しない */ }
   }
   btn.onclick = async () => {
     btn.disabled = true;
-    try { await publicDataPublish(); } finally { btn.disabled = false; }
+    try {
+      const done = await publicDataPublish(noteInput.value);
+      if (done) noteInput.value = "";
+    } finally { btn.disabled = false; }
     refreshStatus();
   };
   refreshStatus();
