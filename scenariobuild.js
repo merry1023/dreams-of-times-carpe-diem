@@ -2819,6 +2819,28 @@ function scenarioSearchRun(currentChapter) {
   return { hits, truncated };
 }
 
+// ★要望対応：選択肢・ifブロックの中身／条件エディタから「戻る」時、常に話の一番最初（ルート）へ戻るのではなく、
+//   そのブロックが入っている階層（親の選択肢の中身・ifの中身・話の直下）へ戻し、該当ブロックまでスクロールして強調する
+function scenarioBuildGoBackToBlockLevel(chapter, blockId) {
+  scenarioBuildEditingIfRef = null;
+  scenarioBuildEditingOptionRef = null;
+  const isRealChapter = chapter && (scenarioProject.chapters || []).some(c => c.id === chapter.id);
+  const entry = isRealChapter ? scenarioSearchCollect(chapter).find(e => e.block.id === blockId) : null;
+  const c = entry ? entry.container : null;
+  if (isRealChapter) scenarioBuildEditingChapterId = chapter.id;
+  if (!c) {
+    scenarioBuildMainView = "editor";
+  } else if (c.kind === "if") {
+    scenarioBuildEditingIfRef = { chapterId: chapter.id, blockId: c.blockId, branch: c.branch };
+    scenarioBuildMainView = "ifBranchEditor";
+  } else {
+    scenarioBuildEditingOptionRef = { chapterId: chapter.id, blockId: c.blockId, optionId: c.optionId };
+    scenarioBuildMainView = "optionEditor";
+  }
+  scenarioBuildPendingJumpBlockId = blockId; // 戻った先で、このブロックまでスクロール＋強調（scenarioSearchApplyPendingJump）
+  renderScenarioBuildPanel();
+}
+
 // 検索結果から、該当ブロックのある画面を開く
 function scenarioSearchJump(entry) {
   const chapter = entry.chapter;
@@ -3136,6 +3158,7 @@ function renderChoiceOptionEditor(container) {
   backBtn.textContent = "← ブロック一覧に戻る";
   backBtn.onclick = (event) => {
     event.stopPropagation();
+    if (chapter && block) { scenarioBuildGoBackToBlockLevel(chapter, block.id); return; } // ★この選択肢ブロックがある階層へ戻る
     scenarioBuildMainView = "editor";
     scenarioBuildEditingOptionRef = null;
     renderScenarioBuildPanel();
@@ -3191,6 +3214,7 @@ function renderIfConditionsEditor(container) {
   backBtn.textContent = "← ブロック一覧に戻る";
   backBtn.onclick = (event) => {
     event.stopPropagation();
+    if (chapter && block) { scenarioBuildGoBackToBlockLevel(chapter, block.id); return; } // ★このifブロックがある階層へ戻る
     scenarioBuildMainView = "editor";
     scenarioBuildEditingIfRef = null;
     renderScenarioBuildPanel();
