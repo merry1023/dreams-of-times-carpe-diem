@@ -91,6 +91,7 @@ const CONVENIENCE_APPS = [
   { id: "guildApp", label: "冒険者協会", icon: "🛡️", action: () => openGuildAppPanel() }, // ★冒険者協会アプリ（guild_app.js）。項目に「覚醒の儀（技）」「魔獣召喚」がある
   { id: "wazaApp", label: "覚醒技能", icon: "✨", action: () => openWazaAppPanel() }, // ★覚醒技能アプリ（waza_app.js）。覚醒した技のセット・詳細
   { id: "beastApp", label: "おとも魔獣", icon: "🐾", action: () => openBeastAppPanel() }, // ★おとも魔獣アプリ（beast_app.js）。魔獣のセット
+  { id: "glossary", label: "用語・語彙", icon: "📚", action: () => openGlossaryAppPanel() }, // ★用語・語彙アプリ（glossary_app.js）。ゲームの用語やことわざ・熟語の解説（メッセージ中の言葉をタップしても開く）
   { id: "tutorial", label: "チュートリアル", icon: "❓", action: () => openTutorialPanel() },
   { id: "credits", label: "クレジット", icon: "📜", action: () => openCredits() }
 ];
@@ -126,9 +127,11 @@ function closeAllConvenienceSubPanels() {
   const achievementsPanel = document.getElementById("achievements-panel");
   const guildAppPanel = document.getElementById("guild-app-panel");
   const beastAppPanel = document.getElementById("beast-app-panel");
+  const glossaryAppPanel = document.getElementById("glossary-app-panel");
   const wazaAppPanel = document.getElementById("waza-app-panel");
   if (typeof guildAppAbort === "function") guildAppAbort(); // guild_app.js（魔獣召喚の演出の最中でも畳めるように）
   if (typeof handleBeastAppKeyDown === "function") window.removeEventListener("keydown", handleBeastAppKeyDown); // beast_app.js
+  if (typeof handleGlossaryAppKeyDown === "function") window.removeEventListener("keydown", handleGlossaryAppKeyDown); // glossary_app.js
   if (typeof handleGuildAppKeyDown === "function") window.removeEventListener("keydown", handleGuildAppKeyDown); // guild_app.js
   if (typeof handleWazaAppKeyDown === "function") window.removeEventListener("keydown", handleWazaAppKeyDown); // waza_app.js
   window.removeEventListener("keydown", handleElementComboKeyDown);
@@ -149,6 +152,7 @@ function closeAllConvenienceSubPanels() {
   if (achievementsPanel) achievementsPanel.classList.add("hidden");
   if (guildAppPanel) guildAppPanel.classList.add("hidden");
   if (beastAppPanel) beastAppPanel.classList.add("hidden");
+  if (glossaryAppPanel) glossaryAppPanel.classList.add("hidden");
   if (wazaAppPanel) wazaAppPanel.classList.add("hidden");
   subTabSwitchBlocked = false; // ★要望対応：図鑑の分類切り替え用に止めていたタブ切り替えのQ/Eも、ここで必ず元に戻す
 }

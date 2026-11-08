@@ -9133,3 +9133,9 @@ rt {
 .waza-detail-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
 .waza-detail-table th, .waza-detail-table td { padding: 2px 6px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.15); }
 .waza-detail-table th:first-child, .waza-detail-table td:first-child { text-align: left; }
+
+/* ===== 用語・語彙アプリ（glossary_app.js） ===== */
+.glossary-list-term { font-weight: bold; font-size: 1.05em; }
+.glossary-detail-card { gap: 8px; }
+.glossary-detail-term { font-size: 1.5em; font-weight: bold; line-height: 2; }
+.glossary-detail-meaning { line-height: 1.7; }
