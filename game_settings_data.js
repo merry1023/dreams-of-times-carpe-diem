@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1794161524516,
+  "version": 1794161524517,
   "enemies": [
     {
       "id": "goblin",
@@ -24813,6 +24813,465 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "reading": "ていねいご",
       "category": "一般語彙",
       "meaning": "「です」「ます」など、相手に対して丁寧な気持ちを表す言葉づかい。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_68",
+      "term": "久遠の環",
+      "reading": "スターチス・キルクルス",
+      "category": "ゲーム用語",
+      "meaning": "「久遠」は果てしなく長く続くこと、「環」は輪のこと。玉座の男が語る、すべてを廻す大きな仕組みの名前。「スターチス・キルクルス」と読ませている。",
+      "aliases": "スターチス・キルクルス",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_69",
+      "term": "循環",
+      "reading": "じゅんかん",
+      "category": "熟語",
+      "meaning": "ひと巡りして元の所へ戻ることを、くり返すこと。血液や水、季節などが巡る様子によく使う。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_70",
+      "term": "摂理",
+      "reading": "せつり",
+      "category": "一般語彙",
+      "meaning": "世の中や自然を支配している、人の力では変えられない道理や法則。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_71",
+      "term": "裁量",
+      "reading": "さいりょう",
+      "category": "一般語彙",
+      "meaning": "自分の考えで判断して、物事を処理すること。「お前の裁量に任せる」は、やり方を相手の判断に任せるという意味。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_72",
+      "term": "御意",
+      "reading": "ぎょい",
+      "category": "一般語彙",
+      "meaning": "目上の人の考えや命令のこと。また、「仰せの通りです」と応じる時の返事。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_73",
+      "term": "遵奉",
+      "reading": "じゅんぽう",
+      "category": "一般語彙",
+      "meaning": "法律や命令、教えなどに従い、それをきちんと守ること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_74",
+      "term": "跪く",
+      "reading": "ひざまずく",
+      "category": "一般語彙",
+      "meaning": "両膝を地面や床につけて座ること。敬意や服従、祈りの気持ちを表す姿勢。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_75",
+      "term": "玉座",
+      "reading": "ぎょくざ",
+      "category": "一般語彙",
+      "meaning": "王や皇帝が座る、特別な席。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_76",
+      "term": "眼前",
+      "reading": "がんぜん",
+      "category": "一般語彙",
+      "meaning": "目の前。すぐ目の前にあること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_77",
+      "term": "仰せのまま",
+      "reading": "おおせのまま",
+      "category": "慣用句・ことわざ",
+      "meaning": "目上の人の言いつけの通りに、という意味。「仰せの通り」「仰せのままに」とも言う。",
+      "aliases": "仰せの通り、仰せのままに",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_78",
+      "term": "発現",
+      "reading": "はつげん",
+      "category": "一般語彙",
+      "meaning": "隠れていたものが、表に現れること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_79",
+      "term": "ペロンパン",
+      "reading": "",
+      "category": "ゲーム用語",
+      "meaning": "「ほぼメロンパン」と評される、程よい甘さのパン。大きさに似合わず満腹感があり、ベーカリーの一番人気。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_80",
+      "term": "バ汁ソース",
+      "reading": "",
+      "category": "ゲーム用語",
+      "meaning": "ショーロンオイルで作られるソース。たっぷり塗った食パン（バ汁ソースブレッド）が、ケツァナの大好物。",
+      "aliases": "バ汁ソースブレッド",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_81",
+      "term": "ショーロンオイル",
+      "reading": "",
+      "category": "ゲーム用語",
+      "meaning": "バ汁ソースを作るのに使われる油。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_82",
+      "term": "オーク肉",
+      "reading": "",
+      "category": "ゲーム用語",
+      "meaning": "魔物のオークの肉。安くて高タンパクなため、大通りの店でよく使われている。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_83",
+      "term": "高タンパク",
+      "reading": "こうたんぱく",
+      "category": "一般語彙",
+      "meaning": "食べ物に、タンパク質（筋肉や体のもとになる栄養素）が多く含まれていること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_84",
+      "term": "ヤミツキ",
+      "reading": "やみつき",
+      "category": "一般語彙",
+      "meaning": "一度経験すると、その魅力にとりつかれて、やめられなくなること。「病みつき」と書く。",
+      "aliases": "病みつき、やみつき",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_85",
+      "term": "ベーカリー",
+      "reading": "",
+      "category": "一般語彙",
+      "meaning": "パンを焼いて売る店。パン屋。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_86",
+      "term": "カジノ",
+      "reading": "",
+      "category": "一般語彙",
+      "meaning": "お金やコインを賭けて遊ぶ、娯楽施設。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_87",
+      "term": "オークション",
+      "reading": "",
+      "category": "一般語彙",
+      "meaning": "品物を、買いたい人たちが値段を競り合って、いちばん高い値をつけた人が買う売り方。競売。",
+      "aliases": "競売、競り",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_88",
+      "term": "スペル=マ・ギアズオークション",
+      "reading": "すぺるま・ぎあずおーくしょん",
+      "category": "ゲーム用語",
+      "meaning": "魔導王国にあるオークション会場の名前。競りは五日に一回開かれる。",
+      "aliases": "スペル＝マ・ギアズオークション、スペル・マ・ギアズオークション",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_89",
+      "term": "貸切",
+      "reading": "かしきり",
+      "category": "一般語彙",
+      "meaning": "店や乗り物などを、一定の時間、特定の客のためだけに借り切ること。",
+      "aliases": "貸し切り",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_90",
+      "term": "貴賓",
+      "reading": "きひん",
+      "category": "一般語彙",
+      "meaning": "身分の高い、大切な客。「ご貴賓」の形で使うことが多い。",
+      "aliases": "ご貴賓",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_91",
+      "term": "衛兵",
+      "reading": "えいへい",
+      "category": "一般語彙",
+      "meaning": "城や重要な場所を守り、警備する兵士。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_92",
+      "term": "門前払い",
+      "reading": "もんぜんばらい",
+      "category": "慣用句・ことわざ",
+      "meaning": "訪ねてきた人に会わず、門の前で追い返すこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_93",
+      "term": "紹介状",
+      "reading": "しょうかいじょう",
+      "category": "一般語彙",
+      "meaning": "人や組織に、その人物を引き合わせるために書く手紙。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_94",
+      "term": "縄張り",
+      "reading": "なわばり",
+      "category": "一般語彙",
+      "meaning": "動物や集団が、自分たちのものとして守っている領域。「テリトリー」とも言い、本文ではその読みでルビが振られている。",
+      "aliases": "縄張、テリトリー",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_95",
+      "term": "何人たりとも",
+      "reading": "なんぴとたりとも",
+      "category": "慣用句・ことわざ",
+      "meaning": "「誰であろうとも」「例外なく」という意味の、古風で大げさな言い回し。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_96",
+      "term": "夜の大運動会",
+      "reading": "ないと・めるとだうん",
+      "category": "ネット・俗語",
+      "meaning": "夜に二人きりで行う、大人向けの行為を、ぼかして冗談めかした言い回し。「ナイト・メルトダウン」と読ませている。",
+      "aliases": "ナイト・メルトダウン",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_97",
+      "term": "ブーメラン",
+      "reading": "",
+      "category": "ネット・俗語",
+      "meaning": "他人を批判した言葉が、そっくりそのまま自分にも当てはまって返ってくること。「ブーメラン発言」とも言う。",
+      "aliases": "ブーメラン発言",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_98",
+      "term": "奔放",
+      "reading": "ほんぽう",
+      "category": "一般語彙",
+      "meaning": "世間の決まりや他人の目にとらわれず、思いのままに振る舞うこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_99",
+      "term": "況して",
+      "reading": "まして",
+      "category": "一般語彙",
+      "meaning": "前に挙げたことよりも、後のことの方がなおさら当てはまる、という意味。「況して魔導王国となると」＝まして魔導王国となると、の形で使う。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_100",
+      "term": "鮨詰め",
+      "reading": "すしづめ",
+      "category": "一般語彙",
+      "meaning": "人や物が、狭い所にぎっしりと詰め込まれていること。「すし詰め」とも書く。",
+      "aliases": "すし詰め、寿司詰め",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_101",
+      "term": "治安所",
+      "reading": "ちあんしょ",
+      "category": "ゲーム用語",
+      "meaning": "街の治安を守る場所。落とし物などを届ける先として挙げられている。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_102",
+      "term": "聞き込み",
+      "reading": "ききこみ",
+      "category": "一般語彙",
+      "meaning": "事件や探し物などについて、周りの人に話を聞いて情報を集めること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_103",
+      "term": "お人好し",
+      "reading": "おひとよし",
+      "category": "一般語彙",
+      "meaning": "人を疑わず、頼まれると断れないような、性格の良すぎる人。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_104",
+      "term": "喧嘩を売る",
+      "reading": "けんかをうる",
+      "category": "慣用句・ことわざ",
+      "meaning": "自分から相手に争いをしかけること。本文では「喧嘩ァ売ってるんか」と、すごんだ言い方になっている。",
+      "aliases": "喧嘩ァ売って、ケンカを売る、喧嘩を売って",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_105",
+      "term": "舐める",
+      "reading": "なめる",
+      "category": "慣用句・ことわざ",
+      "meaning": "本来は舌で触れることだが、「舐めている」は、相手を見くびって馬鹿にしている、という意味でよく使う。",
+      "aliases": "舐めて",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_106",
+      "term": "茶番",
+      "reading": "ちゃばん",
+      "category": "一般語彙",
+      "meaning": "底が見えていて、くだらない、馬鹿馬鹿しい行いや芝居のこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_107",
+      "term": "柄にもない",
+      "reading": "がらにもない",
+      "category": "慣用句・ことわざ",
+      "meaning": "その人の性格や立場に似合わない、ということ。",
+      "aliases": "柄にも無い",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_108",
+      "term": "足が棒になる",
+      "reading": "あしがぼうになる",
+      "category": "慣用句・ことわざ",
+      "meaning": "長く歩いたり立ち続けたりして、足がひどく疲れること。",
+      "aliases": "足が棒に",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_109",
+      "term": "後ろ髪を引かれる",
+      "reading": "うしろがみをひかれる",
+      "category": "慣用句・ことわざ",
+      "meaning": "未練が残って、その場をなかなか離れられないこと。",
+      "aliases": "後ろ髪を引かれ",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_110",
+      "term": "喧騒",
+      "reading": "けんそう",
+      "category": "一般語彙",
+      "meaning": "人の声や物音で、騒がしいこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_111",
+      "term": "静寂",
+      "reading": "せいじゃく",
+      "category": "一般語彙",
+      "meaning": "物音がせず、静まりかえっていること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_112",
+      "term": "一苦労",
+      "reading": "ひとくろう",
+      "category": "一般語彙",
+      "meaning": "ちょっと骨が折れること。少し苦労すること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_113",
+      "term": "気を取り直す",
+      "reading": "きをとりなおす",
+      "category": "慣用句・ことわざ",
+      "meaning": "落ち込んだ気持ちを立て直して、また元気を出すこと。",
+      "aliases": "気を取り直し",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_114",
+      "term": "隣国",
+      "reading": "りんごく",
+      "category": "一般語彙",
+      "meaning": "となりの国。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_115",
+      "term": "二等兵",
+      "reading": "にとうへい",
+      "category": "一般語彙",
+      "meaning": "軍隊で、いちばん下の階級の兵士。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_116",
+      "term": "特攻",
+      "reading": "とっこう",
+      "category": "一般語彙",
+      "meaning": "「特別攻撃」の略。命がけで敵に突っ込むこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_117",
+      "term": "上官",
+      "reading": "じょうかん",
+      "category": "一般語彙",
+      "meaning": "軍隊などで、自分より上の階級にいる人。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_118",
+      "term": "死地",
+      "reading": "しち",
+      "category": "一般語彙",
+      "meaning": "死ぬかもしれない、危険な場所や立場。",
       "aliases": "",
       "example": ""
     }

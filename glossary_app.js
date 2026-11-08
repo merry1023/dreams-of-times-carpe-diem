@@ -210,6 +210,20 @@ function glossaryBack() {
   renderGlossaryAppPanel(0);
 }
 
+// ★解説画面で「前へ／次へ」飛ぶ時の並び（今見ている分類の一覧と同じ読み順。メッセージのタップから来た時は、すべての言葉）
+function glossaryNavList() {
+  return glossarySortedEntries(glossaryEntries().filter(e => glossaryCategoryFilter === "all" || (e.category || "その他") === glossaryCategoryFilter));
+}
+
+function glossaryMoveDetail(step) {
+  const list = glossaryNavList();
+  if (list.length <= 1) return;
+  const at = list.findIndex(e => e.id === glossaryDetailId);
+  const next = list[((at < 0 ? 0 : at) + step + list.length) % list.length];
+  glossaryDetailId = next.id;
+  renderGlossaryAppPanel(0); // フォーカスは、解説を開いた時と同じ位置
+}
+
 function glossaryGo(view, focusIndex = 0) {
   glossaryView = view;
   renderGlossaryAppPanel(focusIndex);
@@ -226,6 +240,12 @@ function handleGlossaryAppKeyDown(event) {
   if (KEY_CONFIG.cancelKeys.includes(event.key)) {
     event.preventDefault();
     glossaryBack();
+    return;
+  }
+  // ★要望対応：解説画面で左右キーを押すと、前後の用語へ飛ぶ（一覧と同じ並び順。端まで行ったら反対側へ回る）
+  if (glossaryView === "detail" && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+    event.preventDefault();
+    glossaryMoveDetail(event.key === "ArrowLeft" ? -1 : 1);
     return;
   }
   const buttons = Array.from(panel.querySelectorAll("button:not([disabled])"));
@@ -335,6 +355,11 @@ function glossaryRenderDetail(panel) {
     card.appendChild(row);
   }
   panel.appendChild(card);
+  const navList = glossaryNavList();
+  if (navList.length > 1) {
+    const at = navList.findIndex(e => e.id === entry.id);
+    panel.appendChild(guildAppEl("div", "element-combo-note", `← → キーで前後の用語へ（${at + 1} / ${navList.length}）`));
+  }
   if (glossaryFromMessage) {
     panel.appendChild(guildAppButton("用語・語彙の一覧を見る", () => { glossaryFromMessage = true; glossaryGo("home"); }));
     glossaryBackButton(panel, "◀ メッセージに戻る");
