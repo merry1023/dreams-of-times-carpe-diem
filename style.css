@@ -9139,3 +9139,6 @@ rt {
 .glossary-detail-card { gap: 8px; }
 .glossary-detail-term { font-size: 1.5em; font-weight: bold; line-height: 2; }
 .glossary-detail-meaning { line-height: 1.7; }
+
+/* エディタのプレビューだけ、用語リンクをした文字に点線を引いて分かるようにする（ゲーム画面では見た目は変えない） */
+.scenariobuild-ruby-preview .glossary-link { border-bottom: 1px dotted currentColor; }

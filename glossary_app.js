@@ -8,6 +8,8 @@
 //     term＝見出しの言葉／reading＝読み（ルビ）／category＝分類／meaning＝意味の解説（ルビ記法 {/漢字}={\かんじ} も使える）
 //     aliases＝同じ言葉として扱う別の書き方（「、」「,」区切り。例：月刊魔法記事の「月間魔法記事」）／example＝用例（任意）
 // ★メッセージ表示中に、解説のある言葉をタップ（クリック）すると、このアプリの解説ページへ飛ぶ。
+//   リンクのしかたは2つ：①話編集のブロックで、文字を選んで言葉にリンクさせる（{/文字}={@用語ID}。ルビとよく似た書き方）
+//   ②リンクが無い場所は、「言葉」「別の書き方」と同じ文字を自動で探す（autoLink が false の言葉は自動の対象外）
 //   言葉の見た目は変えない（色も変わらない）。解説のある言葉以外をタップした時は、今まで通りメッセージが進む。
 //   解説を見終わったら「メッセージに戻る」（またはキャンセルキー）で、元の画面に戻ってメッセージの続きを読める。
 // ★キー操作：上下＝ボタンの移動／決定キー＝押す／キャンセルキー＝ひとつ前の画面へ
@@ -294,6 +296,7 @@ function glossaryCharIndexAtPoint(textEl, map, x, y) {
 function glossaryFindEntryAt(plain, index) {
   let best = null, bestLen = 0;
   glossaryEntries().forEach(entry => {
+    if (entry.autoLink === false) return;   // 「自動でリンクする」をオフにした言葉は、ブロックで指定したリンクだけ
     glossaryKeysOf(entry).forEach(key => {
       if (key.length <= bestLen) return;
       let from = Math.max(0, index - key.length + 1);
@@ -316,11 +319,18 @@ function glossaryHandleMessageClick(event) {
   if (typeof isReplayingLog !== "undefined" && isReplayingLog) return;
   if (glossaryEntries().length === 0) return;
   if (typeof isPlayTabEnabled === "function" && !isPlayTabEnabled("tab-convenience")) return;   // 便利タブが無いシナリオでは、アプリに飛べない
-  const map = glossaryMessageTextMap(textEl);
-  if (!map.plain) return;
-  const index = glossaryCharIndexAtPoint(textEl, map, event.clientX, event.clientY);
-  if (index < 0) return;
-  const entry = glossaryFindEntryAt(map.plain, index);
+  // ① 話編集のブロックで、{/文字}={@用語ID} とリンクさせた文字（見た目は変わらない）
+  let entry = null;
+  const linkEl = event.target.closest ? event.target.closest("[data-glossary-id]") : null;
+  if (linkEl && textEl.contains(linkEl)) entry = glossaryEntryById(linkEl.getAttribute("data-glossary-id"));
+  // ② リンクが無い場所は、「言葉」「別の書き方」と同じ文字を自動で探す（言葉ごとに「自動でリンクする」をオフにできる）
+  if (!entry) {
+    const map = glossaryMessageTextMap(textEl);
+    if (!map.plain) return;
+    const index = glossaryCharIndexAtPoint(textEl, map, event.clientX, event.clientY);
+    if (index < 0) return;
+    entry = glossaryFindEntryAt(map.plain, index);
+  }
   if (!entry) return;
   // 解説を開く（メッセージを進めてしまわないよう、他のクリック処理へは届かせない）
   event.stopPropagation();
