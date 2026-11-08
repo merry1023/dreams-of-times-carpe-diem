@@ -21,9 +21,44 @@ let glossaryFromMessage = false;      // メッセージのタップから来た
 let glossaryReturnTabId = "";         // メッセージのタップから来た時、元いたタブ
 
 // ===== データの読み出し =====
-function glossaryEntries() {
+// ★エディタに登録されている全ての言葉（まだシナリオに出ていないものも含む）
+function glossaryAllEntries() {
   const list = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.glossary)) ? scenarioProject.glossary : [];
   return list.filter(e => e && typeof e.term === "string" && e.term.trim());
+}
+
+// ★要望対応：言葉は、シナリオ（メッセージ）に出てくるまでは伏せる。
+//   一度でもメッセージ欄・選択肢に出た言葉（見出し or 別の書き方）だけが「見つけた言葉」になり、
+//   用語・語彙アプリの一覧やメッセージのタップ解説に現れる。見つけた言葉の記録はセーブデータに乗る
+let glossarySeenIds = {};   // { 言葉のid: true }
+
+function glossaryEntries() {
+  return glossaryAllEntries().filter(e => glossarySeenIds[e.id]);
+}
+
+// メッセージの文字（ルビ記法は本文に直して）に、まだ見つけていない言葉が含まれていれば「見つけた」にする
+function glossaryMarkSeenFromText(text) {
+  if (typeof text !== "string" || !text) return;
+  const plain = (typeof stripRubyNotation === "function") ? stripRubyNotation(text) : text;
+  glossaryAllEntries().forEach(entry => {
+    if (glossarySeenIds[entry.id]) return;
+    if (glossaryKeysOf(entry).some(key => plain.includes(key))) glossarySeenIds[entry.id] = true;
+  });
+}
+
+function glossaryResetSeen() { glossarySeenIds = {}; }
+
+function glossaryBuildSeenForSave() { return Object.keys(glossarySeenIds).filter(id => glossarySeenIds[id]); }
+
+// ロード時：セーブに記録された「見つけた言葉」を復元する。
+// 記録が無い古いセーブは、残っているログの文章から見つけ直す（ログは直近分だけなので、足りない分は取りこぼす）
+function glossaryRestoreSeen(data) {
+  glossarySeenIds = {};
+  if (data && Array.isArray(data.glossarySeen)) {
+    data.glossarySeen.forEach(id => { glossarySeenIds[id] = true; });
+  } else if (data && Array.isArray(data.messageLog)) {
+    data.messageLog.forEach(entry => { if (entry && typeof entry.text === "string") glossaryMarkSeenFromText(entry.text); });
+  }
 }
 
 function glossaryEntryById(id) {

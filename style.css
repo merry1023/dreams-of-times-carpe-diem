@@ -9139,3 +9139,19 @@ rt {
 .glossary-detail-card { gap: 8px; }
 .glossary-detail-term { font-size: 1.5em; font-weight: bold; line-height: 2; }
 .glossary-detail-meaning { line-height: 1.7; }
+
+/* ===== シナリオエディタ：話編集のブロック検索 ===== */
+.scenariobuild-search-panel { margin: 8px 0 12px; }
+.scenariobuild-search-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.scenariobuild-search-controls input { flex: 1 1 200px; min-width: 0; }
+.scenariobuild-search-controls select { flex: 1 1 200px; min-width: 0; max-width: 100%; }
+.scenariobuild-search-results { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; max-height: 40vh; overflow-y: auto; }
+.scenariobuild-search-hit { display: block; text-align: left; width: 100%; white-space: normal; }
+.scenariobuild-search-hit-head { font-size: 0.85em; opacity: 0.8; }
+.scenariobuild-search-hit-body { margin-top: 2px; word-break: break-all; }
+.scenariobuild-search-hit-body mark { background: #ffe066; color: #000; padding: 0 1px; }
+.scenariobuild-chapter-row.scenariobuild-search-flash { animation: scenariobuild-search-flash 2.2s ease-out; }
+@keyframes scenariobuild-search-flash {
+  0%, 60% { box-shadow: 0 0 0 3px #ffe066; background-color: rgba(255, 224, 102, 0.25); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}

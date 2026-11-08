@@ -2605,6 +2605,229 @@ function getEditingChapter() {
   return scenarioProject.chapters.find(c => c.id === scenarioBuildEditingChapterId) || null;
 }
 
+// ===================================================================
+// ===== 話編集：ブロック検索（全部／章ごと／話ごと） =====
+// ===================================================================
+// ★要望対応：セリフ・地の文などの文章から、該当するブロックを探して一覧表示する。
+//   ifブロックの中・選択肢の中にあるブロックは「【※入れ子】」と表示される。
+//   結果を選ぶと、そのブロックがある画面（話のブロック一覧／ifの中身／選択肢の中身）を開いて、該当ブロックまで飛ぶ
+const SCENARIO_SEARCH_TEXT_KEYS = ["speaker", "text", "prompt", "message", "defeatMessage", "farewellMessage", "nickname", "title", "endingName", "endroll"];
+const SCENARIO_SEARCH_MAX_RESULTS = 200;
+let scenarioBuildSearchState = { open: false, query: "", scope: "current" }; // scope："current"（今開いている話）／"all"／"arc:章id"／"arc:__none__"／"chapter:話id"
+let scenarioBuildPendingJumpBlockId = null; // ★検索結果から飛んだ直後、再描画後にスクロール・強調するブロックのid
+
+// ブロックの中の「検索対象の文章」を、[{ label, text }] で返す（選択肢の文言も含む）
+function scenarioSearchTextsOf(block) {
+  const list = [];
+  SCENARIO_SEARCH_TEXT_KEYS.forEach(key => {
+    if (typeof block[key] === "string" && block[key]) list.push({ label: key === "speaker" ? "話者" : "", text: block[key] });
+  });
+  if (block.type === "choice" && Array.isArray(block.options)) {
+    block.options.forEach(opt => { if (opt && typeof opt.text === "string" && opt.text) list.push({ label: "選択肢", text: opt.text }); });
+  }
+  return list;
+}
+
+// 話の中の全ブロックを、入れ子の中まで順に集める。container＝そのブロックが直接入っている場所（nullなら話の直下）
+function scenarioSearchCollect(chapter) {
+  const out = [];
+  function walk(blocks, container, trail) {
+    (blocks || []).forEach((b, i) => {
+      const myTrail = trail.concat([String(i + 1)]);
+      out.push({ block: b, container, nested: !!container, number: myTrail.join("›"), chapter });
+      if (b.type === "if") {
+        walk(b.trueBlocks, { kind: "if", blockId: b.id, branch: "true" }, myTrail);
+        walk(b.falseBlocks, { kind: "if", blockId: b.id, branch: "false" }, myTrail);
+      } else if (b.type === "choice") {
+        (b.options || []).forEach(opt => walk(opt.blocks, { kind: "choice", blockId: b.id, optionId: opt.id }, myTrail));
+      }
+    });
+  }
+  walk(chapter.blocks, null, []);
+  return out;
+}
+
+function scenarioSearchChaptersInScope(currentChapter) {
+  const chapters = scenarioProject.chapters || [];
+  const scope = scenarioBuildSearchState.scope;
+  if (scope === "all") return chapters;
+  if (scope === "arc:__none__") return chapters.filter(c => !c.arcId);
+  if (scope.indexOf("arc:") === 0) return chapters.filter(c => c.arcId === scope.slice(4));
+  if (scope.indexOf("chapter:") === 0) return chapters.filter(c => c.id === scope.slice(8));
+  return currentChapter ? [currentChapter] : [];
+}
+
+function scenarioSearchRun(currentChapter) {
+  const terms = scenarioBuildSearchState.query.toLowerCase().split(/[\s　]+/).filter(Boolean);
+  if (terms.length === 0) return { hits: [], truncated: false };
+  const hits = [];
+  let truncated = false;
+  scenarioSearchChaptersInScope(currentChapter).forEach(chapter => {
+    scenarioSearchCollect(chapter).forEach(entry => {
+      if (truncated) return;
+      const texts = scenarioSearchTextsOf(entry.block);
+      if (texts.length === 0) return;
+      const rawAll = texts.map(t => t.text).join("\n").toLowerCase();
+      const plainAll = stripRubyNotation(texts.map(t => t.text).join("\n")).toLowerCase(); // ルビ記法を外した本文でも探す
+      if (!terms.every(t => rawAll.includes(t) || plainAll.includes(t))) return;
+      if (hits.length >= SCENARIO_SEARCH_MAX_RESULTS) { truncated = true; return; }
+      // 表示用の一文：最初の語が見つかった文章から切り出す
+      let snippetSource = texts[0], pos = -1, shown = "";
+      for (const t of texts) {
+        const plain = stripRubyNotation(t.text);
+        const at = plain.toLowerCase().indexOf(terms[0]);
+        if (at >= 0) { snippetSource = t; pos = at; shown = plain; break; }
+      }
+      if (pos < 0) { shown = stripRubyNotation(snippetSource.text); }
+      hits.push({ entry, shown: shown.replace(/\s+/g, " "), pos: Math.max(pos, 0), matchLen: pos >= 0 ? terms[0].length : 0, label: snippetSource.label });
+    });
+  });
+  return { hits, truncated };
+}
+
+// 検索結果から、該当ブロックのある画面を開く
+function scenarioSearchJump(entry) {
+  const chapter = entry.chapter;
+  scenarioBuildEditingChapterId = chapter.id;
+  scenarioBuildEditingIfRef = null;
+  scenarioBuildEditingOptionRef = null;
+  const c = entry.container;
+  if (!c) {
+    scenarioBuildMainView = "editor";
+  } else if (c.kind === "if") {
+    scenarioBuildEditingIfRef = { chapterId: chapter.id, blockId: c.blockId, branch: c.branch };
+    scenarioBuildMainView = "ifBranchEditor";
+  } else {
+    scenarioBuildEditingOptionRef = { chapterId: chapter.id, blockId: c.blockId, optionId: c.optionId };
+    scenarioBuildMainView = "optionEditor";
+  }
+  scenarioBuildPendingJumpBlockId = entry.block.id;
+  renderScenarioBuildPanel();
+}
+
+// 再描画後に、飛び先のブロックまでスクロールして一瞬強調する
+function scenarioSearchApplyPendingJump() {
+  const id = scenarioBuildPendingJumpBlockId;
+  if (!id) return;
+  scenarioBuildPendingJumpBlockId = null;
+  setTimeout(() => {
+    const rows = document.querySelectorAll("#scenariobuild-main [data-block-id]");
+    const row = Array.from(rows).find(r => r.dataset.blockId === id);
+    if (!row) return;
+    if (row.scrollIntoView) row.scrollIntoView({ block: "center", behavior: "smooth" });
+    row.classList.add("scenariobuild-search-flash");
+    setTimeout(() => row.classList.remove("scenariobuild-search-flash"), 2200);
+  }, 0);
+}
+
+function buildScenarioSearchPanel(currentChapter) {
+  const state = scenarioBuildSearchState;
+  const wrap = document.createElement("div");
+  wrap.className = "scenariobuild-search-panel";
+  // ★敵の演出・ボスイベントなど、話ではないブロック一覧の中では出さない（検索対象は「話」のブロックだけ）
+  if (!currentChapter || !(scenarioProject.chapters || []).some(c => c.id === currentChapter.id)) return wrap;
+  
+  const toggleBtn = document.createElement("button");
+  toggleBtn.className = "devmode-btn";
+  toggleBtn.textContent = state.open ? "🔍 検索を閉じる" : "🔍 ブロックを検索";
+  toggleBtn.onclick = (event) => {
+    event.stopPropagation();
+    state.open = !state.open;
+    renderScenarioBuildPanel();
+  };
+  wrap.appendChild(toggleBtn);
+  if (!state.open) return wrap;
+  
+  const controls = document.createElement("div");
+  controls.className = "scenariobuild-search-controls";
+  
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "scenariobuild-title-input";
+  input.placeholder = "探す言葉（スペース区切りで、全部を含むブロック）";
+  input.value = state.query;
+  
+  const scopeSelect = document.createElement("select");
+  scopeSelect.className = "scenariobuild-jump-select";
+  const addOption = (parent, value, label) => {
+    const o = document.createElement("option");
+    o.value = value;
+    o.textContent = label;
+    parent.appendChild(o);
+  };
+  addOption(scopeSelect, "current", `この話だけ（${currentChapter ? currentChapter.title : "—"}）`);
+  addOption(scopeSelect, "all", "全部（すべての話）");
+  const arcs = scenarioProject.chapterArcs || [];
+  if (arcs.length > 0 || (scenarioProject.chapters || []).some(c => !c.arcId)) {
+    const arcGroup = document.createElement("optgroup");
+    arcGroup.label = "章ごと";
+    arcs.forEach(arc => addOption(arcGroup, `arc:${arc.id}`, `章：${arc.name}`));
+    if (arcs.length > 0 && (scenarioProject.chapters || []).some(c => !c.arcId)) addOption(arcGroup, "arc:__none__", "章：未分類");
+    scopeSelect.appendChild(arcGroup);
+  }
+  const chapterGroup = document.createElement("optgroup");
+  chapterGroup.label = "話ごと";
+  (scenarioProject.chapters || []).forEach(c => addOption(chapterGroup, `chapter:${c.id}`, `話：${c.title}`));
+  scopeSelect.appendChild(chapterGroup);
+  scopeSelect.value = state.scope;
+  if (scopeSelect.value !== state.scope) { state.scope = "current"; scopeSelect.value = "current"; } // 削除された章・話を指していたら戻す
+  
+  controls.appendChild(input);
+  controls.appendChild(scopeSelect);
+  wrap.appendChild(controls);
+  
+  const resultEl = document.createElement("div");
+  resultEl.className = "scenariobuild-search-results";
+  wrap.appendChild(resultEl);
+  
+  const renderResults = () => {
+    resultEl.innerHTML = "";
+    if (!state.query.trim()) return;
+    const { hits, truncated } = scenarioSearchRun(currentChapter);
+    const countEl = document.createElement("div");
+    countEl.className = "devmode-note";
+    countEl.textContent = hits.length === 0 ? "見つかりませんでした。" : `${hits.length}件${truncated ? `以上（先頭${SCENARIO_SEARCH_MAX_RESULTS}件のみ表示）` : ""}見つかりました。選ぶとそのブロックへ飛びます。`;
+    resultEl.appendChild(countEl);
+    hits.forEach(hit => {
+      const { entry } = hit;
+      const btn = document.createElement("button");
+      btn.className = "devmode-btn scenariobuild-search-hit";
+      const head = document.createElement("div");
+      head.className = "scenariobuild-search-hit-head";
+      head.textContent = `${entry.chapter.title}｜ブロック${entry.number}｜${SCENARIO_BLOCK_TYPES[entry.block.type] || entry.block.type}${entry.nested ? "　【※入れ子】" : ""}`;
+      const body = document.createElement("div");
+      body.className = "scenariobuild-search-hit-body";
+      const from = Math.max(0, hit.pos - 12);
+      const to = Math.min(hit.shown.length, hit.pos + hit.matchLen + 40);
+      if (hit.label) body.appendChild(document.createTextNode(`[${hit.label}] `));
+      if (from > 0) body.appendChild(document.createTextNode("…"));
+      body.appendChild(document.createTextNode(hit.shown.slice(from, hit.pos)));
+      if (hit.matchLen > 0) {
+        const mark = document.createElement("mark");
+        mark.textContent = hit.shown.slice(hit.pos, hit.pos + hit.matchLen);
+        body.appendChild(mark);
+      }
+      body.appendChild(document.createTextNode(hit.shown.slice(hit.pos + hit.matchLen, to)));
+      if (to < hit.shown.length) body.appendChild(document.createTextNode("…"));
+      btn.appendChild(head);
+      btn.appendChild(body);
+      btn.onclick = (event) => { event.stopPropagation(); scenarioSearchJump(entry); };
+      resultEl.appendChild(btn);
+    });
+  };
+  
+  let timer = null;
+  input.oninput = () => {
+    state.query = input.value;
+    clearTimeout(timer);
+    timer = setTimeout(renderResults, 150); // 入力のたびに探すと重いので、少し待つ（入力欄は作り直さないのでカーソルは保たれる）
+  };
+  input.addEventListener("keydown", (event) => { event.stopPropagation(); }); // ★エディタ側のショートカットに奪われないようにする
+  scopeSelect.onchange = () => { state.scope = scopeSelect.value; renderResults(); };
+  renderResults();
+  return wrap;
+}
+
 function renderScenarioBlockEditor(container) {
   const chapter = getEditingChapter();
   if (!chapter) {
@@ -2632,6 +2855,9 @@ function renderScenarioBlockEditor(container) {
   introEl.className = "devmode-note";
   introEl.textContent = "上から順番に実行されます。ブロックとブロックの間の「＋」から、その位置に新しいブロックを差し込めます。「選択肢」「戦闘」は分岐先ブロックを個別に指定できます（未指定なら次のブロックに進みます）。";
   container.appendChild(introEl);
+  
+  container.appendChild(buildScenarioSearchPanel(chapter)); // ★ブロック検索（全部／章／話ごと）
+  scenarioSearchApplyPendingJump();
   
   const listEl = document.createElement("div");
   listEl.className = "scenariobuild-block-list";
@@ -2803,6 +3029,9 @@ function renderChoiceOptionEditor(container) {
       : "内容を最後まで実行し終えると、選択肢ブロックの次に自然に進みます。");
   container.appendChild(introEl);
   
+  container.appendChild(buildScenarioSearchPanel(chapter)); // ★ブロック検索（全部／章／話ごと）
+  scenarioSearchApplyPendingJump();
+  
   const fakeChapter = { id: chapter.id, blocks: option.blocks }; // ★ブロック一覧描画系の関数をそのまま使い回すための仮の器
   
   const listEl = document.createElement("div");
@@ -2890,6 +3119,9 @@ function renderIfBranchEditor(container) {
   introEl.className = "devmode-note";
   introEl.textContent = "話のブロックと同じように、会話・分岐・戦闘などを自由に組み立てられます。内容を最後まで実行し終えると、ifブロックの次に自然に進みます。";
   container.appendChild(introEl);
+  
+  container.appendChild(buildScenarioSearchPanel(chapter)); // ★ブロック検索（全部／章／話ごと）
+  scenarioSearchApplyPendingJump();
   
   const fakeChapter = { id: chapter.id, blocks: block[key] }; // ★ブロック一覧描画系の関数をそのまま使い回すための仮の器
   
@@ -3284,6 +3516,7 @@ function blockPreviewText(block) {
 function buildScenarioBlockRow(chapter, block, index) {
   const row = document.createElement("div");
   row.className = "scenariobuild-chapter-row";
+  row.dataset.blockId = block.id; // ★話内検索の結果から該当ブロックへ飛ぶ時の目印
   // ★バグ修正：以前はrow全体をdraggable=trueにしていたため、セリフ本文などのtextarea内で
   //   文字をドラッグして選択しようとしても、ブラウザがそれを「行の並び替えドラッグ」だと
   //   誤認してしまい、テキスト選択ができなかった。draggableは☰ハンドルだけに絞り、
