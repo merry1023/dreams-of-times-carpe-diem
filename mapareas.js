@@ -41,18 +41,18 @@ function renderMapAreaManager(container) {
   addBtn.textContent = "＋新しいエリアを追加";
   addBtn.onclick = (event) => {
     event.stopPropagation();
-    createNewMapArea();
+    startMapAreaPlacement();
   };
+  syncMapAreaAddButton(addBtn);
   container.appendChild(addBtn);
   
-  // ★要望対応：新しいエリアは「今選んでいるエリア」につながって作られる。つなぎ先が分かるように表示する
-  const attachNoteEl = document.createElement("p");
-  attachNoteEl.className = "devmode-note";
-  const attachNode = getMapEditorAddAttachNode(getMapEditorNodes());
-  attachNoteEl.textContent = attachNode
-    ? `新しいエリアは、いま選んでいる「${attachNode.label}」につながって作られます（マップ上で別のエリアを選ぶと変わります）。`
-    : "新しいエリアは、カリの村につながって作られます（マップ上でエリアを選ぶと、そのエリアにつながります）。";
-  container.appendChild(attachNoteEl);
+  // ★要望対応：新しいエリアは、どこにもつなげず、地図でクリック／タップした場所に作る
+  const placeNoteEl = document.createElement("p");
+  placeNoteEl.className = "devmode-note" + (mapEditorPlaceMode ? " scenariobuild-condition" : "");
+  placeNoteEl.textContent = mapEditorPlaceMode
+    ? "左の地図の、エリアを置きたい場所をクリック（タップ）してください。やめる時は、もう一度ボタンを押します。"
+    : "ボタンを押したあと、地図をクリック（タップ）した場所に新しいエリアが作られます。どこにもつながらない状態で作られるので、必要なら「🔗 線をつなぐ／切る」でつなげてください。";
+  container.appendChild(placeNoteEl);
   
   const countEl = document.createElement("p");
   countEl.className = "devmode-note scenariobuild-condition";
@@ -255,46 +255,36 @@ function renderMapAreaManager(container) {
   container.appendChild(listEl);
 }
 
-// ★要望対応：新しいエリアをつなぐ先（＝今マップ上で選んでいるエリア）を返す。
-//   選んでいるものが無い（経路を選んでいる・エリアが消えた等）時は、カリの村（無ければ先頭）を返す
-function getMapEditorAddAttachNode(nodes) {
-  if (!nodes || nodes.length === 0) return null;
-  const selected = nodes.find(n => n.id === mapEditorSelectedNodeId);
-  if (selected) return selected;
-  return nodes.find(n => n.id === "village") || nodes[0];
+// ★要望対応：「新しいエリアを追加」を押すと配置モードになり、地図をクリック／タップした場所に、
+//   どこにもつながらない状態（孤立）でエリアを作る
+let mapEditorPlaceMode = false;
+
+function syncMapAreaAddButton(btn) {
+  btn.textContent = mapEditorPlaceMode ? "📍 置く場所を地図でクリック…（押すとキャンセル）" : "＋新しいエリアを追加";
+  btn.classList.toggle("scenariobuild-filter-active", mapEditorPlaceMode);
 }
 
-// ★要望対応：つなぎ先のエリアの近くで、他のエリアと重ならない空いた場所を探す
-function findFreeMapAreaPositionNear(base, nodes) {
-  const clamp = (v) => Math.max(4, Math.min(96, v));
-  const isFree = (x, y) => nodes.every(n => Math.hypot(n.x - x, n.y - y) >= 9);
-  for (const dist of [16, 24, 32]) {
-    for (let deg = 0; deg < 360; deg += 30) { // 右→右下→…の順に、空いている方向を探す
-      const rad = deg * Math.PI / 180;
-      const x = clamp(Math.round(base.x + Math.cos(rad) * dist));
-      const y = clamp(Math.round(base.y + Math.sin(rad) * dist));
-      if (isFree(x, y)) return { x, y };
-    }
-  }
-  return { x: clamp(base.x + 12), y: clamp(base.y + 12) };
+function startMapAreaPlacement() {
+  mapEditorPlaceMode = !mapEditorPlaceMode; // ★もう一度押すとキャンセル
+  mapEditorConnectMode = false;
+  mapEditorConnectFirstId = null;
+  scenarioBuildMainView = "maps";
+  renderScenarioBuildPanel();
 }
 
-function createNewMapArea() {
+function createNewMapAreaAt(x, y) {
   pushUndoSnapshot();
-  const nodes = getMapEditorNodes();
-  const attachNode = getMapEditorAddAttachNode(nodes); // ★選んでいるエリア（無ければ村）につなぐ
-  const pos = attachNode ? findFreeMapAreaPositionNear(attachNode, nodes) : { x: 50, y: 50 };
   const newArea = {
     id: generateId("area"), name: "新しいエリア", type: "village",
-    x: pos.x, y: pos.y, bgTrack: "", bgImage: "",
+    x: Math.round(x), y: Math.round(y), bgTrack: "", bgImage: "",
     bossId: "", bossTriggerTypes: ["step"], bossStepChance: 0.08, bossExamineChance: 0.15,
     enemyIds: [], items: [], goldRewards: [], facilitySpawns: [], examineMessage: "", examineMessages: [],
     battleVariations: [], enemyLevel: null
   };
   scenarioProject.mapAreas.push(newArea);
-  const newNodeId = "custom_" + newArea.id;
-  scenarioProject.mapEdges.push([attachNode ? attachNode.id : "village", newNodeId, 5]); // ★作った直後は、選んでいたエリアとつなげておく（あとで自由に線を切ったりつなぎ直せる）
-  mapEditorSelectedNodeId = newNodeId; // ★続けて追加すると、いま作ったエリアにつながっていく
+  // ★線（つながり）は作らない。あとから「線をつなぐ／切る」で自由につなげる
+  mapEditorPlaceMode = false;
+  mapEditorSelectedNodeId = "custom_" + newArea.id;
   markScenarioBuildDirty();
   scenarioBuildEditingMapAreaId = newArea.id; // ★作ってすぐ詳細設定に入れるようにする
   scenarioBuildMainView = "mapEditor";
@@ -352,6 +342,7 @@ function renderMapAreaFullList(container) {
   backBtn.onclick = (event) => {
     event.stopPropagation();
     window.removeEventListener("keydown", handleMapEditorKeyDown);
+    mapEditorPlaceMode = false;
     scenarioBuildMainView = "list";
     renderScenarioBuildPanel();
   };
@@ -373,8 +364,8 @@ function renderMapAreaFullList(container) {
   
   const addBtn = document.createElement("button");
   addBtn.className = "devmode-btn";
-  addBtn.textContent = "＋新しいエリアを追加";
-  addBtn.onclick = (event) => { event.stopPropagation(); createNewMapArea(); };
+  addBtn.onclick = (event) => { event.stopPropagation(); startMapAreaPlacement(); };
+  syncMapAreaAddButton(addBtn);
   toolbar.appendChild(addBtn);
   
   const connectBtn = document.createElement("button");
@@ -384,6 +375,7 @@ function renderMapAreaFullList(container) {
     event.stopPropagation();
     mapEditorConnectMode = !mapEditorConnectMode;
     mapEditorConnectFirstId = null;
+    mapEditorPlaceMode = false;
     renderScenarioBuildPanel();
   };
   toolbar.appendChild(connectBtn);
@@ -398,6 +390,13 @@ function renderMapAreaFullList(container) {
   };
   toolbar.appendChild(resetViewBtn);
   container.appendChild(toolbar);
+  
+  if (mapEditorPlaceMode) {
+    const placeNote = document.createElement("p");
+    placeNote.className = "devmode-note scenariobuild-condition";
+    placeNote.textContent = "📍 エリアを置きたい場所を地図でクリック（タップ）してください。どこにもつながらない状態で作られます。";
+    container.appendChild(placeNote);
+  }
   
   if (mapEditorConnectMode) {
     const note = document.createElement("p");
@@ -497,6 +496,7 @@ function renderMapAreaFullList(container) {
     g.appendChild(label);
     
     g.addEventListener("click", (event) => {
+      if (mapEditorPlaceMode) return; // ★配置モード中は、SVG側（地図をクリックして置く処理）に任せる
       event.stopPropagation();
       if (mapEditorPointerState && mapEditorPointerState.moved) return; // ★パン操作の終わりのクリックは無視する
       if (mapEditorNodeDragState) return; // ★ノードをドラッグして動かした直後のクリックは無視する
@@ -514,7 +514,7 @@ function renderMapAreaFullList(container) {
     // ★既に選択中のエリアだけ、その場でつまんでドラッグすると位置を動かせる（村は動かせない）
     if (node.kind === "area") {
       g.addEventListener("pointerdown", (event) => {
-        if (mapEditorConnectMode) return;
+        if (mapEditorConnectMode || mapEditorPlaceMode) return;
         if (node.id !== mapEditorSelectedNodeId) return;
         event.stopPropagation(); // ★SVG側の地図パン操作を始めさせない
         mapEditorNodeDragState = { node, moved: false };
@@ -628,6 +628,16 @@ function setupMapEditorPointerEvents(svg) {
     return { x: (vbX - (50 - zoom * camX)) / zoom, y: (vbY - (50 - zoom * camY)) / zoom };
   };
   
+  if (mapEditorPlaceMode) svg.style.cursor = "crosshair";
+  let placeDownPos = null; // ★配置モード：ドラッグ（地図の移動）ではなく、ただのクリック／タップかを判定する
+  svg.addEventListener("pointerdown", (event) => { placeDownPos = { x: event.clientX, y: event.clientY }; }, true);
+  svg.addEventListener("click", (event) => {
+    if (!mapEditorPlaceMode) return;
+    if (placeDownPos && (Math.abs(event.clientX - placeDownPos.x) > 6 || Math.abs(event.clientY - placeDownPos.y) > 6)) return;
+    const pt = svgPointFromClient(event);
+    createNewMapAreaAt(pt.x, pt.y);
+  });
+  
   svg.addEventListener("pointerdown", (event) => {
     if (mapEditorNodeDragState) return; // ★ノード側のpointerdownで既に処理済み（そちらがstopPropagationしている）
     mapEditorPointerState = {
@@ -738,6 +748,12 @@ function handleMapEditorKeyDown(event) {
   if (scenarioBuildMainView !== "maps") { window.removeEventListener("keydown", handleMapEditorKeyDown); return; }
   if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return;
   if (event.repeat) return;
+  if (mapEditorPlaceMode && event.key === "Escape") { // ★配置モードのキャンセル
+    event.preventDefault();
+    mapEditorPlaceMode = false;
+    renderScenarioBuildPanel();
+    return;
+  }
   
   const nodes = getMapEditorNodes();
   const current = nodes.find(n => n.id === mapEditorSelectedNodeId);
