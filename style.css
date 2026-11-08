@@ -6181,30 +6181,34 @@ rt {
 .scenariobuild-tab-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
+  gap: 4px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
   border-bottom: 1px solid #3a3a3a;
 }
 
-.scenariobuild-tab-group {
+.scenariobuild-tab-group-grid {
   width: 100%;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* ★横4列（ジャンルは7個なので縦2列になる） */
   gap: 4px;
 }
 
 .scenariobuild-tab-group-head {
-  width: 100%;
-  text-align: left;
-  padding: 6px 10px;
-  font-size: 0.85em;
+  min-width: 0;
+  text-align: center;
+  padding: 3px 2px;
+  font-size: 11px;
   font-weight: bold;
+  line-height: 1.2;
   color: #ddd;
   background-color: #2a2a2a;
   border: 1px solid #444;
   border-radius: 4px;
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .scenariobuild-tab-group-head-open {
@@ -6213,10 +6217,16 @@ rt {
 }
 
 .scenariobuild-tab-group-body {
+  width: 100%;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 4px 0 6px 8px;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.scenariobuild-tab-group-body .scenariobuild-tab-btn {
+  padding: 3px 7px;
+  font-size: 11px;
 }
 
 .scenariobuild-tab-btn-active {

@@ -1806,52 +1806,59 @@ function renderScenarioBuildSub() {
   // ★要望対応：タブをジャンルごとの「カーテン」にまとめ、見出しを押すと開閉できるようにした
   //   （開いているタブがあるジャンルは、初回表示時に自動で開く）
   const groups = getScenarioBuildTabGroups(visibleTabs);
+  // ★要望対応：縦幅を取らないよう、ジャンルの見出しは横4列×縦2列までのグリッドにし、開いているジャンルのタブだけを
+  //   その下に1か所で出す（同時に開けるのは1ジャンルだけ。もう一度押すと閉じる）
+  const openGroupId = Object.keys(scenarioBuildTabGroupOpen).find(id => scenarioBuildTabGroupOpen[id] && groups.some(g => g.id === id))
+    || (scenarioBuildTabGroupOpen.__init ? null : (groups.find(g => g.tabs.some(tab => tab.view === scenarioBuildSubView)) || {}).id);
+  scenarioBuildTabGroupOpen = {};
+  scenarioBuildTabGroupOpen.__init = true;
+  if (openGroupId) scenarioBuildTabGroupOpen[openGroupId] = true;
+  
+  const headGrid = document.createElement("div");
+  headGrid.className = "scenariobuild-tab-group-grid";
   groups.forEach(group => {
-    if (scenarioBuildTabGroupOpen[group.id] === undefined) {
-      scenarioBuildTabGroupOpen[group.id] = group.tabs.some(tab => tab.view === scenarioBuildSubView);
-    }
-    const isOpen = !!scenarioBuildTabGroupOpen[group.id];
-    const wrap = document.createElement("div");
-    wrap.className = "scenariobuild-tab-group";
-    
+    const isOpen = openGroupId === group.id;
     const head = document.createElement("button");
     head.type = "button";
     head.className = "scenariobuild-tab-group-head" + (isOpen ? " scenariobuild-tab-group-head-open" : "");
-    head.textContent = (isOpen ? "▼ " : "▶ ") + group.label + "（" + group.tabs.length + "）";
+    head.textContent = (isOpen ? "▼ " : "▶ ") + group.label;
     head.onclick = (event) => {
       event.stopPropagation();
-      scenarioBuildTabGroupOpen[group.id] = !scenarioBuildTabGroupOpen[group.id];
+      const wasOpen = !!scenarioBuildTabGroupOpen[group.id];
+      scenarioBuildTabGroupOpen = { __init: true };
+      if (!wasOpen) scenarioBuildTabGroupOpen[group.id] = true;
       renderScenarioBuildSub();
     };
-    wrap.appendChild(head);
-    
-    if (isOpen) {
-      const row = document.createElement("div");
-      row.className = "scenariobuild-tab-group-body";
-      group.tabs.forEach(tab => {
-        const btn = document.createElement("button");
-        btn.className = "devmode-btn scenariobuild-tab-btn" + (scenarioBuildSubView === tab.view ? " scenariobuild-tab-btn-active" : "");
-        btn.textContent = tab.label;
-        btn.onclick = (event) => {
-          event.stopPropagation();
-          scenarioBuildSubView = tab.view;
-          if (scenarioBuildMainView === "customDetail") { scenarioBuildMainView = "list"; scenarioBuildCustomDetail = null; renderScenarioBuildPanel(); } // ★別のタブへ移ったら、前のタブの詳細編集は閉じる
-          if (tab.view === "maps") {
-            scenarioBuildMainView = "maps"; // ★マップ設定タブを開いたら、メイン側もインタラクティブな地図画面に切り替える
-            renderScenarioBuildPanel();
-          } else if (tab.view === "statuses") {
-            scenarioBuildMainView = "statuses"; // ★状態管理タブを開いたら、メイン側に状態異常/強化の一覧を出す
-            renderScenarioBuildPanel();
-          } else {
-            renderScenarioBuildSub();
-          }
-        };
-        row.appendChild(btn);
-      });
-      wrap.appendChild(row);
-    }
-    tabsEl.appendChild(wrap);
+    headGrid.appendChild(head);
   });
+  tabsEl.appendChild(headGrid);
+  
+  const openGroup = groups.find(g => g.id === openGroupId);
+  if (openGroup) {
+    const row = document.createElement("div");
+    row.className = "scenariobuild-tab-group-body";
+    openGroup.tabs.forEach(tab => {
+      const btn = document.createElement("button");
+      btn.className = "devmode-btn scenariobuild-tab-btn" + (scenarioBuildSubView === tab.view ? " scenariobuild-tab-btn-active" : "");
+      btn.textContent = tab.label;
+      btn.onclick = (event) => {
+        event.stopPropagation();
+        scenarioBuildSubView = tab.view;
+        if (scenarioBuildMainView === "customDetail") { scenarioBuildMainView = "list"; scenarioBuildCustomDetail = null; renderScenarioBuildPanel(); } // ★別のタブへ移ったら、前のタブの詳細編集は閉じる
+        if (tab.view === "maps") {
+          scenarioBuildMainView = "maps"; // ★マップ設定タブを開いたら、メイン側もインタラクティブな地図画面に切り替える
+          renderScenarioBuildPanel();
+        } else if (tab.view === "statuses") {
+          scenarioBuildMainView = "statuses"; // ★状態管理タブを開いたら、メイン側に状態異常/強化の一覧を出す
+          renderScenarioBuildPanel();
+        } else {
+          renderScenarioBuildSub();
+        }
+      };
+      row.appendChild(btn);
+    });
+    tabsEl.appendChild(row);
+  }
   
   bodyEl.innerHTML = "";
   
