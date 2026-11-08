@@ -391,7 +391,7 @@ async function commitScenarioBuildSave() {
     }
   }
   saveCustomScenarioData();
-  if (typeof dmAutoCommitAfterSave === "function") dmAutoCommitAfterSave(); // datamerge.js：保存のたびに変更のあった項目だけをコミット履歴に記録
+  // ※コミット・クラウド同期は、保存では行わない。ヘッダーの「🔄 コミット＆同期」ボタン（datamerge_cloud.js の dmCommitAndSync）で行う
   scenarioBuildHasUnsavedChanges = false;
   updateScenarioBuildSaveButton();
 }
