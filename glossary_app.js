@@ -74,6 +74,55 @@ function glossaryRestoreSeen(data) {
   }
 }
 
+// ===================================================================
+// ===== 話ごとのブロックに出てくる言葉の一覧（クリア済みの話から拾うため） =====
+// ===================================================================
+// ★ログは直近分しか残らないため、ログだけでは「見つけた」判定が取りこぼされることがある。
+//   そこで、話ごとのブロックの文章（地の文・セリフ・テロップ・選択肢・if／選択肢の中身まで）に出てくる
+//   言葉を話ごとにまとめておき、クリア済みの話に出てくる言葉は「見つけた」ことにする
+const GLOSSARY_BLOCK_TEXT_KEYS = ["text", "prompt", "message", "defeatMessage", "farewellMessage", "endroll"];
+
+function glossaryBlockTexts(blocks, out) {
+  (blocks || []).forEach(b => {
+    if (!b || typeof b !== "object") return;
+    GLOSSARY_BLOCK_TEXT_KEYS.forEach(key => { if (typeof b[key] === "string" && b[key]) out.push(b[key]); });
+    if (Array.isArray(b.options)) b.options.forEach(opt => {
+      if (opt && typeof opt.text === "string" && opt.text) out.push(opt.text);
+      if (opt) glossaryBlockTexts(opt.blocks, out);
+    });
+    glossaryBlockTexts(b.trueBlocks, out);
+    glossaryBlockTexts(b.falseBlocks, out);
+  });
+  return out;
+}
+
+// { 話のid: { label: "第二話", ids: [言葉のid, ...] } } を作る（毎回作り直す。呼ぶのはロード時と用語アプリを開く時だけ）
+function glossaryBuildChapterIndex() {
+  const index = {};
+  const entries = glossaryAllEntries();
+  const chapters = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.chapters)) ? scenarioProject.chapters : [];
+  chapters.forEach(chapter => {
+    const plain = (typeof stripRubyNotation === "function" ? stripRubyNotation : (t => t))(glossaryBlockTexts(chapter.blocks, []).join("\n"));
+    const ids = entries.filter(e => glossaryKeysOf(e).some(key => plain.includes(key))).map(e => e.id);
+    index[chapter.id] = { label: glossaryChapterLabelOf(chapter.title), ids };
+  });
+  return index;
+}
+
+// クリア済みの話に出てくる言葉を「見つけた」にする（すでに見つけていて話名もある言葉は、そのまま）。
+// 話名が空のもの（古いセーブから見つけ直した言葉）には、クリア済みの話のうち最初に出てくる話の名前を入れる
+function glossarySyncFromClearedChapters() {
+  if (typeof scenarioProject === "undefined" || !scenarioProject || !Array.isArray(scenarioProject.chapters)) return;
+  const index = glossaryBuildChapterIndex();
+  scenarioProject.chapters.forEach(chapter => {
+    if (!chapter.cleared || !index[chapter.id]) return;
+    const { label, ids } = index[chapter.id];
+    ids.forEach(id => {
+      if (!(id in glossarySeenIds) || !glossarySeenIds[id]) glossarySeenIds[id] = label;
+    });
+  });
+}
+
 function glossaryEntryById(id) {
   return glossaryEntries().find(e => e.id === id) || null;
 }
@@ -113,6 +162,7 @@ function glossaryTermElement(entry, className) {
 
 // ===== 開く・閉じる =====
 function openGlossaryAppPanel(options = {}) {
+  glossarySyncFromClearedChapters(); // ★クリア済みの話に出てくる言葉も見つけた扱いにする
   const grid = document.getElementById("convenience-icon-grid");
   if (grid) grid.classList.add("hidden");
   closeAllConvenienceSubPanels(); // convenience.js
