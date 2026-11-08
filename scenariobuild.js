@@ -14038,6 +14038,7 @@ async function runScenarioChapterBlocksForReal(chapter, startBlockId) {
   // ★要望対応：料理タブ等、「シナリオ再生中は使えない」機能の判定用フラグ。
   //   話の実行が始まってから終わるまでの間、ずっとtrueにしておく
   window.isScenarioChapterPlaying = true;
+  if (typeof glossarySetCurrentChapter === "function") glossarySetCurrentChapter(chapter.title); // ★用語・語彙の「初登場の話」記録用（glossary_app.js）
   // ★目標（タスク）表示は「クリア前」だけでなく「まだ始まっていない」間だけ出すためのフラグ。
   //   以前はclearedだけを見ていたため、この話を実際にプレイし始めた後もクリアするまでずっと
   //   目標表示が出続け（そのくせ「一回消えてもまた出てくる」ように見える不具合の原因になっていた）
