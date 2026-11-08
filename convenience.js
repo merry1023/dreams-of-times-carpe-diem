@@ -2609,6 +2609,7 @@ async function restoreGameFromSaveData(data, persistLoadedDataFn) {
     scenarioProject.chapters.forEach(c => { c.cleared = data.clearedChapterIds.includes(c.id); });
     if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
   }
+  if (typeof glossarySyncFromClearedChapters === "function") glossarySyncFromClearedChapters(); // ★クリア済みの話に出てくる用語も見つけた扱いに（glossary_app.js）
   
   // ★〈重要〉ロード直前にサブ画面（便利タブ等）を操作していた場合、controlFocusが
   //   "sub"のまま引き継がれてしまい、シナリオ再生中にキー操作が噛み合わなくなる
