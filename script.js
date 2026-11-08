@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ★タイトル画面の「はじめから」から呼ばれる、実際にゲームを開始する処理
 async function startNewGame() {
+  if (typeof glossaryResetSeen === "function") glossaryResetSeen(); // ★はじめから始める時は、見つけた用語・語彙も空に戻す（glossary_app.js）
   // ★話のクリア状況（scenarioProject.chapters[].cleared）は、セーブデータではなく
   //   シナリオエディタと共有のデータに乗っているため、はじめから始める時は必ずリセットしておく。
   //   これをしないと、前のプレイで進めた話が新しいプレイでも最初からクリア済み扱いになってしまう

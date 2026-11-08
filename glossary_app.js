@@ -21,9 +21,57 @@ let glossaryFromMessage = false;      // メッセージのタップから来た
 let glossaryReturnTabId = "";         // メッセージのタップから来た時、元いたタブ
 
 // ===== データの読み出し =====
-function glossaryEntries() {
+// ★エディタに登録されている全ての言葉（まだシナリオに出ていないものも含む）
+function glossaryAllEntries() {
   const list = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.glossary)) ? scenarioProject.glossary : [];
   return list.filter(e => e && typeof e.term === "string" && e.term.trim());
+}
+
+// ★要望対応：言葉は、シナリオ（メッセージ）に出てくるまでは伏せる。
+//   一度でもメッセージ欄・選択肢に出た言葉（見出し or 別の書き方）だけが「見つけた言葉」になり、
+//   用語・語彙アプリの一覧やメッセージのタップ解説に現れる。見つけた言葉の記録はセーブデータに乗る
+let glossarySeenIds = {};   // { 言葉のid: 初めて出た話の名前（例："第二話"。分からなければ空文字） }
+let glossaryCurrentChapterLabel = "";   // 今プレイ中の話の名前（scenariobuild.js が話の開始時に設定する）
+
+// 話のタイトル（例："第二話:はじめての〇〇"）から、「第二話」の部分だけを取り出す。取り出せなければタイトルそのまま
+function glossaryChapterLabelOf(title) {
+  const t = String(title || "").trim();
+  const m = t.match(/^第[0-9０-９一二三四五六七八九十百]+[話章]/);
+  return m ? m[0] : t;
+}
+
+function glossarySetCurrentChapter(title) { glossaryCurrentChapterLabel = glossaryChapterLabelOf(title); }
+
+function glossaryEntries() {
+  return glossaryAllEntries().filter(e => e.id in glossarySeenIds);
+}
+
+// メッセージの文字（ルビ記法は本文に直して）に、まだ見つけていない言葉が含まれていれば「見つけた」にする（出た話も記録）
+function glossaryMarkSeenFromText(text) {
+  if (typeof text !== "string" || !text) return;
+  const plain = (typeof stripRubyNotation === "function") ? stripRubyNotation(text) : text;
+  glossaryAllEntries().forEach(entry => {
+    if (entry.id in glossarySeenIds) return;
+    if (glossaryKeysOf(entry).some(key => plain.includes(key))) glossarySeenIds[entry.id] = glossaryCurrentChapterLabel;
+  });
+}
+
+function glossaryResetSeen() { glossarySeenIds = {}; glossaryCurrentChapterLabel = ""; }
+
+function glossaryBuildSeenForSave() { return Object.assign({}, glossarySeenIds); }
+
+// ロード時：セーブに記録された「見つけた言葉」を復元する。
+// 記録が無い古いセーブは、残っているログの文章から見つけ直す（ログは直近分だけなので、足りない分は取りこぼす。出た話は不明になる）
+function glossaryRestoreSeen(data) {
+  glossarySeenIds = {};
+  glossaryCurrentChapterLabel = "";
+  if (data && Array.isArray(data.glossarySeen)) {
+    data.glossarySeen.forEach(id => { glossarySeenIds[id] = ""; });
+  } else if (data && data.glossarySeen && typeof data.glossarySeen === "object") {
+    Object.keys(data.glossarySeen).forEach(id => { glossarySeenIds[id] = String(data.glossarySeen[id] || ""); });
+  } else if (data && Array.isArray(data.messageLog)) {
+    data.messageLog.forEach(entry => { if (entry && typeof entry.text === "string") glossaryMarkSeenFromText(entry.text); });
+  }
 }
 
 function glossaryEntryById(id) {
@@ -196,7 +244,7 @@ function glossaryRenderList(panel) {
     const btn = guildAppButton("", () => { glossaryDetailId = entry.id; glossaryGo("detail"); });
     btn.appendChild(glossaryTermElement(entry, "glossary-list-term"));
     const meaning = String(entry.meaning || "").replace(/\s+/g, " ");
-    btn.appendChild(guildAppEl("span", "guild-app-btn-note", `${glossaryCategoryFilter === "all" ? (entry.category || "その他") + "｜" : ""}${stripRubyNotation(meaning).slice(0, 40)}${meaning.length > 40 ? "…" : ""}`));
+    btn.appendChild(guildAppEl("span", "guild-app-btn-note", `${glossaryCategoryFilter === "all" ? (entry.category || "その他") + "｜" : ""}${glossarySeenIds[entry.id] ? glossarySeenIds[entry.id] + "｜" : ""}${stripRubyNotation(meaning).slice(0, 40)}${meaning.length > 40 ? "…" : ""}`));
     panel.appendChild(btn);
   });
   glossaryBackButton(panel);
@@ -215,6 +263,7 @@ function glossaryRenderDetail(panel) {
   card.appendChild(glossaryTermElement(entry, "glossary-detail-term"));
   const sub = [entry.category || "その他"];
   if (entry.reading) sub.push(`読み：${entry.reading}`);
+  if (glossarySeenIds[entry.id]) sub.push(`初登場：${glossarySeenIds[entry.id]}`);
   card.appendChild(guildAppEl("div", "element-combo-note", sub.join("｜")));
   const meaning = guildAppEl("div", "glossary-detail-meaning");
   setTextWithRuby(meaning, String(entry.meaning || "（解説は、まだありません）"));   // mainfunc.js（ルビ記法も使える）

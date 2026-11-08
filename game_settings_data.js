@@ -21900,7 +21900,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "term": "月刊魔法記事",
       "reading": "げっかんまほうきじ",
       "category": "ゲーム用語",
-      "meaning": "魔法の最新情報を載せた、毎月発行される読み物。作中では「月間魔法記事」とも書かれる。",
+      "meaning": "魔法の最新情報を載せた、毎月発行される読み物。「月間魔法記事」と書かれることもある。",
       "aliases": "月間魔法記事",
       "example": ""
     },
@@ -21945,7 +21945,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "term": "魔精霊",
       "reading": "ませいれい",
       "category": "ゲーム用語",
-      "meaning": "魔の力を宿した精霊。指輪などの媒体を使って召喚される。作中ではブヒーモスが呼び出された。",
+      "meaning": "魔の力を宿した精霊。指輪などの媒体を使って召喚される。ブヒーモスが呼び出された。",
       "aliases": "",
       "example": ""
     },
@@ -21954,7 +21954,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "term": "偽装作戦",
       "reading": "ぎそうさくせん",
       "category": "ゲーム用語",
-      "meaning": "本当の目的を隠し、別の目的があるように見せかける作戦。作中では、ロリルを捕まえて引き渡すふりをして、屋敷へ潜入する。",
+      "meaning": "本当の目的を隠し、別の目的があるように見せかける作戦。ロリルを捕まえて引き渡すふりをして、屋敷へ潜入する。",
       "aliases": "",
       "example": ""
     },
@@ -22143,7 +22143,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "term": "マッドサイエンティスト",
       "reading": "",
       "category": "ネット・俗語",
-      "meaning": "常識外れの研究に取りつかれた、狂気の科学者。作中では村に来ていた「デッパ」がそう呼ばれている。",
+      "meaning": "常識外れの研究に取りつかれた、狂気の科学者。村に来ていた「デッパ」がそう呼ばれている。",
       "aliases": "",
       "example": ""
     },
@@ -22197,7 +22197,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "term": "突然変異",
       "reading": "とつぜんへんい",
       "category": "熟語",
-      "meaning": "親にはない性質が、突然あらわれること。作中では、ゴブリンが突然変異で巨大化して上位種になった。",
+      "meaning": "親にはない性質が、突然あらわれること。ゴブリンが突然変異で巨大化して上位種になった。",
       "aliases": "",
       "example": ""
     },

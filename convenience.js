@@ -2516,7 +2516,8 @@ function buildSaveData() {
     background: deepClone(currentBackground), // ★セーブ時点の背景（色 or 画像）
     monsterAffection: deepClone(monsterAffection), // ★魔物図鑑の好感度
     discoveredMonsters: deepClone(discoveredMonsters), // ★魔物図鑑に載せるかどうかの判定用
-    clearedChapterIds: clearedChapterIds // ★このセーブ枠でクリア済みの自作の話（シナリオエディタの話管理）
+    clearedChapterIds: clearedChapterIds, // ★このセーブ枠でクリア済みの自作の話（シナリオエディタの話管理）
+    glossarySeen: (typeof glossaryBuildSeenForSave === "function") ? glossaryBuildSeenForSave() : [] // ★シナリオに出て「見つけた」用語・語彙のid（glossary_app.js）
   };
 }
 
@@ -2599,6 +2600,7 @@ async function restoreGameFromSaveData(data, persistLoadedDataFn) {
   gold = data.gold;
   currentLocationKey = data.currentLocationKey || "town";
   chapter1Finished = !!data.chapter1Finished;
+  if (typeof glossaryRestoreSeen === "function") glossaryRestoreSeen(data); // ★見つけた用語・語彙を復元（glossary_app.js）
   
   // ★話のクリア状況を、このセーブ枠に記録されていた内容に合わせ直す（古いセーブにclearedChapterIdsが
   //   無い場合は、シナリオエディタ側の現状をそのまま尊重し、何もしない＝従来通りの挙動を保つ）

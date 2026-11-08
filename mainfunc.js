@@ -138,12 +138,14 @@ function trimMessageLogIfNeeded() {
 
 function logMessage(speaker, text) {
   messageLog.push({ type: "message", speaker: speaker || "", text: text });
+  if (typeof glossaryMarkSeenFromText === "function") glossaryMarkSeenFromText(text); // ★シナリオに出た言葉を「見つけた」にする（glossary_app.js）
   trimMessageLogIfNeeded();
   renderLogIfActive();
 }
 
 function logChoice(text) {
   messageLog.push({ type: "choice", text: text });
+  if (typeof glossaryMarkSeenFromText === "function") glossaryMarkSeenFromText(text); // ★選択肢に出た言葉も「見つけた」にする（glossary_app.js）
   trimMessageLogIfNeeded();
   renderLogIfActive();
 }
