@@ -47,6 +47,7 @@ let scenarioProject = {
   quests: [],     // [{ id, rank, title, description, type:"hunt"|"gather", targetMonsterKey, targetItemId, targetCount, rewardGold, rewardExp, rewardItemId, rewardItemQty, builtin }, ...] ★酒場のクエスト管理タブ
   achievements: [], // [{ id, name, description, hidden, conditionType, conditionValue, classId, monsterKey, areaId, flagName, varName, rewardExp, rewardGold, rewardItemId, rewardItemQty }, ...] ★実績管理タブ（要望対応）
   tutorials: [],  // [{ id, category, title, body }, ...] ★便利タブの「チュートリアル」アイコンから見られる、カテゴリ分けされたヘルプ項目
+  glossary: [],   // [{ id, term, reading, category, meaning, aliases, example }, ...] ★便利タブの「用語・語彙」アプリの言葉（メッセージ中の言葉をタップしても解説が開く。glossary_app.js）
   classStats: {}, // { 職業名: { description, type:"normal"|"advanced"|"master", unlockFlagName, baseStats:{...}, maxSleepiness, maxFatigue, growthPerLevel:{...} }, ... } ★主人公の職業のステータス編集用（追加・削除可能）
   facilities: [], // [{ id, type:"inn"|"townhall"|"flavor", name, bgTrack, bgImage, ownerDialogue, price, sleepinessRecovery, fatigueRecovery, classChangeCost, allowedClassNames }, ...] ★村の「酒場/宿屋/店/冒険する」に追加できる施設
   bgmTracks: [],  // [{ id, name, path }, ...] ★名前とファイルパスを登録しておくと、曲名として選べるようになる
@@ -246,6 +247,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   ensureCustomQuestsRegistered();
   scenarioProject.achievements = data.achievements || []; // ★実績管理タブ（要望対応）
   scenarioProject.tutorials = data.tutorials || [];
+  scenarioProject.glossary = Array.isArray(data.glossary) ? data.glossary : []; // ★用語・語彙アプリ
   scenarioProject.classStats = data.classStats || {};
   scenarioProject.facilities = data.facilities || [];
   scenarioProject.portraitCharacters = data.portraitCharacters || [];
@@ -601,6 +603,7 @@ function normalizeScenarioProject() {
   if (!Array.isArray(scenarioProject.quests)) scenarioProject.quests = [];
   if (!Array.isArray(scenarioProject.achievements)) scenarioProject.achievements = []; // ★実績管理タブ（要望対応）
   if (!Array.isArray(scenarioProject.tutorials)) scenarioProject.tutorials = [];
+  if (!Array.isArray(scenarioProject.glossary)) scenarioProject.glossary = []; // ★用語・語彙アプリ
   if (!Array.isArray(scenarioProject.facilities)) scenarioProject.facilities = [];
   if (!Array.isArray(scenarioProject.portraitCharacters)) scenarioProject.portraitCharacters = []; // ★立ち絵管理（キャラごとの通常時画像＋表情一覧）
   if (!scenarioProject.classStats || typeof scenarioProject.classStats !== "object") scenarioProject.classStats = {};
@@ -1581,6 +1584,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "quests", label: "クエスト管理" },
   { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
   { view: "tutorials", label: "チュートリアル管理" },
+  { view: "glossary", label: "用語・語彙" }, // ★便利タブの「用語・語彙」アプリの言葉（ルビ・意味の解説）。メッセージ中の言葉をタップすると解説が開く
   { view: "skills", label: "スキル管理" },
   { view: "upperskills", label: "上位スキル" }, // ★要望対応：ステータスパネルで習得する、職業技とは別枠の技
   { view: "gachaskills", label: "技ガチャ" }, // ★技ガチャ：ガチャ専用の技と、確率・期間などの設定
@@ -1735,6 +1739,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "companionchat") renderCompanionChatSettingsManager(bodyEl); // ★要望対応：会話AI設定
   else if (scenarioBuildSubView === "achievements") renderEntityManager(bodyEl, getAchievementManagerConfig());
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
+  else if (scenarioBuildSubView === "glossary") renderEntityManager(bodyEl, getGlossaryManagerConfig());
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
   else if (scenarioBuildSubView === "combos") renderComboSkillManager(bodyEl); // ★要望対応：コンボスキル
   else if (scenarioBuildSubView === "towerunits") renderTowerUnitManager(bodyEl); // ★冒険者協会：タワーユニット（tower_defense_editor.js）
@@ -5356,6 +5361,28 @@ function getTutorialManagerConfig() {
       { key: "requiredFlag", label: "解放条件：このフラグが立っていたら（フラグ名）", type: "text", placeholder: "空欄なら条件なし" }
     ],
     newEntity: () => ({ id: generateId("tutorial"), category: "その他", title: "新しい項目", body: "" })
+  };
+}
+
+// ★便利タブの「用語・語彙」アプリに載せる言葉（このゲーム専用の用語・ことわざ・熟語など）を編集する（glossary_app.js）
+function getGlossaryManagerConfig() {
+  return {
+    note: "便利タブの「用語・語彙」アプリの言葉を編集します。メッセージの中に「言葉」または「別の書き方」と同じ文字が出てきたら、そこをタップすると解説が開きます（言葉の色は変わりません）。" +
+      "「読み」を入れると、アプリの見出しにルビが付きます。「意味の解説」と「用例」には、ルビ記法 {/漢字}={\\かんじ} も使えます。" +
+      "「別の書き方」は「、」で区切って複数入れられます（例：月刊魔法記事の「月間魔法記事」）。2文字以上の言葉だけがタップの対象になります。",
+    category: "glossary",
+    collapsible: true,
+    getEntitySummary: (entity) => "📚 " + (entity.term || "（未設定）") + (entity.reading ? "（" + entity.reading + "）" : "") + "／" + (entity.category || "その他"),
+    getList: () => scenarioProject.glossary,
+    fields: [
+      { key: "term", label: "言葉", type: "text", placeholder: "例：真名" },
+      { key: "reading", label: "読み（ルビ）", type: "text", placeholder: "例：まな（空欄ならルビなし）" },
+      { key: "category", label: "分類", type: "select", options: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]).map(c => ({ value: c, label: c })) },
+      { key: "meaning", label: "意味の解説", type: "textarea", placeholder: "言葉の意味・このゲームでの使われ方（改行OK）" },
+      { key: "aliases", label: "別の書き方（「、」区切り）", type: "text", placeholder: "例：月間魔法記事（空欄でOK）" },
+      { key: "example", label: "用例（任意）", type: "textarea", placeholder: "例文など（空欄でOK）" }
+    ],
+    newEntity: () => ({ id: generateId("glossary"), term: "新しい言葉", reading: "", category: "ゲーム用語", meaning: "", aliases: "", example: "" })
   };
 }
 
@@ -13459,6 +13486,7 @@ function buildGameSettingsExportData() {
     quests: scenarioProject.quests,
     achievements: scenarioProject.achievements, // ★実績管理タブ（要望対応）
     tutorials: scenarioProject.tutorials,
+    glossary: scenarioProject.glossary, // ★用語・語彙アプリ
     classStats: scenarioProject.classStats,
     facilities: scenarioProject.facilities,
     portraitCharacters: scenarioProject.portraitCharacters,
