@@ -296,7 +296,7 @@ async function dmCommit(message, kind) {
     return null;
   }
 }
-// 通常の保存（💾）の直後に呼ぶ。失敗しても保存自体には影響させない
+// （以前は💾保存の直後に自動で呼んでいたが、専用ボタン「コミット＆同期」に変えたため、今は呼ばれていない）
 function dmAutoCommitAfterSave() { dmCommit("保存", "save"); }
 
 // 複数のコミットを1つにまとめる（変更の合成：変更前は一番古いもの、変更後は一番新しいもの）
@@ -599,7 +599,7 @@ function renderDataMergeSection(container) {
   const wrap = document.createElement("div");
   wrap.className = "dm-section";
   wrap.innerHTML = `<h4 class="scenariobuild-subheading">📚 バージョン管理（git風）</h4>
-    <p class="devmode-note">💾保存のたびに、変更のあった項目だけが履歴（コミット）として記録されます。古い履歴は日・週ごとにまとめられます。他のデータ（リポジトリのJSや、別の端末で書き出したファイル）とは、項目ごとに自動で合わせ、両方が変えた所だけ「自分｜共通の土台｜相手」で選べます。</p>
+    <p class="devmode-note">💾保存はブラウザへの保存だけです。履歴（コミット）は、ヘッダーの「🔄 コミット＆同期」か、下の「今の状態をコミット」を押した時に、変更のあった項目だけが記録されます。古い履歴は日・週ごとにまとめられます。他のデータ（リポジトリのJSや、別の端末で書き出したファイル）とは、項目ごとに自動で合わせ、両方が変えた所だけ「自分｜共通の土台｜相手」で選べます。</p>
     <div class="dm-row"><input type="text" class="dm-msg" placeholder="コミットメッセージ（任意）"><button type="button" class="devmode-btn dm-commit-btn">今の状態をコミット</button></div>
     <div class="dm-row">
       <button type="button" class="devmode-btn dm-repo-btn">読み込み済みのJS（リポジトリ）とマージ</button>
@@ -613,7 +613,7 @@ function renderDataMergeSection(container) {
     let list = [];
     try { list = (await dmCommitsAll()).reverse(); } catch (e) { hist.textContent = "履歴を利用できません（ブラウザの設定でIndexedDBが無効の可能性があります）。"; return; }
     hist.textContent = "";
-    if (list.length === 0) { hist.textContent = "まだ履歴がありません。💾保存するか、上のボタンでコミットすると記録されます。"; return; }
+    if (list.length === 0) { hist.textContent = "まだ履歴がありません。ヘッダーの「🔄 コミット＆同期」か、上のボタンでコミットすると記録されます。"; return; }
     list.slice(0, 40).forEach((c, i) => {
       const row = document.createElement("div");
       row.className = "dm-hist-row";
