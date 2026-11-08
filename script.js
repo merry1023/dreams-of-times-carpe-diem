@@ -13,11 +13,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   //   異なるバージョンだった場合、新旧を問わず「読み込みますか？」の確認を挟む（scenariobuild.js）。
   //   ここで読み込むと決めた内容は、この後のloadCustomScenarioData()（setupTitleScreen等から呼ばれる）
   //   で使われる
+  // ★クラウドに公開された最新データを、前回までに裏で取得して保存してあれば、JSファイルの代わりに使う（publicdata.js。
+  //   開発者アカウントや、まだ保存が無い時は何もしない＝これまでどおりJSファイルのデータ）
+  if (typeof publicDataApplyCachedOverride === "function") await publicDataApplyCachedOverride();
   if (typeof loadCustomScenarioData === "function") loadCustomScenarioData(); // ★確認の判定に使うSCENARIOBUILD_LAST_EDITED_KEY等を最新化しておく
   if (typeof checkDataFileVersionAndConfirm === "function") await checkDataFileVersionAndConfirm(); // scenariobuild.js
   // ★要望対応：本体JSファイルが更新されていた場合の確認（開発者アカウントのみ、はい/いいえ。それ以外は自動で最新を反映）
   if (typeof checkAppJsVersionAndConfirm === "function") await checkAppJsVersionAndConfirm(); // auth.js
   setupTitleScreen(); // titlescreen.js（「はじめから」「つづきから」の選択を待つ。ゲーム本編はまだ始めない）
+  // ★新しく公開されたデータがあれば、裏で取得して端末に保存する（待たない。反映は次回の起動から）
+  if (typeof publicDataRefreshInBackground === "function") publicDataRefreshInBackground();
 });
 
 // ★タイトル画面の「はじめから」から呼ばれる、実際にゲームを開始する処理

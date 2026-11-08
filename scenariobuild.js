@@ -13390,6 +13390,7 @@ function renderDataManager(container) {
   container.appendChild(jsExportSettingsBtn);
   
   if (typeof renderDataMergeSection === "function") renderDataMergeSection(container); // datamerge.js：履歴・ファイルとのマージ
+  if (typeof renderPublicDataSection === "function") renderPublicDataSection(container); // publicdata.js：プレイヤーへの公開（クラウド）
   
   const statsEl = document.createElement("p");
   statsEl.className = "devmode-note";
@@ -13412,8 +13413,9 @@ function downloadScenarioBuildTextFile(filename, text) {
 
 // ★「シナリオのみ」（話・キャラ）を書き出す。中身はJSONそのままなので、
 //   将来スキル同様「話のブロック」以外の要素が増えても、そのまま一緒に書き出される
-function exportScenarioOnlyAsJsFile() {
-  const data = {
+// ★「シナリオのみ」（話・キャラ）の書き出しデータの中身を作る（JSファイルの書き出し・クラウドでのプレイヤーへの公開［publicdata.js］の両方で、同じ内容を使うため共通化）
+function buildScenarioOnlyExportData() {
+  return {
     version: Date.now(), // ★書き出すたびに新しいバージョンとして扱われ、次に読み込んだ時に上書き取り込みされる
     chapters: scenarioProject.chapters,
     chapterArcs: scenarioProject.chapterArcs || [],
@@ -13425,6 +13427,10 @@ function exportScenarioOnlyAsJsFile() {
       characters: scenarioProject.deletedBuiltinIds.characters || []
     }
   };
+}
+
+function exportScenarioOnlyAsJsFile() {
+  const data = buildScenarioOnlyExportData();
   const lines = [];
   if (typeof dmMarkSynced === "function") dmMarkSynced("import", "scenario", data); // datamerge.js：書き出した時点を「共通の土台」として記録
   lines.push("// scenario_only_data.js");
@@ -13437,8 +13443,9 @@ function exportScenarioOnlyAsJsFile() {
 }
 
 // ★「ゲームの基本設定のみ」（敵・ボス・アイテム・技・仲間・職業ステータス・施設・BGM・マップ）を書き出す
-function exportGameSettingsAsJsFile() {
-  const data = {
+// ★「ゲームの基本設定のみ」の書き出しデータの中身を作る（JSファイルの書き出し・クラウドでのプレイヤーへの公開［publicdata.js］の両方で、同じ内容を使うため共通化）
+function buildGameSettingsExportData() {
+  return {
     version: Date.now(),
     enemies: scenarioProject.enemies,
     bosses: scenarioProject.bosses,
@@ -13491,6 +13498,10 @@ function exportGameSettingsAsJsFile() {
       classes: scenarioProject.deletedBuiltinIds.classes || []
     }
   };
+}
+
+function exportGameSettingsAsJsFile() {
+  const data = buildGameSettingsExportData();
   const lines = [];
   if (typeof dmMarkSynced === "function") dmMarkSynced("import", "settings", data); // datamerge.js：書き出した時点を「共通の土台」として記録
   lines.push("// game_settings_data.js");
