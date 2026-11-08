@@ -176,6 +176,7 @@ function renderGachaManager(container) {
   addBtn.onclick = () => {
     pushUndoSnapshot();
     scenarioProject.gachaSkills.push(createNewGachaSkill());
+    scenarioBuildGroupOpenState[scenarioBuildGroupKey("gachaSkills", "N")] = true; // ★追加した技（初期は「通常」）がすぐ見えるよう、そのカーテンを開く
     persist();
     renderScenarioBuildPanel();
   };
@@ -190,30 +191,31 @@ function renderGachaManager(container) {
   formulaNoteEl.textContent = "ダメージ計算式：(1＋自分のレベル×0.1) × 技の威力 ＋ 自分の攻撃力（魔法技なら魔力）×0.7 。";
   container.appendChild(formulaNoteEl);
 
-  const listEl = document.createElement("div");
-  listEl.className = "scenariobuild-list";
-  scenarioProject.gachaSkills.forEach((entry, index) => {
+  // ★要望対応：レア度（通常／希少／伝説）ごとのカーテンに分けて表示する（開いたままにしたい時は「すべて開く」）
+  scenarioProject.gachaSkills.forEach(entry => {
     if (!Array.isArray(entry.limitBreaks)) entry.limitBreaks = [];
     for (let i = 0; i < GACHA_MAX_BREAK; i++) if (!Array.isArray(entry.limitBreaks[i])) entry.limitBreaks[i] = [];
-    // ★要望対応：一覧は「見出し＋編集ボタン」だけにし、編集欄は「編集」を押した先に出す
-    listEl.appendChild(buildCollapsedEntryRow({
-      number: `#${index + 1}`,
-      title: () => (scenarioProject.gachaSkills[index] || {}).name,
-      isValid: () => !!scenarioProject.gachaSkills[index],
-      build: () => {
-        const cur = scenarioProject.gachaSkills[index];
-        return buildUpperSkillRow(cur, index, {   // scenariobuild.js（上位スキルの編集の作りを使い回す）
-          list: scenarioProject.gachaSkills,
-          hideSources: true,
-          buildTopRow: (infoEl) => gachaBuildTopRow(infoEl, cur),
-          buildCostRow: (infoEl) => gachaBuildCostRow(infoEl, cur),
-          appendExtra: (infoEl) => gachaBuildBreakEditor(infoEl, cur),
-          deleteMessage: (e) => `ガチャ技「${e.name || "名無し"}」を削除しますか？（すでに手に入れているプレイヤーのセーブデータでは、その技は使えなくなります）`
-        });
-      }
-    }));
   });
-  container.appendChild(listEl);
+  const rarityGroups = GACHA_RARITIES.map(r => ({
+    key: r.key, label: r.label, showEmpty: true,
+    entries: scenarioProject.gachaSkills.map((item, index) => ({ item, index })).filter(e => gachaRarityOf(e.item) === r.key)
+  }));
+  container.appendChild(buildGroupedCurtainList("gachaSkills", rarityGroups, (entry, index) => buildCollapsedEntryRow({
+    number: `#${index + 1}`,
+    title: () => (scenarioProject.gachaSkills[index] || {}).name,
+    isValid: () => !!scenarioProject.gachaSkills[index],
+    build: () => {
+      const cur = scenarioProject.gachaSkills[index];
+      return buildUpperSkillRow(cur, index, {   // scenariobuild.js（上位スキルの編集の作りを使い回す）
+        list: scenarioProject.gachaSkills,
+        hideSources: true,
+        buildTopRow: (infoEl) => gachaBuildTopRow(infoEl, cur),
+        buildCostRow: (infoEl) => gachaBuildCostRow(infoEl, cur),
+        appendExtra: (infoEl) => gachaBuildBreakEditor(infoEl, cur),
+        deleteMessage: (e) => `ガチャ技「${e.name || "名無し"}」を削除しますか？（すでに手に入れているプレイヤーのセーブデータでは、その技は使えなくなります）`
+      });
+    }
+  })));
 }
 
 // レア度・排出に含めるか
