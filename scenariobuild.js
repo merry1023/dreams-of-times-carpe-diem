@@ -3596,8 +3596,70 @@ function attachRubyHelper(wrap, textArea) {
   textArea.addEventListener("input", refreshPreview);
   refreshPreview();
   
+  // ★選択した文字を、便利タブ「用語・語彙」アプリの言葉にリンクさせる（ルビとよく似た書き方）。
+  //   書き方：{/リンクする文字}={@用語ID}   ゲーム画面では、その文字をタップするとアプリの解説が開く（見た目は変わらない）
+  const linkNoteEl = document.createElement("p");
+  linkNoteEl.className = "devmode-note scenariobuild-condition";
+  linkNoteEl.textContent = "用語リンク：{/リンクする文字}={@用語ID} と書くと、その文字をタップした時に「用語・語彙」アプリの解説が開きます（見た目は変わりません）。";
+  const glossarySelect = document.createElement("select");
+  glossarySelect.className = "scenariobuild-condition-input";
+  const placeholderOpt = document.createElement("option");
+  placeholderOpt.value = "";
+  placeholderOpt.textContent = (Array.isArray(scenarioProject.glossary) && scenarioProject.glossary.length > 0) ? "（リンクする言葉を選ぶ）" : "（「用語・語彙」タブに、言葉がまだありません）";
+  glossarySelect.appendChild(placeholderOpt);
+  (Array.isArray(scenarioProject.glossary) ? scenarioProject.glossary : []).slice()
+    .sort((a, b) => String(a.reading || a.term || "").localeCompare(String(b.reading || b.term || ""), "ja"))
+    .forEach(g => {
+      const opt = document.createElement("option");
+      opt.value = g.id;
+      opt.textContent = `${g.term || "（未設定）"}${g.reading ? "（" + g.reading + "）" : ""}／${g.category || "その他"}`;
+      glossarySelect.appendChild(opt);
+    });
+  const applyTextChange = (cursor) => {
+    textArea.dispatchEvent(new Event("input"));
+    textArea.dispatchEvent(new Event("change")); // ★textArea.onchangeで保存処理（block.textへの反映）を走らせる
+    textArea.focus();
+    textArea.setSelectionRange(cursor, cursor);
+  };
+  const linkBtn = document.createElement("button");
+  linkBtn.type = "button";
+  linkBtn.className = "devmode-btn";
+  linkBtn.textContent = "選択した文字を用語にリンクする";
+  linkBtn.onclick = () => {
+    const start = textArea.selectionStart;
+    const end = textArea.selectionEnd;
+    if (start === end) { window.alert("リンクさせたい文字を、先に入力欄の中で範囲選択してください。"); return; }
+    if (!glossarySelect.value) { window.alert("リンクする言葉を、横の一覧から選んでください。"); return; }
+    const baseText = textArea.value.slice(start, end);
+    // 選択の中にルビ記法が丸ごと入っているのは良いが、記法の一部だけ・別のリンクを含む選択は壊れてしまうので止める
+    if (/[{｛}｝]/.test(baseText.replace(RUBY_NOTATION_REGEX, ""))) {
+      window.alert("ルビやリンクの記法（{ } の部分）を、一部だけ含む選択はできません。記法の外側の文字だけを選び直してください。");
+      return;
+    }
+    const notation = `{/${baseText}}={@${glossarySelect.value}}`;
+    textArea.value = textArea.value.slice(0, start) + notation + textArea.value.slice(end);
+    applyTextChange(start + notation.length);
+  };
+  const unlinkBtn = document.createElement("button");
+  unlinkBtn.type = "button";
+  unlinkBtn.className = "devmode-btn";
+  unlinkBtn.textContent = "選択範囲のリンクを外す";
+  unlinkBtn.onclick = () => {
+    const start = textArea.selectionStart;
+    const end = textArea.selectionEnd;
+    const selected = textArea.value.slice(start, end);
+    const replaced = selected.replace(GLOSSARY_LINK_REGEX, (match, base) => base);   // mainfunc.js
+    if (start === end || replaced === selected) { window.alert("リンクを外したい部分（{/文字}={@用語ID}）を含むように、範囲選択してください。"); return; }
+    textArea.value = textArea.value.slice(0, start) + replaced + textArea.value.slice(end);
+    applyTextChange(start + replaced.length);
+  };
+
   wrap.appendChild(noteEl);
   wrap.appendChild(rubyBtn);
+  wrap.appendChild(linkNoteEl);
+  wrap.appendChild(glossarySelect);
+  wrap.appendChild(linkBtn);
+  wrap.appendChild(unlinkBtn);
   wrap.appendChild(previewEl);
 }
 
@@ -5369,7 +5431,8 @@ function getGlossaryManagerConfig() {
   return {
     note: "便利タブの「用語・語彙」アプリの言葉を編集します。メッセージの中に「言葉」または「別の書き方」と同じ文字が出てきたら、そこをタップすると解説が開きます（言葉の色は変わりません）。" +
       "「読み」を入れると、アプリの見出しにルビが付きます。「意味の解説」と「用例」には、ルビ記法 {/漢字}={\\かんじ} も使えます。" +
-      "「別の書き方」は「、」で区切って複数入れられます（例：月刊魔法記事の「月間魔法記事」）。2文字以上の言葉だけがタップの対象になります。",
+      "「別の書き方」は「、」で区切って複数入れられます（例：月刊魔法記事の「月間魔法記事」）。2文字以上の言葉だけが自動リンクの対象になります。" +
+      "話編集のブロックの入力欄で文字を選び、「選択した文字を用語にリンクする」を押すと、その文字だけを確実にリンクできます（1文字でも、言葉と違う文字でもOK）。",
     category: "glossary",
     collapsible: true,
     getEntitySummary: (entity) => "📚 " + (entity.term || "（未設定）") + (entity.reading ? "（" + entity.reading + "）" : "") + "／" + (entity.category || "その他"),
@@ -5380,9 +5443,10 @@ function getGlossaryManagerConfig() {
       { key: "category", label: "分類", type: "select", options: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]).map(c => ({ value: c, label: c })) },
       { key: "meaning", label: "意味の解説", type: "textarea", placeholder: "言葉の意味・このゲームでの使われ方（改行OK）" },
       { key: "aliases", label: "別の書き方（「、」区切り）", type: "text", placeholder: "例：月間魔法記事（空欄でOK）" },
-      { key: "example", label: "用例（任意）", type: "textarea", placeholder: "例文など（空欄でOK）" }
+      { key: "example", label: "用例（任意）", type: "textarea", placeholder: "例文など（空欄でOK）" },
+      { key: "autoLink", label: "メッセージ中の同じ文字を自動でリンクする（オフなら、話編集のブロックでリンクした文字だけ）", type: "checkbox", defaultValue: true }
     ],
-    newEntity: () => ({ id: generateId("glossary"), term: "新しい言葉", reading: "", category: "ゲーム用語", meaning: "", aliases: "", example: "" })
+    newEntity: () => ({ id: generateId("glossary"), term: "新しい言葉", reading: "", category: "ゲーム用語", meaning: "", aliases: "", example: "", autoLink: true })
   };
 }
 
@@ -11046,7 +11110,7 @@ function appendEntityFieldInputs(config, entity, containerEl) {
     if (field.type === "checkbox") {
       input = document.createElement("input");
       input.type = "checkbox";
-      input.checked = !!entity[field.key];
+      input.checked = (entity[field.key] == null && field.defaultValue != null) ? !!field.defaultValue : !!entity[field.key]; // ★未設定の時は defaultValue（無ければオフ）
       input.onchange = () => {
         entity[field.key] = input.checked;
         markScenarioBuildDirty();

@@ -3671,17 +3671,28 @@ function convertLineBreaksForDisplay(text) {
 //   ・全角の｛｝／＝＼や円記号（¥）で書いても同じように変換する（日本語入力のまま打てるように）
 //   ・形が合わないもの（片方の波括弧が無い等）は変換せず、書いた文字のまま表示する
 const RUBY_NOTATION_REGEX = /[{｛][\/／]([^{}｛｝]+?)[}｝]\s*[=＝]\s*[{｛][\\＼¥￥]([^{}｛｝]+?)[}｝]/g;
+// ★要望対応：選択した文字を、便利タブ「用語・語彙」アプリの言葉にリンクさせる記法（ルビ記法とよく似た書き方）。
+//   書き方：{/リンクする文字}={@用語ID}   例）{/真名}={@glossary_seed_01}
+//   ・ゲーム画面では、リンクした文字をタップすると、アプリの解説が開く（見た目は変わらない。glossary_app.js）
+//   ・リンクする文字の中に、ルビ記法を入れてもよい（例：{/{/真名}={\まな}}={@glossary_seed_01}）
+//   ・変換すると <span class="glossary-link" data-glossary-id="用語ID">文字</span> になる
+const GLOSSARY_LINK_BASE = "(?:[^{}｛｝]|[{｛][\\/／][^{}｛｝]+?[}｝]\\s*[=＝]\\s*[{｛][\\\\＼¥￥][^{}｛｝]+?[}｝])+?";
+const GLOSSARY_LINK_REGEX = new RegExp("[{｛][\\/／](" + GLOSSARY_LINK_BASE + ")[}｝]\\s*[=＝]\\s*[{｛][@＠]([A-Za-z0-9_\\-]+)[}｝]", "g");
+function convertGlossaryLinksForDisplay(text) {
+  if (typeof text !== "string") return text;
+  return text.replace(GLOSSARY_LINK_REGEX, (match, base, id) => `<span class="glossary-link" data-glossary-id="${id}">${base}</span>`);
+}
 function convertRubyForDisplay(text) {
   if (typeof text !== "string") return text;
-  return text.replace(RUBY_NOTATION_REGEX, (match, base, ruby) => `<ruby>${base}<rt>${ruby}</rt></ruby>`);
+  return convertGlossaryLinksForDisplay(text).replace(RUBY_NOTATION_REGEX, (match, base, ruby) => `<ruby>${base}<rt>${ruby}</rt></ruby>`);
 }
 
 // ★要望対応：技名（スキル名）などの短い文字列にもルビ記法を使えるようにするための補助関数。
 //   ・setTextWithRuby：ルビ記法が含まれている時だけ、HTMLとして安全にエスケープした上で<ruby>に変換して入れる
 //     （含まれていなければ今まで通りtextContent。技名にHTMLの記号が入っていても壊れない）
 //   ・stripRubyNotation：ルビ記法を「振りたい文字」だけに戻す（パネルのマスなど、ルビを出せない狭い場所向け）
-function hasRubyNotation(text) {
-  return typeof text === "string" && new RegExp(RUBY_NOTATION_REGEX.source).test(text);
+function hasRubyNotation(text) {   // ★ルビ記法と、用語リンクの記法のどちらかを含むか（どちらも setTextWithRuby の変換が必要なため）
+  return typeof text === "string" && (new RegExp(RUBY_NOTATION_REGEX.source).test(text) || new RegExp(GLOSSARY_LINK_REGEX.source).test(text));
 }
 function setTextWithRuby(element, text) {
   if (!element) return;
@@ -3691,7 +3702,7 @@ function setTextWithRuby(element, text) {
 }
 function stripRubyNotation(text) {
   if (typeof text !== "string") return text;
-  return text.replace(RUBY_NOTATION_REGEX, (match, base) => base);
+  return text.replace(GLOSSARY_LINK_REGEX, (match, base) => base).replace(RUBY_NOTATION_REGEX, (match, base) => base);   // ★用語リンクも、リンクした文字だけに戻す
 }
 
 // ★技名の「同じ技かどうか」の判定用キー。技名を「弧月斬（こげつざん）」のような後ろ括弧の読み方から
