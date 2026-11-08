@@ -69,7 +69,12 @@ function renderTowerUnitManager(container) {
     emptyEl.textContent = "まだ登録がありません（このままだと、属性ごとに1ユニットを自動で作ります）。";
     container.appendChild(emptyEl);
   }
-  scenarioProject.towerUnits.forEach((unit, index) => container.appendChild(buildTowerUnitRow(unit, index)));
+  scenarioProject.towerUnits.forEach((unit, index) => container.appendChild(buildCollapsedEntryRow({
+    number: `#${index + 1}`,
+    title: () => (scenarioProject.towerUnits[index] || {}).name,
+    isValid: () => !!scenarioProject.towerUnits[index],
+    build: () => buildTowerUnitRow(scenarioProject.towerUnits[index], index)
+  })));
 }
 
 // 入力欄の部品（名前・数値・選択）。unit のキーに直接書き込み、変更したら persist を呼ぶ
@@ -283,7 +288,12 @@ function renderRaidUnitManager(container) {
     emptyEl.textContent = "まだ登録がありません（このままだと、主人公・仲間などから自動で編成します）。";
     container.appendChild(emptyEl);
   }
-  scenarioProject.raidUnits.forEach((unit, index) => container.appendChild(buildRaidUnitRow(unit, index)));
+  scenarioProject.raidUnits.forEach((unit, index) => container.appendChild(buildCollapsedEntryRow({
+    number: `#${index + 1}`,
+    title: () => (scenarioProject.raidUnits[index] || {}).name,
+    isValid: () => !!scenarioProject.raidUnits[index],
+    build: () => buildRaidUnitRow(scenarioProject.raidUnits[index], index)
+  })));
 }
 
 // 「元にするキャラ」の選択肢：自由入力／仲間／本編の登場キャラ
