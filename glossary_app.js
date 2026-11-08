@@ -6,7 +6,7 @@
 //   データは scenarioProject.glossary（エディタの「用語・語彙」タブで編集）：
 //   [{ id, term, reading, category, meaning, aliases, example }, ...]
 //     term＝見出しの言葉／reading＝読み（ルビ）／category＝分類／meaning＝意味の解説（ルビ記法 {/漢字}={\かんじ} も使える）
-//     aliases＝同じ言葉として扱う別の書き方（「、」「,」区切り。例：月刊魔法記事の「月間魔法記事」）／example＝用例（任意）
+//     aliases＝同じ言葉として扱う言い換え（「、」「,」区切り。例：月刊魔法記事の「月間魔法記事」）／example＝用例（任意）
 // ★メッセージ表示中に、解説のある言葉をタップ（クリック）すると、このアプリの解説ページへ飛ぶ。
 //   言葉の見た目は変えない（色も変わらない）。解説のある言葉以外をタップした時は、今まで通りメッセージが進む。
 //   解説を見終わったら「メッセージに戻る」（またはキャンセルキー）で、元の画面に戻ってメッセージの続きを読める。
@@ -28,7 +28,7 @@ function glossaryAllEntries() {
 }
 
 // ★要望対応：言葉は、シナリオ（メッセージ）に出てくるまでは伏せる。
-//   一度でもメッセージ欄・選択肢に出た言葉（見出し or 別の書き方）だけが「見つけた言葉」になり、
+//   一度でもメッセージ欄・選択肢に出た言葉（見出し or 言い換え）だけが「見つけた言葉」になり、
 //   用語・語彙アプリの一覧やメッセージのタップ解説に現れる。見つけた言葉の記録はセーブデータに乗る
 let glossarySeenIds = {};   // { 言葉のid: 初めて出た話の名前（例："第二話"。分からなければ空文字） }
 let glossaryCurrentChapterLabel = "";   // 今プレイ中の話の名前（scenariobuild.js が話の開始時に設定する）
@@ -86,7 +86,7 @@ function glossarySortedEntries(list) {
   return list.slice().sort((a, b) => glossarySortKey(a).localeCompare(glossarySortKey(b), "ja"));
 }
 
-// 見出し＋別の書き方（aliases）。長い順に並べて返す（長い言葉を先に探すため）
+// 見出し＋言い換え（aliases）。長い順に並べて返す（長い言葉を先に探すため）
 function glossaryKeysOf(entry) {
   const keys = [entry.term.trim()];
   String(entry.aliases || "").split(/[、,，\n]/).map(s => s.trim()).filter(Boolean).forEach(a => keys.push(a));
@@ -272,7 +272,7 @@ function glossaryRenderDetail(panel) {
   const aliases = glossaryKeysOf(entry).filter(k => k !== entry.term.trim());
   if (aliases.length > 0) {
     const row = guildAppEl("div", "waza-detail-row");
-    row.appendChild(guildAppEl("span", "waza-detail-key", "別の書き方"));
+    row.appendChild(guildAppEl("span", "waza-detail-key", "言い換え"));
     row.appendChild(guildAppEl("span", "waza-detail-value", aliases.join("、")));
     card.appendChild(row);
   }

@@ -5600,9 +5600,9 @@ function getTutorialManagerConfig() {
 // ★便利タブの「用語・語彙」アプリに載せる言葉（このゲーム専用の用語・ことわざ・熟語など）を編集する（glossary_app.js）
 function getGlossaryManagerConfig() {
   return {
-    note: "便利タブの「用語・語彙」アプリの言葉を編集します。メッセージの中に「言葉」または「別の書き方」と同じ文字が出てきたら、そこをタップすると解説が開きます（言葉の色は変わりません）。" +
+    note: "便利タブの「用語・語彙」アプリの言葉を編集します。メッセージの中に「言葉」または「言い換え」と同じ文字が出てきたら、そこをタップすると解説が開きます（言葉の色は変わりません）。" +
       "「読み」を入れると、アプリの見出しにルビが付きます。「意味の解説」と「用例」には、ルビ記法 {/漢字}={\\かんじ} も使えます。" +
-      "「別の書き方」は「、」で区切って複数入れられます（例：月刊魔法記事の「月間魔法記事」）。2文字以上の言葉だけがタップの対象になります。",
+      "「言い換え」は「、」で区切って複数入れられます（例：月刊魔法記事の「月間魔法記事」）。2文字以上の言葉だけがタップの対象になります。",
     category: "glossary",
     collapsible: true,
     getEntitySummary: (entity) => "📚 " + (entity.term || "（未設定）") + (entity.reading ? "（" + entity.reading + "）" : "") + "／" + (entity.category || "その他"),
@@ -5612,7 +5612,7 @@ function getGlossaryManagerConfig() {
       { key: "reading", label: "読み（ルビ）", type: "text", placeholder: "例：まな（空欄ならルビなし）" },
       { key: "category", label: "分類", type: "select", options: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]).map(c => ({ value: c, label: c })) },
       { key: "meaning", label: "意味の解説", type: "textarea", placeholder: "言葉の意味・このゲームでの使われ方（改行OK）" },
-      { key: "aliases", label: "別の書き方（「、」区切り）", type: "text", placeholder: "例：月間魔法記事（空欄でOK）" },
+      { key: "aliases", label: "言い換え（「、」区切り）", type: "text", placeholder: "例：月間魔法記事（空欄でOK）" },
       { key: "example", label: "用例（任意）", type: "textarea", placeholder: "例文など（空欄でOK）" }
     ],
     newEntity: () => ({ id: generateId("glossary"), term: "新しい言葉", reading: "", category: "ゲーム用語", meaning: "", aliases: "", example: "" })
