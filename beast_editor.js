@@ -74,7 +74,12 @@ function renderBeastManager(container) {
 
   const listEl = document.createElement("div");
   listEl.className = "scenariobuild-list";
-  scenarioProject.beasts.forEach((entry, index) => listEl.appendChild(buildBeastRow(entry, index)));
+  scenarioProject.beasts.forEach((entry, index) => listEl.appendChild(buildCollapsedEntryRow({
+    number: `#${index + 1}`,
+    title: () => (scenarioProject.beasts[index] || {}).name,
+    isValid: () => !!scenarioProject.beasts[index],
+    build: () => buildBeastRow(scenarioProject.beasts[index], index)
+  })));
   container.appendChild(listEl);
 }
 
