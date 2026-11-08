@@ -24,6 +24,12 @@ let nextEquipmentInstanceId = 1;
 // ★要望対応：インベントリの「入手順」並び替え用の連番。addItemで新しいスタック/個体ができるたびに払い出す
 let nextInventoryAcquiredSeq = 1;
 
+// ★アイテムごとのスタック上限。アイテムのmaxStackがあればそれ（カジノコインなど、大量に持つアイテム用）、無ければ共通のMAX_STACK
+function getItemMaxStack(master) {
+  const own = Math.floor(Number(master && master.maxStack));
+  return own >= 1 ? own : MAX_STACK;
+}
+
 function isStackable(master) {
   if (!master) return false;
   if (master.category === "weapon" || master.category === "armor") return false; // ★装備は常にスタックしない
@@ -74,7 +80,14 @@ function sanitizeInventoryInstanceIds() {
  * @param {number} quantity - 追加する個数（デフォルト1）
  * @returns {boolean} 全部入りきったら true、途中で満杯になったら false
  */
+// ★アイテムを持ち物に加える。チュートリアルの解放条件「初めて入手したら」のため、入手できたら記録する
 function addItem(itemId, quantity = 1, options = {}) {
+  const added = addItemCore(itemId, quantity, options);
+  if (added && typeof recordItemObtainedForTutorial === "function") recordItemObtainedForTutorial(itemId); // convenience.js
+  return added;
+}
+
+function addItemCore(itemId, quantity = 1, options = {}) {
   const master = ITEM_MASTER[itemId];
   if (!master) {
     console.error(`アイテムID「${itemId}」が ITEM_MASTER に存在しません`);
@@ -87,8 +100,8 @@ function addItem(itemId, quantity = 1, options = {}) {
     // 1. 既存のスタックに空きがあれば、そこから埋めていく
     for (let i = 0; i < GRID_SIZE && remaining > 0; i++) {
       const slot = inventorySlots[i];
-      if (slot && slot.itemId === itemId && slot.quantity < MAX_STACK) {
-        const space = MAX_STACK - slot.quantity;
+      if (slot && slot.itemId === itemId && slot.quantity < getItemMaxStack(master)) {
+        const space = getItemMaxStack(master) - slot.quantity;
         const add = Math.min(space, remaining);
         slot.quantity += add;
         remaining -= add;
@@ -102,7 +115,7 @@ function addItem(itemId, quantity = 1, options = {}) {
         console.warn("インベントリが満杯です（これ以上入りません）");
         return false;
       }
-      const add = Math.min(MAX_STACK, remaining);
+      const add = Math.min(getItemMaxStack(master), remaining);
       inventorySlots[emptyIndex] = { itemId, quantity: add, appraised: false, acquiredSeq: nextInventoryAcquiredSeq++ }; // ★要望対応：入手順並び替え用
       remaining -= add;
     }

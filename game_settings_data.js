@@ -23014,5 +23014,1807 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     "companions": [],
     "quests": [],
     "classes": []
-  }
+  },
+  "gachaSkills": [
+    {
+      "description": "［テスト用・レア・通常スキル］2回攻撃。凸で威力と回数が伸びる。",
+      "enabled": true,
+      "rarity": "R",
+      "costType": "sp",
+      "spCost": 6,
+      "shouryokuCost": 30,
+      "type": "attack",
+      "element": "element_1790419127202_4",
+      "power": 15,
+      "target": "single",
+      "hitCount": 2,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": false,
+      "blocks": [],
+      "variables": {},
+      "id": "gacha_test_01",
+      "name": "【テスト】連撃の型",
+      "limitBreaks": [
+        [
+          {
+            "param": "power",
+            "value": 3
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "hitCount",
+            "value": 1
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "spCost",
+            "value": -1
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 10
+          },
+          {
+            "param": "hitCount",
+            "value": 1
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・レア・通常スキル］炎属性。火傷の確率・持続・威力が凸で伸びる。",
+      "enabled": true,
+      "rarity": "R",
+      "costType": "sp",
+      "spCost": 10,
+      "shouryokuCost": 30,
+      "type": "attack",
+      "element": "element_1790419127202_5",
+      "power": 25,
+      "target": "single",
+      "hitCount": 1,
+      "atkType": "magical",
+      "cleanse": false,
+      "statusEffectKind": "burn",
+      "statusEffectChance": 0.3,
+      "statusEffectDuration": 2,
+      "statusEffectPower": 5,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": false,
+      "blocks": [],
+      "variables": {},
+      "id": "gacha_test_02",
+      "name": "【テスト】燃える一撃",
+      "limitBreaks": [
+        [
+          {
+            "param": "statusEffectChance",
+            "value": 0.15
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "statusEffectDuration",
+            "value": 1
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "statusEffectPower",
+            "value": 3
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "statusEffectChance",
+            "value": 0.15
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 10
+          },
+          {
+            "param": "statusEffectChance",
+            "value": 0.1
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・レア・通常スキル］味方全体のHPを回復。凸数が多いほど回復量が増え、3凸以上で再生も付く（ifブロックの確認用）。",
+      "enabled": true,
+      "rarity": "R",
+      "costType": "sp",
+      "spCost": 12,
+      "shouryokuCost": 30,
+      "type": "heal",
+      "element": "無",
+      "power": 0,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_gachatest_1",
+          "type": "message",
+          "speaker": "",
+          "text": "やわらかな灯火が仲間を包み込む。"
+        },
+        {
+          "id": "skillblock_gachatest_2",
+          "type": "heal",
+          "target": "all",
+          "gauge": "hp",
+          "amount": "20 + 凸数 * 5",
+          "amountIsPercent": true
+        },
+        {
+          "id": "skillblock_gachatest_5",
+          "type": "if",
+          "expression": "凸数 >= 3",
+          "trueBlocks": [
+            {
+              "id": "skillblock_gachatest_3",
+              "type": "message",
+              "speaker": "",
+              "text": "（3凸以上）灯火が持続的な癒しに変わる！"
+            },
+            {
+              "id": "skillblock_gachatest_4",
+              "type": "applyStatus",
+              "targetSide": "allies",
+              "target": "all",
+              "statusId": "regen",
+              "duration": "3",
+              "power": "30",
+              "chance": "1"
+            }
+          ],
+          "falseBlocks": [],
+          "trueJumpBlockId": null,
+          "falseJumpBlockId": null
+        },
+        {
+          "id": "skillblock_gachatest_6",
+          "type": "end"
+        }
+      ],
+      "variables": {},
+      "id": "gacha_test_03",
+      "name": "【テスト】癒しの灯火"
+    },
+    {
+      "description": "［テスト用・スーパーレア・上位スキル］雷属性の全体攻撃。焦力を消費する。",
+      "enabled": true,
+      "rarity": "SR",
+      "costType": "shouryoku",
+      "spCost": 8,
+      "shouryokuCost": 50,
+      "type": "attack",
+      "element": "element_1790419127202_6",
+      "power": 45,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "magical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": false,
+      "blocks": [],
+      "variables": {},
+      "id": "gacha_test_04",
+      "name": "{/雷霆の裁き}={\\らいていのさばき}",
+      "limitBreaks": [
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "shouryokuCost",
+            "value": -10
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 10
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "hitCount",
+            "value": 1
+          },
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・スーパーレア・上位スキル］ifブロックで凸数による分岐を確認する技。3凸以上で気絶を狙い、5凸で追撃が入る。",
+      "enabled": true,
+      "rarity": "SR",
+      "costType": "shouryoku",
+      "spCost": 8,
+      "shouryokuCost": 40,
+      "type": "attack",
+      "element": "element_1790419127202_4",
+      "power": 30,
+      "target": "single",
+      "hitCount": 1,
+      "atkType": "physical",
+      "cleanse": false,
+      "statusEffectKind": "",
+      "statusEffectChance": 1,
+      "statusEffectDuration": 1,
+      "statusEffectPower": 0,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": true,
+      "blocks": [
+        {
+          "id": "skillblock_gachatest_7",
+          "type": "message",
+          "speaker": "",
+          "text": "舞うような連続攻撃！"
+        },
+        {
+          "id": "skillblock_gachatest_8",
+          "type": "damage",
+          "target": "single",
+          "powerMultiplier": "技威力 + 凸数 * 5",
+          "atkType": "physical"
+        },
+        {
+          "id": "skillblock_gachatest_11",
+          "type": "if",
+          "expression": "凸数 >= 3",
+          "trueBlocks": [
+            {
+              "id": "skillblock_gachatest_9",
+              "type": "message",
+              "speaker": "",
+              "text": "（3凸以上）鋭い一撃が相手の動きを止める！"
+            },
+            {
+              "id": "skillblock_gachatest_10",
+              "type": "applyStatus",
+              "targetSide": "enemy",
+              "target": "single",
+              "statusId": "stun",
+              "duration": "1",
+              "power": "0",
+              "chance": "0.5"
+            }
+          ],
+          "falseBlocks": [],
+          "trueJumpBlockId": null,
+          "falseJumpBlockId": null
+        },
+        {
+          "id": "skillblock_gachatest_14",
+          "type": "if",
+          "expression": "凸数 >= 5",
+          "trueBlocks": [
+            {
+              "id": "skillblock_gachatest_12",
+              "type": "message",
+              "speaker": "",
+              "text": "（5凸）舞は止まらない――全体への追撃！"
+            },
+            {
+              "id": "skillblock_gachatest_13",
+              "type": "damage",
+              "target": "all",
+              "powerMultiplier": "技威力 * 0.5",
+              "atkType": "physical"
+            }
+          ],
+          "falseBlocks": [],
+          "trueJumpBlockId": null,
+          "falseJumpBlockId": null
+        },
+        {
+          "id": "skillblock_gachatest_15",
+          "type": "end"
+        }
+      ],
+      "variables": {},
+      "id": "gacha_test_05",
+      "name": "【テスト】凸数の舞",
+      "limitBreaks": [
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "shouryokuCost",
+            "value": -5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 10
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・スーパーレア・上位スキル］炎属性の全体攻撃＋火傷。凸で火傷の確率と威力が伸びる。",
+      "enabled": true,
+      "rarity": "SR",
+      "costType": "shouryoku",
+      "spCost": 8,
+      "shouryokuCost": 60,
+      "type": "attack",
+      "element": "element_1790419127202_5",
+      "power": 40,
+      "target": "all",
+      "hitCount": 1,
+      "atkType": "magical",
+      "cleanse": false,
+      "statusEffectKind": "burn",
+      "statusEffectChance": 0.6,
+      "statusEffectDuration": 3,
+      "statusEffectPower": 5,
+      "statusEffect2Kind": "",
+      "statusEffect2Chance": 1,
+      "statusEffect2Duration": 1,
+      "statusEffect2Power": 0,
+      "selfBuffKind": "",
+      "selfBuffDuration": 1,
+      "selfBuffPower": 0,
+      "selfBuffMode": "add",
+      "selfBuff2Kind": "",
+      "selfBuff2Duration": 1,
+      "selfBuff2Power": 0,
+      "selfBuff2Mode": "add",
+      "useBlocks": false,
+      "blocks": [],
+      "variables": {},
+      "id": "gacha_test_06",
+      "name": "{/紅蓮の終焉}={\\ぐれんのしゅうえん}",
+      "limitBreaks": [
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "statusEffectChance",
+            "value": 0.1
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 5
+          },
+          {
+            "param": "statusEffectPower",
+            "value": 3
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "statusEffectChance",
+            "value": 0.1
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "power",
+            "value": 15
+          },
+          {
+            "param": "statusEffectDuration",
+            "value": 1
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    }
+  ],
+  "gachaConfig": {
+    "missPool": [
+      {
+        "kind": "gold",
+        "itemId": "",
+        "count": 1,
+        "amount": 500,
+        "weight": 3
+      },
+      {
+        "kind": "gold",
+        "itemId": "",
+        "count": 1,
+        "amount": 2000,
+        "weight": 1
+      }
+    ]
+  },
+  "beasts": [
+    {
+      "description": "［テスト用・ノーマル・支援］小さな体で、そっと寄り添う魔獣。",
+      "enabled": true,
+      "rarity": "N",
+      "role": "support",
+      "element": "無",
+      "image": "",
+      "affinities": [
+        {
+          "target": "player",
+          "bonuses": [
+            {
+              "param": "maxHp",
+              "value": 10
+            },
+            {
+              "param": "",
+              "value": 0
+            },
+            {
+              "param": "",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "idleActions": [],
+      "links": [],
+      "id": "beast_test_01",
+      "name": "【テスト】守り猫",
+      "baseStats": {
+        "maxHp": 18,
+        "atk": 3,
+        "skillPower": 4,
+        "agi": 4
+      },
+      "growthPerLevel": {
+        "maxHp": 2.17,
+        "atk": 0.23,
+        "skillPower": 0.34,
+        "agi": 0.16
+      },
+      "limitBreaks": [
+        [
+          {
+            "param": "maxHp",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "agi",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "maxHp",
+            "value": 8
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "skillPower",
+            "value": 8
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "maxHp",
+            "value": 10
+          },
+          {
+            "param": "skillPower",
+            "value": 8
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・レア・攻撃］炎をまとう若い狼。ケツァナと相性が良い。",
+      "enabled": true,
+      "rarity": "R",
+      "role": "attack",
+      "element": "element_1790419127202_5",
+      "image": "",
+      "affinities": [
+        {
+          "target": "ketsuna",
+          "bonuses": [
+            {
+              "param": "atk",
+              "value": 10
+            },
+            {
+              "param": "agi",
+              "value": 5
+            },
+            {
+              "param": "",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "idleActions": [],
+      "links": [],
+      "id": "beast_test_02",
+      "name": "【テスト】炎狼の仔",
+      "baseStats": {
+        "maxHp": 31,
+        "atk": 9,
+        "skillPower": 3,
+        "agi": 6
+      },
+      "growthPerLevel": {
+        "maxHp": 3.91,
+        "atk": 0.74,
+        "skillPower": 0.31,
+        "agi": 0.27
+      },
+      "limitBreaks": [
+        [
+          {
+            "param": "atk",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "agi",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "maxHp",
+            "value": 8
+          },
+          {
+            "param": "atk",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "atk",
+            "value": 6
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "atk",
+            "value": 10
+          },
+          {
+            "param": "maxHp",
+            "value": 10
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・レア・回復］光の鱗を持つ幼い竜。ロリルと相性が良い。",
+      "enabled": true,
+      "rarity": "R",
+      "role": "heal",
+      "element": "element_1789993536302_4",
+      "image": "",
+      "affinities": [
+        {
+          "target": "companion_1788390422466_28",
+          "bonuses": [
+            {
+              "param": "skillPower",
+              "value": 10
+            },
+            {
+              "param": "maxHp",
+              "value": 5
+            },
+            {
+              "param": "",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "idleActions": [],
+      "links": [],
+      "id": "beast_test_03",
+      "name": "【テスト】癒しの幼竜",
+      "baseStats": {
+        "maxHp": 35,
+        "atk": 2,
+        "skillPower": 7,
+        "agi": 4
+      },
+      "growthPerLevel": {
+        "maxHp": 4.16,
+        "atk": 0.18,
+        "skillPower": 0.57,
+        "agi": 0.18
+      },
+      "limitBreaks": [
+        [
+          {
+            "param": "skillPower",
+            "value": 5
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "maxHp",
+            "value": 6
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "skillPower",
+            "value": 8
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "maxHp",
+            "value": 8
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "skillPower",
+            "value": 12
+          },
+          {
+            "param": "agi",
+            "value": 6
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ]
+      ]
+    },
+    {
+      "description": "［テスト用・スーパーレア・攻撃］雷を纏う、古い星の魔獣。主人公とも、ケツァナとも相性が良い。",
+      "enabled": true,
+      "rarity": "SR",
+      "role": "attack",
+      "element": "element_1790419127202_6",
+      "image": "",
+      "affinities": [
+        {
+          "target": "player",
+          "bonuses": [
+            {
+              "param": "skillPower",
+              "value": 8
+            },
+            {
+              "param": "",
+              "value": 0
+            },
+            {
+              "param": "",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "target": "ketsuna",
+          "bonuses": [
+            {
+              "param": "atk",
+              "value": 8
+            },
+            {
+              "param": "",
+              "value": 0
+            },
+            {
+              "param": "",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "idleActions": [],
+      "links": [],
+      "id": "beast_test_04",
+      "name": "{/星喰らいの獣}={\\ほしぐらいのけもの}",
+      "baseStats": {
+        "maxHp": 38,
+        "atk": 11,
+        "skillPower": 9,
+        "agi": 7
+      },
+      "growthPerLevel": {
+        "maxHp": 4.57,
+        "atk": 0.82,
+        "skillPower": 0.74,
+        "agi": 0.33
+      },
+      "limitBreaks": [
+        [
+          {
+            "param": "atk",
+            "value": 4
+          },
+          {
+            "param": "skillPower",
+            "value": 4
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "maxHp",
+            "value": 6
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "atk",
+            "value": 6
+          },
+          {
+            "param": "skillPower",
+            "value": 6
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "agi",
+            "value": 6
+          },
+          {
+            "param": "",
+            "value": 0
+          },
+          {
+            "param": "",
+            "value": 0
+          }
+        ],
+        [
+          {
+            "param": "atk",
+            "value": 10
+          },
+          {
+            "param": "skillPower",
+            "value": 10
+          },
+          {
+            "param": "maxHp",
+            "value": 8
+          }
+        ]
+      ]
+    }
+  ],
+  "summonConfig": {
+    "breakMultipliers": [
+      60,
+      68,
+      76,
+      84,
+      92,
+      100
+    ]
+  },
+  "glossary": [
+    {
+      "id": "glossary_seed_01",
+      "term": "真名",
+      "reading": "まな",
+      "category": "ゲーム用語",
+      "meaning": "この世界で、その人の本当の名前のこと。真名を口にすることは「服従」を意味し、真名を知る者は相手を隷属させる力を得る。そのため誰も自分から明かさないのが常識で、奴隷商はこの決まりを悪用して人々を奴隷にしている。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_02",
+      "term": "二つ名",
+      "reading": "ふたつな",
+      "category": "ゲーム用語",
+      "meaning": "冒険者につく通称。自分では決められず、自分以外の人から付けてもらう決まりになっている。（例：「竜殺し」）",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_03",
+      "term": "竜殺し",
+      "reading": "りゅうごろし",
+      "category": "ゲーム用語",
+      "meaning": "酒場で出会った女性冒険者の二つ名。この辺りではそこそこ有名なソロ冒険者で、職業は狂戦士（バーサーカー）。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_04",
+      "term": "狂戦士",
+      "reading": "きょうせんし",
+      "category": "ゲーム用語",
+      "meaning": "理性を手放すほど激しく戦う、攻撃特化の戦闘職。英語名はバーサーカー。",
+      "aliases": "バーサーカー",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_05",
+      "term": "異世界トラック",
+      "reading": "いせかいトラック",
+      "category": "ゲーム用語",
+      "meaning": "信号無視で突っ込んできて、ひかれた人を異世界へ送り込む、いわゆる「お約束」のトラック。異世界転生ものの定番ネタで、主人公・田中治郎が死ぬきっかけになった。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_06",
+      "term": "転移者",
+      "reading": "てんいしゃ",
+      "category": "ゲーム用語",
+      "meaning": "元いた世界から、この世界へ送り込まれてきた人。治郎のように、神によって異世界へ転送された者を指す。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_07",
+      "term": "チートスキル",
+      "reading": "",
+      "category": "ゲーム用語",
+      "meaning": "常識外れに強力な能力のこと。異世界転生ものでは、転生時に神から授かるのがお約束。治郎は渡し忘れられたらしい。",
+      "aliases": "チート",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_08",
+      "term": "魔導王国",
+      "reading": "まどうおうこく",
+      "category": "ゲーム用語",
+      "meaning": "魔法の研究に力を入れている大国。正式名は「魔導王国スペル＝マ・ギア」。国家研究所があり、月刊魔法記事にもたびたび取り上げられる。治郎たちの新たな目的地。",
+      "aliases": "スペル=マ・ギア、スペル＝マ・ギア",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_09",
+      "term": "国家研究所",
+      "reading": "こっかけんきゅうじょ",
+      "category": "ゲーム用語",
+      "meaning": "魔導王国の王様が、主に魔法の研究のために作った国の研究機関。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_10",
+      "term": "月刊魔法記事",
+      "reading": "げっかんまほうきじ",
+      "category": "ゲーム用語",
+      "meaning": "魔法の最新情報を載せた、毎月発行される読み物。「月間魔法記事」と書かれることもある。",
+      "aliases": "月間魔法記事",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_11",
+      "term": "奴隷商",
+      "reading": "どれいしょう",
+      "category": "ゲーム用語",
+      "meaning": "人を奴隷として売り買いする商人。この世界には、村を襲わせ、魔術で無理やり真名を吐かせて奴隷を作る悪質な者がいる。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_12",
+      "term": "奴隷市場",
+      "reading": "どれいしじょう",
+      "category": "ゲーム用語",
+      "meaning": "奴隷が売り買いされる市場。表には出ない、闇の取引の場でもある。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_13",
+      "term": "近衛騎士",
+      "reading": "このえきし",
+      "category": "ゲーム用語",
+      "meaning": "王や王家を直接守る、精鋭の騎士。その部隊の長が「近衛騎士隊長」。",
+      "aliases": "近衛騎士隊長、近衛騎士部隊、王国近衛騎士部隊",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_14",
+      "term": "爆牛乳",
+      "reading": "ばくぎゅうにゅう",
+      "category": "ゲーム用語",
+      "meaning": "カリの村の名産品の牛乳。村では農作物や牧畜が盛ん。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_15",
+      "term": "魔精霊",
+      "reading": "ませいれい",
+      "category": "ゲーム用語",
+      "meaning": "魔の力を宿した精霊。指輪などの媒体を使って召喚される。ブヒーモスが呼び出された。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_16",
+      "term": "偽装作戦",
+      "reading": "ぎそうさくせん",
+      "category": "ゲーム用語",
+      "meaning": "本当の目的を隠し、別の目的があるように見せかける作戦。ロリルを捕まえて引き渡すふりをして、屋敷へ潜入する。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_17",
+      "term": "冒険者登録",
+      "reading": "ぼうけんしゃとうろく",
+      "category": "ゲーム用語",
+      "meaning": "冒険者として名前を登録する手続き。登録するとクエスト（依頼）を受けられるようになる。酒場でも受け付けている。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_18",
+      "term": "クエスト",
+      "reading": "",
+      "category": "ゲーム用語",
+      "meaning": "冒険者が受ける依頼のこと。魔物の討伐や、捜索・採取など。酒場などで受注できる。",
+      "aliases": "依頼",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_19",
+      "term": "低級依頼",
+      "reading": "ていきゅういらい",
+      "category": "ゲーム用語",
+      "meaning": "ランクの低い冒険者向けの、難易度も報酬も低い依頼。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_20",
+      "term": "ギルド",
+      "reading": "",
+      "category": "ゲーム用語",
+      "meaning": "冒険者に仕事（クエスト）を紹介し、取りまとめる組合。この世界では酒場でも冒険者登録やクエストの受注ができる。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_21",
+      "term": "上位種",
+      "reading": "じょういしゅ",
+      "category": "ゲーム用語",
+      "meaning": "同じ種族の中でも、特に強く成長・変異した個体のこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_22",
+      "term": "ホブゴブリン",
+      "reading": "",
+      "category": "ゲーム用語",
+      "meaning": "ゴブリンの上位種。体が大きく強く、集団で人をさらうこともある。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_23",
+      "term": "報奨金",
+      "reading": "ほうしょうきん",
+      "category": "ゲーム用語",
+      "meaning": "捜索や討伐など、依頼を果たした人に支払われるお金。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_24",
+      "term": "陳",
+      "reading": "ちん",
+      "category": "ゲーム用語",
+      "meaning": "この世界のお金の単位。（例：報奨金300000陳）",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_25",
+      "term": "好感度",
+      "reading": "こうかんど",
+      "category": "ゲーム用語",
+      "meaning": "相手が自分に抱いている好意の度合い。魔物は、単体で来た時に倒したあと見逃してあげると、少しずつ上がっていく（上がりにくい魔物もいる）。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_26",
+      "term": "ヘイト",
+      "reading": "",
+      "category": "ゲーム用語",
+      "meaning": "敵の敵意や注意が自分に向く度合い。「ヘイトを買う」とは、敵の狙いを自分に引きつけてしまうこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_27",
+      "term": "一文無し",
+      "reading": "いちもんなし",
+      "category": "一般語彙",
+      "meaning": "持っているお金が全く無いこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_28",
+      "term": "放浪者",
+      "reading": "ほうろうしゃ",
+      "category": "一般語彙",
+      "meaning": "決まった住まいを持たず、あちこちをさまよい歩く人。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_29",
+      "term": "闇取引",
+      "reading": "やみとりひき",
+      "category": "一般語彙",
+      "meaning": "法や世間の目を避けて、こっそり行われる取引。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_30",
+      "term": "DT",
+      "reading": "でぃーてぃー",
+      "category": "ネット・俗語",
+      "meaning": "「童貞」を表すネットスラング。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_31",
+      "term": "ブラック企業",
+      "reading": "",
+      "category": "ネット・俗語",
+      "meaning": "長時間労働や低賃金などで、従業員を酷使する会社。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_32",
+      "term": "同人誌",
+      "reading": "どうじんし",
+      "category": "一般語彙",
+      "meaning": "同じ趣味を持つ仲間が、自分たちで作って発行する本。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_33",
+      "term": "攻略本",
+      "reading": "こうりゃくぼん",
+      "category": "一般語彙",
+      "meaning": "ゲームの進め方や、隠し要素などを解説した本。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_34",
+      "term": "ヒョロガリ",
+      "reading": "",
+      "category": "ネット・俗語",
+      "meaning": "ひょろひょろと細く痩せた人を指す俗語。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_35",
+      "term": "ハーレム",
+      "reading": "",
+      "category": "ネット・俗語",
+      "meaning": "主人公のまわりに、多くの異性が集まっている状態（またはそういう作品のジャンル）。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_36",
+      "term": "トゥルーエンディング",
+      "reading": "",
+      "category": "ネット・俗語",
+      "meaning": "複数あるエンディングの中の「本当の結末」。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_37",
+      "term": "マッドサイエンティスト",
+      "reading": "",
+      "category": "ネット・俗語",
+      "meaning": "常識外れの研究に取りつかれた、狂気の科学者。村に来ていた「デッパ」がそう呼ばれている。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_38",
+      "term": "満身創痍",
+      "reading": "まんしんそうい",
+      "category": "熟語",
+      "meaning": "体じゅう傷だらけであること。ひどく傷ついて、ぼろぼろの状態。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_39",
+      "term": "意気投合",
+      "reading": "いきとうごう",
+      "category": "熟語",
+      "meaning": "お互いの気持ちや考えがぴったり合って、すぐに打ち解けること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_40",
+      "term": "自暴自棄",
+      "reading": "じぼうじき",
+      "category": "熟語",
+      "meaning": "思い通りにならなくなって、どうにでもなれと投げやりな行動をとること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_41",
+      "term": "天涯孤独",
+      "reading": "てんがいこどく",
+      "category": "熟語",
+      "meaning": "身寄りが一人もいなくて、ひとりぼっちであること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_42",
+      "term": "怒り心頭",
+      "reading": "いかりしんとう",
+      "category": "熟語",
+      "meaning": "怒りが心の底から湧き上がること。ひどく腹を立てるさま。「怒り心頭に発する」の形でも使う。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_43",
+      "term": "突然変異",
+      "reading": "とつぜんへんい",
+      "category": "熟語",
+      "meaning": "親にはない性質が、突然あらわれること。ゴブリンが突然変異で巨大化して上位種になった。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_44",
+      "term": "全力投球",
+      "reading": "ぜんりょくとうきゅう",
+      "category": "熟語",
+      "meaning": "力のすべてを出して、物事に取り組むこと。もとは野球で、全力で球を投げること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_45",
+      "term": "救世主",
+      "reading": "きゅうせいしゅ",
+      "category": "熟語",
+      "meaning": "苦しみや危機から人々を救ってくれる人。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_46",
+      "term": "自主脱隊",
+      "reading": "じしゅだったい",
+      "category": "熟語",
+      "meaning": "命令されたのではなく、自分の意思で所属していた部隊をやめること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_47",
+      "term": "仁王立ち",
+      "reading": "におうだち",
+      "category": "慣用句・ことわざ",
+      "meaning": "足を開き、両腕を広げるか腰に手を当てて、どっしりと立ちはだかること。寺の門にある仁王像の姿から。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_48",
+      "term": "滅多刺し",
+      "reading": "めったざし",
+      "category": "一般語彙",
+      "meaning": "相手の体を、手当たりしだいに何度も刺すこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_49",
+      "term": "間髪を入れず",
+      "reading": "かんぱつをいれず",
+      "category": "慣用句・ことわざ",
+      "meaning": "少しの間も置かずに、すぐ続けて行うこと。「間、髪を容れず」と書く。",
+      "aliases": "間髪入れず、間髪を容れず",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_50",
+      "term": "一万歩譲って",
+      "reading": "いちまんぽゆずって",
+      "category": "慣用句・ことわざ",
+      "meaning": "大きく妥協して認めるとしても、という意味。「百歩譲って」を大げさにした言い方。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_51",
+      "term": "胸を張る",
+      "reading": "むねをはる",
+      "category": "慣用句・ことわざ",
+      "meaning": "自信に満ちた態度をとる。誇らしげな様子をする。",
+      "aliases": "胸を張って",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_52",
+      "term": "手間取る",
+      "reading": "てまどる",
+      "category": "慣用句・ことわざ",
+      "meaning": "思ったより時間や手間がかかること。",
+      "aliases": "手間取らせ",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_53",
+      "term": "大袈裟",
+      "reading": "おおげさ",
+      "category": "一般語彙",
+      "meaning": "実際より誇張して、物事を大きく見せるさま。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_54",
+      "term": "一際",
+      "reading": "ひときわ",
+      "category": "一般語彙",
+      "meaning": "他と比べて、特に目立つさま。「一際大きな足音」のように使う。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_55",
+      "term": "渋々",
+      "reading": "しぶしぶ",
+      "category": "一般語彙",
+      "meaning": "気が進まないまま、嫌々ながら行うさま。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_56",
+      "term": "身柄",
+      "reading": "みがら",
+      "category": "一般語彙",
+      "meaning": "人の体、または、その人の身。「身柄を引き渡す」は、その人を相手に引き渡すこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_57",
+      "term": "非国民",
+      "reading": "ひこくみん",
+      "category": "一般語彙",
+      "meaning": "国の方針に従わない人を、国民として認めずに非難する言い方。強い罵りの言葉。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_58",
+      "term": "衰弱",
+      "reading": "すいじゃく",
+      "category": "一般語彙",
+      "meaning": "病気や飢え、疲れなどで、体が弱ってしまうこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_59",
+      "term": "唖然",
+      "reading": "あぜん",
+      "category": "一般語彙",
+      "meaning": "あまりのことに、言葉も出ないほど驚くさま。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_60",
+      "term": "葛藤",
+      "reading": "かっとう",
+      "category": "一般語彙",
+      "meaning": "心の中で、相反する気持ちがぶつかって迷うこと。もとは、葛（くず）や藤（ふじ）のつるがもつれ合うことから。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_61",
+      "term": "服従",
+      "reading": "ふくじゅう",
+      "category": "一般語彙",
+      "meaning": "相手の命令や意思に、逆らわずに従うこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_62",
+      "term": "隷属",
+      "reading": "れいぞく",
+      "category": "一般語彙",
+      "meaning": "他の人の支配を受けて、その言いなりになること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_63",
+      "term": "潜入",
+      "reading": "せんにゅう",
+      "category": "一般語彙",
+      "meaning": "気づかれないように、こっそり入り込むこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_64",
+      "term": "監禁",
+      "reading": "かんきん",
+      "category": "一般語彙",
+      "meaning": "ある場所に閉じ込めて、自由に出られないようにすること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_65",
+      "term": "路地裏",
+      "reading": "ろじうら",
+      "category": "一般語彙",
+      "meaning": "大通りから外れた、建物の間にある細い道の奥。人目につきにくい場所。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_66",
+      "term": "躊躇う",
+      "reading": "ためらう",
+      "category": "一般語彙",
+      "meaning": "どうしようか迷って、決断や行動を先延ばしにすること。「躊躇」は「ちゅうちょ」とも読む。",
+      "aliases": "躊躇わず、躊躇い",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_67",
+      "term": "丁寧語",
+      "reading": "ていねいご",
+      "category": "一般語彙",
+      "meaning": "「です」「ます」など、相手に対して丁寧な気持ちを表す言葉づかい。",
+      "aliases": "",
+      "example": ""
+    }
+  ]
 };

@@ -1,0 +1,1317 @@
+// tower_defense.js
+// ===================================================================
+// ===== 冒険者協会「掃討作戦」迎撃モード（タワーディフェンス・最小版） =====
+// ===================================================================
+// ★施設編集タブで作れる「冒険者協会」タイプの施設（facility.type === "towerDefense"）の中身。
+//   openCustomFacility（town.js）から openTowerDefenseFacility() が呼ばれる。
+// ★現状：下に拠点・味方陣地のマスに自由に配置・上から敵が来る（敵は味方ユニットも攻撃する）・属性ごとに1ユニット・属性相性・属性コンボ・ユニットごとの攻撃対象・
+//   ウェーブ数の選択・中ボス・クリア後に次のステージへ進む周回・事前強化（協会ポイント）。
+//   （出撃モード／ユニットのエディタ登録／素材・レア報酬は、企画書の順に後から足す）
+// ★ファイルの作り：
+//   ・上半分＝ゲームの中身（状態の作成・1コマ進める処理）。画面に触れない作りなので単体で動作確認できる
+//   ・下半分＝画面（オーバーレイ・描画・操作）と、施設のメニュー・報酬の受け渡し
+
+let towerDefenseFacility = null;   // 今開いている冒険者協会のデータ（scenariobuild.jsのfacility）
+let towerDefenseReturnTo = null;   // 「戻る」で呼ぶ関数
+
+// ----- 調整用の数値（ここを書き換えるだけでバランスを変えられる） -----
+const TD_WAVE_OPTIONS = [3, 5, 10, 15]; // 選べるウェーブ数（3はお試し用）
+const TD_START_FUNDS = 300;         // 開始時の資金
+const TD_WAVE_CLEAR_BONUS = 40;     // ウェーブをしのぐごとにもらえる資金
+const TD_UNIT_MAX_LEVEL = 8;        // プレイ中のユニット強化の上限レベル
+const TD_LEVEL_ATK_RATE = 0.2;      // レベルが1上がるごとに攻撃力＋20%
+const TD_DAMAGE_SCALE = 2.0;         // ユニットの与ダメージの全体倍率（エディタの「攻撃力%」は、この倍率を掛ける前の値。迎撃モード全体の難しさを一括で調整できる）
+const TD_UPGRADE_COST_RATE = 0.7;   // 強化費用＝購入価格×この値×現在のレベル（レベルが上がるほど高くなる）
+const TD_SPAWN_INTERVAL = 1.8;      // 敵が出てくる間隔（秒）
+const TD_ENEMY_SPEED = 38;          // 敵の移動速度（内部座標/秒）
+const TD_WAVE_HP_GROWTH = 0.30;     // ウェーブが進むごとの敵HPの増加率
+const TD_WAVE_COUNT_BASE = 6;        // 1ウェーブ目に出てくる敵の数
+const TD_WAVE_COUNT_PER_WAVE = 2;   // ウェーブが進むごとに増える敵の数（最大30）
+const TD_BASE_HP_PER_ATK = 60;      // 拠点HP＝出てくる敵の平均攻撃力×この値（最低120）。敵は拠点を攻撃し続けるので、以前より大きい
+// ----- 中ボス・周回（次のステージ）・協会ポイント・事前強化 -----
+// （クリア報酬の陳・ガチャ石・アイテムの設定は、tower_rewards.js とエディタの「掃討作戦の報酬」タブに移した）
+const TD_BOSS_EVERY = 5;            // 何ウェーブごとに中ボスが出るか（そのウェーブの最後に1体）
+const TD_BOSS_HP_RATE = 2;        // 中ボスのHP＝本編のHP×この値（さらにウェーブ・ステージで増える）
+const TD_BOSS_SPEED_RATE = 0.6;     // 中ボスの移動の遅さ
+const TD_BOSS_ATK_RATE = 1.2;         // 中ボスがゴールした時の拠点ダメージ倍率
+const TD_STAGE_HP_GROWTH = 0.35;    // 次のステージへ進むごとの敵HPの増加率
+const TD_STAGE_ATK_GROWTH = 0.15;   // 同・拠点ダメージの増加率
+const TD_POINTS_PER_WAVE = 1;       // クリア時にもらえる協会ポイント（ウェーブ数×この値＋倒した中ボス×下の値）
+const TD_POINTS_PER_BOSS = 3;
+const TD_UPGRADE_MAX = 10;          // 事前強化の上限レベル
+const TD_UPGRADE_POINT_BASE = 10;   // 事前強化の費用＝この値×（現在のレベル＋1）ポイント
+const TD_UPG_HP_RATE = 0.10;        // 拠点HP：1レベルごとに＋10%
+const TD_UPG_FUNDS = 25;            // 開始時の資金：1レベルごとに＋25
+const TD_UPG_INCOME = 0.05;         // 資金の稼ぎやすさ：1レベルごとに、敵を倒した時の資金＋5%
+// ----- コンボ（本編のコンボスキル定義をそのまま使う） -----
+const TD_COMBO_HISTORY_MAX = 8;     // 属性の履歴の上限（本編と同じ。発動した時だけリセット）
+const TD_COMBO_LOCK = 2.0;          // コンボ発動後、履歴を取らない秒数（連発しすぎないようにする）
+const TD_COMBO_BASE = 0.12;         // コンボ1発のダメージ＝敵の平均HP×（この値＋威力×下の値）
+const TD_COMBO_POWER_RATE = 0.01;
+// ----- 状態異常（コンボに付くもの。本編の「1ターン」を、こちらでは下の秒数に置き換える） -----
+const TD_STATUS_SEC_PER_TURN = 1.0;
+const TD_DOT_RATE = 0.04;           // 毒・火傷などの1秒あたりのダメージ＝敵の平均HP×威力×この値
+const TD_DEFDOWN_RATE = 1.3;        // 防御力低下中の敵が受けるダメージ倍率
+const TD_ATKDOWN_RATE = 0.6;        // 攻撃力低下中の敵がゴールした時に減らす拠点HPの倍率
+
+// ----- 迎撃モードのフィールド -----
+// 縦に長い世界（上＝敵の出てくる側、下＝自分の拠点）を、横長の窓（スマホだけ縦長）でカメラが追いかける。
+//   味方陣地のマス（TD_GRID_COLS×TD_GRID_ROWS）の好きな所にユニットを置く。敵は上から拠点へ直進し、途中の味方も攻撃する。
+const TD_WORLD_W = 720;
+const TD_WORLD_H = 1060;
+const TD_VIEW_LANDSCAPE = { w: 720, h: 480 };   // 横長の窓（PC・タブレット）
+const TD_VIEW_PORTRAIT = { w: 720, h: 1000 };   // 縦長の窓（スマホだけ）
+const TD_GRID_COLS = 7;             // 味方陣地のマス（横）
+const TD_GRID_ROWS = 4;             // 同（縦）
+const TD_CELL = 92;                 // マス1つの大きさ
+const TD_GRID_X0 = (TD_WORLD_W - TD_GRID_COLS * TD_CELL) / 2;
+const TD_GRID_Y0 = 600;
+const TD_BASE_TOP = 985;            // 拠点の上端（ここから下が拠点）
+const TD_SPAWN_Y = -20;             // 敵が出てくる位置
+const TD_SLOTS = [];                // ユニットを置けるマスの中心（左上から右へ、上から下へ）
+for (let r = 0; r < TD_GRID_ROWS; r++) for (let c = 0; c < TD_GRID_COLS; c++) TD_SLOTS.push([TD_GRID_X0 + c * TD_CELL + TD_CELL / 2, TD_GRID_Y0 + r * TD_CELL + TD_CELL / 2]);
+const TD_SLOT_RADIUS = TD_CELL / 2 - 4;
+const TD_UNIT_HP_RATE = 4;          // 味方ユニットのHP＝敵の平均HP×この値（レベルで増える）
+const TD_ENEMY_DMG_RATE = 0.6;      // 敵の1発のダメージ倍率（本編の攻撃力に掛ける。ユニットにも拠点にも同じ）
+const TD_ENEMY_RANGE = 44;          // 敵の攻撃距離
+const TD_ENEMY_INTERVAL = 1.2;      // 敵の攻撃間隔（秒）
+const TD_BOSS_RANGE = 70;           // 中ボスの攻撃距離
+const TD_CAMERA_SPEED = 3;          // カメラが追いかける速さ
+const TD_BASE_ATK_RATIO = 0.15;     // 拠点の自動反撃：1発＝敵の平均HP×この値（手詰まり防止。ユニットが届かない敵にも、少しずつ反撃する）
+const TD_BASE_ATK_INTERVAL = 1.5;   // 拠点の反撃の間隔（秒）
+const TD_BASE_ATK_RANGE = 170;      // 拠点の反撃の射程
+
+// スマホかどうか（スマホの時だけ、画面を縦長にする）
+function tdIsPhone() {
+  try {
+    const ua = (typeof navigator !== "undefined" && navigator.userAgent) ? navigator.userAgent : "";
+    if (/iPhone|iPod|Android.+Mobile|Windows Phone/i.test(ua)) return true;
+    return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 520px)").matches;
+  } catch (e) { return false; }
+}
+
+// 縦長の窓を使うか（スマホを縦に持っている時だけ。横画面なら端末を問わず横長の窓＋左右レイアウト）
+function tdUsePortraitView() {
+  try {
+    if (!tdIsPhone()) return false;
+    return !(typeof window !== "undefined" && window.innerWidth > window.innerHeight);
+  } catch (e) { return false; }
+}
+
+// カメラが見る縦位置の目標（窓の上端）。準備中は陣地と拠点を映し、ウェーブ中は「敵の先頭あたりと陣地の中間」を映す
+function tdCameraTarget(st, view, homeOnly) {
+  const home = (TD_GRID_Y0 + TD_WORLD_H) / 2;        // 陣地と拠点の中心
+  let focus = home;
+  const alive = st.enemies.filter(e => e.hp > 0);
+  if (!homeOnly && st.phase === "wave" && alive.length > 0) {
+    const ys = alive.map(e => e.y).sort((a, b) => b - a).slice(0, 5);   // 拠点に近い側の敵5体
+    focus = (ys.reduce((sum, v) => sum + v, 0) / ys.length + home) / 2;
+  }
+  return Math.max(0, Math.min(TD_WORLD_H - view.h, focus - view.h / 2));
+}
+
+// ===== 属性相性 =====
+// ★本編（battle.js）と同じルール：特攻＝1.5倍、耐性＝0.5倍。敵の属性は複数持てるので、それぞれ掛け合わせる。
+//   属性相性を無視する敵（ignoreElementalAffinity）や、属性なしの攻撃は等倍
+function tdElementMultiplier(attackElementId, enemy) {
+  if (!attackElementId || attackElementId === "無") return 1;
+  if (!enemy || enemy.ignoreAffinity) return 1;
+  const defs = Array.isArray(enemy.elements) ? enemy.elements : [];
+  if (defs.length === 0) return 1;
+  const matchups = (typeof scenarioProject !== "undefined" && scenarioProject && scenarioProject.elementMatchups) ? scenarioProject.elementMatchups : {};
+  let multiplier = 1;
+  defs.forEach(defId => {
+    const relation = matchups[attackElementId + ">" + defId];
+    if (relation === "advantage") multiplier *= 1.5;
+    else if (relation === "resist") multiplier *= 0.5;
+  });
+  return multiplier;
+}
+
+// ===== ユニットの種類 =====
+// ★属性管理にある属性ごとに1ユニットを自動で作る（属性が増えたら自動で反映される）。役割は下の4種類を順番に割り当てる。
+//   狙い方（targeting）：near＝射程内でユニットから一番近い敵／far＝射程内で一番遠い敵／all＝射程内の全ての敵
+//   与ダメージは「出てくる敵の平均HP」に対する割合で決めるので、敵のデータが変わってもバランスが崩れにくい
+const TD_TARGETING_LABELS = { near: "近い敵", far: "遠い敵", all: "全体", none: "味方を強化" };
+const TD_SUPPORT_BONUS_MAX = 1.5;   // サポートによる攻撃力アップの合計の上限（＋150%）
+const TD_ROLE_ARCHETYPES = [
+  { name: "弓兵",   role: "single", roleLabel: "単体", roleChar: "単", targeting: "near", dmgRatio: 0.22, range: 140, interval: 0.8, cost: 50 },
+  { name: "術師",   role: "area",   roleLabel: "範囲", roleChar: "範", targeting: "all",  dmgRatio: 0.09, range: 115, interval: 1.4, cost: 80 },
+  { name: "妨害師", role: "slow",   roleLabel: "遅延", roleChar: "遅", targeting: "far",  dmgRatio: 0.07, range: 120, interval: 1.0, cost: 70, slowRate: 0.5, slowSec: 1.5 },
+  { name: "砲手",   role: "single", roleLabel: "単体", roleChar: "砲", targeting: "far",  dmgRatio: 0.6,  range: 190, interval: 2.4, cost: 120 }
+];
+// 属性ごとに1ユニットを自動で作る（エディタで何も登録していない時に使う）
+function tdAutoUnitTemplates() {
+  const defs = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.elementDefs) && scenarioProject.elementDefs.length > 0)
+    ? scenarioProject.elementDefs
+    : [{ id: "無", name: "無" }];
+  return defs.slice(0, 12).map((def, i) => {
+    const arch = TD_ROLE_ARCHETYPES[i % TD_ROLE_ARCHETYPES.length];
+    return Object.assign({}, arch, { key: "u" + i, label: `${def.name}の${arch.name}`, element: def.id });
+  });
+}
+
+// エディタ「タワーユニット」タブで登録されたユニット（有効なものだけ）
+const TD_ROLE_INFO = {
+  single:  { roleLabel: "単体",     roleChar: "単" },
+  area:    { roleLabel: "範囲",     roleChar: "範" },
+  slow:    { roleLabel: "遅延",     roleChar: "遅" },
+  support: { roleLabel: "サポート", roleChar: "援" }
+};
+function tdClamp(v, min, max, fallback) {
+  const n = Number(v);
+  return Math.min(max, Math.max(min, Number.isFinite(n) ? n : fallback));
+}
+function tdCustomUnitTemplates() {
+  const list = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.towerUnits)) ? scenarioProject.towerUnits : [];
+  return list.filter(u => u && u.enabled !== false).slice(0, 24).map((u, i) => {
+    const role = TD_ROLE_INFO[u.role] ? u.role : "single";
+    const targeting = role === "support" ? "none" : (role === "area" ? "all" : (TD_TARGETING_LABELS[u.targeting] && u.targeting !== "none" ? u.targeting : "near")); // 範囲は常に「射程内の全て」
+    return {
+      key: "c" + i, label: u.name || "名無しのユニット", element: u.element || "無",
+      role, roleLabel: TD_ROLE_INFO[role].roleLabel, roleChar: TD_ROLE_INFO[role].roleChar, targeting,
+      dmgRatio: tdClamp(u.power, 1, 500, 20) / 100,
+      range: tdClamp(u.range, 20, 400, 140), interval: tdClamp(u.interval, 0.2, 10, 1),
+      cost: Math.round(tdClamp(u.cost, 1, 99999, 50)),
+      slowRate: 1 - tdClamp(u.slowPercent, 1, 95, 50) / 100, slowSec: tdClamp(u.slowSec, 0.2, 10, 1.5),
+      supportRate: tdClamp(u.supportPercent, 1, 300, 25) / 100,
+      imagePath: u.imagePath || ""
+    };
+  });
+}
+
+function tdBuildUnitTemplates() {
+  const custom = tdCustomUnitTemplates();
+  return custom.length > 0 ? custom : tdAutoUnitTemplates();
+}
+
+// エディタの「標準のユニットを登録する」ボタン用：自動生成と同じ内容を、編集できる形で返す（サポートの見本を1つ足す）
+function tdBuildDefaultUnitData() {
+  const idOf = i => (typeof generateId === "function") ? generateId("towerunit") : "towerunit_" + i;
+  const list = tdAutoUnitTemplates().map((t, i) => ({
+    id: idOf(i), name: t.label, enabled: true, element: t.element, role: t.role, targeting: t.targeting,
+    power: Math.round(t.dmgRatio * 100), range: t.range, interval: t.interval, cost: t.cost,
+    slowPercent: t.slowRate != null ? Math.round((1 - t.slowRate) * 100) : 50, slowSec: t.slowSec || 1.5,
+    supportPercent: 25, imagePath: ""
+  }));
+  const firstElement = list.length > 0 ? list[0].element : "無";
+  list.push({ id: idOf(list.length), name: "支援兵", enabled: true, element: firstElement, role: "support", targeting: "near",
+    power: 0, range: 130, interval: 1, cost: 90, slowPercent: 50, slowSec: 1.5, supportPercent: 25, imagePath: "" });
+  return list;
+}
+
+// ===== コンボ =====
+// ★本編（battle.js）のコンボスキル定義をそのまま使う。ユニットが攻撃するたびに、そのユニットの属性が履歴に積まれ、
+//   履歴の末尾が手順と一致するとコンボが発動する（同じ敵に当てなくてもよい）。本編と同じく、解禁済みのコンボだけが対象
+function tdGetUsableCombos() {
+  const list = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.comboSkills)) ? scenarioProject.comboSkills : [];
+  return list.filter(c => {
+    if (!c || c.enabled === false) return false;
+    if ((c.elements || []).filter(Boolean).length < 2) return false;
+    if (typeof isComboSkillUnlocked === "function") return isComboSkillUnlocked(c);
+    return true;
+  });
+}
+
+function tdFindCombo(st) {
+  let best = null;
+  st.combos.forEach(combo => {
+    const seq = (combo.elements || []).filter(Boolean);
+    if (seq.length > st.history.length) return;
+    const tail = st.history.slice(st.history.length - seq.length);
+    if (!seq.every((el, i) => el === tail[i])) return;
+    if (!best || seq.length > best.len) best = { combo, len: seq.length }; // 複数一致したら、長い手順のコンボを優先
+  });
+  return best ? best.combo : null;
+}
+
+// ===== 出てくる敵 =====
+// ★本編の魔物（MONSTER_MASTER）をそのまま使う。ボスは除き、体力の低い順に数種類だけ使う（最小版）
+function tdGetEnemyPool() {
+  if (typeof MONSTER_MASTER === "undefined") return [];
+  const bossIds = new Set();
+  if (typeof BOSS_MASTER !== "undefined") Object.keys(BOSS_MASTER).forEach(k => bossIds.add(k));
+  if (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.bosses)) scenarioProject.bosses.forEach(b => bossIds.add(b.id));
+  const keys = Object.keys(MONSTER_MASTER).filter(k => {
+    const m = MONSTER_MASTER[k];
+    return m && Number(m.maxHp) > 0 && !bossIds.has(k) && k !== "trial_guardian";
+  });
+  keys.sort((a, b) => Number(MONSTER_MASTER[a].maxHp) - Number(MONSTER_MASTER[b].maxHp));
+  return keys.slice(0, 5);
+}
+
+// ★中ボスは本編のボスから選ぶ。物語用の桁違いに強いボス（HPや攻撃力が敵の平均より極端に高いもの）は除き、体力の低い順に使う
+function tdGetBossPool(refHp, refAtk) {
+  if (typeof MONSTER_MASTER === "undefined") return [];
+  const ids = new Set();
+  if (typeof BOSS_MASTER !== "undefined") Object.keys(BOSS_MASTER).forEach(k => ids.add(k));
+  if (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.bosses)) scenarioProject.bosses.forEach(b => ids.add(b.id));
+  const keys = [...ids].filter(k => {
+    const m = MONSTER_MASTER[k];
+    return m && Number(m.maxHp) > 0 && Number(m.maxHp) <= refHp * 10 && (Number(m.atk) || 1) <= refAtk * 5;
+  });
+  keys.sort((a, b) => Number(MONSTER_MASTER[a].maxHp) - Number(MONSTER_MASTER[b].maxHp));
+  return keys;
+}
+
+// ===== 協会ポイントと事前強化 =====
+// ★セーブデータは player をそのまま保存する作りなので、player に持たせれば自動でセーブされる
+const TD_UPGRADE_DEFS = [
+  { key: "baseHp", label: "拠点HP",       describe: lv => `最大HP +${Math.round(lv * TD_UPG_HP_RATE * 100)}%` },
+  { key: "funds",  label: "開始時の資金", describe: lv => `開始資金 +${lv * TD_UPG_FUNDS}` },
+  { key: "income", label: "資金の稼ぎやすさ", describe: lv => `敵を倒した時の資金 +${Math.round(lv * TD_UPG_INCOME * 100)}%` }
+];
+function tdGuildState() {
+  if (typeof player === "undefined" || !player) return { points: 0, upgrades: { baseHp: 0, funds: 0, income: 0 } };
+  if (!player.adventurerGuild || typeof player.adventurerGuild !== "object") player.adventurerGuild = {};
+  const g = player.adventurerGuild;
+  if (!Number.isFinite(g.points)) g.points = 0;
+  if (!g.upgrades || typeof g.upgrades !== "object") g.upgrades = {};
+  TD_UPGRADE_DEFS.forEach(d => { if (!Number.isFinite(g.upgrades[d.key])) g.upgrades[d.key] = 0; });
+  return g;
+}
+function tdUpgradeCostPoints(level) { return TD_UPGRADE_POINT_BASE * (level + 1); }
+// ポイントで事前強化を1段階上げる。結果は { ok, reason }
+function tdBuyGuildUpgrade(key) {
+  const g = tdGuildState();
+  const def = TD_UPGRADE_DEFS.find(d => d.key === key);
+  if (!def) return { ok: false, reason: "その強化は存在しない" };
+  const lv = g.upgrades[key];
+  if (lv >= TD_UPGRADE_MAX) return { ok: false, reason: "これ以上強化できない" };
+  const cost = tdUpgradeCostPoints(lv);
+  if (g.points < cost) return { ok: false, reason: "協会ポイントが足りない" };
+  g.points -= cost;
+  g.upgrades[key] = lv + 1;
+  return { ok: true };
+}
+
+// ===== ゲームの状態 =====
+function tdCreateState(pool, opts) {
+  opts = opts || {};
+  const up = opts.upgrades || {};
+  const masters = pool.map(k => MONSTER_MASTER[k]);
+  const avg = f => masters.reduce((s, m) => s + (Number(f(m)) || 0), 0) / Math.max(1, masters.length);
+  const refHp = Math.max(1, avg(m => m.maxHp));
+  const refAtk = Math.max(1, avg(m => m.atk));
+  const baseMaxHp = Math.round(Math.max(120, Math.round(refAtk * TD_BASE_HP_PER_ATK)) * (1 + TD_UPG_HP_RATE * (up.baseHp || 0)));
+  return {
+    pool, refHp,
+    bossPool: tdGetBossPool(refHp, refAtk),
+    stage: Math.max(1, Number(opts.stage) || 1),
+    incomeRate: 1 + TD_UPG_INCOME * (up.income || 0),   // 敵を倒した時にもらえる資金の倍率（事前強化）
+    bossKills: 0,
+    templates: tdBuildUnitTemplates(),
+    phase: "prep",            // prep＝準備中／wave＝ウェーブ進行中／won／lost
+    wave: 1, wavesTotal: Math.max(1, Number(opts.wavesTotal) || TD_WAVE_OPTIONS[0]),
+    funds: TD_START_FUNDS + TD_UPG_FUNDS * (up.funds || 0),
+    baseMaxHp, baseHp: baseMaxHp,
+    kills: 0, time: 0, speed: 1, killKeys: [],            // killKeys＝倒した魔物の種類のID（クリア時のドロップ判定に使う）
+    units: [],                // { slot, tpl, level, cool, hp, maxHp }
+    enemies: [],
+    spawnQueue: [], spawnTimer: 0,
+    fx: [], popups: [],       // 画面に出す演出（撃った線・ダメージ数字）
+    combos: tdGetUsableCombos(),   // 今回使えるコンボ（本編で解禁済みのもの）
+    history: [],                   // 攻撃した属性の履歴（コンボを発動した時だけリセット）
+    comboLockUntil: 0, comboCount: 0,
+    banners: []                    // コンボ発動の帯（{ text, t }）
+  };
+}
+
+function tdSlotPos(slotIndex) { return { x: TD_SLOTS[slotIndex][0], y: TD_SLOTS[slotIndex][1] }; }
+
+// ユニットのHP（レベルで増える）
+function tdUnitMaxHp(st, level) {
+  return Math.max(1, Math.round(st.refHp * TD_UNIT_HP_RATE * (1 + TD_LEVEL_ATK_RATE * (level - 1))));
+}
+
+// サポートの効果：射程の中にいるサポートの強化率を足し合わせる（上限あり）
+function tdSupportBonus(st, unit) {
+  if (unit.tpl.role === "support") return 0;
+  const sp = tdSlotPos(unit.slot);
+  let bonus = 0;
+  st.units.forEach(other => {
+    if (other === unit || other.tpl.role !== "support") return;
+    const op = tdSlotPos(other.slot);
+    if (Math.hypot(op.x - sp.x, op.y - sp.y) <= other.tpl.range) bonus += other.tpl.supportRate * (1 + TD_LEVEL_ATK_RATE * (other.level - 1));
+  });
+  return Math.min(TD_SUPPORT_BONUS_MAX, bonus);
+}
+
+function tdUnitDamage(st, unit) {
+  return unit.tpl.dmgRatio * st.refHp * TD_DAMAGE_SCALE * (1 + TD_LEVEL_ATK_RATE * (unit.level - 1)) * (1 + tdSupportBonus(st, unit));
+}
+
+function tdUpgradeCost(unit) {
+  return Math.round(unit.tpl.cost * TD_UPGRADE_COST_RATE * unit.level);
+}
+
+// ウェーブを始める（そのウェーブに出る敵を並べる）
+function tdStartWave(st) {
+  if (st.phase !== "prep") return false;
+  const usable = st.pool.slice(0, Math.min(st.pool.length, 2 + st.wave + (st.stage - 1)));
+  const count = Math.min(30, TD_WAVE_COUNT_BASE + TD_WAVE_COUNT_PER_WAVE * (st.wave - 1));
+  st.spawnQueue = [];
+  for (let i = 0; i < count; i++) st.spawnQueue.push(usable[Math.floor(Math.random() * usable.length)]);
+  // ★中ボス：TD_BOSS_EVERYウェーブごとに、最後に1体出てくる（本編のボスを、弱い順に使っていく）
+  if (tdIsBossWave(st, st.wave) && st.bossPool.length > 0) {
+    const idx = Math.min(st.bossPool.length - 1, Math.floor(st.wave / TD_BOSS_EVERY) - 1 + (st.stage - 1));
+    st.spawnQueue.push({ key: st.bossPool[Math.max(0, idx)], boss: true });
+  }
+  st.spawnTimer = 0;
+  st.phase = "wave";
+  return true;
+}
+
+function tdIsBossWave(st, wave) { return wave % TD_BOSS_EVERY === 0; }
+
+function tdPlaceUnit(st, slotIndex, templateKey) {
+  if (st.units.some(u => u.slot === slotIndex)) return { ok: false, reason: "そこにはもう置いてある" };
+  const tpl = st.templates.find(t => t.key === templateKey);
+  if (!tpl) return { ok: false, reason: "ユニットが選ばれていない" };
+  if (st.funds < tpl.cost) return { ok: false, reason: "資金が足りない" };
+  st.funds -= tpl.cost;
+  const maxHp = tdUnitMaxHp(st, 1);
+  st.units.push({ slot: slotIndex, tpl, level: 1, cool: 0, hp: maxHp, maxHp });
+  return { ok: true };
+}
+
+function tdUpgradeUnit(st, unit) {
+  if (unit.level >= TD_UNIT_MAX_LEVEL) return { ok: false, reason: "これ以上強化できない" };
+  const cost = tdUpgradeCost(unit);
+  if (st.funds < cost) return { ok: false, reason: "資金が足りない" };
+  st.funds -= cost;
+  unit.level++;
+  const newMax = tdUnitMaxHp(st, unit.level);
+  unit.hp += newMax - unit.maxHp;        // 増えた分のHPは、その場で回復する
+  unit.maxHp = newMax;
+  return { ok: true };
+}
+
+function tdSpawnEnemy(st, entry) {
+  const isBoss = typeof entry === "object" && entry.boss === true;
+  const key = isBoss ? entry.key : entry;
+  const m = MONSTER_MASTER[key];
+  const growth = (1 + TD_WAVE_HP_GROWTH * (st.wave - 1)) * (1 + TD_STAGE_HP_GROWTH * (st.stage - 1));
+  const hp = Math.max(1, Math.round((Number(m.maxHp) || 10) * growth * (isBoss ? TD_BOSS_HP_RATE : 1)));
+  const atk = Math.max(1, Math.round((Number(m.atk) || 1) * (1 + TD_STAGE_ATK_GROWTH * (st.stage - 1)) * (isBoss ? TD_BOSS_ATK_RATE : 1)));
+  st.enemies.push({
+    key, name: m.name || key, hp, maxHp: hp, isBoss,
+    atk,                                                       // 1発のダメージ（本編の攻撃力が元。ユニットにも拠点にも）
+    elements: Array.isArray(m.elements) ? m.elements : [],
+    ignoreAffinity: !!m.ignoreElementalAffinity,
+    imagePath: m.imagePath || null,
+    speed: TD_ENEMY_SPEED * (0.9 + Math.random() * 0.2) * (isBoss ? TD_BOSS_SPEED_RATE : 1),
+    x: TD_GRID_X0 + TD_CELL * 0.5 + Math.random() * (TD_GRID_COLS - 1) * TD_CELL, y: TD_SPAWN_Y,   // 陣地の幅の中の、上のどこかから出てきて、真下の拠点へ向かう
+    range: isBoss ? TD_BOSS_RANGE : TD_ENEMY_RANGE, interval: TD_ENEMY_INTERVAL, cool: Math.random() * TD_ENEMY_INTERVAL,
+    slowUntil: 0, slowRate: 1,
+    stunUntil: 0, dot: null, defDownUntil: 0, atkDownUntil: 0,   // 状態異常（足止め・継続ダメージ・防御低下・攻撃低下）
+    reward: Math.max(6, Math.round((Number(m.exp) || 10) * 0.8 * st.incomeRate)) // 倒した時にもらえる資金（事前強化で増える）
+  });
+}
+
+// ===== ダメージと状態異常 =====
+// 敵にダメージを与える共通処理（属性相性・防御力低下を反映し、ダメージ数字を出す）
+function tdDealDamage(st, enemy, base, elementId, color) {
+  let mult = tdElementMultiplier(elementId, enemy);
+  const weakMult = mult;
+  if (enemy.defDownUntil > st.time) mult *= TD_DEFDOWN_RATE;
+  const dmg = Math.max(1, Math.round(base * mult));
+  enemy.hp -= dmg;
+  st.popups.push({
+    x: enemy.x + (Math.random() * 14 - 7), y: enemy.y - 16, text: String(dmg),
+    color: weakMult > 1 ? "#ffffff" : (weakMult < 1 ? "#9aa4ad" : (color || "#ffffff")),
+    weak: weakMult > 1, resist: weakMult < 1, t: 0.6
+  });
+  return dmg;
+}
+
+// 状態異常の種類→仕組み（本編のカスタム状態異常も、登録された仕組みで動く）
+function tdStatusMechanic(kind) {
+  if (!kind) return null;
+  if (typeof resolveStatusAilmentDef === "function") {
+    const def = resolveStatusAilmentDef(kind);
+    if (def && def.mechanic) return def.mechanic;
+  }
+  return kind;
+}
+
+// コンボに付く状態異常を敵に与える。与えられたら表示用のラベルを返す
+// ★本編と同じく、敵ごとの「状態異常無効／耐性」を反映する。仕組みが分かるものだけ動かす：
+//   スタン・麻痺・混乱＝足止め／毒・火傷・鈍痛＝継続ダメージ／防御力低下＝受けるダメージ増／攻撃力低下＝ゴールした時の拠点ダメージ減
+function tdApplyStatus(st, enemy, effect) {
+  if (!effect || !effect.kind) return null;
+  const mech = tdStatusMechanic(effect.kind);
+  const master = (typeof MONSTER_MASTER !== "undefined") ? MONSTER_MASTER[enemy.key] : null;
+  if (master && Array.isArray(master.statusImmunities) && master.statusImmunities.includes(mech)) return null;
+  let chance = effect.chance != null ? Number(effect.chance) : 1;
+  if (master && master.statusResistances && typeof master.statusResistances[mech] === "number") chance *= Math.max(0, 1 - master.statusResistances[mech]);
+  if (Math.random() >= chance) return null;
+  const secs = Math.max(1, Number(effect.duration) || 1) * TD_STATUS_SEC_PER_TURN;
+  const power = Number(effect.power) || 3;
+  if (mech === "stun" || mech === "paralyze" || mech === "confuse") enemy.stunUntil = Math.max(enemy.stunUntil, st.time + secs);
+  else if (mech === "burn" || mech === "poison" || mech === "dullPain") enemy.dot = { until: st.time + secs, next: st.time + 1, dmg: Math.max(1, Math.round(st.refHp * power * TD_DOT_RATE)) };
+  else if (mech === "defDown") enemy.defDownUntil = Math.max(enemy.defDownUntil, st.time + secs);
+  else if (mech === "atkDown") enemy.atkDownUntil = Math.max(enemy.atkDownUntil, st.time + secs);
+  else return null;
+  let label = null;
+  if (typeof resolveStatusAilmentDef === "function") { const d = resolveStatusAilmentDef(effect.kind); if (d && d.label) label = d.label; }
+  if (!label && typeof STATUS_EFFECT_LABELS !== "undefined") label = STATUS_EFFECT_LABELS[effect.kind];
+  return label || effect.kind;
+}
+
+// ===== 攻撃対象の選び方 =====
+// ★ユニットごとの設定：near＝射程内で一番近い敵／far＝射程内で一番遠い敵／all＝射程内の全ての敵
+//   「近い・遠い」は、そのユニットから見た距離（ゴールまでの距離ではない）
+function tdPickTargets(st, unit, from, limitRange) {
+  const mode = unit.tpl.targeting;
+  const range = limitRange ? unit.tpl.range : Infinity;
+  const cands = st.enemies.filter(e => e.hp > 0 && Math.hypot(e.x - from.x, e.y - from.y) <= range);
+  if (cands.length === 0) return [];
+  if (mode === "all" && limitRange) return cands;
+  const distTo = e => Math.hypot(e.x - from.x, e.y - from.y);
+  let pick = cands[0];
+  cands.forEach(e => {
+    if (mode === "far" ? distTo(e) > distTo(pick) : distTo(e) < distTo(pick)) pick = e;   // allのコンボ単体は「近い敵」で代用
+  });
+  return [pick];
+}
+
+// 1コマ進める（dt＝経過秒。倍速の時は呼ぶ側で掛けておく）
+function tdStep(st, dt) {
+  st.time += dt;
+  // 演出の寿命
+  st.fx.forEach(f => { f.t -= dt; });
+  st.fx = st.fx.filter(f => f.t > 0);
+  st.popups.forEach(p => { p.t -= dt; });
+  st.popups = st.popups.filter(p => p.t > 0);
+  st.banners.forEach(b => { b.t -= dt; });
+  st.banners = st.banners.filter(b => b.t > 0);
+  if (st.phase !== "wave") return;
+  
+  // 敵の出現
+  if (st.spawnQueue.length > 0) {
+    st.spawnTimer -= dt;
+    if (st.spawnTimer <= 0) {
+      tdSpawnEnemy(st, st.spawnQueue.shift());
+      st.spawnTimer = TD_SPAWN_INTERVAL;
+    }
+  }
+  
+  // 敵の行動（継続ダメージ→足止め中は何もしない→射程内の味方がいれば攻撃→拠点に着いていれば拠点を攻撃→それ以外は真下へ進む）
+  st.enemies.forEach(e => {
+    if (e.dot) {
+      while (e.dot && st.time >= e.dot.next) {
+        e.hp -= e.dot.dmg;
+        st.popups.push({ x: e.x, y: e.y - 16, text: String(e.dot.dmg), color: "#ff9a3c", weak: false, t: 0.5 });
+        e.dot.next += 1;
+        if (e.dot.next > e.dot.until + 0.0001) e.dot = null;
+      }
+    }
+    if (e.hp <= 0 || e.stunUntil > st.time) return;
+    e.cool -= dt;
+    const dmgBase = e.atk * TD_ENEMY_DMG_RATE * (e.atkDownUntil > st.time ? TD_ATKDOWN_RATE : 1);
+    // 射程内でいちばん近い味方ユニット（途中にいる味方は、敵の行く手をふさぐ）
+    let target = null;
+    st.units.forEach(u => {
+      const sp = tdSlotPos(u.slot);
+      const d = Math.hypot(e.x - sp.x, e.y - sp.y);
+      if (d <= e.range && (!target || d < target.d)) target = { u, d, sp };
+    });
+    if (target) {
+      if (e.cool <= 0) {
+        const attackEl = (e.elements && e.elements.length > 0) ? e.elements[0] : "無";
+        const mult = tdElementMultiplier(attackEl, { elements: [target.u.tpl.element] });
+        const dmg = Math.max(1, Math.round(dmgBase * mult));
+        target.u.hp -= dmg;
+        e.cool = e.interval;
+        st.popups.push({ x: target.sp.x, y: target.sp.y - 22, text: String(dmg), color: "#ff6b6b", weak: false, t: 0.5 });
+      }
+      return;
+    }
+    if (e.y >= TD_BASE_TOP - e.range * 0.6) {         // 拠点に着いた：拠点を攻撃する
+      if (e.cool <= 0) {
+        const dmg = Math.max(1, Math.round(dmgBase));
+        st.baseHp -= dmg;
+        e.cool = e.interval;
+        st.popups.push({ x: Math.max(60, Math.min(TD_WORLD_W - 60, e.x)), y: TD_BASE_TOP + 20, text: `-${dmg}`, color: "#ff5a5a", weak: false, t: 0.8 });
+      }
+      return;
+    }
+    const slowed = e.slowUntil > st.time;
+    e.y += e.speed * (slowed ? e.slowRate : 1) * dt;
+  });
+  
+  // 倒された味方ユニットは、マスが空く
+  st.units = st.units.filter(u => {
+    if (u.hp > 0) return true;
+    const sp = tdSlotPos(u.slot);
+    st.popups.push({ x: sp.x, y: sp.y - 26, text: "撃破された", color: "#9aa4ad", weak: false, t: 1.0 });
+    return false;
+  });
+  
+  // ユニットの攻撃（狙い方はユニットごとの設定に従う）
+  st.units.forEach(u => {
+    if (u.tpl.role === "support") return;           // サポートは攻撃しない
+    u.cool -= dt;
+    if (u.cool > 0) return;
+    const sp = tdSlotPos(u.slot);
+    const targets = tdPickTargets(st, u, sp, true);
+    if (targets.length === 0) { u.cool = 0; return; }
+    tdFire(st, u, targets, sp);
+    u.cool = u.tpl.interval;
+  });
+  
+  // 拠点の自動反撃：射程内でいちばん拠点に近い敵（先頭の敵）に、少しずつダメージを与える（ユニットが届かない敵への手詰まり防止）
+  st.baseCool = (st.baseCool || 0) - dt;
+  if (st.baseCool <= 0) {
+    let tgt = null;
+    st.enemies.forEach(e => {
+      if (e.hp <= 0) return;
+      if (Math.hypot(e.x - TD_WORLD_W / 2, e.y - (TD_BASE_TOP + 20)) > TD_BASE_ATK_RANGE + 200) return;   // 拠点の幅を考えた射程
+      if (!tgt || e.y > tgt.y) tgt = e;
+    });
+    if (tgt) {
+      const dmg = Math.max(1, Math.round(st.refHp * TD_BASE_ATK_RATIO));
+      tgt.hp -= dmg;
+      st.popups.push({ x: tgt.x, y: tgt.y - 16, text: String(dmg), color: "#ffffff", weak: false, t: 0.5 });
+      st.fx.push({ kind: "line", x1: TD_WORLD_W / 2, y1: TD_BASE_TOP + 10, x2: tgt.x, y2: tgt.y, color: "#ffd23f", t: 0.1 });
+      st.baseCool = TD_BASE_ATK_INTERVAL;
+    } else st.baseCool = 0;
+  }
+  
+  // 倒した敵の処理
+  const alive = [];
+  st.enemies.forEach(e => {
+    if (e.hp > 0) { alive.push(e); return; }
+    st.funds += e.reward;
+    st.kills++;
+    if (e.key) st.killKeys.push(e.key);
+    if (e.isBoss) st.bossKills++;
+    st.popups.push({ x: e.x, y: e.y - 20, text: `+${e.reward}`, color: "#ffd23f", weak: false, t: 0.8 });
+  });
+  st.enemies = alive;
+  
+  // 勝ち負けの判定
+  if (st.baseHp <= 0) {
+    st.baseHp = 0;
+    st.phase = "lost";
+    return;
+  }
+  if (st.spawnQueue.length === 0 && st.enemies.length === 0) {
+    if (st.wave >= st.wavesTotal) {
+      st.phase = "won";
+    } else {
+      st.funds += TD_WAVE_CLEAR_BONUS;
+      st.wave++;
+      st.phase = "prep";
+    }
+  }
+}
+
+function tdFire(st, unit, targets, from) {
+  const tpl = unit.tpl;
+  const base = tdUnitDamage(st, unit);
+  const color = (typeof getElementColor === "function") ? getElementColor(tpl.element) : "#ffffff";
+  targets.forEach(e => {
+    tdDealDamage(st, e, base, tpl.element, color);
+    if (tpl.role === "slow") { e.slowUntil = st.time + tpl.slowSec; e.slowRate = tpl.slowRate; }
+    st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.12 });
+  });
+  if (tpl.targeting === "all") st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: tpl.range, color, t: 0.18 });
+  tdRecordCombo(st, unit, from);
+}
+
+// ===== コンボ =====
+// ユニットが攻撃したら、その属性を履歴に積む。履歴の末尾がコンボの手順と一致したら発動する
+function tdRecordCombo(st, unit, from) {
+  if (st.combos.length === 0) return;
+  if (st.time < st.comboLockUntil) return;       // 発動直後は履歴を取らない
+  const el = unit.tpl.element;
+  if (!el) return;
+  st.history.push(el);
+  if (st.history.length > TD_COMBO_HISTORY_MAX) st.history.shift();
+  const combo = tdFindCombo(st);
+  if (!combo) return;
+  st.history = [];                                // ★発動した時だけ、履歴を空に戻す
+  st.comboLockUntil = st.time + TD_COMBO_LOCK;
+  tdExecuteCombo(st, combo, unit, from);
+}
+
+// コンボの効果を出す（ダメージ・状態異常・回復）。本編のコンボ定義（威力・全体/単体・連続回数・状態異常）をそのまま使う
+// ★ブロック式のコンボも、基本項目（威力・対象・連続回数・状態異常）の部分だけで動かす／自己強化は使わない（タワーには自分がいないため）
+function tdExecuteCombo(st, combo, unit, from) {
+  const name = combo.name || "名無しのコンボ";
+  const element = combo.element || "無";
+  const color = (typeof getElementColor === "function") ? getElementColor(element) : "#ffffff";
+  st.comboCount++;
+  st.banners.push({ text: combo.cutInText || name, t: 1.4 });
+  if ((combo.type || "attack") === "heal") {
+    if (typeof st.onComboHeal === "function") { st.onComboHeal(); return; }   // 出撃モード（tower_raid.js）：味方を回復する
+    const healed = Math.round(st.baseMaxHp * 0.1);
+    st.baseHp = Math.min(st.baseMaxHp, st.baseHp + healed);
+    st.popups.push({ x: 690, y: 300, text: `+${healed}`, color: "#59e07a", weak: false, t: 0.9 });
+    return;
+  }
+  const power = Number(combo.power) || 0;
+  const hitCount = Math.max(1, Number(combo.hitCount) || 1);
+  const base = st.refHp * (TD_COMBO_BASE + power * TD_COMBO_POWER_RATE);
+  const targets = combo.target === "all"
+    ? st.enemies.filter(e => e.hp > 0)
+    : tdPickTargets(st, unit, from, false);       // 単体：コンボを完成させたユニットの狙い方に従う（射程は問わない）
+  targets.forEach(e => {
+    for (let h = 0; h < hitCount; h++) {
+      if (e.hp <= 0) break;
+      tdDealDamage(st, e, base, element, color);
+    }
+    [
+      { kind: combo.statusEffectKind, chance: combo.statusEffectChance, duration: combo.statusEffectDuration, power: combo.statusEffectPower },
+      { kind: combo.statusEffect2Kind, chance: combo.statusEffect2Chance, duration: combo.statusEffect2Duration, power: combo.statusEffect2Power }
+    ].forEach(effect => {
+      if (e.hp <= 0) return;
+      const label = tdApplyStatus(st, e, effect);
+      if (label) st.popups.push({ x: e.x, y: e.y - 30, text: label, color: "#ffd23f", weak: false, t: 0.9 });
+    });
+    st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.3 });
+    st.fx.push({ kind: "ring", x1: e.x, y1: e.y, r: 26, color, t: 0.3 });
+  });
+}
+
+// ===================================================================
+// ===== ここから下は画面（オーバーレイ・描画・操作）と施設のメニュー =====
+// ===================================================================
+
+const tdImageCache = {};
+function tdGetImage(src) {
+  if (!tdImageCache[src]) {
+    const entry = { img: new Image(), ok: false };
+    entry.img.onload = () => { entry.ok = true; };
+    entry.img.onerror = () => { entry.ok = false; };
+    entry.img.src = src;
+    tdImageCache[src] = entry;
+  }
+  return tdImageCache[src];
+}
+
+// ユニットの役割・狙い・効果を1行で表す（ボタンや案内に使う）
+function tdUnitSummary(tpl) {
+  if (tpl.role === "support") return `サポート・攻撃+${Math.round(tpl.supportRate * 100)}%`;
+  return `${tpl.roleLabel}・${TD_TARGETING_LABELS[tpl.targeting]}`;
+}
+
+function tdElementName(elementId) {
+  const defs = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.elementDefs)) ? scenarioProject.elementDefs : [];
+  const def = defs.find(d => d.id === elementId);
+  return def ? def.name : String(elementId);
+}
+function tdElementChipHtml(elementId) {
+  const color = (typeof getElementColor === "function") ? getElementColor(elementId) : "#fff";
+  return `<span class="td-chip" style="border-color:${color}">${tdElementName(elementId)}</span>`;
+}
+
+function tdElementColor(elementId) {
+  return (typeof getElementColor === "function") ? getElementColor(elementId) : "#ffffff";
+}
+
+// ===== 掃討作戦（迎撃・出撃・出撃キャラ選択）のキーボード操作（3つの画面で共通） =====
+// ・矢印キー：ボタン間のカーソル移動（画面上の位置で「いちばん近い」ボタンへ移る）
+// ・決定キー（Space / Z / Enter）：カーソルのボタンを押す
+// ・取消キー（X）：onCancel（「やめる」ボタン）。迎撃では陣地を操作中ならボタン側へ戻る
+// ・Tab：（迎撃のみ）ボタン操作 ⇔ 陣地のマス操作 を切り替える。右／下に動かせるボタンが無い時も陣地へ移る
+// DOMのフォーカスは使わず、カーソルは枠線（.td-kcursor）で見せる。ボタンが作り直されても、同じ種類のボタンへカーソルを引き継ぐ
+// opts: { initial: 最初にカーソルを置くボタンのセレクタ, onCancel: fn, field: { cols, rows, start, onDecide(index) } }
+// 戻り値: { detach(), get fieldActive(), get fieldIndex() }
+const TD_KEY_STATE_CLASSES = ["td-kcursor", "td-selected", "td-disabled", "td-card-out", "td-card-dead"];
+function tdAttachKeyboard(overlay, opts) {
+  opts = opts || {};
+  const field = opts.field || null;
+  let cursorEl = null;
+  let cursorSig = "";
+  let fieldActive = false;
+  let fieldIndex = field ? (field.start || 0) : 0;
+  
+  const sigOf = (el) => Array.from(el.classList).filter(c => !TD_KEY_STATE_CLASSES.includes(c)).join(" ") + "|" + ((el.dataset && el.dataset.key) || "");
+  const getButtons = () => Array.from(overlay.querySelectorAll("button")).filter(b => {
+    if (b.disabled || b.hidden) return false;
+    const r = b.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  });
+  const resolveCursor = () => {
+    const list = getButtons();
+    if (cursorEl && overlay.contains(cursorEl) && list.includes(cursorEl)) return cursorEl;
+    // ★作り直された／無効になった場合は、同じ種類のボタンへ。無ければ最初のボタンへ
+    let next = cursorSig ? list.find(b => sigOf(b) === cursorSig) : null;
+    if (!next && opts.initial && !cursorEl) next = list.find(b => b.matches(opts.initial)) || null;
+    if (!next) next = list[0] || null;
+    cursorEl = next;
+    if (next) cursorSig = sigOf(next);
+    return next;
+  };
+  const applyCursor = () => {
+    overlay.querySelectorAll(".td-kcursor").forEach(el => el.classList.remove("td-kcursor"));
+    if (fieldActive) return;
+    const cur = resolveCursor();
+    if (cur) cur.classList.add("td-kcursor");
+  };
+  
+  // 画面上の位置で、押した方向にいちばん近いボタンへ移る（見つからなければ false）
+  const moveCursor = (dir) => {
+    const cur = resolveCursor();
+    if (!cur) return false;
+    const r0 = cur.getBoundingClientRect();
+    const cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
+    let best = null, bestScore = Infinity;
+    getButtons().forEach(b => {
+      if (b === cur) return;
+      const r = b.getBoundingClientRect();
+      const dx = (r.left + r.width / 2) - cx, dy = (r.top + r.height / 2) - cy;
+      let primary, cross;
+      if (dir === "ArrowRight") { primary = dx; cross = Math.abs(dy); }
+      else if (dir === "ArrowLeft") { primary = -dx; cross = Math.abs(dy); }
+      else if (dir === "ArrowDown") { primary = dy; cross = Math.abs(dx); }
+      else { primary = -dy; cross = Math.abs(dx); }
+      if (primary <= 1) return;
+      const score = primary + cross * 2;
+      if (score < bestScore) { bestScore = score; best = b; }
+    });
+    if (!best) return false;
+    cursorEl = best;
+    cursorSig = sigOf(best);
+    return true;
+  };
+  
+  const moveField = (dir) => {
+    const cols = field.cols, rows = field.rows;
+    let r = Math.floor(fieldIndex / cols), c = fieldIndex % cols;
+    if (dir === "ArrowLeft") { if (c === 0) { fieldActive = false; return; } c--; }   // 左端でさらに左→ボタン操作へ戻る
+    else if (dir === "ArrowRight") c = Math.min(cols - 1, c + 1);
+    else if (dir === "ArrowUp") r = Math.max(0, r - 1);
+    else r = Math.min(rows - 1, r + 1);
+    fieldIndex = r * cols + c;
+  };
+  
+  const onKey = (event) => {
+    if (!overlay.isConnected) return;
+    if (event.ctrlKey || event.altKey || event.metaKey) return;
+    const k = event.key;
+    const isArrow = k === "ArrowUp" || k === "ArrowDown" || k === "ArrowLeft" || k === "ArrowRight";
+    const isDecide = (typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.decideKeys.includes(k)) || k === "Enter";
+    const isCancel = typeof KEY_CONFIG !== "undefined" && KEY_CONFIG.cancelKeys.includes(k);
+    const isTab = k === "Tab" && !!field;
+    if (!isArrow && !isDecide && !isCancel && !isTab) return;
+    
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    // ★マウスで押したボタンにフォーカスが残っていると、Spaceで二重に反応するので外しておく
+    if (document.activeElement && overlay.contains(document.activeElement) && document.activeElement.blur) document.activeElement.blur();
+    
+    if (isArrow) {
+      if (fieldActive) moveField(k);
+      else if (!moveCursor(k) && field && (k === "ArrowRight" || k === "ArrowDown")) fieldActive = true;
+    } else if (isTab) {
+      fieldActive = !fieldActive;
+    } else if (isDecide) {
+      if (event.repeat) return;
+      if (fieldActive) field.onDecide(fieldIndex);
+      else { const cur = resolveCursor(); if (cur) cur.click(); }
+    } else if (isCancel) {
+      if (event.repeat) return;
+      if (fieldActive) fieldActive = false;
+      else if (typeof opts.onCancel === "function") opts.onCancel();
+    }
+    applyCursor();
+  };
+  
+  window.addEventListener("keydown", onKey, true);
+  // ★画面が作り直された時（ボタンの入れ替え）に、カーソルの枠線を付け直す
+  const observer = new MutationObserver(() => applyCursor());
+  observer.observe(overlay, { childList: true, subtree: true });
+  applyCursor();
+  
+  return {
+    detach() { window.removeEventListener("keydown", onKey, true); observer.disconnect(); },
+    get fieldActive() { return fieldActive; },
+    get fieldIndex() { return fieldIndex; }
+  };
+}
+
+// ミニゲーム本体。終わったら { result: "win" | "lose" | "quit", kills, wave } を返す
+function runTowerDefenseBattle(pool, opts) {
+  return new Promise(resolve => {
+    const st = tdCreateState(pool, opts);
+    const view = tdUsePortraitView() ? TD_VIEW_PORTRAIT : TD_VIEW_LANDSCAPE;   // 横長の窓（スマホだけ縦長）
+    let cam = tdCameraTarget(st, view, true);                          // カメラ（窓の上端の位置）
+    let camAuto = true;                                                // true＝敵と味方の中心を追いかける／false＝陣地に固定
+    let finished = false;
+    let selectedType = null;   // 配置しようとしているユニットの種類（key）
+    let selectedSlot = null;   // 選んでいる配置済みユニットのマス
+    let infoNote = "";         // 一時的なお知らせ（資金不足など）
+    let quitArmed = false, quitTimer = null;
+    let rafId = null, lastTs = null;
+    
+    const overlay = document.createElement("div");
+    overlay.className = "td-overlay";
+    overlay.innerHTML = `
+      <div class="td-panel">
+        <div class="td-header">
+          <span class="td-title">掃討作戦（迎撃） STAGE ${st.stage}</span>
+          <span class="td-wave"></span>
+          <span class="td-funds"></span>
+        </div>
+        <div class="td-basehp"><div class="td-basehp-fill"></div><span class="td-basehp-text"></span></div>
+        <div class="td-body">
+          <div class="td-side">
+            <div class="td-info"></div>
+            <div class="td-combo"></div>
+            <div class="td-units"></div>
+            <div class="td-controls">
+              <button type="button" class="td-btn td-btn-start"></button>
+              <button type="button" class="td-btn td-btn-speed"></button>
+              <button type="button" class="td-btn td-btn-cam"></button>
+              <button type="button" class="td-btn td-btn-quit"></button>
+            </div>
+          </div>
+          <div class="td-main">
+            <canvas class="td-canvas" width="${view.w * 2}" height="${view.h * 2}" style="aspect-ratio: ${view.w} / ${view.h}; --td-ar: ${view.w / view.h};"></canvas>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    const canvas = overlay.querySelector(".td-canvas");
+    const ctx = canvas.getContext("2d");
+    ctx.scale(2, 2);
+    const waveEl = overlay.querySelector(".td-wave");
+    const fundsEl = overlay.querySelector(".td-funds");
+    const baseFillEl = overlay.querySelector(".td-basehp-fill");
+    const baseTextEl = overlay.querySelector(".td-basehp-text");
+    const infoEl = overlay.querySelector(".td-info");
+    const comboEl = overlay.querySelector(".td-combo");
+    const unitsEl = overlay.querySelector(".td-units");
+    const startBtn = overlay.querySelector(".td-btn-start");
+    const speedBtn = overlay.querySelector(".td-btn-speed");
+    const camBtn = overlay.querySelector(".td-btn-cam");
+    const quitBtn = overlay.querySelector(".td-btn-quit");
+    
+    // ユニット選択ボタン
+    st.templates.forEach(tpl => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "td-unit-btn";
+      btn.dataset.key = tpl.key;
+      btn.style.borderColor = tdElementColor(tpl.element);
+      btn.innerHTML = `<span class="td-unit-name">${tpl.label}</span><span class="td-unit-meta">${tdUnitSummary(tpl)}　${tpl.cost}</span>`;
+      btn.onclick = () => {
+        selectedType = (selectedType === tpl.key) ? null : tpl.key;
+        selectedSlot = null; infoNote = "";
+        refreshUI();
+      };
+      unitsEl.appendChild(btn);
+    });
+    
+    function refreshUI() {
+      waveEl.textContent = `WAVE ${st.wave}/${st.wavesTotal}` + (tdIsBossWave(st, st.wave) && st.bossPool.length > 0 ? " ★BOSS" : "");
+      fundsEl.textContent = `資金 ${st.funds}`;
+      const ratio = Math.max(0, st.baseHp) / st.baseMaxHp;
+      baseFillEl.style.width = `${Math.round(ratio * 100)}%`;
+      baseTextEl.textContent = `拠点HP ${Math.max(0, Math.round(st.baseHp))}/${st.baseMaxHp}`;
+      
+      unitsEl.querySelectorAll(".td-unit-btn").forEach(btn => {
+        const tpl = st.templates.find(t => t.key === btn.dataset.key);
+        btn.classList.toggle("td-selected", selectedType === tpl.key);
+        btn.classList.toggle("td-disabled", st.funds < tpl.cost);
+      });
+      
+      startBtn.textContent = st.phase === "prep" ? `WAVE ${st.wave} 開始` : (st.phase === "wave" ? "迎撃中……" : "終了");
+      startBtn.disabled = st.phase !== "prep";
+      speedBtn.textContent = `速度 ×${st.speed}`;
+      camBtn.textContent = camAuto ? "カメラ：自動" : "カメラ：陣地";
+      quitBtn.textContent = quitArmed ? "本当にやめる？" : "やめる";
+      
+      // コンボ欄：今の履歴と、使えるコンボの一覧
+      if (st.combos.length === 0) {
+        comboEl.innerHTML = `<span class="td-combo-label">COMBO</span><span class="td-combo-none">使えるコンボはまだない（本編でコンボを解禁すると使える）</span>`;
+      } else {
+        const hist = st.history.length > 0 ? st.history.map(tdElementChipHtml).join('<span class="td-arrow">→</span>') : '<span class="td-combo-none">なし</span>';
+        const list = st.combos.map(c => `<div class="td-combo-item"><b>${c.name || "名無しのコンボ"}</b> ${(c.elements || []).filter(Boolean).map(tdElementChipHtml).join('<span class="td-arrow">→</span>')}</div>`).join("");
+        comboEl.innerHTML = `<div class="td-combo-row"><span class="td-combo-label">履歴</span>${hist}</div>${list}`;
+      }
+      
+      // 情報行
+      const unit = selectedSlot !== null ? st.units.find(u => u.slot === selectedSlot) : null;
+      if (infoNote) {
+        infoEl.textContent = infoNote;
+      } else if (unit) {
+        const tpl = unit.tpl;
+        const maxed = unit.level >= TD_UNIT_MAX_LEVEL;
+        infoEl.innerHTML = "";
+        const text = document.createElement("span");
+        text.textContent = (tpl.role === "support"
+          ? `${tpl.label} Lv${unit.level}　味方の攻撃+${Math.round(tpl.supportRate * (1 + TD_LEVEL_ATK_RATE * (unit.level - 1)) * 100)}%　射程${tpl.range}`
+          : `${tpl.label} Lv${unit.level}　攻撃${Math.round(tdUnitDamage(st, unit))}　射程${tpl.range}　狙い:${TD_TARGETING_LABELS[tpl.targeting]}` + (tdSupportBonus(st, unit) > 0 ? `　サポート+${Math.round(tdSupportBonus(st, unit) * 100)}%` : ""))
+          + `　HP${Math.max(0, Math.round(unit.hp))}/${unit.maxHp}`;
+        infoEl.appendChild(text);
+        const up = document.createElement("button");
+        up.type = "button";
+        up.className = "td-btn td-btn-upgrade";
+        up.textContent = maxed ? "最大Lv" : `強化 ${tdUpgradeCost(unit)}`;
+        up.disabled = maxed || st.funds < tdUpgradeCost(unit);
+        up.onclick = () => {
+          const r = tdUpgradeUnit(st, unit);
+          infoNote = r.ok ? "" : r.reason;
+          refreshUI();
+        };
+        infoEl.appendChild(up);
+      } else if (selectedType) {
+        const tpl = st.templates.find(t => t.key === selectedType);
+        infoEl.textContent = `${tpl.label}（${tdUnitSummary(tpl)}）：置きたい陣地のマスをタップ`;
+      } else {
+        infoEl.textContent = "下から仲間を選んで、陣地のマスに置こう。敵は上から来て、味方も攻撃してくる。白い数字＝弱点、灰色＝耐性。（キー操作：矢印＝移動／Space・Z＝決定／Tab＝陣地とボタンの切替／X＝やめる）";
+      }
+    }
+    
+    // ----- 操作（タップした位置を、世界の座標に直してから、マスを調べる） -----
+    function toWorld(ev) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: (ev.clientX - rect.left) / rect.width * view.w, y: cam + (ev.clientY - rect.top) / rect.height * view.h };
+    }
+    function cellAt(p) {
+      const c = Math.floor((p.x - TD_GRID_X0) / TD_CELL), r = Math.floor((p.y - TD_GRID_Y0) / TD_CELL);
+      if (c < 0 || c >= TD_GRID_COLS || r < 0 || r >= TD_GRID_ROWS) return -1;
+      return r * TD_GRID_COLS + c;
+    }
+    // ★マスを選んだ時の処理（マウス／タップ・キーボード共通）
+    function handleCell(slotIndex) {
+      if (finished || st.phase === "won" || st.phase === "lost") return;
+      infoNote = "";
+      if (slotIndex < 0) { selectedSlot = null; selectedType = null; refreshUI(); return; }
+      const existing = st.units.find(u => u.slot === slotIndex);
+      if (existing) { selectedSlot = slotIndex; selectedType = null; refreshUI(); return; }
+      if (selectedType) {
+        const r = tdPlaceUnit(st, slotIndex, selectedType);
+        if (!r.ok) infoNote = r.reason;
+      } else {
+        infoNote = "先に下から配置する仲間を選んでください";
+      }
+      refreshUI();
+    }
+    canvas.addEventListener("pointerdown", ev => {
+      ev.preventDefault();
+      handleCell(cellAt(toWorld(ev)));
+    });
+    startBtn.onclick = () => { if (tdStartWave(st)) { infoNote = ""; refreshUI(); } };
+    speedBtn.onclick = () => { st.speed = st.speed === 1 ? 2 : 1; refreshUI(); };
+    camBtn.onclick = () => { camAuto = !camAuto; refreshUI(); };
+    quitBtn.onclick = () => {
+      if (!quitArmed) {
+        quitArmed = true;
+        quitTimer = setTimeout(() => { quitArmed = false; refreshUI(); }, 3000);
+        refreshUI();
+        return;
+      }
+      finish("quit");
+    };
+    // ★キーボード操作（矢印＝移動／Space・Z＝決定／Tab＝陣地とボタンの切替／X＝やめる）
+    const kb = tdAttachKeyboard(overlay, {
+      initial: ".td-btn-start",
+      onCancel: () => quitBtn.click(),
+      field: { cols: TD_GRID_COLS, rows: TD_GRID_ROWS, start: Math.floor(TD_GRID_ROWS / 2) * TD_GRID_COLS + Math.floor(TD_GRID_COLS / 2), onDecide: (index) => handleCell(index) }
+    });
+    
+    // ----- 描画（世界をカメラの位置だけずらして描き、そのあと画面に固定の表示を重ねる） -----
+    function drawBar(x, y, w, ratio, color) {
+      ctx.fillStyle = "#000"; ctx.fillRect(x - 1, y, w + 2, 6);
+      ctx.fillStyle = color; ctx.fillRect(x, y + 1, w * Math.max(0, ratio), 4);
+    }
+    function draw() {
+      ctx.clearRect(0, 0, view.w, view.h);
+      ctx.save();
+      ctx.translate(0, -cam);
+      // 地面：上（敵の出てくる側）から下（拠点）へ、少しずつ色が変わる。横線で、カメラが動いたことが分かるようにする
+      const grad = ctx.createLinearGradient(0, 0, 0, TD_WORLD_H);
+      grad.addColorStop(0, "#1a1424"); grad.addColorStop(0.6, "#12202a"); grad.addColorStop(1, "#0f2a1e");
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, TD_WORLD_W, TD_WORLD_H);
+      ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
+      for (let y = 40; y < TD_WORLD_H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(TD_WORLD_W, y); ctx.stroke(); }
+      // 敵の出てくる口
+      ctx.fillStyle = "rgba(229,72,77,0.35)"; ctx.fillRect(0, 0, TD_WORLD_W, 26);
+      ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("▼ 敵の出現口 ▼", TD_WORLD_W / 2, 13);
+      // 味方陣地のマス
+      ctx.fillStyle = "rgba(255,255,255,0.05)"; ctx.fillRect(TD_GRID_X0, TD_GRID_Y0, TD_GRID_COLS * TD_CELL, TD_GRID_ROWS * TD_CELL);
+      TD_SLOTS.forEach((sl, i) => {
+        const occupied = st.units.some(u => u.slot === i);
+        const x = sl[0] - TD_CELL / 2 + 3, y = sl[1] - TD_CELL / 2 + 3, w = TD_CELL - 6;
+        if (selectedType && !occupied) { ctx.fillStyle = "rgba(255,210,63,0.12)"; ctx.fillRect(x, y, w, w); }
+        ctx.setLineDash([5, 4]);
+        ctx.strokeStyle = occupied ? "rgba(255,255,255,0.2)" : (selectedType ? "#ffd23f" : "#ffffff");
+        ctx.lineWidth = 2; ctx.strokeRect(x, y, w, w);
+        ctx.setLineDash([]);
+      });
+      // 拠点
+      const bg = ctx.createLinearGradient(0, TD_BASE_TOP, 0, TD_WORLD_H);
+      bg.addColorStop(0, "#3a2f4a"); bg.addColorStop(1, "#1b1626");
+      ctx.fillStyle = bg; ctx.fillRect(40, TD_BASE_TOP, TD_WORLD_W - 80, TD_WORLD_H - TD_BASE_TOP);
+      ctx.lineWidth = 4; ctx.strokeStyle = "#ffd23f"; ctx.strokeRect(40, TD_BASE_TOP, TD_WORLD_W - 80, TD_WORLD_H - TD_BASE_TOP);
+      ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(`拠点　HP ${Math.max(0, Math.round(st.baseHp))}/${st.baseMaxHp}`, TD_WORLD_W / 2, TD_BASE_TOP + 22);
+      drawBar(TD_WORLD_W / 2 - 150, TD_BASE_TOP + 40, 300, st.baseHp / st.baseMaxHp, "#e5484d");
+      
+      // 選択中ユニットの射程
+      if (selectedSlot !== null) {
+        const u = st.units.find(x => x.slot === selectedSlot);
+        if (u) {
+          const sp = tdSlotPos(u.slot);
+          ctx.beginPath(); ctx.arc(sp.x, sp.y, u.tpl.range, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fill();
+          ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+      }
+      
+      // ユニット
+      st.units.forEach(u => {
+        const sp = tdSlotPos(u.slot);
+        const color = tdElementColor(u.tpl.element);
+        ctx.beginPath(); ctx.arc(sp.x, sp.y, 22, 0, Math.PI * 2);
+        ctx.fillStyle = color; ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = (u.slot === selectedSlot) ? "#ffd23f" : "#fff"; ctx.stroke();
+        const unitImg = u.tpl.imagePath ? tdGetImage(u.tpl.imagePath) : null;
+        if (unitImg && unitImg.ok) {
+          ctx.save();
+          ctx.beginPath(); ctx.arc(sp.x, sp.y, 20, 0, Math.PI * 2); ctx.clip();
+          ctx.drawImage(unitImg.img, sp.x - 20, sp.y - 20, 40, 40);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = "#111"; ctx.font = "bold 18px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(u.tpl.roleChar, sp.x, sp.y + 1);
+        }
+        drawBar(sp.x - 20, sp.y + 24, 40, u.hp / u.maxHp, "#59e07a");
+        if (u.level > 1) {
+          ctx.fillStyle = "#000"; ctx.fillRect(sp.x + 8, sp.y - 30, 24, 13);
+          ctx.fillStyle = "#ffd23f"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(`Lv${u.level}`, sp.x + 20, sp.y - 23);
+        }
+      });
+      
+      // 撃った演出
+      st.fx.forEach(f => {
+        ctx.globalAlpha = Math.min(1, f.t / 0.12);
+        ctx.strokeStyle = f.color; ctx.lineWidth = 3;
+        if (f.kind === "line") { ctx.beginPath(); ctx.moveTo(f.x1, f.y1); ctx.lineTo(f.x2, f.y2); ctx.stroke(); }
+        else { ctx.beginPath(); ctx.arc(f.x1, f.y1, f.r, 0, Math.PI * 2); ctx.stroke(); }
+        ctx.globalAlpha = 1;
+      });
+      
+      // 敵
+      st.enemies.forEach(e => {
+        const size = e.isBoss ? 54 : 34;
+        const src = e.imagePath || `img/敵/${e.name}.png`;
+        const entry = tdGetImage(src);
+        const ringColor = e.elements.length > 0 ? tdElementColor(e.elements[0]) : "#ffffff";
+        if (entry.ok) {
+          ctx.drawImage(entry.img, e.x - size / 2, e.y - size / 2, size, size);
+        } else {
+          ctx.beginPath(); ctx.arc(e.x, e.y, size / 2 - 2, 0, Math.PI * 2);
+          ctx.fillStyle = "#5b6b7a"; ctx.fill();
+          ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(String(e.name).charAt(0), e.x, e.y + 1);
+        }
+        ctx.beginPath(); ctx.arc(e.x, e.y, size / 2, 0, Math.PI * 2);
+        ctx.strokeStyle = e.isBoss ? "#ff3b3b" : ringColor; ctx.lineWidth = e.isBoss ? 4 : 2.5; ctx.stroke();
+        if (e.isBoss) {
+          ctx.fillStyle = "#ff3b3b"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText("BOSS " + e.name, e.x, e.y - size / 2 - 16); ctx.fillText("BOSS " + e.name, e.x, e.y - size / 2 - 16);
+        }
+        // 状態マーク（止＝足止め／継＝継続ダメージ／弱＝防御低下／攻↓＝攻撃低下／遅＝足が遅い）
+        const marks = [];
+        if (e.stunUntil > st.time) marks.push("止");
+        if (e.dot) marks.push("継");
+        if (e.defDownUntil > st.time) marks.push("弱");
+        if (e.atkDownUntil > st.time) marks.push("攻↓");
+        if (e.slowUntil > st.time) marks.push("遅");
+        if (marks.length > 0) {
+          ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText(marks.join(" "), e.x, e.y + size / 2 + 10);
+          ctx.fillStyle = "#ffd23f"; ctx.fillText(marks.join(" "), e.x, e.y + size / 2 + 10);
+        }
+        drawBar(e.x - size / 2, e.y - size / 2 - 11, size, e.hp / e.maxHp, "#e5484d");
+      });
+      
+      // ダメージ数字
+      st.popups.forEach(p => {
+        const rise = (1 - Math.min(1, p.t / 0.8)) * 14;
+        ctx.globalAlpha = Math.min(1, p.t / 0.3);
+        ctx.font = p.weak ? "bold 16px sans-serif" : "bold 13px sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText(p.text, p.x, p.y - rise);
+        ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y - rise);
+        ctx.globalAlpha = 1;
+      });
+      // ★キーボードで陣地のマスを選んでいる時の枠
+      if (kb && kb.fieldActive) {
+        const fc = kb.fieldIndex % TD_GRID_COLS, fr = Math.floor(kb.fieldIndex / TD_GRID_COLS);
+        ctx.strokeStyle = "#00e5ff"; ctx.lineWidth = 4;
+        ctx.strokeRect(TD_GRID_X0 + fc * TD_CELL + 2, TD_GRID_Y0 + fr * TD_CELL + 2, TD_CELL - 4, TD_CELL - 4);
+      }
+      ctx.restore();
+      
+      // ここから画面に固定の表示
+      // 右端の小さな全体図：世界の縦の長さに対して、今の窓の位置と、敵（赤）・味方（緑）・拠点の位置を示す
+      const mapX = view.w - 14, mapY = 40, mapH = view.h - 54, k = mapH / TD_WORLD_H;
+      ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(mapX - 2, mapY - 2, 12, mapH + 4);
+      ctx.fillStyle = "rgba(255,210,63,0.35)"; ctx.fillRect(mapX - 2, mapY + cam * k, 12, view.h * k);
+      ctx.fillStyle = "#59e07a"; st.units.forEach(u => { const sp = tdSlotPos(u.slot); ctx.fillRect(mapX + 2, mapY + sp.y * k - 1, 4, 2); });
+      ctx.fillStyle = "#ff6b6b"; st.enemies.forEach(e => { ctx.fillRect(mapX + 1, mapY + e.y * k - 1, 6, 2); });
+      ctx.fillStyle = "#ffd23f"; ctx.fillRect(mapX - 2, mapY + TD_BASE_TOP * k, 12, 3);
+      
+      st.banners.forEach(b => {
+        ctx.globalAlpha = Math.min(1, b.t / 0.4);
+        ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0, view.h / 2 - 28, view.w, 56);
+        ctx.fillStyle = "#ffd23f"; ctx.fillRect(0, view.h / 2 - 28, view.w, 4); ctx.fillRect(0, view.h / 2 + 24, view.w, 4);
+        ctx.fillStyle = "#ffd23f"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        ctx.fillText("COMBO", 24, view.h / 2);
+        ctx.fillStyle = "#fff"; ctx.font = "bold 26px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(b.text, view.w / 2, view.h / 2 + 1);
+        ctx.globalAlpha = 1;
+      });
+      if (st.phase === "prep") {
+        ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(0, 0, view.w, 34);
+        ctx.fillStyle = "#ffd23f"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(`WAVE ${st.wave} の準備中：仲間を置いて「開始」` + (tdIsBossWave(st, st.wave) && st.bossPool.length > 0 ? "（中ボス出現！）" : ""), view.w / 2, 17);
+      }
+    }
+    
+    // ----- メインループ -----
+    let uiAccum = 0;
+    function frame(ts) {
+      if (finished) return;
+      if (lastTs === null) lastTs = ts;
+      const realDt = Math.min(0.05, (ts - lastTs) / 1000);
+      lastTs = ts;
+      const prevPhase = st.phase;
+      tdStep(st, realDt * st.speed);
+      // カメラ：目標の位置へ、なめらかに近づく
+      const target = tdCameraTarget(st, view, !camAuto);
+      cam += (target - cam) * Math.min(1, realDt * TD_CAMERA_SPEED);
+      uiAccum += realDt;
+      if (st.phase !== prevPhase || uiAccum > 0.15) { uiAccum = 0; if (selectedSlot !== null && !st.units.some(u => u.slot === selectedSlot)) selectedSlot = null; refreshUI(); }
+      draw();
+      if (st.phase === "won" || st.phase === "lost") {
+        setTimeout(() => finish(st.phase === "won" ? "win" : "lose"), 700);
+        // 二重に呼ばれないよう、ループはここで止める（画面は最後の状態のまま）
+        return;
+      }
+      rafId = requestAnimationFrame(frame);
+    }
+    
+    function finish(result) {
+      if (finished) return;
+      finished = true;
+      if (rafId) cancelAnimationFrame(rafId);
+      if (quitTimer) clearTimeout(quitTimer);
+      if (kb) kb.detach();
+      overlay.remove();
+      resolve({ result, kills: st.kills, wave: st.wave, bossKills: st.bossKills, stage: st.stage, wavesTotal: st.wavesTotal, killKeys: st.killKeys });
+    }
+    
+    refreshUI();
+    draw();
+    rafId = requestAnimationFrame(frame);
+  });
+}
+
+// ===== 施設のメニュー =====
+// 冒険者協会の入り口。openCustomFacility（town.js）から呼ばれる
+function openTowerDefenseFacility(facility, returnTo) {
+  towerDefenseFacility = facility;
+  towerDefenseReturnTo = typeof returnTo === "function" ? returnTo : openTownMenu;
+  showTowerDefenseMainMenu();
+}
+
+// 協会のトップ。今後ほかの機能を足す時は、ここに項目を増やす
+function showTowerDefenseMainMenu() {
+  const options = [
+    { label: "掃討作戦", action: () => showTowerDefenseModeMenu() },
+    { label: "戻る", action: () => towerDefenseReturnTo() }
+  ];
+  showLocationMenu(options, (towerDefenseFacility && towerDefenseFacility.name) || "冒険者協会");
+}
+
+// 掃討作戦のモード選択（迎撃＝守る側／出撃＝攻める側）と、協会ポイントでの事前強化
+function showTowerDefenseModeMenu() {
+  const g = tdGuildState();
+  const options = [
+    { label: "迎撃モード（守る）", action: () => showTowerDefenseWaveMenu() },
+    { label: "出撃モード（攻める）", action: async () => {
+        if (typeof startTowerRaid === "function") { startTowerRaid(1); return; }   // tower_raid.js
+        hideLocationMenu();
+        changeSpeaker("");
+        await displayMessage("出撃モードは、まだ準備中のようだ。");
+        showTowerDefenseModeMenu();
+      } },
+    { label: `事前強化（協会ポイント ${g.points}）`, action: () => showTowerDefenseUpgradeMenu() },
+    { label: "戻る", action: () => showTowerDefenseMainMenu() }
+  ];
+  showLocationMenu(options, `掃討作戦（${tdGachaStoneName()} ${tdGetGachaStones()}）`);
+}
+
+// 迎撃のウェーブ数の選択
+function showTowerDefenseWaveMenu() {
+  const options = TD_WAVE_OPTIONS.map(n => {
+    const bosses = Math.floor(n / TD_BOSS_EVERY);
+    const note = n === TD_WAVE_OPTIONS[0] ? "（お試し）" : (bosses > 0 ? `（中ボス${bosses}体）` : "");
+    return { label: `${n}ウェーブ${note}`, action: () => startTowerDefenseDefense(n, 1) };
+  });
+  options.push({ label: "戻る", action: () => showTowerDefenseModeMenu() });
+  showLocationMenu(options, "迎撃モード：ウェーブ数を選ぶ");
+}
+
+// 事前強化（協会ポイントを使う）。買うたびにメニューを開き直して、最新のレベルと費用を見せる
+function showTowerDefenseUpgradeMenu() {
+  const g = tdGuildState();
+  const options = TD_UPGRADE_DEFS.map(def => {
+    const lv = g.upgrades[def.key];
+    const maxed = lv >= TD_UPGRADE_MAX;
+    const label = maxed ? `${def.label} Lv${lv}（最大）` : `${def.label} Lv${lv}→${lv + 1}（${tdUpgradeCostPoints(lv)}pt）`;
+    return { label, action: async () => {
+        hideLocationMenu();
+        changeSpeaker("");
+        const r = tdBuyGuildUpgrade(def.key);
+        if (r.ok) await displayMessage(`${def.label}を強化した！（${def.describe(g.upgrades[def.key])}）`);
+        else await displayMessage(`${r.reason}。`);
+        showTowerDefenseUpgradeMenu();
+      } };
+  });
+  options.push({ label: "戻る", action: () => showTowerDefenseModeMenu() });
+  showLocationMenu(options, `事前強化（協会ポイント ${g.points}）`);
+}
+
+// 迎撃モードを1ステージ遊ぶ。クリアしたら報酬を渡し、次のステージ（難易度が上がる）へ進むか選べる
+async function startTowerDefenseDefense(wavesTotal, stage) {
+  hideLocationMenu();
+  changeSpeaker("");
+  const pool = tdGetEnemyPool();
+  if (pool.length === 0) {
+    await displayMessage("……掃討する魔物の情報が見当たらない。");
+    showTowerDefenseModeMenu();
+    return;
+  }
+  const g = tdGuildState();
+  const outcome = await runTowerDefenseBattle(pool, { wavesTotal, stage, upgrades: Object.assign({}, g.upgrades) });
+  changeSpeaker("");
+  if (outcome.result === "win") {
+    // ★報酬（陳・協会ポイント・ガチャ石・アイテム）は tower_rewards.js の共通の仕組みで計算して渡す
+    const rewards = tdComputeClearRewards("defense", outcome);
+    tdGrantClearRewards(rewards);
+    const lines = tdDescribeRewards(rewards);
+    await displayMessage(`掃討作戦、成功！　${outcome.kills}体を討ち取り、報酬として${lines[0]}を受け取った。`);
+    if (lines[1]) await displayMessage(lines[1]);
+    showLocationMenu([
+      { label: `次のステージへ進む（STAGE ${stage + 1}・敵が強くなる）`, action: () => startTowerDefenseDefense(wavesTotal, stage + 1) },
+      { label: "協会に戻る", action: () => showTowerDefenseModeMenu() }
+    ], `STAGE ${stage} クリア`);
+    return;
+  } else if (outcome.result === "lose") {
+    await displayMessage("拠点が陥落してしまった……。今回は報酬なしだ。");
+  }
+  showTowerDefenseModeMenu();
+}

@@ -83,11 +83,15 @@ function getChapterProgressSummary() {
 // 便利タブのアイコン一覧
 const CONVENIENCE_APPS = [
   { id: "saveload", label: "セーブ/ロード", icon: "💾", action: () => openSaveLoadPanel() },
-  { id: "monsterCodex", label: "魔物図鑑", icon: "📖", action: () => openMonsterCodex() },
+  { id: "monsterCodex", label: "図鑑", icon: "📖", action: () => openMonsterCodex() }, // ★要望対応：魔物だけでなく、魚・料理・アイテム・家具も載る図鑑に拡張した
   { id: "progress", label: "進行度", icon: "📊", action: () => openProgressPanel() },
   { id: "achievements", label: "実績", icon: "🏆", action: () => openAchievementsPanel() },
   { id: "elementCombo", label: "属性コンボ", icon: "⚡", action: () => openElementComboPanel() }, // ★要望対応：今使えるコンボと属性の順番の一覧
   { id: "elementChart", label: "属性表", icon: "📋", action: () => openElementChartPanel() }, // ★要望対応：属性同士の相性一覧（特攻・耐性）
+  { id: "guildApp", label: "冒険者協会", icon: "🛡️", action: () => openGuildAppPanel() }, // ★冒険者協会アプリ（guild_app.js）。項目に「覚醒の儀（技）」「魔獣召喚」がある
+  { id: "wazaApp", label: "覚醒技能", icon: "✨", action: () => openWazaAppPanel() }, // ★覚醒技能アプリ（waza_app.js）。覚醒した技のセット・詳細
+  { id: "beastApp", label: "おとも魔獣", icon: "🐾", action: () => openBeastAppPanel() }, // ★おとも魔獣アプリ（beast_app.js）。魔獣のセット
+  { id: "glossary", label: "用語・語彙", icon: "📚", action: () => openGlossaryAppPanel() }, // ★用語・語彙アプリ（glossary_app.js）。ゲームの用語やことわざ・熟語の解説（メッセージ中の言葉をタップしても開く）
   { id: "tutorial", label: "チュートリアル", icon: "❓", action: () => openTutorialPanel() },
   { id: "credits", label: "クレジット", icon: "📜", action: () => openCredits() }
 ];
@@ -121,6 +125,15 @@ function closeAllConvenienceSubPanels() {
   const progressPanel = document.getElementById("progress-panel");
   const tutorialPanel = document.getElementById("tutorial-panel");
   const achievementsPanel = document.getElementById("achievements-panel");
+  const guildAppPanel = document.getElementById("guild-app-panel");
+  const beastAppPanel = document.getElementById("beast-app-panel");
+  const glossaryAppPanel = document.getElementById("glossary-app-panel");
+  const wazaAppPanel = document.getElementById("waza-app-panel");
+  if (typeof guildAppAbort === "function") guildAppAbort(); // guild_app.js（魔獣召喚の演出の最中でも畳めるように）
+  if (typeof handleBeastAppKeyDown === "function") window.removeEventListener("keydown", handleBeastAppKeyDown); // beast_app.js
+  if (typeof handleGlossaryAppKeyDown === "function") window.removeEventListener("keydown", handleGlossaryAppKeyDown); // glossary_app.js
+  if (typeof handleGuildAppKeyDown === "function") window.removeEventListener("keydown", handleGuildAppKeyDown); // guild_app.js
+  if (typeof handleWazaAppKeyDown === "function") window.removeEventListener("keydown", handleWazaAppKeyDown); // waza_app.js
   window.removeEventListener("keydown", handleElementComboKeyDown);
   window.removeEventListener("keydown", handleElementChartKeyDown);
   window.removeEventListener("keydown", handleSaveLoadKeyDown);
@@ -137,6 +150,11 @@ function closeAllConvenienceSubPanels() {
   if (progressPanel) progressPanel.classList.add("hidden");
   if (tutorialPanel) tutorialPanel.classList.add("hidden");
   if (achievementsPanel) achievementsPanel.classList.add("hidden");
+  if (guildAppPanel) guildAppPanel.classList.add("hidden");
+  if (beastAppPanel) beastAppPanel.classList.add("hidden");
+  if (glossaryAppPanel) glossaryAppPanel.classList.add("hidden");
+  if (wazaAppPanel) wazaAppPanel.classList.add("hidden");
+  subTabSwitchBlocked = false; // ★要望対応：図鑑の分類切り替え用に止めていたタブ切り替えのQ/Eも、ここで必ず元に戻す
 }
 
 // 便利タブを開いた時（switchTabから呼ばれる）：常にアイコン一覧の状態に戻す
@@ -192,9 +210,13 @@ function renderConvenienceIcons() {
       }
     };
     
+    iconBtn.dataset.appId = app.id; // ★未確認バッジの付け外し用
     const glyph = document.createElement("span");
     glyph.className = "convenience-icon-glyph";
     glyph.textContent = app.icon;
+    // ★実績・チュートリアルに未確認があれば、赤丸の「!」バッジを重ねる
+    if (app.id === "tutorial" && getUnreadTutorialIds().length > 0) glyph.appendChild(createUnreadBadgeElement("convenience-icon-unread"));
+    if (app.id === "achievements" && getUnreadAchievementIds().length > 0) glyph.appendChild(createUnreadBadgeElement("convenience-icon-unread"));
     
     // ★進行度アイコンだけ、アイコンの上に「クリア済み話数／全話数」の小さなバッジを重ねて表示する
     if (app.id === "progress" && typeof getChapterProgressSummary === "function") {
@@ -328,6 +350,196 @@ function getAffectionLabel(tier) {
 let codexCursorIndex = 0;
 let codexViewMode = "list"; // "list"（一覧） | "detail"（選んだ魔物の詳細）
 
+// ===== 図鑑の分類（要望対応） =====
+// ★図鑑を「魔物」だけでなく「魚」「料理」「アイテム」「家具」にも広げた。未発見のものは名前を「？？？」で伏せ、
+//   「初めて手に入れた（釣った・作った・買った）」と発見済みになる。
+//   ・魚／料理／アイテム：player.obtainedItemIds（初めて入手したアイテムの記録。inventory.js の addItem が付ける）
+//     ※古いセーブでは、持ち物に残っているものだけが発見済みとして引き継がれる
+//   ・家具：購入した時に player.discoveredFurnitureIds へ記録（持っている家具も発見済みとして数える）
+//   操作：Q/Eキーで分類を切り替え、↑↓で選び、Zキーで詳細、Xキーで閉じる
+//   ★要望対応：以前は←→で分類を切り替えていたが、サブ画面タブのQ/E切り替えと役割を合わせるためQ/Eに変更。
+//   図鑑を開いている間は、サブ画面タブ自体のQ/E切り替え（分類の切り替えと同時に起きると紛らわしいため）を止める（subTabSwitchBlocked）
+const CODEX_TABS = [
+  { id: "monster", label: "魔物" },
+  { id: "fish", label: "魚" },
+  { id: "dish", label: "料理" },
+  { id: "item", label: "アイテム" },
+  { id: "furniture", label: "家具" }
+];
+let codexTab = "monster";
+
+const CODEX_ITEM_CATEGORY_LABELS = { herb: "薬草", potion: "ポーション", material: "魔物素材", weapon: "武器", armor: "防具", tool: "道具", cookingTool: "調理道具", book: "本", misc: "その他" };
+const CODEX_FURNITURE_TYPE_LABELS = { storage: "収納", bed: "寝具", lighting: "照明", decoration: "装飾", seating: "座る", cookingAppliance: "調理魔家電", bookshelf: "本棚" };
+
+function isCodexItemDiscovered(itemId) {
+  if (typeof player === "undefined" || !player || !itemId) return false;
+  if (player.obtainedItemIds && player.obtainedItemIds[itemId]) return true;
+  return typeof getItemCount === "function" && getItemCount(itemId) > 0; // 古いセーブ向け：持っているものは発見済み
+}
+
+function isCodexFurnitureDiscovered(furnitureId) {
+  if (typeof player === "undefined" || !player || !furnitureId) return false;
+  if (Array.isArray(player.discoveredFurnitureIds) && player.discoveredFurnitureIds.includes(furnitureId)) return true;
+  return Array.isArray(player.ownedFurniture) && player.ownedFurniture.some(inst => inst && inst.furnitureId === furnitureId);
+}
+
+function getCodexItemName(itemId) {
+  const master = (typeof ITEM_MASTER !== "undefined") ? ITEM_MASTER[itemId] : null;
+  return master ? master.name : null;
+}
+
+// ★魔物以外の分類の項目一覧：[{ id, name, discovered, tag（一覧の右側に出す短い文字）, lines（詳細の説明行）, imagePath }]
+function getCodexEntries(tab) {
+  const entries = [];
+  const price = (m) => (m && m.listedPrice != null) ? `基本価格：${m.listedPrice}陳` : null;
+  if (tab === "fish") {
+    ((typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.fishItems)) ? scenarioProject.fishItems : []).forEach(f => {
+      if (!f || !f.id) return;
+      entries.push({ id: f.id, name: f.name || "（無名）", discovered: isCodexItemDiscovered(f.id), tag: f.rank ? `ランク${f.rank}` : "",
+        lines: [f.description, f.fishType ? `種類：${f.fishType}` : null, f.rank ? `ランク：${f.rank}` : null, f.size != null ? `大きさ：${f.size}` : null, price(f)].filter(Boolean) });
+    });
+  } else if (tab === "dish") {
+    const seen = {};
+    ((typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.recipes)) ? scenarioProject.recipes : []).forEach(r => {
+      if (!r || r.shopType !== "cooking" || seen[r.resultItemId]) return;
+      const master = (typeof ITEM_MASTER !== "undefined") ? ITEM_MASTER[r.resultItemId] : null;
+      if (!master) return; // ★データに無い料理は載せない
+      seen[r.resultItemId] = true;
+      const materials = (r.materials || []).map(m => `${getCodexItemName(m.itemId) || "？？？"}×${m.count || 1}`).join("、");
+      const toolName = r.toolItemId ? getCodexItemName(r.toolItemId) : null;
+      entries.push({ id: r.resultItemId, name: master.name, discovered: isCodexItemDiscovered(r.resultItemId), tag: "料理",
+        lines: [master.description || r.description, materials ? `材料：${materials}` : null, toolName ? `使う道具：${toolName}` : null,
+          r.cookTimeSeconds ? `調理時間：${r.cookTimeSeconds}秒` : null, price(master)].filter(Boolean) });
+    });
+    const failMaster = (typeof ITEM_MASTER !== "undefined") ? ITEM_MASTER["food_cooking_fail"] : null;
+    if (failMaster) entries.push({ id: "food_cooking_fail", name: failMaster.name, discovered: isCodexItemDiscovered("food_cooking_fail"), tag: "失敗",
+      lines: [failMaster.description, "材料や個数が合っていない時にできてしまう料理。"].filter(Boolean) });
+  } else if (tab === "item") {
+    Object.keys((typeof ITEM_MASTER !== "undefined") ? ITEM_MASTER : {}).forEach(id => {
+      const m = ITEM_MASTER[id];
+      if (!m || m.category === "fish" || m.category === "food") return; // 魚・料理は専用の分類に載せる
+      const cat = CODEX_ITEM_CATEGORY_LABELS[m.category] || m.category || "その他";
+      entries.push({ id, name: m.name || id, discovered: isCodexItemDiscovered(id), tag: cat,
+        lines: [m.description, `分類：${cat}`, m.rank ? `ランク：${m.rank}` : null, price(m)].filter(Boolean) });
+    });
+  } else if (tab === "furniture") {
+    ((typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.furniture)) ? scenarioProject.furniture : []).forEach(f => {
+      if (!f || !f.id) return;
+      const type = CODEX_FURNITURE_TYPE_LABELS[f.type] || "家具";
+      entries.push({ id: f.id, name: f.name || "（無名）", discovered: isCodexFurnitureDiscovered(f.id), tag: type, imagePath: f.imagePath || "",
+        lines: [`種類：${type}`, `大きさ：${f.width || 1}×${f.height || 1}マス`, f.isStorage ? `収納：${f.storageSlots || 0}個まで入る` : null,
+          f.price != null ? `価格：${f.price}陳` : null].filter(Boolean) });
+    });
+  }
+  return entries;
+}
+
+// ★分類ごとの「発見数／全数」
+function getCodexCounts(tab) {
+  if (tab === "monster") {
+    const keys = [...SPAREABLE_KEYS, ...BOSS_MONSTER_KEYS];
+    return { found: keys.filter(k => discoveredMonsters[k]).length, total: keys.length };
+  }
+  const entries = getCodexEntries(tab);
+  return { found: entries.filter(e => e.discovered).length, total: entries.length };
+}
+
+function switchCodexTab(tabId) {
+  codexTab = tabId;
+  codexCursorIndex = 0;
+  codexViewMode = "list";
+  renderMonsterCodex();
+}
+
+function buildCodexTabStrip() {
+  const strip = document.createElement("div");
+  strip.className = "codex-tabs";
+  CODEX_TABS.forEach(tab => {
+    const counts = getCodexCounts(tab.id);
+    const btn = document.createElement("button");
+    btn.className = "codex-tab" + (tab.id === codexTab ? " active" : "");
+    btn.textContent = `${tab.label} ${counts.found}/${counts.total}`;
+    btn.onclick = (event) => { event.stopPropagation(); switchCodexTab(tab.id); };
+    strip.appendChild(btn);
+  });
+  return strip;
+}
+
+// ★魚・料理・アイテム・家具の一覧
+function renderCodexGenericList(panel) {
+  const entries = getCodexEntries(codexTab);
+  const list = document.createElement("div");
+  list.className = "monster-codex-list";
+  if (entries.length === 0) {
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "devmode-note";
+    emptyEl.textContent = "この分類は、まだ登録されていません。";
+    list.appendChild(emptyEl);
+  }
+  entries.forEach((entry, i) => {
+    const row = document.createElement("div");
+    row.className = "monster-codex-row" + (i === codexCursorIndex ? " cursor" : "") + (entry.discovered ? "" : " monster-codex-row-unknown");
+    row.onclick = (event) => {
+      event.stopPropagation();
+      codexCursorIndex = i;
+      if (entry.discovered) codexViewMode = "detail";
+      renderMonsterCodex();
+    };
+    const nameEl = document.createElement("span");
+    nameEl.className = "monster-codex-name";
+    nameEl.textContent = entry.discovered ? entry.name : "？？？";
+    row.appendChild(nameEl);
+    const labelEl = document.createElement("span");
+    labelEl.className = entry.discovered ? "monster-codex-label" : "monster-codex-unknown";
+    labelEl.textContent = entry.discovered ? entry.tag : "未発見";
+    row.appendChild(labelEl);
+    list.appendChild(row);
+  });
+  panel.appendChild(list);
+  const cursorRow = list.children[codexCursorIndex];
+  if (cursorRow) requestAnimationFrame(() => cursorRow.scrollIntoView({ block: "nearest" }));
+  
+  const hintEl = document.createElement("p");
+  hintEl.className = "monster-codex-hint";
+  hintEl.textContent = "Q・Eキーで分類を切り替え／Zキーで詳細を見る／Xキーで閉じる";
+  panel.appendChild(hintEl);
+  
+  const backBtn = document.createElement("button");
+  backBtn.className = "monster-codex-back-btn";
+  backBtn.textContent = "戻る（Xキー）";
+  backBtn.onclick = (event) => { event.stopPropagation(); closeMonsterCodex(); };
+  panel.appendChild(backBtn);
+}
+
+// ★魚・料理・アイテム・家具の詳細
+function renderCodexGenericDetail(panel) {
+  const entry = getCodexEntries(codexTab)[codexCursorIndex];
+  if (!entry || !entry.discovered) { codexViewMode = "list"; renderMonsterCodex(); return; }
+  const title = document.createElement("h3");
+  title.className = "monster-codex-title";
+  title.textContent = entry.name;
+  panel.appendChild(title);
+  if (entry.imagePath) {
+    const imageEl = document.createElement("img");
+    imageEl.className = "monster-codex-detail-image";
+    imageEl.alt = entry.name;
+    imageEl.onerror = () => { imageEl.classList.add("hidden"); };
+    imageEl.src = entry.imagePath;
+    panel.appendChild(imageEl);
+  }
+  entry.lines.forEach(line => {
+    const lineEl = document.createElement("p");
+    lineEl.className = "monster-codex-description";
+    lineEl.textContent = line;
+    panel.appendChild(lineEl);
+  });
+  const backBtn = document.createElement("button");
+  backBtn.className = "monster-codex-back-btn";
+  backBtn.textContent = "一覧に戻る（Xキー）";
+  backBtn.onclick = (event) => { event.stopPropagation(); codexViewMode = "list"; renderMonsterCodex(); };
+  panel.appendChild(backBtn);
+}
+
 // アイコンをタップして、魔物図鑑を開く
 async function openMonsterCodex() {
   // ★シナリオが落ち着くまでは、まだ魔物図鑑を見られないようにする
@@ -349,13 +561,16 @@ async function openMonsterCodex() {
   if (achievementsPanel) achievementsPanel.classList.add("hidden");
   codexCursorIndex = 0;
   codexViewMode = "list";
+  codexTab = "monster";
   renderMonsterCodex();
   window.removeEventListener("keydown", handleMonsterCodexKeyDown); // 二重登録防止
   window.addEventListener("keydown", handleMonsterCodexKeyDown);
+  subTabSwitchBlocked = true; // ★要望対応：図鑑を開いている間は、分類切り替え（Q/E）とサブ画面タブ切り替え（Q/E）が同時に起きないよう、タブ切り替えを止める
 }
 
 function closeMonsterCodex() {
   window.removeEventListener("keydown", handleMonsterCodexKeyDown);
+  subTabSwitchBlocked = false; // ★要望対応：図鑑を閉じたら、タブ切り替えのQ/Eを元に戻す
   renderConvenienceIcons();
 }
 
@@ -644,11 +859,181 @@ function handleElementChartKeyDown(event) {
 let tutorialCursorIndex = 0; // ★一覧でのカーソル位置（表示上の通し番号。カテゴリ見出しの行は数えない）
 let tutorialDetailOpen = false;
 
-// ★scenarioProject.tutorials（[{ id, category, title, body }, ...]）を、カテゴリごとにまとめて返す
+// ===== チュートリアルの解放条件（要望対応） =====
+// ★チュートリアルには、任意で「解放条件」を付けられる（シナリオビルドの「チュートリアル管理」タブ）。
+//   条件が1つも無いチュートリアルは、従来どおり最初から一覧に出る。条件があるものは、全ての条件を満たした時に
+//   解放され（画面上部に通知が出る）、一度解放されたら以降は条件を満たさなくなっても出たままになる。
+//   ・requiredChapterId：この話をクリアしたら
+//   ・requiredItemId：このアイテムを初めて入手したら（player.obtainedItemIds に記録）
+//   ・requiredFacilityId：この施設に初めて入ったら（player.usedFacilityIds に記録）
+//   ・requiredRank / requiredProgress / requiredDays / requiredFlag：話の解禁条件と同じ（evaluateChapterUnlockConditions）
+//   解放済みの一覧は player.unlockedTutorialIds（セーブデータに丸ごと含まれる。古いセーブには無いので未定義は空として扱う）
+function tutorialHasUnlockCondition(entry) {
+  return !!(entry && (entry.requiredChapterId || entry.requiredItemId || entry.requiredFacilityId
+    || entry.requiredRank || (Number(entry.requiredProgress) > 0) || (Number(entry.requiredDays) > 0) || entry.requiredFlag));
+}
+
+// ★アイテムを初めて入手したことを記録する（inventory.js の addItem から呼ばれる）
+function recordItemObtainedForTutorial(itemId) {
+  if (typeof player === "undefined" || !player || !itemId) return;
+  if (!player.obtainedItemIds) player.obtainedItemIds = {};
+  if (player.obtainedItemIds[itemId]) return;
+  player.obtainedItemIds[itemId] = true;
+  checkTutorialUnlocks();
+}
+
+// ★施設に入ったことを記録する（town.js の openCustomFacility から呼ばれる）
+function recordFacilityUsedForTutorial(facilityId) {
+  if (typeof player === "undefined" || !player || !facilityId) return;
+  if (!player.usedFacilityIds) player.usedFacilityIds = {};
+  if (player.usedFacilityIds[facilityId]) return;
+  player.usedFacilityIds[facilityId] = true;
+  checkTutorialUnlocks();
+}
+
+// ★1つのチュートリアルの条件を、今の状態で全て満たしているか（解放済みかどうかは見ない）
+function isTutorialConditionMet(entry) {
+  if (typeof player === "undefined" || !player) return false;
+  if (typeof evaluateChapterUnlockConditions === "function" && !evaluateChapterUnlockConditions(entry)) return false; // scenariobuild.js（話・ランク・進行度・日数・フラグ）
+  if (entry.requiredItemId && !(player.obtainedItemIds && player.obtainedItemIds[entry.requiredItemId])) return false;
+  if (entry.requiredFacilityId && !(player.usedFacilityIds && player.usedFacilityIds[entry.requiredFacilityId])) return false;
+  return true;
+}
+
+// ★一覧に出してよいチュートリアルか（条件なし、または解放済み）
+function isTutorialUnlocked(entry) {
+  if (!tutorialHasUnlockCondition(entry)) return true;
+  return !!(typeof player !== "undefined" && player && Array.isArray(player.unlockedTutorialIds) && player.unlockedTutorialIds.includes(entry.id));
+}
+
+// ★新しく条件を満たしたチュートリアルを解放して通知する。話のクリア・アイテム入手・施設に入る・拠点に戻る・
+//   実績チェックのタイミングなどから随時呼ぶ。options.silent が true なら通知は出さない
+function checkTutorialUnlocks(options = {}) {
+  if (typeof player === "undefined" || !player) return;
+  // ★古いセーブ（この機能より前）かどうか。ここで一度だけ「解放済み」として静かに引き継ぎ、確認済みにもしておく
+  const migratingLegacy = !Array.isArray(player.unlockedTutorialIds);
+  if (!Array.isArray(player.seenTutorialIds)) player.seenTutorialIds = Array.isArray(player.unlockedTutorialIds) ? player.unlockedTutorialIds.slice() : [];
+  const list = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.tutorials)) ? scenarioProject.tutorials : [];
+  // ★古いセーブ（この機能より前）：入手済みの持ち物は「初めて入手した」扱いにしておく。
+  //   また、初回の判定でまとめて解放されるものは通知しない（通知が一気に出てしまうのを防ぐ）
+  let silent = !!options.silent;
+  if (!player.obtainedItemIds) {
+    player.obtainedItemIds = {};
+    if (typeof inventorySlots !== "undefined" && Array.isArray(inventorySlots)) {
+      inventorySlots.forEach(slot => { if (slot && slot.itemId) player.obtainedItemIds[slot.itemId] = true; });
+    }
+  }
+  if (!Array.isArray(player.unlockedTutorialIds)) { player.unlockedTutorialIds = []; silent = true; }
+  const newTitles = [];
+  list.forEach(entry => {
+    if (!entry || !entry.id || !tutorialHasUnlockCondition(entry)) return;
+    if (player.unlockedTutorialIds.includes(entry.id)) return;
+    if (!isTutorialConditionMet(entry)) return;
+    player.unlockedTutorialIds.push(entry.id);
+    if (migratingLegacy) player.seenTutorialIds.push(entry.id); // 古いセーブからの引き継ぎ分は「確認済み」扱い
+    newTitles.push(entry.title || "（無題）");
+  });
+  if (!silent && newTitles.length > 0) showTutorialUnlockToast(newTitles);
+  if (newTitles.length > 0) updateUnreadBadges();
+}
+
+// ===== 未確認バッジ（要望対応） =====
+// ★実績・チュートリアルのうち「解放されたのに、まだ詳細を開いて確認していないもの」がある間、
+//   便利タブのボタンと、実績／チュートリアルのアイコンに、赤丸・白文字の「!」バッジを出す。
+//   チュートリアルは解放条件のあるものだけが対象（最初から出ているものは、未確認扱いにしない）。
+//   確認済みの記録は player.seenTutorialIds / player.seenAchievementIds（古いセーブに無い時は未確認ゼロとして扱う）
+function getUnreadTutorialIds() {
+  if (typeof player === "undefined" || !player || !Array.isArray(player.unlockedTutorialIds) || !Array.isArray(player.seenTutorialIds)) return [];
+  const list = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.tutorials)) ? scenarioProject.tutorials : [];
+  return list.filter(entry => entry && entry.id && player.unlockedTutorialIds.includes(entry.id) && !player.seenTutorialIds.includes(entry.id)).map(entry => entry.id);
+}
+
+function getUnreadAchievementIds() {
+  if (typeof player === "undefined" || !player || !Array.isArray(player.unlockedAchievementIds) || !Array.isArray(player.seenAchievementIds)) return [];
+  const list = (typeof getAchievementList === "function") ? getAchievementList() : [];
+  return list.filter(a => a && a.id && player.unlockedAchievementIds.includes(a.id) && !player.seenAchievementIds.includes(a.id)).map(a => a.id);
+}
+
+function isTutorialUnread(id) { return getUnreadTutorialIds().includes(id); }
+function isAchievementUnread(id) { return getUnreadAchievementIds().includes(id); }
+
+function markTutorialSeen(id) {
+  if (typeof player === "undefined" || !player || !id) return;
+  if (!Array.isArray(player.seenTutorialIds)) return;
+  if (player.seenTutorialIds.includes(id)) return;
+  player.seenTutorialIds.push(id);
+  updateUnreadBadges();
+}
+
+function markAchievementSeen(id) {
+  if (typeof player === "undefined" || !player || !id) return;
+  if (!Array.isArray(player.seenAchievementIds)) return;
+  if (player.seenAchievementIds.includes(id)) return;
+  player.seenAchievementIds.push(id);
+  updateUnreadBadges();
+}
+
+// ★赤丸の「!」バッジ要素を作る（className で見た目を変える）
+function createUnreadBadgeElement(className) {
+  const badge = document.createElement("span");
+  badge.className = className;
+  badge.textContent = "!";
+  return badge;
+}
+
+// ★未確認があるかどうかに合わせて、便利タブのボタンのバッジを付け外しする。
+//   アイコン一覧側（実績・チュートリアルのアイコン）は、一覧を描画し直す時に付ける
+function updateUnreadBadges() {
+  const tabBtn = document.querySelector('.tab-btn[onclick*="tab-convenience"]');
+  if (!tabBtn) return;
+  const total = getUnreadTutorialIds().length + getUnreadAchievementIds().length;
+  const existing = tabBtn.querySelector(".unread-badge");
+  if (total > 0 && !existing) tabBtn.appendChild(createUnreadBadgeElement("unread-badge"));
+  else if (total === 0 && existing) existing.remove();
+  // ★アイコン一覧が表示されている間に未確認の数が変わった時のために、アイコン側のバッジも合わせておく
+  const iconGrid = document.getElementById("convenience-icon-grid");
+  if (iconGrid) {
+    [["tutorial", getUnreadTutorialIds().length], ["achievements", getUnreadAchievementIds().length]].forEach(([appId, count]) => {
+      const glyph = iconGrid.querySelector(`.convenience-icon[data-app-id="${appId}"] .convenience-icon-glyph`);
+      if (!glyph) return;
+      const iconBadge = glyph.querySelector(".convenience-icon-unread");
+      if (count > 0 && !iconBadge) glyph.appendChild(createUnreadBadgeElement("convenience-icon-unread"));
+      else if (count === 0 && iconBadge) iconBadge.remove();
+    });
+  }
+}
+
+// ★解放の通知（実績の達成トーストと同じ見た目。実績の通知と重なる時は少し遅らせる）
+function showTutorialUnlockToast(titles) {
+  const show = () => {
+    const toast = document.createElement("div");
+    toast.className = "achievement-toast";
+    const titleEl = document.createElement("div");
+    titleEl.className = "achievement-toast-title";
+    titleEl.textContent = "❓ チュートリアルが追加されました";
+    toast.appendChild(titleEl);
+    const nameEl = document.createElement("div");
+    nameEl.className = "achievement-toast-name";
+    nameEl.textContent = titles.length <= 2 ? titles.join("・") : `${titles[0]} ほか${titles.length - 1}件`;
+    toast.appendChild(nameEl);
+    const hintEl = document.createElement("div");
+    hintEl.className = "achievement-toast-reward";
+    hintEl.textContent = "便利タブの「チュートリアル」から読めます";
+    toast.appendChild(hintEl);
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add("show"));
+    setTimeout(() => { toast.classList.remove("show"); setTimeout(() => toast.remove(), 500); }, 3500);
+  };
+  if (document.querySelector(".achievement-toast")) setTimeout(show, 4200); else show();
+}
+
+// ★scenarioProject.tutorials（[{ id, category, title, body, requiredXxx... }, ...]）を、カテゴリごとにまとめて返す
+//   （解放条件があって、まだ解放されていないものは含めない）
 function getGroupedTutorials() {
   const list = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.tutorials)) ? scenarioProject.tutorials : [];
   const groups = [];
   list.forEach(entry => {
+    if (!isTutorialUnlocked(entry)) return;
     const categoryName = entry.category || "その他";
     let group = groups.find(g => g.category === categoryName);
     if (!group) { group = { category: categoryName, items: [] }; groups.push(group); }
@@ -680,6 +1065,7 @@ function openTutorialPanel() {
   if (creditsPanel) creditsPanel.classList.add("hidden");
   tutorialCursorIndex = 0;
   tutorialDetailOpen = false;
+  checkTutorialUnlocks({ silent: true }); // ★開く時にも解放状況を最新にしておく（rank・進行度・フラグ条件など）
   renderTutorialPanel();
   window.removeEventListener("keydown", handleTutorialKeyDown); // 二重登録防止
   window.addEventListener("keydown", handleTutorialKeyDown);
@@ -715,7 +1101,13 @@ function renderTutorialPanel() {
     emptyEl.className = "devmode-note";
     emptyEl.textContent = "まだチュートリアルが登録されていません。";
     list.appendChild(emptyEl);
-  } else {
+  }
+  
+  // ★バグ修正：以前はまだpanelに挿入される前のlist（画面にまだ存在しない状態）に対してrow.scrollIntoView()を
+  //   呼んでいたため、何も起きていなかった（スクロールがカーソルに追従していなかった）。
+  //   list／panelへの挿入を終えてから、カーソル行の位置を実際に計算してスクロールするように直す
+  let tutorialCursorRowEl = null;
+  if (groups.length > 0) {
     let flatIndex = 0;
     groups.forEach(group => {
       const headerEl = document.createElement("p");
@@ -732,6 +1124,7 @@ function renderTutorialPanel() {
         titleEl.className = "progress-panel-chapter-title";
         titleEl.textContent = item.title || "（無題）";
         row.appendChild(titleEl);
+        if (isTutorialUnread(item.id)) row.appendChild(createUnreadBadgeElement("unread-mark")); // ★解放されたけど、まだ読んでいない
         
         row.onclick = (event) => {
           event.stopPropagation();
@@ -741,13 +1134,24 @@ function renderTutorialPanel() {
         };
         
         list.appendChild(row);
-        if (currentIndex === tutorialCursorIndex) row.scrollIntoView({ block: "nearest" }); // ★カーソルに合わせて自動スクロール
+        if (currentIndex === tutorialCursorIndex) tutorialCursorRowEl = row;
         flatIndex++;
       });
     });
   }
   
   panel.appendChild(list);
+  
+  // ★要望対応：カーソルに合わせて一覧をスクロールする（list／panelへの挿入が終わった後で計算する）
+  if (tutorialCursorRowEl) {
+    const containerRect = list.getBoundingClientRect();
+    const rowRect = tutorialCursorRowEl.getBoundingClientRect();
+    if (rowRect.top < containerRect.top) {
+      list.scrollTop -= (containerRect.top - rowRect.top);
+    } else if (rowRect.bottom > containerRect.bottom) {
+      list.scrollTop += (rowRect.bottom - containerRect.bottom);
+    }
+  }
   
   const backBtn = document.createElement("button");
   backBtn.className = "monster-codex-back-btn";
@@ -760,6 +1164,7 @@ function renderTutorialDetail(panel) {
   panel.innerHTML = "";
   const item = getFlatTutorialItems()[tutorialCursorIndex];
   if (!item) { tutorialDetailOpen = false; renderTutorialPanel(); return; }
+  markTutorialSeen(item.id); // ★詳細を開いた＝確認済み（バッジが消える）
   
   const title = document.createElement("h3");
   title.className = "monster-codex-title";
@@ -1229,14 +1634,16 @@ function renderMonsterCodex() {
   panel.innerHTML = "";
   
   if (codexViewMode === "detail") {
-    renderMonsterCodexDetail(panel);
+    if (codexTab === "monster") renderMonsterCodexDetail(panel); else renderCodexGenericDetail(panel);
     return;
   }
   
   const title = document.createElement("h3");
   title.className = "monster-codex-title";
-  title.textContent = "魔物図鑑";
+  title.textContent = "図鑑";
   panel.appendChild(title);
+  panel.appendChild(buildCodexTabStrip()); // ★分類（魔物／魚／料理／アイテム／家具）の切り替え
+  if (codexTab !== "monster") { renderCodexGenericList(panel); return; }
   
   const list = document.createElement("div");
   list.className = "monster-codex-list";
@@ -1318,7 +1725,7 @@ function renderMonsterCodex() {
   
   const hintEl = document.createElement("p");
   hintEl.className = "monster-codex-hint";
-  hintEl.textContent = "Zキーで詳細を見る／Xキーで閉じる";
+  hintEl.textContent = "Q・Eキーで分類を切り替え／Zキーで詳細を見る／Xキーで閉じる";
   panel.appendChild(hintEl);
   
   const backBtn = document.createElement("button");
@@ -1483,6 +1890,39 @@ function handleMonsterCodexKeyDown(event) {
       renderMonsterCodex();
     } else {
       closeMonsterCodex();
+    }
+    return;
+  }
+  
+  // ★要望対応：分類の切り替え（一覧の時だけ）。以前は←→だったが、サブ画面タブのQ/E切り替えと
+  //   役割を合わせるためQ/Eに変更。図鑑を開いている間はsubTabSwitchBlockedでタブ自体のQ/E切り替えを
+  //   止めているので、ここでQ/Eが分類切り替えとタブ切り替えの両方に取られてしまうことは無い
+  if (codexViewMode === "list" && (KEY_CONFIG.tabLeftKey.includes(event.key) || KEY_CONFIG.tabRightKey.includes(event.key))) {
+    event.preventDefault();
+    const currentIndex = CODEX_TABS.findIndex(t => t.id === codexTab);
+    const nextIndex = (currentIndex + (KEY_CONFIG.tabRightKey.includes(event.key) ? 1 : -1) + CODEX_TABS.length) % CODEX_TABS.length;
+    switchCodexTab(CODEX_TABS[nextIndex].id);
+    return;
+  }
+  
+  // ★魚・料理・アイテム・家具の分類
+  if (codexTab !== "monster") {
+    if (codexViewMode === "detail") return;
+    const entries = getCodexEntries(codexTab);
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      codexCursorIndex = Math.min(Math.max(0, entries.length - 1), codexCursorIndex + 1);
+      renderMonsterCodex();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      codexCursorIndex = Math.max(0, codexCursorIndex - 1);
+      renderMonsterCodex();
+    } else if (KEY_CONFIG.decideKeys.includes(event.key)) {
+      event.preventDefault();
+      if (entries[codexCursorIndex] && entries[codexCursorIndex].discovered) {
+        codexViewMode = "detail";
+        renderMonsterCodex();
+      }
     }
     return;
   }
@@ -2076,7 +2516,8 @@ function buildSaveData() {
     background: deepClone(currentBackground), // ★セーブ時点の背景（色 or 画像）
     monsterAffection: deepClone(monsterAffection), // ★魔物図鑑の好感度
     discoveredMonsters: deepClone(discoveredMonsters), // ★魔物図鑑に載せるかどうかの判定用
-    clearedChapterIds: clearedChapterIds // ★このセーブ枠でクリア済みの自作の話（シナリオエディタの話管理）
+    clearedChapterIds: clearedChapterIds, // ★このセーブ枠でクリア済みの自作の話（シナリオエディタの話管理）
+    glossarySeen: (typeof glossaryBuildSeenForSave === "function") ? glossaryBuildSeenForSave() : [] // ★シナリオに出て「見つけた」用語・語彙のid（glossary_app.js）
   };
 }
 
@@ -2159,6 +2600,7 @@ async function restoreGameFromSaveData(data, persistLoadedDataFn) {
   gold = data.gold;
   currentLocationKey = data.currentLocationKey || "town";
   chapter1Finished = !!data.chapter1Finished;
+  if (typeof glossaryRestoreSeen === "function") glossaryRestoreSeen(data); // ★見つけた用語・語彙を復元（glossary_app.js）
   
   // ★話のクリア状況を、このセーブ枠に記録されていた内容に合わせ直す（古いセーブにclearedChapterIdsが
   //   無い場合は、シナリオエディタ側の現状をそのまま尊重し、何もしない＝従来通りの挙動を保つ）
@@ -2167,6 +2609,7 @@ async function restoreGameFromSaveData(data, persistLoadedDataFn) {
     scenarioProject.chapters.forEach(c => { c.cleared = data.clearedChapterIds.includes(c.id); });
     if (typeof saveCustomScenarioData === "function") saveCustomScenarioData();
   }
+  if (typeof glossarySyncFromClearedChapters === "function") glossarySyncFromClearedChapters(); // ★クリア済みの話に出てくる用語も見つけた扱いに（glossary_app.js）
   
   // ★〈重要〉ロード直前にサブ画面（便利タブ等）を操作していた場合、controlFocusが
   //   "sub"のまま引き継がれてしまい、シナリオ再生中にキー操作が噛み合わなくなる

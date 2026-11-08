@@ -533,6 +533,67 @@ html, body {
     color: #aaa;
 }
 
+/* ★焦力ゲージ：時計の上に、主人公と仲間ごとに1本ずつ表示する（要望対応） */
+.main-tab-shouryoku {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 60%;
+    max-width: 280px;
+    min-width: 200px;
+    margin: 10px auto 0;
+}
+
+.main-tab-shouryoku.hidden {
+    display: none !important;
+}
+
+.main-tab-shouryoku-title {
+    font-size: 11px;
+    color: #ffd27a;
+    text-align: center;
+    letter-spacing: 0.1em;
+}
+
+.main-tab-shouryoku-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #ffd27a;
+}
+
+.main-tab-shouryoku-row.down {
+    opacity: 0.5;
+}
+
+.main-tab-shouryoku-name {
+    flex: 0 0 5.5em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.main-tab-shouryoku-bar {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.main-tab-shouryoku-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff9a3c, #ffd27a);
+    border-radius: 4px;
+    transition: width 0.25s ease;
+}
+
+.main-tab-shouryoku-value {
+    flex: 0 0 2.2em;
+    text-align: right;
+}
+
 /* ★メインタブの中央：アナログ時計（40%くらいの大きさ）＋その下にデジタル時計（要望対応） */
 .main-tab-clock-area {
     display: flex;
@@ -878,6 +939,7 @@ rt {
 }
 
 .tab-btn{
+    position: relative; /* ★未確認バッジ（赤丸の「!」）の位置基準 */
     flex: 1;
     padding: 8px 0;
     background-color: #222;
@@ -4473,6 +4535,13 @@ rt {
   z-index: 2;
   
   display: flex;
+  flex-direction: column; /* ★敵は列（.battle-enemy-row）ごとに上から並べる。4体目以降は下の列 */
+  align-items: center;
+  gap: 4px;
+}
+
+.battle-enemy-row {
+  display: flex;
   align-items: flex-end;
   justify-content: center;
   gap: 4px;
@@ -4498,8 +4567,8 @@ rt {
   transition: transform 0.15s ease, opacity 0.2s ease, filter 0.2s ease;
 }
 
-/* ★左から2番目・4番目（偶数番目）を少し高い位置にずらして、ジグザグに見せる */
-.battle-enemy-unit:nth-child(even) {
+/* ★1列（3体まで）の時だけ、左から2番目を少し高い位置にずらして、ジグザグに見せる（クラスはbattle.jsのrenderBattleEnemiesが付ける） */
+.battle-enemy-unit.battle-enemy-unit-raised {
   margin-bottom: 36px;
 }
 
@@ -5759,6 +5828,8 @@ rt {
 
 .scenariobuild-collapsible-summary {
   font-weight: bold;
+  font-size: 12px; /* ★要望対応：見出しが大きすぎて窮屈だったので小さくした */
+  line-height: 1.3;
   word-break: break-all;
 }
 
@@ -6110,10 +6181,52 @@ rt {
 .scenariobuild-tab-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
+  gap: 4px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
   border-bottom: 1px solid #3a3a3a;
+}
+
+.scenariobuild-tab-group-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* ★横4列（ジャンルは7個なので縦2列になる） */
+  gap: 4px;
+}
+
+.scenariobuild-tab-group-head {
+  min-width: 0;
+  text-align: center;
+  padding: 3px 2px;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 1.2;
+  color: #ddd;
+  background-color: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scenariobuild-tab-group-head-open {
+  color: #ffd23f;
+  border-color: #ffd23f;
+}
+
+.scenariobuild-tab-group-body {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.scenariobuild-tab-group-body .scenariobuild-tab-btn {
+  padding: 3px 7px;
+  font-size: 11px;
 }
 
 .scenariobuild-tab-btn-active {
@@ -6162,13 +6275,59 @@ rt {
 
 .scenariobuild-insert-menu {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  padding: 6px;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
   background-color: #2a2a2a;
   border: 1px solid #555;
   border-radius: 6px;
+}
+
+/* ★ブロック追加メニューのカテゴリ分け */
+.scenariobuild-insert-group-label {
+  font-size: 12px;
+  color: #ffd23f;
+  margin-bottom: 3px;
+  padding-left: 2px;
+  border-left: 3px solid #ffd23f;
+  padding-left: 6px;
+}
+
+.scenariobuild-insert-group-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ★Ctrl+Enter+Z で開く「この下に追加するブロックの選択」メニュー */
+.scenariobuild-insert-after-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.scenariobuild-insert-after-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 260px;
+  max-width: 90vw;
+  padding: 14px;
+  background-color: #2a2a2a;
+  border: 1px solid #888;
+  border-radius: 8px;
+}
+
+.scenariobuild-insert-after-title {
+  color: #fff;
+  font-size: 14px;
+  margin-bottom: 2px;
 }
 
 /* ===== 演出ブロック：カメラシェイク・ヒットフラッシュ ===== */
@@ -7776,6 +7935,11 @@ rt {
   box-shadow: inset 0 0 0 2px #999;
 }
 
+.fixeditem-editor-cell-ceiling {
+  background-color: #3a4a5a;
+  border-color: #8ab4d8;
+}
+
 .fixeditem-editor-cell-selected {
   outline: 2px solid #ffc107;
 }
@@ -7985,6 +8149,12 @@ rt {
   border-color: #ffb84d;
   background: rgba(255, 140, 30, 0.2);
 }
+.statuspanel-owner-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #999;
+  flex-shrink: 0;
+}
 .statuspanel-info {
   margin: 6px 0 2px;
   font-size: 12px;
@@ -8107,4 +8277,925 @@ rt {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.2);
   cursor: default;
+}
+
+
+/* ===== 未確認バッジ（赤丸・白文字の「!」）：実績・チュートリアルに、解放されたのにまだ確認していない項目がある時 ===== */
+.unread-badge,
+.convenience-icon-unread,
+.unread-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #e53935;
+    color: #fff;
+    font-weight: bold;
+    border-radius: 50%;
+    line-height: 1;
+    box-sizing: border-box;
+}
+
+/* 便利タブのボタン：右上に重ねる */
+.unread-badge {
+    position: absolute;
+    top: -3px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    font-size: 10px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* 便利タブの実績／チュートリアルのアイコン：左上に重ねる（右上は「達成数／全数」のバッジがあるため） */
+.convenience-icon-unread {
+    position: absolute;
+    top: -5px;
+    left: -6px;
+    width: 14px;
+    height: 14px;
+    font-size: 10px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* 一覧の各行：項目名の右に並べる */
+.unread-mark {
+    width: 16px;
+    height: 16px;
+    font-size: 11px;
+    margin-left: 6px;
+    flex: none;
+}
+
+
+/* ===== 図鑑の分類タブ（魔物／魚／料理／アイテム／家具） ===== */
+.codex-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    margin: 0 0 8px;
+}
+
+.codex-tab {
+    background: #222;
+    color: #aaa;
+    border: 1px solid #444;
+    border-radius: 12px;
+    padding: 3px 10px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.codex-tab.active {
+    background: #ffc107;
+    color: #1a1a1a;
+    border-color: #ffc107;
+    font-weight: bold;
+}
+
+/* ===================================================================
+   冒険者協会「掃討作戦」迎撃モード（tower_defense.js）
+   高コントラスト：黒地に黄色のアクセント、白い太枠
+   =================================================================== */
+.td-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background-color: rgba(0, 0, 0, 0.92);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 199950;
+}
+.td-panel {
+  width: 100%;
+  max-width: 780px;
+  max-height: 100%;
+  overflow-y: auto;
+  background: #0b0f14;
+  border: 3px solid #ffd23f;
+  box-sizing: border-box;
+  padding: 8px;
+  color: #fff;
+  font-size: 14px;
+}
+.td-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffd23f;
+  color: #111;
+  font-weight: bold;
+  padding: 4px 8px;
+}
+.td-title { flex: 1; }
+.td-wave, .td-funds { background: #111; color: #ffd23f; padding: 1px 8px; }
+.td-basehp {
+  position: relative;
+  height: 20px;
+  margin: 6px 0;
+  background: #2a0f0f;
+  border: 2px solid #fff;
+}
+.td-basehp-fill { height: 100%; background: #e5484d; transition: width 0.15s; }
+.td-basehp-text {
+  position: absolute; top: 0; left: 0; width: 100%;
+  text-align: center; line-height: 20px; font-size: 12px; font-weight: bold;
+  text-shadow: 0 0 3px #000, 0 0 3px #000;
+}
+.td-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 720 / 400;
+  border: 2px solid #fff;
+  touch-action: none;
+  background: #10151c;
+}
+.td-info {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 0;
+  padding: 4px 8px;
+  background: #1b222c;
+  border-left: 5px solid #ffd23f;
+  font-size: 13px;
+}
+.td-units {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.td-combo {
+  margin: 6px 0;
+  padding: 4px 8px;
+  background: #1b222c;
+  border-left: 5px solid #fff;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.td-combo-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.td-combo-label { background: #ffd23f; color: #111; font-weight: bold; padding: 0 6px; margin-right: 4px; }
+.td-combo-none { color: #9aa4ad; }
+.td-combo-item { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.td-chip { display: inline-block; background: #111; color: #fff; border: 2px solid #fff; padding: 0 5px; font-weight: bold; }
+.td-arrow { color: #ffd23f; font-weight: bold; }
+.td-unit-btn {
+  background: #111;
+  color: #fff;
+  border: 3px solid #fff;
+  padding: 6px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.td-unit-btn.td-selected { background: #ffd23f; color: #111; }
+.td-unit-btn.td-disabled { opacity: 0.45; }
+.td-unit-name { font-weight: bold; }
+.td-unit-meta { font-size: 11px; }
+.td-controls { display: flex; gap: 6px; margin-top: 6px; }
+.td-btn {
+  flex: 1;
+  background: #111;
+  color: #ffd23f;
+  border: 2px solid #ffd23f;
+  padding: 8px 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.td-btn:disabled { opacity: 0.4; cursor: default; }
+.td-btn-start { background: #ffd23f; color: #111; flex: 2; }
+.td-btn-quit { color: #fff; border-color: #fff; }
+.td-btn-upgrade { flex: 0 0 auto; padding: 6px 12px; }
+/* ★キーボード操作中のカーソル（掃討作戦の迎撃・出撃・出撃キャラ選択で共通） */
+.td-overlay .td-kcursor {
+  outline: 3px solid #00e5ff;
+  outline-offset: 2px;
+  position: relative;
+  z-index: 1;
+}
+@media (max-width: 520px) {
+  .td-units { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ===================================================================
+   出撃モード（tower_raid.js）：リソース表示と手札（カード）
+   =================================================================== */
+.td-res { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.td-res-chip { background: #111; border: 2px solid #ffd23f; color: #fff; padding: 1px 6px; font-size: 12px; font-weight: bold; }
+.td-res-chip b { color: #ffd23f; margin-left: 2px; }
+.td-hand { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.td-card { background: #111; border: 3px solid #fff; padding: 4px; display: flex; flex-direction: column; gap: 3px; font-size: 11px; }
+.td-card-out { background: #14261a; }
+.td-card-dead { opacity: 0.65; background: #2a1717; }
+.td-card-head { display: flex; justify-content: space-between; gap: 4px; font-weight: bold; }
+.td-card-cost { color: #ffd23f; line-height: 1.3; min-height: 2.6em; }
+.td-short { color: #ff6b6b; }
+.td-card-btns { display: flex; flex-direction: column; gap: 3px; }
+.td-card-btns .td-btn { flex: none; padding: 4px 2px; font-size: 11px; }
+@media (max-width: 520px) {
+  .td-hand { grid-template-columns: repeat(2, 1fr); }
+}
+
+
+/* ===================================================================
+   掃討作戦（迎撃・出撃 共通）横画面レイアウト：左1＝ユニット/手札など、右3＝フィールド
+   縦画面（スマホ縦持ち）は従来どおり上下に積む
+   =================================================================== */
+.td-body { display: block; }
+.td-main { display: block; }
+@media (orientation: landscape) and (min-width: 640px) {
+  .td-panel {
+    max-width: 1400px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .td-body {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr 3fr;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .td-side {
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+  .td-main {
+    min-height: 0;
+    min-width: 0;
+    container-type: size;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .td-canvas {
+    width: min(100cqw, calc(100cqh * var(--td-ar, 1.5)));
+    height: auto;
+    flex: none;
+  }
+  .td-side .td-units { grid-template-columns: repeat(2, 1fr); }
+  .td-side .td-hand { grid-template-columns: repeat(2, 1fr); }
+  .td-side .td-controls { flex-wrap: wrap; position: sticky; bottom: 0; background: #0b0f14; padding-top: 4px; }
+  .td-side .td-controls .td-btn { flex: 1 1 45%; }
+  .td-side .td-info { flex-direction: column; align-items: flex-start; }
+  .td-side .td-basehp { margin: 4px 0; }
+}
+
+/* ===================================================================
+   データのバージョン管理・マージ画面（datamerge.js）高コントラスト：黒地＋黄色、白い太枠
+   =================================================================== */
+.dm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 200100; display: flex; align-items: center; justify-content: center; }
+.dm-dialog { background: #0b0f14; border: 3px solid #ffd23f; color: #fff; padding: 14px; max-width: 520px; width: calc(100% - 24px); }
+.dm-dialog-msg { white-space: pre-wrap; line-height: 1.6; font-size: 14px; margin-bottom: 12px; }
+.dm-dialog-btns { display: flex; flex-direction: column; gap: 6px; }
+.dm-panel { background: #0b0f14; border: 3px solid #ffd23f; color: #fff; width: min(1100px, 100%); max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; }
+.dm-head { background: #ffd23f; color: #111; font-weight: bold; padding: 6px 10px; }
+.dm-body { flex: 1; min-height: 0; overflow: auto; padding: 8px; }
+.dm-foot { display: flex; gap: 8px; padding: 8px; border-top: 2px solid #ffd23f; }
+.dm-foot .dm-btn { flex: 1; }
+.dm-btn { background: #111; color: #ffd23f; border: 2px solid #ffd23f; padding: 8px 10px; font-weight: bold; cursor: pointer; }
+.dm-btn:disabled { opacity: 0.45; cursor: default; }
+.dm-btn-main { background: #ffd23f; color: #111; }
+.dm-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.dm-chip { background: #111; border: 2px solid #fff; padding: 2px 8px; font-size: 13px; }
+.dm-chip b { color: #ffd23f; }
+.dm-chip-warn { border-color: #ff6b6b; }
+.dm-note { background: #1b222c; border-left: 5px solid #ffd23f; padding: 4px 8px; margin-bottom: 8px; font-size: 12px; }
+.dm-auto { margin-bottom: 8px; }
+.dm-auto summary { cursor: pointer; color: #ffd23f; }
+.dm-auto-row { font-size: 12px; padding: 1px 6px; border-left: 3px solid #555; margin: 1px 0; }
+.dm-bulk { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.dm-grid { display: grid; grid-template-columns: 110px 1fr 1fr 1fr; gap: 4px; margin-bottom: 4px; }
+.dm-grid-head { font-weight: bold; color: #ffd23f; position: sticky; top: 0; background: #0b0f14; z-index: 1; }
+.dm-conflict { border: 2px solid #fff; padding: 4px; margin-bottom: 8px; }
+.dm-conflict-title { font-weight: bold; background: #1b222c; padding: 2px 6px; margin-bottom: 4px; }
+.dm-cell { background: #111; border: 2px solid #444; padding: 3px 5px; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 140px; overflow: auto; }
+.dm-cell-label { color: #ffd23f; font-weight: bold; border-color: transparent; background: transparent; }
+.dm-pick { cursor: pointer; }
+.dm-pick:hover { border-color: #fff; }
+.dm-pick.dm-selected { background: #ffd23f; color: #111; border-color: #ffd23f; }
+.dm-section { margin: 10px 0; }
+.dm-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.dm-msg { flex: 1; min-width: 160px; }
+.dm-hist-row { border-left: 4px solid #ffd23f; padding: 3px 8px; margin: 4px 0; background: rgba(255,210,63,0.06); }
+.dm-hist-info { font-size: 13px; }
+@media (max-width: 700px) { .dm-grid { grid-template-columns: 1fr; } }
+
+/* クラウド更新のお知らせ（datamerge_cloud.js） */
+.dm-cloud-banner { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 50; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #0b0f14; color: #fff; border: 3px solid #ffd23f; padding: 6px 10px; font-weight: bold; }
+.dm-cloud-banner span { flex: 1; min-width: 200px; }
+
+/* ★便利タブ「冒険者協会」アプリ（guild_app.js） */
+.guild-app-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+    margin: 4px 0;
+    padding: 9px 12px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.25));
+    color: #ffd27a;
+    border: 1px solid rgba(255, 215, 107, 0.3);
+    border-radius: 8px;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    outline: none;
+    flex-shrink: 0;
+}
+.guild-app-btn:hover,
+.guild-app-btn:focus {
+    border-color: #ffc107;
+    box-shadow: 0 0 6px rgba(255, 193, 7, 0.55);
+}
+.guild-app-btn[disabled] {
+    opacity: 0.45;
+    cursor: default;
+    box-shadow: none;
+}
+.guild-app-btn-note {
+    font-size: 11px;
+    color: #bbb;
+    font-weight: normal;
+}
+.guild-app-btn-r { border-color: rgba(120, 190, 255, 0.55); }
+.guild-app-btn-sr { border-color: rgba(255, 193, 7, 0.8); }
+.guild-app-notice {
+    margin: 4px 0 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: #ffb4b4;
+    background: rgba(160, 40, 40, 0.25);
+    border: 1px solid rgba(255, 120, 120, 0.45);
+    border-radius: 6px;
+}
+.guild-app-results {
+    margin: 6px 0;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 215, 107, 0.4);
+    border-radius: 6px;
+}
+.guild-app-result-line { font-size: 12px; color: #ddd; margin-top: 3px; }
+.guild-app-result-r { color: #8fc8ff; }
+.guild-app-result-sr { color: #ffd76b; font-weight: bold; }
+.guild-app-info-line { font-size: 12px; color: #ddd; line-height: 1.5; }
+
+/* ★魔獣召喚の演出：魔法陣が妖しく光る（guild_app.js の guildAppPlaySummon）。画像は使わず、SVGとCSSだけで描く */
+.summon-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 45%, rgba(40, 10, 60, 0.96), rgba(6, 2, 12, 0.99));
+    overflow: hidden;
+    cursor: pointer;
+    transition: opacity 0.18s ease;
+    --c1: #a46bff;
+    --c2: #4a1d8a;
+}
+.summon-overlay.summon-fade { opacity: 0; }
+.summon-mist {
+    position: absolute;
+    inset: -20%;
+    background: radial-gradient(circle at 50% 50%, var(--c2) 0%, transparent 60%);
+    opacity: 0;
+    animation: summon-mist var(--dur) ease-in-out forwards;
+}
+@keyframes summon-mist {
+    0% { opacity: 0; transform: scale(0.6); }
+    40% { opacity: 0.35; }
+    70% { opacity: 0.6; }
+    100% { opacity: 0.9; transform: scale(1.15); }
+}
+.summon-circle {
+    position: relative;
+    width: min(78%, 300px);
+    aspect-ratio: 1;
+    filter: drop-shadow(0 0 5px var(--c1)) drop-shadow(0 0 18px var(--c2));
+    animation: summon-glow 1.1s ease-in-out infinite alternate;
+}
+.summon-SR .summon-circle { animation-duration: 0.55s; }
+@keyframes summon-glow {
+    0% { opacity: 0.75; filter: drop-shadow(0 0 4px var(--c1)) drop-shadow(0 0 12px var(--c2)); }
+    35% { opacity: 1; }
+    55% { opacity: 0.68; }
+    100% { opacity: 1; filter: drop-shadow(0 0 9px var(--c1)) drop-shadow(0 0 30px var(--c2)); }
+}
+.summon-circle circle,
+.summon-circle polygon {
+    fill: none;
+    stroke: var(--c1);
+    stroke-width: 1.2;
+}
+.summon-circle .summon-draw {
+    stroke-dasharray: 600;
+    stroke-dashoffset: 600;
+    animation: summon-draw calc(var(--dur) * 0.45) ease-out forwards;
+}
+@keyframes summon-draw { to { stroke-dashoffset: 0; } }
+.summon-ring { transform-origin: 100px 100px; }
+.summon-ring-a { animation: summon-rot 16s linear infinite; }
+.summon-ring-b { animation: summon-rot 11s linear infinite reverse; }
+.summon-ring-c { animation: summon-rot 22s linear infinite; }
+@keyframes summon-rot { to { transform: rotate(360deg); } }
+.summon-circle .summon-eye {
+    fill: var(--c1);
+    stroke: none;
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: summon-eye var(--dur) ease-in forwards;
+}
+@keyframes summon-eye {
+    0%, 55% { opacity: 0; transform: scaleY(0.1); }
+    78% { opacity: 0.9; transform: scaleY(1); }
+    100% { opacity: 1; transform: scale(1.8); }
+}
+.summon-caption {
+    position: relative;
+    margin-top: 14px;
+    font-size: 13px;
+    color: #e9dcff;
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 8px var(--c1);
+    animation: summon-caption 1.6s ease-in-out infinite alternate;
+}
+@keyframes summon-caption { from { opacity: 0.55; } to { opacity: 1; } }
+.summon-overlay.summon-burst::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 45%, #fff 0%, var(--c1) 30%, transparent 72%);
+    animation: summon-burst 0.6s ease-out forwards;
+}
+@keyframes summon-burst {
+    0% { opacity: 0; transform: scale(0.4); }
+    45% { opacity: 1; }
+    100% { opacity: 0.85; transform: scale(1.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .summon-circle, .summon-ring, .summon-caption { animation: none; }
+}
+
+/* ★ガチャの演出の共通部分（guild_app.js）：全画面のオーバーレイ／スキップボタン */
+.awaken-overlay,
+.gacha-reveal-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    transition: opacity 0.18s ease;
+    --c1: #7fd0ff;
+    --c2: #1d4f9c;
+}
+.gacha-fx-fade { opacity: 0 !important; }
+.gacha-skip-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 999px;
+    cursor: pointer;
+    outline: none;
+}
+.gacha-skip-btn:hover,
+.gacha-skip-btn:focus { border-color: #fff; background: rgba(0, 0, 0, 0.75); }
+.gacha-skip-key {
+    font-size: 10px;
+    line-height: 1;
+    padding: 2px 5px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 4px;
+    color: #ddd;
+}
+
+/* ★技ガチャの演出：覚醒（guild_app.js の guildAppPlayAwaken）。光の粒が中心へ集まり、核が膨らみ、閃光が弾けて画面が揺れる */
+.awaken-overlay {
+    inset: -8px;   /* 揺れた時に、端から下の画面が見えないように、少し大きく取る */
+    background: radial-gradient(circle at 50% 50%, #0a1230 0%, #02040c 80%);
+}
+.awaken-bg {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%, var(--c2) 0%, transparent 62%);
+    opacity: 0;
+    animation: awaken-bg var(--dur) ease-in forwards;
+}
+@keyframes awaken-bg {
+    0% { opacity: 0; transform: scale(0.5); }
+    60% { opacity: 0.55; }
+    100% { opacity: 1; transform: scale(1.2); }
+}
+.awaken-rays {
+    position: absolute;
+    inset: -60%;
+    background: repeating-conic-gradient(from 0deg, transparent 0deg 9deg, var(--c1) 9deg 11deg);
+    -webkit-mask-image: radial-gradient(circle, transparent 4%, #000 22%, transparent 62%);
+    mask-image: radial-gradient(circle, transparent 4%, #000 22%, transparent 62%);
+    opacity: 0;
+    animation: awaken-rays-in var(--dur) ease-in forwards, awaken-spin 9s linear infinite;
+}
+.awaken-SR .awaken-rays {
+    background: repeating-conic-gradient(from 0deg,
+        rgba(255, 120, 160, 0.95) 0deg 6deg, transparent 6deg 12deg,
+        rgba(255, 235, 130, 0.95) 12deg 18deg, transparent 18deg 24deg,
+        rgba(120, 225, 255, 0.95) 24deg 30deg, transparent 30deg 36deg);
+}
+@keyframes awaken-rays-in {
+    0%, 25% { opacity: 0; }
+    100% { opacity: 0.55; }
+}
+@keyframes awaken-spin { to { transform: rotate(360deg); } }
+.awaken-pillar {
+    position: absolute;
+    left: 50%;
+    top: -10%;
+    bottom: -10%;
+    width: 30%;
+    margin-left: -15%;
+    background: linear-gradient(90deg, transparent, var(--c1) 50%, transparent);
+    filter: blur(6px);
+    opacity: 0;
+    transform: scale(0, 1);
+    animation: awaken-pillar var(--dur) ease-in forwards;
+}
+@keyframes awaken-pillar {
+    0%, 40% { opacity: 0; transform: scale(0, 0.3); }
+    80% { opacity: 0.55; transform: scale(0.35, 1); }
+    100% { opacity: 0.9; transform: scale(0.6, 1); }
+}
+.awaken-core {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 44px;
+    height: 44px;
+    margin: -22px 0 0 -22px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, var(--c1) 45%, transparent 72%);
+    box-shadow: 0 0 24px var(--c1), 0 0 60px var(--c2);
+    animation: awaken-core var(--dur) ease-in forwards, awaken-throb 0.45s ease-in-out infinite alternate;
+}
+.awaken-SR .awaken-core { width: 60px; height: 60px; margin: -30px 0 0 -30px; }
+@keyframes awaken-core {
+    0% { transform: scale(0.2); opacity: 0.4; }
+    50% { transform: scale(1); opacity: 1; }
+    80% { transform: scale(1.6); }
+    100% { transform: scale(2.2); }
+}
+@keyframes awaken-throb {
+    from { filter: brightness(0.85); }
+    to { filter: brightness(1.5); }
+}
+.awaken-spark {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 5px;
+    height: 5px;
+    margin: -2px 0 0 -2px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 8px 2px var(--c1);
+    opacity: 0;
+    transform: rotate(var(--a)) translateY(var(--r));
+    animation: awaken-spark calc(var(--dur) * 0.6) ease-in var(--delay) infinite;
+}
+@keyframes awaken-spark {
+    0% { opacity: 0; transform: rotate(var(--a)) translateY(var(--r)); }
+    15% { opacity: 1; }
+    100% { opacity: 0; transform: rotate(var(--a)) translateY(0); }
+}
+.awaken-ring {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 40px;
+    height: 40px;
+    margin: -20px 0 0 -20px;
+    border-radius: 50%;
+    border: 2px solid var(--c1);
+    box-shadow: 0 0 12px var(--c1);
+    opacity: 0;
+}
+.awaken-caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 16%;
+    text-align: center;
+    font-size: 14px;
+    letter-spacing: 0.12em;
+    color: #fff;
+    text-shadow: 0 0 10px var(--c1), 0 0 2px #000;
+    animation: summon-caption 1.4s ease-in-out infinite alternate;
+}
+/* 覚醒の瞬間：閃光・衝撃波・画面の揺れ・「覚醒──！」 */
+.awaken-overlay.awaken-burst { animation: awaken-shake 0.5s linear; }
+.awaken-overlay.awaken-burst::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%, #fff 0%, var(--c1) 35%, transparent 75%);
+    pointer-events: none;
+    animation: awaken-flash 0.7s ease-out forwards;
+}
+.awaken-burst .awaken-spark { animation: none; opacity: 0; }
+.awaken-burst .awaken-core { animation: awaken-core-burst 0.7s ease-out forwards; }
+.awaken-burst .awaken-ring-1 { animation: awaken-ring 0.8s ease-out forwards; }
+.awaken-burst .awaken-ring-2 { animation: awaken-ring 0.8s ease-out 0.12s forwards; }
+.awaken-burst .awaken-caption {
+    font-size: 26px;
+    font-weight: bold;
+    letter-spacing: 0.2em;
+    animation: awaken-caption-pop 0.5s ease-out both;
+}
+@keyframes awaken-flash {
+    0% { opacity: 0; transform: scale(0.5); }
+    25% { opacity: 1; }
+    100% { opacity: 0.4; transform: scale(1.5); }
+}
+@keyframes awaken-core-burst {
+    0% { transform: scale(2.2); opacity: 1; }
+    100% { transform: scale(9); opacity: 0; }
+}
+@keyframes awaken-ring {
+    0% { transform: scale(1); opacity: 0.95; }
+    100% { transform: scale(14); opacity: 0; }
+}
+@keyframes awaken-caption-pop {
+    0% { transform: scale(2.2); opacity: 0; }
+    60% { transform: scale(0.95); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+@keyframes awaken-shake {
+    0% { transform: translate(0, 0); }
+    15% { transform: translate(-5px, 3px); }
+    30% { transform: translate(5px, -3px); }
+    45% { transform: translate(-4px, -2px); }
+    60% { transform: translate(4px, 3px); }
+    80% { transform: translate(-2px, 1px); }
+    100% { transform: translate(0, 0); }
+}
+
+/* ★1連ずつの結果ポップアップ（技ガチャ・魔獣召喚の共通。guild_app.js の guildAppPlayReveals） */
+.gacha-reveal-overlay {
+    padding: 12px;
+    box-sizing: border-box;
+    background: radial-gradient(circle at 50% 40%, rgba(34, 20, 56, 0.97), rgba(4, 2, 10, 0.99));
+}
+.gacha-reveal-skill {
+    background: radial-gradient(circle at 50% 40%, rgba(14, 24, 54, 0.97), rgba(2, 4, 12, 0.99));
+}
+.gacha-reveal-count {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    font-size: 13px;
+    color: #ddd;
+    letter-spacing: 0.08em;
+}
+.gacha-reveal-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+.gacha-reveal-hint {
+    position: absolute;
+    bottom: 12px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 11px;
+    color: #aab;
+    animation: summon-caption 1.6s ease-in-out infinite alternate;
+}
+.gacha-card {
+    position: relative;
+    z-index: 1;
+    width: min(86%, 280px);
+    padding: 2px;
+    border-radius: 14px;
+    overflow: hidden;
+    --cc: #8fa3c4;
+    --cg: rgba(143, 163, 196, 0.35);
+    background: linear-gradient(160deg, var(--cc), rgba(255, 255, 255, 0.12));
+    box-shadow: 0 0 18px var(--cg);
+    animation: gacha-card-in 0.38s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+.gacha-card-R { --cc: #6cb8ff; --cg: rgba(108, 184, 255, 0.5); }
+.gacha-card-SR {
+    --cc: #ffd24a;
+    --cg: rgba(255, 210, 74, 0.7);
+    animation: gacha-card-in 0.38s cubic-bezier(0.2, 1.3, 0.4, 1) both, gacha-card-glow 1.2s ease-in-out 0.4s infinite alternate;
+}
+.gacha-card-miss { --cc: #6f7683; --cg: rgba(111, 118, 131, 0.25); }
+.gacha-card-inner {
+    position: relative;
+    z-index: 1;
+    padding: 18px 14px 16px;
+    border-radius: 12px;
+    text-align: center;
+    background: rgba(8, 10, 20, 0.94);
+}
+.gacha-card-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+/* 光線は、カードの後ろから画面いっぱいに放射する（カードの文字に重ならないよう、カードの外側だけに見える） */
+.gacha-card-rays {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 760px;
+    height: 760px;
+    margin: -380px 0 0 -380px;
+    background: repeating-conic-gradient(from 0deg, transparent 0deg 10deg, var(--cc) 10deg 12deg);
+    -webkit-mask-image: radial-gradient(circle, #000 12%, transparent 62%);
+    mask-image: radial-gradient(circle, #000 12%, transparent 62%);
+    opacity: 0.5;
+    pointer-events: none;
+    animation: awaken-spin 12s linear infinite;
+}
+.gacha-card-rays-R { --cc: #6cb8ff; }
+.gacha-card-rays-SR {
+    --cc: #ffd24a;
+    opacity: 0.85;
+    background: repeating-conic-gradient(from 0deg,
+        rgba(255, 120, 160, 0.9) 0deg 6deg, transparent 6deg 12deg,
+        rgba(255, 235, 130, 0.9) 12deg 18deg, transparent 18deg 24deg,
+        rgba(120, 225, 255, 0.9) 24deg 30deg, transparent 30deg 36deg);
+    animation: awaken-spin 8s linear infinite;
+}
+/* 技ガチャは、カードが現れる瞬間に、覚醒のような閃光が走る */
+.gacha-reveal-skill .gacha-card:not(.gacha-card-miss)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: radial-gradient(circle, #fff 0%, var(--cc) 40%, transparent 72%);
+    pointer-events: none;
+    opacity: 0;
+    animation: gacha-card-flash 0.6s ease-out;
+}
+.gacha-card-pity {
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #ffd76b;
+}
+.gacha-card-badge {
+    display: inline-block;
+    padding: 2px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #111;
+    background: var(--cc);
+}
+.gacha-card-badge-new { color: #fff; background: #ff5a7a; animation: gacha-badge-pulse 0.8s ease-in-out infinite alternate; }
+.gacha-card-rarity {
+    margin-top: 8px;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: var(--cc);
+}
+.gacha-card-avatar { margin-top: 10px; display: flex; justify-content: center; }
+.gacha-card-name {
+    margin-top: 8px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 10px var(--cg);
+    word-break: break-all;
+}
+.gacha-card-desc { margin-top: 8px; font-size: 12px; line-height: 1.5; color: #cfd6e6; }
+.gacha-card-sub { margin-top: 6px; font-size: 11px; color: #9aa4b8; }
+.gacha-card-note { margin-top: 10px; font-size: 12px; font-weight: bold; color: #ffd76b; }
+.gacha-card-miss-text { margin-top: 10px; font-size: 13px; line-height: 1.5; color: #c7ccd6; }
+@keyframes gacha-card-in {
+    0% { opacity: 0; transform: scale(0.6) translateY(14px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes gacha-card-glow {
+    from { box-shadow: 0 0 14px var(--cg); }
+    to { box-shadow: 0 0 34px var(--cc); }
+}
+@keyframes gacha-card-flash {
+    0% { opacity: 0.95; }
+    100% { opacity: 0; }
+}
+@keyframes gacha-badge-pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .awaken-bg { opacity: 0.8; animation: none; }
+    .awaken-rays, .awaken-pillar, .awaken-core, .awaken-caption,
+    .gacha-card, .gacha-card-rays, .gacha-card-badge-new, .gacha-reveal-hint { animation: none; }
+    .awaken-overlay.awaken-burst { animation: none; }
+    .gacha-reveal-skill .gacha-card::after { animation: none; }
+}
+
+/* ★おとも魔獣（beast.js / beast_app.js）：仮の見た目（画像は後から設定）と、魔獣の一覧 */
+.beast-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 2px solid #8e5bd6;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+.beast-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.beast-avatar-placeholder { overflow: visible; }
+.beast-avatar-initial { color: #fff; font-weight: bold; text-shadow: 0 0 6px rgba(0, 0, 0, 0.85); }
+.beast-avatar-placeholder .beast-avatar-element {
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
+}
+.guild-app-btn.beast-entry-btn {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+.beast-entry-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.beast-entry-name { font-weight: bold; }
+.beast-affinity-on { color: #ffd76b; }
+
+/* ===== 覚醒技能アプリ（waza_app.js）／おとも魔獣の詳細（beast_app.js） ===== */
+.waza-detail-card { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.waza-detail-row { display: flex; gap: 10px; align-items: baseline; font-size: 0.9em; line-height: 1.5; }
+.waza-detail-key { flex: 0 0 6.5em; font-weight: bold; opacity: 0.85; }
+.waza-detail-value { flex: 1; min-width: 0; word-break: break-word; }
+.waza-detail-done .waza-detail-key { color: #ffd76b; }
+.waza-detail-total { font-weight: bold; color: #ffd76b; }
+.waza-detail-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+.waza-detail-table th, .waza-detail-table td { padding: 2px 6px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.15); }
+.waza-detail-table th:first-child, .waza-detail-table td:first-child { text-align: left; }
+
+/* ===== 用語・語彙アプリ（glossary_app.js） ===== */
+.glossary-list-term { font-weight: bold; font-size: 1.05em; }
+.glossary-detail-card { gap: 8px; }
+.glossary-detail-term { font-size: 1.5em; font-weight: bold; line-height: 2; }
+.glossary-detail-meaning { line-height: 1.7; }
+
+/* ===== シナリオエディタ：話編集のブロック検索 ===== */
+.scenariobuild-search-panel { margin: 8px 0 12px; }
+.scenariobuild-search-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.scenariobuild-search-controls input { flex: 1 1 200px; min-width: 0; }
+.scenariobuild-search-controls select { flex: 1 1 200px; min-width: 0; max-width: 100%; }
+.scenariobuild-search-results { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; max-height: 40vh; overflow-y: auto; }
+.scenariobuild-search-hit { display: block; text-align: left; width: 100%; white-space: normal; }
+.scenariobuild-search-hit-head { font-size: 0.85em; opacity: 0.8; }
+.scenariobuild-search-hit-body { margin-top: 2px; word-break: break-all; }
+.scenariobuild-search-hit-body mark { background: #ffe066; color: #000; padding: 0 1px; }
+.scenariobuild-chapter-row.scenariobuild-search-flash { animation: scenariobuild-search-flash 2.2s ease-out; }
+@keyframes scenariobuild-search-flash {
+  0%, 60% { box-shadow: 0 0 0 3px #ffe066; background-color: rgba(255, 224, 102, 0.25); }
+  100% { box-shadow: 0 0 0 0 transparent; }
 }

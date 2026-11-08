@@ -138,12 +138,14 @@ function trimMessageLogIfNeeded() {
 
 function logMessage(speaker, text) {
   messageLog.push({ type: "message", speaker: speaker || "", text: text });
+  if (typeof glossaryMarkSeenFromText === "function") glossaryMarkSeenFromText(text); // ★シナリオに出た言葉を「見つけた」にする（glossary_app.js）
   trimMessageLogIfNeeded();
   renderLogIfActive();
 }
 
 function logChoice(text) {
   messageLog.push({ type: "choice", text: text });
+  if (typeof glossaryMarkSeenFromText === "function") glossaryMarkSeenFromText(text); // ★選択肢に出た言葉も「見つけた」にする（glossary_app.js）
   trimMessageLogIfNeeded();
   renderLogIfActive();
 }
@@ -1126,6 +1128,10 @@ let currentChoiceListFocus = "main";
 //   わざわざtab-mainに切り替えないと選べない問題があった
 let choiceBoxAllowSubFocus = false;
 let choiceBoxDisableArrowPaging = false; // ★戦闘の敵選択など、←→キーを他の用途（ターゲットカーソル移動）に使いたい時はtrueにする
+// ★要望対応：魔物図鑑の「種類（通常／ボス）切り替え」など、サブ画面の中でQ/Eキーを別の用途に使いたい時は
+//   trueにする。種類の切り替えとタブの切り替えが同時に起きてしまわないよう、その間はサブ画面タブの
+//   Q/E切り替えを止める（使い終わったら必ずfalseに戻すこと）
+let subTabSwitchBlocked = false;
 // ★1ページに表示する選択肢の数。これを超えたらページ送りにする。
 //   ★スマホの縦画面（CSSの@media (max-aspect-ratio: 4/5)と同じ判定条件）だけは、
 //     ボタンが画面を圧迫しないよう1ページ3個までにする
@@ -1600,6 +1606,7 @@ window.addEventListener("keydown", (event) => {
   if (event.repeat) return;
   if (isGameDialogOpen) return; // ★確認ダイアログが開いている間は、そちらを優先する
   if (controlFocus !== "sub") return; // ★メイン画面ではQ/Eでタブを動かさない
+  if (subTabSwitchBlocked) return; // ★要望対応：魔物図鑑の種類切り替えなど、サブ画面内でQ/Eを別用途に使っている間はタブを動かさない
 
   const currentActive = document.querySelector('.tab-content.active');
   if (!currentActive) return;
@@ -1731,6 +1738,8 @@ async function showSpecialScene(text, allowSubFocus = false) {
 function renderStatusHUD() {
   if (!player) return;
   if (typeof refreshStatusPanelTabVisibility === "function") refreshStatusPanelTabVisibility(); // ★要望対応：パネルタブは30レベルに到達するまで隠す（statuspanel.js）
+  if (typeof updateUnreadBadges === "function") updateUnreadBadges(); // ★要望対応：実績・チュートリアルの未確認バッジを、ロード直後なども含めて最新に保つ（convenience.js）
+  if (typeof updateShouryokuHud === "function") updateShouryokuHud(); // ★要望対応：時計の上の焦力ゲージも、ロード直後・仲間の増減なども含めて最新に保つ（battle.js）
   
   // ★パラメータ表示ブロック（#status-hud-wrapper）が、設定通りの場所（メインタブ内 or 常時左上）に
   //   ちゃんと置かれているか、呼ばれるたびに軽く確認しておく（既に正しい場所ならappendChildしても
@@ -3095,7 +3104,7 @@ function reorganizeInventory() {
     const baseSeq = slots[0].acquiredSeq;
     const appraised = slots.some(s => s.appraised); // ★どれか1つでも鑑定済みなら鑑定済み扱いにする
     while (totalQty > 0) {
-      const qty = Math.min(MAX_STACK, totalQty);
+      const qty = Math.min(getItemMaxStack(ITEM_MASTER[itemId]), totalQty); // ★アイテムごとのスタック上限（カジノコインは9999）
       merged.push({ itemId, quantity: qty, appraised, acquiredSeq: baseSeq });
       totalQty -= qty;
     }
@@ -3685,6 +3694,14 @@ function setTextWithRuby(element, text) {
 function stripRubyNotation(text) {
   if (typeof text !== "string") return text;
   return text.replace(RUBY_NOTATION_REGEX, (match, base) => base);
+}
+
+// ★技名の「同じ技かどうか」の判定用キー。技名を「弧月斬（こげつざん）」のような後ろ括弧の読み方から
+//   ルビ記法（{/弧月斬}={\\こげつざん}）に変えたため、旧い名前で保存されたデータ（コンボの必要技・
+//   技管理の編集内容など）とも同じ技として照合できるよう、ルビ／後ろ括弧の読み方を外した本文で比べる
+function skillNameKey(name) {
+  if (typeof name !== "string") return name;
+  return stripRubyNotation(name).replace(/[（(][ぁ-ゖァ-ヶー・ 　]+[）)]\s*$/, "").trim();
 }
 
 // ★ゲーム画面に出す文章の変換（改行 → <br>、ルビ記法 → <ruby>）をまとめて行う

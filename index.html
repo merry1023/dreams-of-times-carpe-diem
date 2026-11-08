@@ -367,6 +367,10 @@
             <span id="main-tab-weather-next" class="main-tab-weather-next">次：☀️ 晴れ</span>
           </div>
           
+          <!-- ★要望対応：焦力（上位スキルの消費パラメータ）を、時計の上に常時表示する。主人公と仲間ごとにゲージで表示。
+               battle.jsのupdateShouryokuHudが更新する（戦闘中も戦闘外も同じ場所。以前は戦闘中だけ画面上部に出していた） -->
+          <div id="main-tab-shouryoku" class="main-tab-shouryoku hidden"></div>
+          
           <!-- ★メインタブの40%くらいの大きさのアナログ時計（針は時針・分針のみ）と、その下にデジタル時計（要望対応）。
                img/clock/clock.png（文字盤）・img/clock/hour.png（時針）・img/clock/minutes.png（分針）を重ねて表示する。
                針の画像は、文字盤と同じサイズで、中心を軸に回転させる前提（画像の中心＝時計の針の付け根） -->
@@ -463,6 +467,10 @@
           <div id="element-chart-panel" class="monster-codex-panel hidden"></div> <!-- ★要望対応：属性相性表（convenience.js） -->
           <div id="tutorial-panel" class="monster-codex-panel hidden"></div>
           <div id="achievements-panel" class="monster-codex-panel hidden"></div>
+          <div id="guild-app-panel" class="monster-codex-panel hidden"></div> <!-- ★冒険者協会アプリ（guild_app.js） -->
+          <div id="beast-app-panel" class="monster-codex-panel hidden"></div> <!-- ★おとも魔獣アプリ（beast_app.js） -->
+          <div id="glossary-app-panel" class="monster-codex-panel hidden"></div> <!-- ★用語・語彙アプリ（glossary_app.js） -->
+          <div id="waza-app-panel" class="monster-codex-panel hidden"></div> <!-- ★覚醒技能アプリ（waza_app.js） -->
         </div>
 
         <div id="tab-log" class="tab-content">
@@ -515,6 +523,7 @@
         <button id="scenariobuild-undo-btn" class="devmode-btn" title="元に戻す">↶ 元に戻す</button>
         <button id="scenariobuild-redo-btn" class="devmode-btn" title="やり直す">↷ やり直す</button>
         <button id="scenariobuild-save-btn" class="devmode-btn" title="ブラウザに保存する">💾 保存済み</button>
+        <button id="scenariobuild-sync-btn" class="devmode-btn" title="今の状態をコミットして、クラウド（開発者用の最新データ）と同期する">🔄 コミット＆同期</button>
         <button id="scenariobuild-close-btn" class="devmode-btn">▶ ゲームに戻る</button>
       </div>
     </div>
@@ -575,6 +584,9 @@
 <script src="settings.js"></script>
 <script src="devmode.js"></script>
 <script src="scenariobuild.js"></script>
+<script src="datamerge.js"></script>
+<script src="datamerge_cloud.js"></script>
+<script src="publicdata.js"></script> <!-- ★要望対応：プレイヤーへの公開（クラウドから自動配信） -->
 <script src="companionchat.js"></script>
 <script src="mapareas.js"></script>
 <script src="builtin_chapters_seed.js"></script>
@@ -589,6 +601,18 @@
 <script src="town.js"></script>
 <script src="fishing.js"></script>
 <script src="memoryHall.js"></script>
+<script src="tower_defense.js"></script>
+<script src="tower_rewards.js"></script>
+<script src="tower_defense_editor.js"></script>
+<script src="gacha.js"></script>
+<script src="beast.js"></script>
+<script src="guild_app.js"></script>
+<script src="beast_app.js"></script>
+<script src="glossary_app.js"></script>
+<script src="waza_app.js"></script>
+<script src="gacha_editor.js"></script>
+<script src="beast_editor.js"></script>
+<script src="tower_raid.js"></script>
 <script src="crafting.js"></script>
 <script src="cooking.js"></script>
 <script src="book.js"></script>
