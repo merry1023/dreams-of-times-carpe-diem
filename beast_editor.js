@@ -6,7 +6,7 @@
 //   1) 魔獣召喚の設定（scenarioProject.summonConfig）：技ガチャと同じ項目（消費数・確率・天井・開催期間・ハズレ枠・5凸後の返却）
 //      ＋「凸ごとの能力の倍率」。設定の部分は gacha_editor.js の gachaEditorBuildConfig を使い回している
 //   2) おとも魔獣のデータ（scenarioProject.beasts）：名前・レア度・役割・属性・画像・能力（5凸＝完成時の値）・凸の強化・相性
-// ★常時行動・連動の設定は、魔獣を戦闘に組み込む次の段階で足す（データの入れ物 idleActions / links は、すでに用意してある）
+// ★常時行動（idleActions）は、技の編集画面（固定項目／ブロック）を使い回して作る。連動（links）の設定は、次の段階で足す
 // ★中身を読んで動かすのは beast.js。画像は後から設定できる（未設定の間は、属性マークと名前の頭文字の円で代用）
 
 function createNewBeast() {
@@ -17,8 +17,31 @@ function createNewBeast() {
     growthPerLevel: { maxHp: 5, atk: 0.9, skillPower: 0.8, agi: 0.3 },
     limitBreaks: [[], [], [], [], []],
     affinities: [],
-    idleActions: [], links: []   // ★常時行動・連動（次の段階で、編集画面を足す）
+    idleActions: [],   // 常時行動の候補（最大3つ）。それぞれが「技のデータ＋重み・クールタイム・使える条件」
+    links: []          // ★連動（次の段階で、編集画面を足す）
   };
+}
+
+const BEAST_IDLE_ACTION_MAX = 3;
+
+// 常時行動の候補を1つ新しく作る（技の入れ物は、ガチャ技と同じ。ガチャ専用の項目だけ外す）
+function createNewBeastIdleAction() {
+  const base = createNewGachaSkill();   // gacha_editor.js
+  ["rarity", "costType", "spCost", "shouryokuCost", "limitBreaks"].forEach(k => delete base[k]);
+  return Object.assign(base, {
+    id: generateId("beastact"), name: "新しい行動", description: "",
+    weight: 1, cooldown: 0, condition: "",
+    type: "attack", element: "無", power: 15, target: "single", hitCount: 1, atkType: "physical"
+  });
+}
+
+// ブロックエディタ（技の編集画面）が、編集中の技を探す時に使う（scenariobuild.js の getEditingSkill から呼ぶ）
+function beastEditorFindIdleAction(id) {
+  for (const beast of (scenarioProject.beasts || [])) {
+    const found = (beast.idleActions || []).find(a => a && a.id === id);
+    if (found) return found;
+  }
+  return null;
 }
 
 // 凸ごとの倍率の入れ物を用意する（足りない所は標準の値）
@@ -159,6 +182,8 @@ function buildBeastRow(entry, index) {
   statsDetails.addEventListener("change", refreshPreview);
   infoEl.appendChild(statsDetails);
 
+  // --- 常時行動 ---
+  infoEl.appendChild(buildBeastIdleActionEditor(entry));
   // --- 凸の強化 ---
   infoEl.appendChild(buildBeastBreakEditor(entry));
   // --- 相性 ---
@@ -167,7 +192,7 @@ function buildBeastRow(entry, index) {
   const laterNote = document.createElement("p");
   laterNote.className = "devmode-note";
   laterNote.style.margin = "4px 0 0";
-  laterNote.textContent = "常時行動（毎ターンの自動行動）と連動（仲間の技に合わせて発動するボタン）の設定は、魔獣を戦闘に組み込む次の段階で追加します。";
+  laterNote.textContent = "連動（仲間の技に合わせて発動するボタン）の設定は、次の段階で追加します。";
   infoEl.appendChild(laterNote);
   row.appendChild(infoEl);
 
@@ -277,6 +302,69 @@ function buildBeastAffinityEditor(entry) {
     pushUndoSnapshot();
     entry.affinities.push({ target: "player", bonuses: [{ param: "", value: 0 }, { param: "", value: 0 }, { param: "", value: 0 }] });
     persist(); renderScenarioBuildPanel();
+  };
+  details.appendChild(addBtn);
+  return details;
+}
+
+// 常時行動：魔獣が毎ターン（主人公・仲間の行動がすべて終わったあと、敵のターンの前に）1回、自動で行動する。
+// 行動の候補を最大3つ登録し、クールタイムが明けていて「使える条件」を満たす候補から、重みに応じてランダムに選ぶ。
+// 使える候補が無ければ通常攻撃。1つ1つの候補は、技の編集画面（固定項目／ブロック）で作る
+function buildBeastIdleActionEditor(entry) {
+  if (!Array.isArray(entry.idleActions)) entry.idleActions = [];
+  const details = document.createElement("details");
+  details.className = "scenariobuild-skill-details";
+  const summary = document.createElement("summary");
+  summary.textContent = `常時行動（毎ターンの自動行動：${entry.idleActions.length}／${BEAST_IDLE_ACTION_MAX}）`;
+  details.appendChild(summary);
+  const note = document.createElement("p");
+  note.className = "devmode-note";
+  note.style.whiteSpace = "pre-wrap";
+  note.textContent = [
+    "魔獣は、毎ターン、主人公・仲間の行動がすべて終わったあと（敵のターンの前）に1回、自動で行動します。",
+    "行動の候補のうち、「クールタイムが明けていて」「使える条件を満たす」ものから、重みの割合でランダムに選びます。使える候補が無ければ通常攻撃です。",
+    "固定項目で作れるのは、攻撃と回復だけです（回復は、単体なら一番HPの割合が低い味方を、全体なら全員を回復します）。支援などは「ブロックで組む」で作ってください。SP・焦力は使いません。",
+    "使える条件の式で使える変数：魔獣HP割合／味方最低HP割合（主人公・生きている仲間・魔獣のうち一番低い割合）／味方人数／敵数／敵HP割合（狙う敵）／自分HP割合（主人公）／ターン数／乱数／凸数 など（例：味方最低HP割合 < 0.7）"
+  ].join("\n");
+  details.appendChild(note);
+
+  const listEl = document.createElement("div");
+  listEl.className = "scenariobuild-list";
+  const persist = () => markScenarioBuildDirty();
+  entry.idleActions.forEach((action, index) => {
+    if (action.enabled == null) action.enabled = true;
+    listEl.appendChild(buildUpperSkillRow(action, index, {   // scenariobuild.js（上位スキルの編集の作りを使い回す）
+      list: entry.idleActions,
+      hideSources: true,
+      buildTopRow: (infoEl) => {
+        const t = tdEditorFieldTools(action, infoEl, persist);
+        const r1 = t.addRow();
+        t.numberField(r1, "weight", "選ばれやすさ（重み）", 0, 9999, 1);
+        t.numberField(r1, "cooldown", "クールタイム（ターン）", 0, 99, 1);
+        r1.appendChild(buildSkillCheckboxInline(action, "enabled", "使う"));
+        const r2 = t.addRow();
+        t.textField(r2, "condition", "使える条件（式。空なら常に）", "例：味方最低HP割合 < 0.7");
+      },
+      buildCostRow: (infoEl) => {
+        const costNote = document.createElement("div");
+        costNote.className = "devmode-note";
+        costNote.textContent = "魔獣の行動は、SP・焦力を使いません（代わりに、クールタイムで使う間隔を調整します）。";
+        infoEl.appendChild(costNote);
+      },
+      deleteMessage: (a) => `常時行動「${a.name || "名無し"}」を削除しますか？`
+    }));
+  });
+  details.appendChild(listEl);
+
+  const addBtn = document.createElement("button");
+  addBtn.className = "devmode-btn";
+  addBtn.textContent = "＋行動の候補を足す";
+  addBtn.disabled = entry.idleActions.length >= BEAST_IDLE_ACTION_MAX;
+  addBtn.onclick = () => {
+    pushUndoSnapshot();
+    entry.idleActions.push(createNewBeastIdleAction());
+    persist();
+    renderScenarioBuildPanel();
   };
   details.appendChild(addBtn);
   return details;

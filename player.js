@@ -938,6 +938,10 @@ function getCompanionStatsAtLevel(master, level) {
  * @returns {{atk:number, agi:number, skillPower:number, luck:number, charm:number, maxHp:number, maxSp:number}}
  */
 function getCompanionEffectiveStats(companion) {
+  // ★おとも魔獣（beast_battle.js）：仲間のマスターは無いので、戦闘開始時に計算した能力値をそのまま返す
+  if (companion && companion.isBeast && companion.stats) {
+    return { atk: companion.stats.atk, agi: companion.stats.agi, skillPower: companion.stats.skillPower, luck: 0, charm: 0, maxHp: companion.stats.maxHp, maxSp: 0 };
+  }
   const master = getCompanionMaster(companion);
   if (!master) return { atk: 0, agi: 0, skillPower: 0, luck: 0, charm: 0, maxHp: 1, maxSp: 0 };
   const base = getCompanionStatsAtLevel(master, companion.level);

@@ -268,6 +268,7 @@ async function startBattle(monsterKeys, options = {}) {
   };
   
   resetAllCompanionBattleBuffs(); // ★戦闘開始時に、仲間の自己バフ・攻撃回数カウント等をリセットしておく
+  if (typeof beastBattleInit === "function") beastBattleInit(); // ★セット中のおとも魔獣を、戦闘用の入れ物にする（beast_battle.js）
   startBattleBGM(isBoss); // bgm.js
   showBattleHud();
   changeSpeaker("");
@@ -355,6 +356,7 @@ async function startTrialBattle(trialRank) {
   };
   
   resetAllCompanionBattleBuffs(); // ★戦闘開始時に、仲間の自己バフ・攻撃回数カウント等をリセットしておく
+  if (typeof beastBattleInit === "function") beastBattleInit(); // ★セット中のおとも魔獣を、戦闘用の入れ物にする（beast_battle.js）
   startBattleBGM(true); // bgm.js
   showBattleHud();
   changeSpeaker("");
@@ -733,6 +735,18 @@ async function battleLoop() {
     if (getAliveEnemies().length === 0) {
       await resolveBattleVictory();
       return;
+    }
+    
+    // ★おとも魔獣（beast_battle.js）：主人公・仲間の行動がすべて終わったあと、敵のターンの前に、1回だけ自動で行動する
+    if (typeof beastTakeTurn === "function") {
+      await beastTakeTurn();
+      if (!battleState) return;
+      await announcePendingBossFormChanges();
+      if (!battleState) return;
+      if (getAliveEnemies().length === 0) {
+        await resolveBattleVictory();
+        return;
+      }
     }
     
     // ★敵のターン：生きている敵全員が、主人公の後にまとめて順番に行動する
@@ -1447,6 +1461,7 @@ function applyPlayerDamageReduction(rawDamage) {
 // ★生きている敵全員を、配置順に1体ずつ行動させる
 // ===== 仲間のターン（主人公→仲間1→仲間2……→敵、の順の一部）=====
 function getCompanionDisplayName(companion) {
+  if (companion && companion.isBeast) return companion.displayName; // ★おとも魔獣（beast_battle.js）：仲間のマスターは無いので、自分の名前を返す
   const master = typeof getCompanionMaster === "function" ? getCompanionMaster(companion) : null; // player.js
   return master ? master.name : "仲間";
 }
@@ -2175,9 +2190,16 @@ function pickEnemyAttackTarget() {
       if (c.alive) candidates.push({ isPlayer: false, companion: c, displayName: getCompanionDisplayName(c), hate: !!(c._battleBuffs && c._battleBuffs.hateTurns > 0) });
     });
   }
+  // ★おとも魔獣（beast_battle.js）も狙われる。ただし、主人公・仲間より狙われにくい（重み BEAST_TARGET_WEIGHT。他は1）
+  if (battleState && battleState.beast && battleState.beast.alive) {
+    candidates.push({ isPlayer: false, isBeast: true, beast: battleState.beast, displayName: battleState.beast.displayName, hate: false, weight: (typeof BEAST_TARGET_WEIGHT === "number") ? BEAST_TARGET_WEIGHT : 0.5 });
+  }
   const hatedCandidates = candidates.filter(c => c.hate);
   const pool = hatedCandidates.length > 0 ? hatedCandidates : candidates;
-  return pool[Math.floor(Math.random() * pool.length)];
+  const weightOf = c => (c.weight != null ? c.weight : 1);
+  let roll = Math.random() * pool.reduce((sum, c) => sum + weightOf(c), 0);
+  for (const c of pool) { roll -= weightOf(c); if (roll < 0) return c; }
+  return pool[pool.length - 1];
 }
 
 // ===== ボスの「戦闘イベント」（ボス管理タブで組む、ifっぽい条件付きの演出・行動） =====
@@ -2486,6 +2508,12 @@ async function runSingleEnemyTurn(enemy) {
   const atkUpBonus = (enemy.status && enemy.status.atkUp && enemy.status.atkUp.turns > 0) ? enemy.status.atkUp.power : 0; // ★要望対応：状態強化スキル
   const enemyAtk = Math.max(0, enemy.atk + enemy.enemyAtkBonus + atkUpBonus - atkDownPenalty);
   const variance = Math.floor(Math.random() * 3) - 1; // -1〜+1の揺らぎ
+  
+  if (attackTarget.isBeast) {
+    // ★おとも魔獣を狙った場合（beast_battle.js）：魔獣のHPを直接削る。倒れたら、この戦闘中は動けない
+    await beastReceiveEnemyAttack(enemy, Math.max(1, enemyAtk + variance));
+    return;
+  }
   
   if (!attackTarget.isPlayer) {
     // ★仲間を狙った場合：仲間のHPを直接削る（今のところ、被ダメ軽減バフ・状態異常の付与は主人公限定）
@@ -4318,6 +4346,7 @@ function hideBattleHud() {
   const hud = document.getElementById("battle-hud");
   if (hud) hud.classList.add("hidden");
   updateBattleActionPoints(0, 0); // ★戦闘が終わったら行動可能数のアイコンも消す
+  if (typeof hideBattleBeastHud === "function") hideBattleBeastHud(); // ★おとも魔獣の表示も消す（beast_battle.js）
 
   const container = document.getElementById("battle-enemies");
   if (container) container.innerHTML = "";
@@ -4493,5 +4522,6 @@ function updateBattleHud() {
   }
   
   renderBattleEnemies();
+  if (typeof updateBattleBeastHud === "function") updateBattleBeastHud(); // ★おとも魔獣の表示（beast_battle.js）
   notifyBattleBGMOfStateChange(!!battleState.isBoss); // bgm.js（HPの状況に応じてBGMを自動で切り替える）
 }

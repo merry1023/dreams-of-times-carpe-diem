@@ -8202,7 +8202,8 @@ function getEditingSkill() {
   return scenarioProject.skills.find(s => s.id === scenarioBuildEditingSkillId)
     || (scenarioProject.comboSkills || []).find(s => s.id === scenarioBuildEditingSkillId)
     || (scenarioProject.upperSkills || []).find(s => s.id === scenarioBuildEditingSkillId)
-    || (scenarioProject.gachaSkills || []).find(s => s.id === scenarioBuildEditingSkillId) || null; // ★技ガチャの技も、ブロックエディタを使い回す
+    || (scenarioProject.gachaSkills || []).find(s => s.id === scenarioBuildEditingSkillId) // ★技ガチャの技も、ブロックエディタを使い回す
+    || ((typeof beastEditorFindIdleAction === "function") ? beastEditorFindIdleAction(scenarioBuildEditingSkillId) : null) || null; // ★おとも魔獣の常時行動も、ブロックエディタを使い回す（beast_editor.js）
 }
 
 // ===== ステータスパネル管理（要望対応） =====
@@ -9060,7 +9061,7 @@ function renderSkillBlockEditor(container) {
   
   const backBtn = document.createElement("button");
   backBtn.className = "devmode-btn";
-  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : (scenarioBuildSubView === "combos" ? "← コンボスキルに戻る" : (scenarioBuildSubView === "upperskills" ? "← 上位スキルに戻る" : (scenarioBuildSubView === "gachaskills" ? "← 技ガチャに戻る" : "← スキル管理に戻る")));
+  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : (scenarioBuildSubView === "combos" ? "← コンボスキルに戻る" : (scenarioBuildSubView === "upperskills" ? "← 上位スキルに戻る" : (scenarioBuildSubView === "gachaskills" ? "← 技ガチャに戻る" : (scenarioBuildSubView === "beasts" ? "← おとも魔獣に戻る" : "← スキル管理に戻る"))));
   backBtn.onclick = (event) => {
     event.stopPropagation();
     scenarioBuildSkillInsertMenuTarget = null;
