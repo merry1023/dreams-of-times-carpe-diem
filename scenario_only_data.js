@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1794161521188,
+  "version": 1794228230235,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -5625,7 +5625,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1789139775120_14",
           "type": "narration",
-          "text": "さすが、感の良いガk...じゃなくてロリルが気づいたようだ。"
+          "text": "さすが、勘の良いガk...じゃなくてロリルが気づいたようだ。"
         },
         {
           "id": "block_1789139760156_12",
@@ -7910,7 +7910,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1790004043828_10",
           "type": "dialogue",
           "speaker": "？？？？？？？？？？",
-          "text": "\"{/久遠の環}={\\スターチス・キルクルス}\"全体をこれを用いて廻す機構は、お前の役にも立てているはずだ。"
+          "text": "\"{/久遠の環}={\\スターチス・キルクルス}\"全体を廻すこの機構は、お前の役にも立てているはずだ。"
         },
         {
           "id": "block_1790004618350_12",
@@ -8072,7 +8072,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1790006511754_33",
           "type": "dialogue",
           "speaker": "ベーカリーの店員",
-          "text": "どうですか？一番人気はペロンパンです！\n程よい甘さと大きさに似合わない満腹感が一度食べるとヤミツキになりますよ！"
+          "text": "どうですか？一番人気はペロンパンです！\n程よい甘さで、見た目以上にお腹いっぱいになりますよ！一度食べるとヤミツキです！"
         },
         {
           "id": "block_1790006706982_35",
@@ -8113,7 +8113,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1790006910778_41",
           "type": "telop",
-          "text": "三人は、それぞれ買ったパンを手に店を出た。"
+          "text": "俺たちは、それぞれ買ったパンを手に店を出た。"
         },
         {
           "id": "block_1790006933307_42",
@@ -8148,7 +8148,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1790007182622_48",
           "type": "narration",
-          "text": "オーク……肉……？ ……うっ。思わず口を押さえた。食べる前に言ってほしかった……。"
+          "text": "（オーク……肉……？）……うっ。思わず口を押さえた。食べる前に言ってほしかった……。"
         },
         {
           "id": "block_1790007178908_47",
@@ -8539,7 +8539,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1791732141162_37",
                   "type": "narration",
-                  "text": "収穫なしーーーー\nーーーか。"
+                  "text": "収穫なし……か。"
                 },
                 {
                   "id": "block_1791732189147_40",
@@ -8608,7 +8608,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1794155820774_1",
           "type": "narration",
-          "text": "大通りから少し離れてもなお人であふれかえる小道を、糸を縫うように進んでゆく。"
+          "text": "大通りから少し離れてもなお人であふれかえる小道を、人混みを縫うように進んでゆく。"
         },
         {
           "id": "block_1794155938553_3",
@@ -8620,7 +8620,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1794155958476_4",
           "type": "dialogue",
           "speaker": "ケツァナ",
-          "text": "そりゃあそうでしょうね。\nこれだけの大国、{/況}={\\ま}して魔導王国となるとなおのこと、隣国からの冒険者や旅行者であふれかえるはずだわ。"
+          "text": "そりゃあそうでしょうね。\nこれだけの大国、{/況}={\\ま}して魔導王国ともなれば、隣国からの冒険者や旅行者であふれかえるはずだわ。"
         },
         {
           "id": "block_1794156342903_5",
@@ -8764,15 +8764,15 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "text": "そんなことを言いながら、とりあえずある程度落ち着けそうな場所を探し、聞き込みをすることにした。"
         },
         {
+          "id": "block_1794158551631_31",
+          "type": "narration",
+          "text": "小道を進むと少し開けた場所へ出た。\n石畳の広場で、右手には小さな店が並び、\n脇には椅子とテーブルの揃った休憩できそうなスペースもある。"
+        },
+        {
           "id": "block_1794158452215_30",
           "type": "dialogue",
           "speaker": "田中治郎",
           "text": "お、ここなら落ち着いて聞き込みが出来そうだな。"
-        },
-        {
-          "id": "block_1794158551631_31",
-          "type": "narration",
-          "text": "小道を進むと少し開けた広場のような場所へ出た。\n石畳の地面に右手には小さな店が並び、\n脇には椅子とテーブルの揃った休憩できそうなスペースもある。"
         },
         {
           "id": "block_1794158708457_32",
@@ -8786,7 +8786,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1794158948562_37",
                   "type": "narration",
-                  "text": "右手に並ぶ花屋の軒先で\n花に水をやっていたおばあさんに訪ねてみる。"
+                  "text": "右手に並ぶ花屋の軒先で\n花に水をやっていたおばあさんに尋ねてみる。"
                 },
                 {
                   "id": "block_1794159048284_38",
@@ -8885,7 +8885,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794160360739_70",
                   "type": "dialogue",
                   "speaker": "ロリル",
-                  "text": "これから死地へ旅立つ少年よ。\n旅立つ前に上官である私から質問がある。"
+                  "text": "これから死地へ旅立つ少年よ。\n旅立つ前に皇帝である私から質問がある。"
                 },
                 {
                   "id": "block_1794160711736_76",
@@ -8903,7 +8903,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794160537014_72",
                   "type": "dialogue",
                   "speaker": "クソガキ",
-                  "text": "じょ、上官！\nみ、見たであります！俺、この目ではっきりと見たであります！"
+                  "text": "こ、皇帝陛下！\nみ、見たであります！俺、この目ではっきりと見たであります！"
                 },
                 {
                   "id": "block_1794160684264_74",
@@ -8932,13 +8932,13 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794160939216_79",
                   "type": "dialogue",
                   "speaker": "ロリル",
-                  "text": "解答ご苦労であった。\nでは、我らが帝国の為に死んで征けっ！"
+                  "text": "大儀であった。\nでは、我らが帝国の為に死んで征けっ！"
                 },
                 {
                   "id": "block_1794161018167_80",
                   "type": "dialogue",
                   "speaker": "クソガキ",
-                  "text": "イエス！ユア・ハイネス！\nうおおおおお！"
+                  "text": "イエス！ユア・マジェスティ！\nうおおおおお！"
                 },
                 {
                   "id": "block_1794161105646_81",
@@ -8972,7 +8972,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794161344930_86",
                   "type": "dialogue",
                   "speaker": "田中治郎",
-                  "text": "まあ、情報が手に入ったしそうかっかするな。\nそれはそれとして、国家研究所か...以外なゴールが見えたな..."
+                  "text": "まあ、情報が手に入ったしそうかっかするな。\nそれはそれとして、国家研究所か...意外なゴールが見えたな..."
                 }
               ],
               "jumpBlockId": null,
@@ -9039,7 +9039,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794159732800_55",
                   "type": "dialogue",
                   "speaker": "田中治郎",
-                  "text": "すみません。\n訪ねたいことが有りまして。お時間よろしいですか？"
+                  "text": "すみません。\nお尋ねしたいことがありまして。お時間よろしいですか？"
                 },
                 {
                   "id": "block_1794159774442_56",
