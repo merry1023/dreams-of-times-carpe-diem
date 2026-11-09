@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1794228230235,
+  "version": 1794228724299,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -1187,7 +1187,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786183133328_171",
           "type": "narration",
-          "text": "奥へ進み、木の枠組みで作られた入口の一番奥の部屋を覗いてみると、ホブゴブリンがなんと4体もおり、その周りにゴブリンが30ほどいたのである。"
+          "text": "奥へ進み、木の枠組みで作られた最奥の部屋を覗いてみると、ホブゴブリンがなんと4体もおり、その周りにゴブリンが30ほどいたのである。"
         },
         {
           "id": "block_1786183133328_172",
@@ -1622,7 +1622,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786183133328_245",
           "type": "narration",
-          "text": "青椒さんの声に引き寄せられたゴブリンは、青椒さんを捕まえると、持っていた斧やナイフで滅多刺しにして殺してしまった,,,,,,"
+          "text": "青椒さんの声に引き寄せられたゴブリンは、青椒さんを捕まえると、持っていた斧やナイフで滅多刺しにして殺してしまった……"
         },
         {
           "id": "block_1786183133328_246",
@@ -1673,7 +1673,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786183133328_257",
           "type": "narration",
-          "text": "ゴブリン達は治郎を見るに、束になって襲いかかってきた。"
+          "text": "ゴブリン達は治郎を見るなり、束になって襲いかかってきた。"
         },
         {
           "id": "block_1786185105940_366",
@@ -2038,7 +2038,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1786183133328_306",
           "type": "dialogue",
           "speaker": "竜殺し",
-          "text": "提案があるの。私とパーティーを組まない...？"
+          "text": "提案があるの。私とパーティを組まない...？"
         },
         {
           "id": "block_1786185978356_383",
@@ -2067,7 +2067,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1786183133328_310",
           "type": "dialogue",
           "speaker": "竜殺し",
-          "text": "この付近の冒険者ではあなたが一番信頼できそうだし、私とパーティーを組んで効率的に強くなろうって話。"
+          "text": "この付近の冒険者ではあなたが一番信頼できそうだし、私とパーティを組んで効率的に強くなろうって話。"
         },
         {
           "id": "block_1786183133328_311",
@@ -2103,7 +2103,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
             },
             {
               "id": "opt_1786183133329_318",
-              "text": "パーティーを組む",
+              "text": "パーティを組む",
               "jumpBlockId": "block_1786183133329_329"
             }
           ]
@@ -2112,7 +2112,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1786186146639_384",
           "type": "dialogue",
           "speaker": "田中治郎",
-          "text": "ほ...ほんとに...ぼくと「パーティー」...に...なってくれるのか？"
+          "text": "ほ...ほんとに...ぼくと「パーティ」...に...なってくれるのか？"
         },
         {
           "id": "block_1786186172271_385",
@@ -2123,7 +2123,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1786183133329_319",
           "type": "dialogue",
           "speaker": "竜殺し",
-          "text": "ああ、約束するわ。お互いの力で強くなる。ギブ アンド テイクよ。さあ、酒場にパーティー申請しに行きましょ。"
+          "text": "ああ、約束するわ。お互いの力で強くなる。ギブ アンド テイクよ。さあ、酒場にパーティ申請しに行きましょ。"
         },
         {
           "id": "block_1786183133329_320",
@@ -2229,7 +2229,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786183133329_336",
           "type": "narration",
-          "text": "かくして治郎と竜殺しことケツァナは、冒険をともにするパーティーとなった"
+          "text": "かくして治郎と竜殺しことケツァナは、冒険をともにするパーティとなった"
         },
         {
           "id": "block_1786186494125_390",
@@ -2311,7 +2311,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786945399144_9",
           "type": "narration",
-          "text": "店主さんは唖然の表情をして数秒固まっていた。"
+          "text": "店主さんは唖然とした表情をして数秒固まっていた。"
         },
         {
           "id": "block_1786945417947_10",
@@ -2411,7 +2411,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786945940384_23",
           "type": "dialogue",
-          "speaker": "店主",
+          "speaker": "田中治郎",
           "text": "えっ！パーティ名は僕たちが決めるんじゃないんですか？"
         },
         {
@@ -2487,7 +2487,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786946308683_37",
           "type": "narration",
-          "text": "すると、パーティの申請書が光だし、空中へと消えていった。"
+          "text": "すると、パーティの申請書が光り出し、空中へと消えていった。"
         },
         {
           "id": "block_1786946300027_36",
@@ -2499,7 +2499,13 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1786946357746_38",
           "type": "dialogue",
           "speaker": "店主",
-          "text": "よし。これで兄ちゃん達も正式にパーティ結成だな。あ、ありがとうございます..."
+          "text": "よし。これで兄ちゃん達も正式にパーティ結成だな。"
+        },
+        {
+          "id": "block_1794228724298_1",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "あ、ありがとうございます..."
         },
         {
           "id": "block_1786946395442_39",
@@ -3040,7 +3046,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788274719768_8",
           "type": "narration",
-          "text": "ツァナがそう聞くと少女は小さく頷き、眼の前にある寂れた宿を指さした。"
+          "text": "ツァナがそう聞くと少女は小さく頷き、目の前にある寂れた宿を指さした。"
         },
         {
           "id": "block_1788274771683_9",
@@ -3057,11 +3063,6 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1788275033075_12",
           "type": "background",
           "path": "/img/宿2.jpg"
-        },
-        {
-          "id": "block_1788359178016_2",
-          "type": "telop",
-          "text": "俺達は宿に入った。"
         },
         {
           "id": "block_1788359223203_3",
@@ -3101,7 +3102,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788359589135_11",
           "type": "narration",
-          "text": "耳が遠いのか数回聞かないと返事が帰ってこなかった...\n大丈夫なのかこの人..."
+          "text": "耳が遠いのか数回聞かないと返事が返ってこなかった...\n大丈夫なのかこの人..."
         },
         {
           "id": "block_1788359688576_12",
@@ -3214,7 +3215,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788360873488_34",
           "type": "narration",
-          "text": "それぞれ持っていた荷物を棚にしまい、ツァナと少女はベッドに座り、俺は眼の前の椅子に座った。"
+          "text": "それぞれ持っていた荷物を棚にしまい、ツァナと少女はベッドに座り、俺は目の前の椅子に座った。"
         },
         {
           "id": "block_1788361019753_36",
@@ -3766,7 +3767,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1788489470351_12",
                   "type": "narration",
-                  "text": "眼の前に女の子が二人いるという生前では考えられない状況で気が狂ってしまったのか。\nあるいは死んでしまったストレスのせいか、俺にはわからなかった......"
+                  "text": "目の前に女の子が二人いるという生前では考えられない状況で気が狂ってしまったのか。\nあるいは死んでしまったストレスのせいか、俺にはわからなかった......"
                 },
                 {
                   "id": "block_1788489565689_13",
@@ -3908,7 +3909,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1788519983217_81",
                   "type": "dialogue",
                   "speaker": "ロリル",
-                  "text": "ロリル = コン ・ドミール。\n何の変哲もない、普通の村の娘。"
+                  "text": "ロリル=コン・ドミール。\n何の変哲もない、普通の村の娘。"
                 },
                 {
                   "id": "block_1788520024171_82",
@@ -4567,7 +4568,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788783599866_63",
           "type": "narration",
-          "text": "カウンター席に座りいつものごとく変わらないメニューをながめる..…"
+          "text": "カウンター席に座りいつものごとく変わらないメニューをながめる……"
         },
         {
           "id": "block_1788783659932_64",
@@ -4661,7 +4662,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788785118932_4",
           "type": "narration",
-          "text": "男にそう問いかける店主さんが気になることを言った。"
+          "text": "店主さんの言葉が気になった。"
         },
         {
           "id": "block_1788785217987_6",
@@ -4882,7 +4883,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788786901250_49",
           "type": "narration",
-          "text": "ごくり。\n緊張に唾を咽む。"
+          "text": "ごくり。\n緊張に唾を飲む。"
         },
         {
           "id": "block_1788786939288_50",
@@ -5325,13 +5326,13 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1788964514357_6",
                   "type": "dialogue",
-                  "speaker": "店主",
+                  "speaker": "店員",
                   "text": "あー。歴史書ですか。すみません、この店には置いてないんですよねー。"
                 },
                 {
                   "id": "block_1788966932419_1",
                   "type": "dialogue",
-                  "speaker": "店主",
+                  "speaker": "店員",
                   "text": "他の店なら置いてるかもです。\nうちの店は全てのジャンルを網羅しているわけではないので、すみません..."
                 },
                 {
@@ -6317,7 +6318,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1789600220928_7",
                   "type": "narration",
-                  "text": "眼の前に広がっていたのは財宝の山..."
+                  "text": "目の前に広がっていたのは財宝の山..."
                 },
                 {
                   "id": "block_1789600253759_8",
@@ -6448,7 +6449,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1789604067738_7",
                   "type": "narration",
-                  "text": "急いで手持ちの薬草と食料を取り出し、無理の無いように少しづつ口元へ運ぶ。\nそれにしてもひどい悪臭である。数日間監禁されていたのだろう。この空間には寝床も無ければトイレもない。その場で漏らしてしまっていたようだ。"
+                  "text": "急いで手持ちの薬草と食料を取り出し、無理の無いように少しずつ口元へ運ぶ。\nそれにしてもひどい悪臭である。数日間監禁されていたのだろう。この空間には寝床も無ければトイレもない。その場で漏らしてしまっていたようだ。"
                 },
                 {
                   "id": "block_1789604191022_8",

@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1794161524517,
+  "version": 1794228724318,
   "enemies": [
     {
       "id": "goblin",
@@ -22954,7 +22954,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     "companions": {
       "ketsuna": {
         "epithet": "竜殺し",
-        "personality": "かなり刺さる言葉遣い、毒舌だがツンデレ。\nパーティーのツッコミ役であり根は優しい。"
+        "personality": "かなり刺さる言葉遣い、毒舌だがツンデレ。\nパーティのツッコミ役であり根は優しい。"
       },
       "companion_1788390422466_28": {
         "epithet": "砕けないダイヤモンド",
