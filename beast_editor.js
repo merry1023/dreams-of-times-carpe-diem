@@ -85,6 +85,7 @@ function renderBeastManager(container) {
   addBtn.onclick = () => {
     pushUndoSnapshot();
     scenarioProject.beasts.push(createNewBeast());
+    scenarioBuildGroupOpenState[scenarioBuildGroupKey("beasts", "N")] = true; // ★追加した魔獣（初期は「通常」）がすぐ見えるよう、そのカーテンを開く
     persist();
     renderScenarioBuildPanel();
   };
@@ -95,15 +96,17 @@ function renderBeastManager(container) {
   countNote.textContent = `登録中：${counts}（魔獣召喚で出るのは、「排出に含める」がオンの魔獣だけです）`;
   container.appendChild(countNote);
 
-  const listEl = document.createElement("div");
-  listEl.className = "scenariobuild-list";
-  scenarioProject.beasts.forEach((entry, index) => listEl.appendChild(buildCollapsedEntryRow({
+  // ★要望対応：レア度（通常／希少／伝説）ごとのカーテンに分けて表示する
+  const rarityGroups = GACHA_RARITIES.map(r => ({
+    key: r.key, label: r.label, showEmpty: true,
+    entries: scenarioProject.beasts.map((item, index) => ({ item, index })).filter(e => gachaRarityOf(e.item) === r.key)
+  }));
+  container.appendChild(buildGroupedCurtainList("beasts", rarityGroups, (entry, index) => buildCollapsedEntryRow({
     number: `#${index + 1}`,
     title: () => (scenarioProject.beasts[index] || {}).name,
     isValid: () => !!scenarioProject.beasts[index],
     build: () => buildBeastRow(scenarioProject.beasts[index], index)
   })));
-  container.appendChild(listEl);
 }
 
 function buildBeastRow(entry, index) {
