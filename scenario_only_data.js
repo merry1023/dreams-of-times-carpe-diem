@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1794161521188,
+  "version": 1794238216436,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -1187,7 +1187,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786183133328_171",
           "type": "narration",
-          "text": "奥へ進み、木の枠組みで作られた入口の一番奥の部屋を覗いてみると、ホブゴブリンがなんと4体もおり、その周りにゴブリンが30ほどいたのである。"
+          "text": "奥へ進み、木の枠組みで作られた最奥の部屋を覗いてみると、ホブゴブリンがなんと4体もおり、その周りにゴブリンが30ほどいたのである。"
         },
         {
           "id": "block_1786183133328_172",
@@ -1622,7 +1622,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786183133328_245",
           "type": "narration",
-          "text": "青椒さんの声に引き寄せられたゴブリンは、青椒さんを捕まえると、持っていた斧やナイフで滅多刺しにして殺してしまった,,,,,,"
+          "text": "青椒さんの声に引き寄せられたゴブリンは、青椒さんを捕まえると、持っていた斧やナイフで滅多刺しにして殺してしまった……"
         },
         {
           "id": "block_1786183133328_246",
@@ -1673,7 +1673,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786183133328_257",
           "type": "narration",
-          "text": "ゴブリン達は治郎を見るに、束になって襲いかかってきた。"
+          "text": "ゴブリン達は治郎を見るなり、束になって襲いかかってきた。"
         },
         {
           "id": "block_1786185105940_366",
@@ -2038,7 +2038,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1786183133328_306",
           "type": "dialogue",
           "speaker": "竜殺し",
-          "text": "提案があるの。私とパーティーを組まない...？"
+          "text": "提案があるの。私とパーティを組まない...？"
         },
         {
           "id": "block_1786185978356_383",
@@ -2067,7 +2067,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1786183133328_310",
           "type": "dialogue",
           "speaker": "竜殺し",
-          "text": "この付近の冒険者ではあなたが一番信頼できそうだし、私とパーティーを組んで効率的に強くなろうって話。"
+          "text": "この付近の冒険者ではあなたが一番信頼できそうだし、私とパーティを組んで効率的に強くなろうって話。"
         },
         {
           "id": "block_1786183133328_311",
@@ -2103,7 +2103,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
             },
             {
               "id": "opt_1786183133329_318",
-              "text": "パーティーを組む",
+              "text": "パーティを組む",
               "jumpBlockId": "block_1786183133329_329"
             }
           ]
@@ -2112,7 +2112,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1786186146639_384",
           "type": "dialogue",
           "speaker": "田中治郎",
-          "text": "ほ...ほんとに...ぼくと「パーティー」...に...なってくれるのか？"
+          "text": "ほ...ほんとに...ぼくと「パーティ」...に...なってくれるのか？"
         },
         {
           "id": "block_1786186172271_385",
@@ -2123,7 +2123,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1786183133329_319",
           "type": "dialogue",
           "speaker": "竜殺し",
-          "text": "ああ、約束するわ。お互いの力で強くなる。ギブ アンド テイクよ。さあ、酒場にパーティー申請しに行きましょ。"
+          "text": "ああ、約束するわ。お互いの力で強くなる。ギブ アンド テイクよ。さあ、酒場にパーティ申請しに行きましょ。"
         },
         {
           "id": "block_1786183133329_320",
@@ -2229,7 +2229,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786183133329_336",
           "type": "narration",
-          "text": "かくして治郎と竜殺しことケツァナは、冒険をともにするパーティーとなった"
+          "text": "かくして治郎と竜殺しことケツァナは、冒険をともにするパーティとなった"
         },
         {
           "id": "block_1786186494125_390",
@@ -2311,7 +2311,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786945399144_9",
           "type": "narration",
-          "text": "店主さんは唖然の表情をして数秒固まっていた。"
+          "text": "店主さんは唖然とした表情をして数秒固まっていた。"
         },
         {
           "id": "block_1786945417947_10",
@@ -2411,7 +2411,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786945940384_23",
           "type": "dialogue",
-          "speaker": "店主",
+          "speaker": "田中治郎",
           "text": "えっ！パーティ名は僕たちが決めるんじゃないんですか？"
         },
         {
@@ -2487,7 +2487,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1786946308683_37",
           "type": "narration",
-          "text": "すると、パーティの申請書が光だし、空中へと消えていった。"
+          "text": "すると、パーティの申請書が光り出し、空中へと消えていった。"
         },
         {
           "id": "block_1786946300027_36",
@@ -2499,7 +2499,13 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1786946357746_38",
           "type": "dialogue",
           "speaker": "店主",
-          "text": "よし。これで兄ちゃん達も正式にパーティ結成だな。あ、ありがとうございます..."
+          "text": "よし。これで兄ちゃん達も正式にパーティ結成だな。"
+        },
+        {
+          "id": "block_1794228724298_1",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "あ、ありがとうございます..."
         },
         {
           "id": "block_1786946395442_39",
@@ -3040,7 +3046,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788274719768_8",
           "type": "narration",
-          "text": "ツァナがそう聞くと少女は小さく頷き、眼の前にある寂れた宿を指さした。"
+          "text": "ツァナがそう聞くと少女は小さく頷き、目の前にある寂れた宿を指さした。"
         },
         {
           "id": "block_1788274771683_9",
@@ -3057,11 +3063,6 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1788275033075_12",
           "type": "background",
           "path": "/img/宿2.jpg"
-        },
-        {
-          "id": "block_1788359178016_2",
-          "type": "telop",
-          "text": "俺達は宿に入った。"
         },
         {
           "id": "block_1788359223203_3",
@@ -3101,7 +3102,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788359589135_11",
           "type": "narration",
-          "text": "耳が遠いのか数回聞かないと返事が帰ってこなかった...\n大丈夫なのかこの人..."
+          "text": "耳が遠いのか数回聞かないと返事が返ってこなかった...\n大丈夫なのかこの人..."
         },
         {
           "id": "block_1788359688576_12",
@@ -3214,7 +3215,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788360873488_34",
           "type": "narration",
-          "text": "それぞれ持っていた荷物を棚にしまい、ツァナと少女はベッドに座り、俺は眼の前の椅子に座った。"
+          "text": "それぞれ持っていた荷物を棚にしまい、ツァナと少女はベッドに座り、俺は目の前の椅子に座った。"
         },
         {
           "id": "block_1788361019753_36",
@@ -3766,7 +3767,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1788489470351_12",
                   "type": "narration",
-                  "text": "眼の前に女の子が二人いるという生前では考えられない状況で気が狂ってしまったのか。\nあるいは死んでしまったストレスのせいか、俺にはわからなかった......"
+                  "text": "目の前に女の子が二人いるという生前では考えられない状況で気が狂ってしまったのか。\nあるいは死んでしまったストレスのせいか、俺にはわからなかった......"
                 },
                 {
                   "id": "block_1788489565689_13",
@@ -3908,7 +3909,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1788519983217_81",
                   "type": "dialogue",
                   "speaker": "ロリル",
-                  "text": "ロリル = コン ・ドミール。\n何の変哲もない、普通の村の娘。"
+                  "text": "ロリル=コン・ドミール。\n何の変哲もない、普通の村の娘。"
                 },
                 {
                   "id": "block_1788520024171_82",
@@ -4567,7 +4568,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788783599866_63",
           "type": "narration",
-          "text": "カウンター席に座りいつものごとく変わらないメニューをながめる..…"
+          "text": "カウンター席に座りいつものごとく変わらないメニューをながめる……"
         },
         {
           "id": "block_1788783659932_64",
@@ -4661,7 +4662,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788785118932_4",
           "type": "narration",
-          "text": "男にそう問いかける店主さんが気になることを言った。"
+          "text": "店主さんの言葉が気になった。"
         },
         {
           "id": "block_1788785217987_6",
@@ -4882,7 +4883,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1788786901250_49",
           "type": "narration",
-          "text": "ごくり。\n緊張に唾を咽む。"
+          "text": "ごくり。\n緊張に唾を飲む。"
         },
         {
           "id": "block_1788786939288_50",
@@ -5325,13 +5326,13 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1788964514357_6",
                   "type": "dialogue",
-                  "speaker": "店主",
+                  "speaker": "店員",
                   "text": "あー。歴史書ですか。すみません、この店には置いてないんですよねー。"
                 },
                 {
                   "id": "block_1788966932419_1",
                   "type": "dialogue",
-                  "speaker": "店主",
+                  "speaker": "店員",
                   "text": "他の店なら置いてるかもです。\nうちの店は全てのジャンルを網羅しているわけではないので、すみません..."
                 },
                 {
@@ -5625,7 +5626,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1789139775120_14",
           "type": "narration",
-          "text": "さすが、感の良いガk...じゃなくてロリルが気づいたようだ。"
+          "text": "さすが、勘の良いガk...じゃなくてロリルが気づいたようだ。"
         },
         {
           "id": "block_1789139760156_12",
@@ -6317,7 +6318,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1789600220928_7",
                   "type": "narration",
-                  "text": "眼の前に広がっていたのは財宝の山..."
+                  "text": "目の前に広がっていたのは財宝の山..."
                 },
                 {
                   "id": "block_1789600253759_8",
@@ -6448,7 +6449,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1789604067738_7",
                   "type": "narration",
-                  "text": "急いで手持ちの薬草と食料を取り出し、無理の無いように少しづつ口元へ運ぶ。\nそれにしてもひどい悪臭である。数日間監禁されていたのだろう。この空間には寝床も無ければトイレもない。その場で漏らしてしまっていたようだ。"
+                  "text": "急いで手持ちの薬草と食料を取り出し、無理の無いように少しずつ口元へ運ぶ。\nそれにしてもひどい悪臭である。数日間監禁されていたのだろう。この空間には寝床も無ければトイレもない。その場で漏らしてしまっていたようだ。"
                 },
                 {
                   "id": "block_1789604191022_8",
@@ -7857,10 +7858,19 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
     },
     {
       "id": "custom_1790003356790_1",
-      "title": "第六話：王国**所",
+      "title": "第六話：起点",
       "cleared": false,
       "builtin": false,
       "requiredChapterNumber": 8,
+      "arcId": "arc_1789833337363_9",
+      "requiredChapterId": "custom_1789833394406_10",
+      "requiredRank": "C",
+      "requiredProgress": 120,
+      "requiredDays": 20,
+      "startTriggerTavernKey": "facility_facility_1789441959626_2",
+      "objectiveText": "ランクをCにし、進行度を120にして20日生き延びたら城下町の酒場の店主に話しかけよう",
+      "requiredFlag": null,
+      "enabled": true,
       "blocks": [
         {
           "id": "block_1790003608030_3",
@@ -7910,7 +7920,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1790004043828_10",
           "type": "dialogue",
           "speaker": "？？？？？？？？？？",
-          "text": "\"{/久遠の環}={\\スターチス・キルクルス}\"全体をこれを用いて廻す機構は、お前の役にも立てているはずだ。"
+          "text": "\"{/久遠の環}={\\スターチス・キルクルス}\"全体を廻すこの機構は、お前の役にも立てているはずだ。"
         },
         {
           "id": "block_1790004618350_12",
@@ -8072,7 +8082,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1790006511754_33",
           "type": "dialogue",
           "speaker": "ベーカリーの店員",
-          "text": "どうですか？一番人気はペロンパンです！\n程よい甘さと大きさに似合わない満腹感が一度食べるとヤミツキになりますよ！"
+          "text": "どうですか？一番人気はペロンパンです！\n程よい甘さで、見た目以上にお腹いっぱいになりますよ！一度食べるとヤミツキです！"
         },
         {
           "id": "block_1790006706982_35",
@@ -8113,7 +8123,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1790006910778_41",
           "type": "telop",
-          "text": "三人は、それぞれ買ったパンを手に店を出た。"
+          "text": "俺たちは、それぞれ買ったパンを手に店を出た。"
         },
         {
           "id": "block_1790006933307_42",
@@ -8148,7 +8158,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1790007182622_48",
           "type": "narration",
-          "text": "オーク……肉……？ ……うっ。思わず口を押さえた。食べる前に言ってほしかった……。"
+          "text": "（オーク……肉……？）……うっ。思わず口を押さえた。食べる前に言ってほしかった……。"
         },
         {
           "id": "block_1790007178908_47",
@@ -8266,7 +8276,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1791735458122_45",
                   "type": "narration",
-                  "text": "顔を手のひらで押さえ、顔を赤らめながら呟くロリル。"
+                  "text": "頬を手のひらで押さえ、顔を赤らめながら呟くロリル。"
                 },
                 {
                   "id": "block_1791735495950_46",
@@ -8411,7 +8421,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1791734466499_20",
                   "type": "dialogue",
-                  "speaker": "田中治郎",
+                  "speaker": "衛兵",
                   "text": "でも、舐めているんだろ？"
                 },
                 {
@@ -8539,7 +8549,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1791732141162_37",
                   "type": "narration",
-                  "text": "収穫なしーーーー\nーーーか。"
+                  "text": "収穫なし……か。"
                 },
                 {
                   "id": "block_1791732189147_40",
@@ -8574,7 +8584,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1791731415815_20",
           "type": "dialogue",
           "speaker": "ロリル",
-          "text": "治郎と{/夜の大運動会}={\\ナイト・メルトダウン}。"
+          "text": "まだ治郎と一緒に{/夜の大運動会}={\\ナイト・メルトダウン}してない。"
         },
         {
           "id": "block_1791731510949_21",
@@ -8620,7 +8630,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1794155958476_4",
           "type": "dialogue",
           "speaker": "ケツァナ",
-          "text": "そりゃあそうでしょうね。\nこれだけの大国、{/況}={\\ま}して魔導王国となるとなおのこと、隣国からの冒険者や旅行者であふれかえるはずだわ。"
+          "text": "そりゃあそうでしょうね。\nこれだけの大国、{/況}={\\ま}して魔導王国ともなれば、隣国からの冒険者や旅行者であふれかえるはずだわ。"
         },
         {
           "id": "block_1794156342903_5",
@@ -8639,6 +8649,16 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "type": "dialogue",
           "speaker": "田中治郎",
           "text": "色々とぱっとしないから何か面白いものが無いか探してるんだよ...！"
+        },
+        {
+          "id": "block_1794230286943_2",
+          "type": "effect",
+          "effectType": "shake"
+        },
+        {
+          "id": "block_1794230295593_3",
+          "type": "effect",
+          "effectType": "flash"
         },
         {
           "id": "block_1794156504299_8",
@@ -8671,12 +8691,12 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1794156755086_11",
           "type": "narration",
-          "text": "奇妙な雰囲気をした男は軽く頭を下げると、そのまま人混みへ消えていった。"
+          "text": "奇妙な雰囲気をまとった男は軽く頭を下げると、そのまま人混みへ消えていった。"
         },
         {
           "id": "block_1794157037350_14",
           "type": "narration",
-          "text": "その男を見つめている間、不思議とこの喧騒を忘れるような静寂を感じた。\nそんなオーラだった。"
+          "text": "男の姿を目で追っていると、不思議なことに周囲の喧騒を忘れるような静寂を感じた。\nそれだけ異質な雰囲気の男であった。"
         },
         {
           "id": "block_1794157383978_16",
@@ -8715,7 +8735,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1794157640793_21",
           "type": "narration",
-          "text": "彼女の指さす地面に、宝石のように青く輝く立方体の物体が転がっていた。"
+          "text": "彼女の指さす地面に、宝石のようにきらきらと青く輝く立方体が転がっていた。"
         },
         {
           "id": "block_1794157705831_22",
@@ -8738,13 +8758,13 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1794157938268_24",
           "type": "dialogue",
           "speaker": "田中治郎",
-          "text": "今から行くところもないし、\nとりあえずさっきの人の特徴を伝えて\n聞き込みでもしながら探すか。"
+          "text": "あの人が困っていたらいけない。\nとりあえず特徴を伝えて\n聞き込みでもしながら探すか。"
         },
         {
           "id": "block_1794158146639_26",
           "type": "dialogue",
           "speaker": "ケツァナ",
-          "text": "仕方ないわね。\nあんたそういう所真面目よね...\n本当、お人好しなのかなんなのか..."
+          "text": "仕方ないわね。\nまったく、あんたそういう所真面目なのよね...\n本当、お人好しなのかなんなのか..."
         },
         {
           "id": "block_1794158188131_27",
@@ -8764,15 +8784,15 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "text": "そんなことを言いながら、とりあえずある程度落ち着けそうな場所を探し、聞き込みをすることにした。"
         },
         {
+          "id": "block_1794158551631_31",
+          "type": "narration",
+          "text": "小道を進むと少し開けた場所へ出た。\n石畳の広場で、右手には小さな店が並び、\n脇には椅子とテーブルの揃った休憩できそうなスペースもある。"
+        },
+        {
           "id": "block_1794158452215_30",
           "type": "dialogue",
           "speaker": "田中治郎",
           "text": "お、ここなら落ち着いて聞き込みが出来そうだな。"
-        },
-        {
-          "id": "block_1794158551631_31",
-          "type": "narration",
-          "text": "小道を進むと少し開けた広場のような場所へ出た。\n石畳の地面に右手には小さな店が並び、\n脇には椅子とテーブルの揃った休憩できそうなスペースもある。"
         },
         {
           "id": "block_1794158708457_32",
@@ -8786,7 +8806,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1794158948562_37",
                   "type": "narration",
-                  "text": "右手に並ぶ花屋の軒先で\n花に水をやっていたおばあさんに訪ねてみる。"
+                  "text": "右手に並ぶ花屋の軒先で\n花に水をやっていたおばあさんに尋ねてみる。"
                 },
                 {
                   "id": "block_1794159048284_38",
@@ -8885,7 +8905,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794160360739_70",
                   "type": "dialogue",
                   "speaker": "ロリル",
-                  "text": "これから死地へ旅立つ少年よ。\n旅立つ前に上官である私から質問がある。"
+                  "text": "これから死地へ旅立つ少年よ。\n旅立つ前に皇帝である私から質問がある。"
                 },
                 {
                   "id": "block_1794160711736_76",
@@ -8903,7 +8923,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794160537014_72",
                   "type": "dialogue",
                   "speaker": "クソガキ",
-                  "text": "じょ、上官！\nみ、見たであります！俺、この目ではっきりと見たであります！"
+                  "text": "こ、皇帝陛下！\nみ、見たであります！俺、この目ではっきりと見たであります！"
                 },
                 {
                   "id": "block_1794160684264_74",
@@ -8920,7 +8940,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1794160795737_78",
                   "type": "narration",
-                  "text": "クソガキは指を指しながら答える。"
+                  "text": "クソガキはとある方向を指で指しながら答える。"
                 },
                 {
                   "id": "block_1794160759161_77",
@@ -8932,13 +8952,13 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794160939216_79",
                   "type": "dialogue",
                   "speaker": "ロリル",
-                  "text": "解答ご苦労であった。\nでは、我らが帝国の為に死んで征けっ！"
+                  "text": "大儀であった。\nでは、我らが帝国の為に死んで征けっ！"
                 },
                 {
                   "id": "block_1794161018167_80",
                   "type": "dialogue",
                   "speaker": "クソガキ",
-                  "text": "イエス！ユア・ハイネス！\nうおおおおお！"
+                  "text": "イエス！ユア・マジェスティ！\nうおおおおお！"
                 },
                 {
                   "id": "block_1794161105646_81",
@@ -8954,7 +8974,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                 {
                   "id": "block_1794161242470_84",
                   "type": "narration",
-                  "text": "わしゃわしゃ、と激しく頭を撫でてやる。"
+                  "text": "わしゃわしゃ、と頭を激しく撫でてやる。"
                 },
                 {
                   "id": "block_1794161235605_83",
@@ -8972,7 +8992,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794161344930_86",
                   "type": "dialogue",
                   "speaker": "田中治郎",
-                  "text": "まあ、情報が手に入ったしそうかっかするな。\nそれはそれとして、国家研究所か...以外なゴールが見えたな..."
+                  "text": "まあ、情報が手に入ったしそうかっかするな。\nそれはそれとして、国家研究所か...意外なゴールが見えたな..."
                 }
               ],
               "jumpBlockId": null,
@@ -8998,7 +9018,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794159493787_49",
                   "type": "dialogue",
                   "speaker": "蟻さんたち",
-                  "text": "| 、、、、、、、、、、   、、 、"
+                  "text": "| 、、、、、、、、、、   、、 、{ﾃｸﾃｸ...)"
                 },
                 {
                   "id": "block_1794159564757_50",
@@ -9039,7 +9059,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794159732800_55",
                   "type": "dialogue",
                   "speaker": "田中治郎",
-                  "text": "すみません。\n訪ねたいことが有りまして。お時間よろしいですか？"
+                  "text": "すみません。\nお尋ねしたいことがありまして。お時間よろしいですか？"
                 },
                 {
                   "id": "block_1794159774442_56",
@@ -9098,17 +9118,252 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
               "isCorrect": false
             }
           ]
+        },
+        {
+          "id": "block_1794234857535_1",
+          "type": "narration",
+          "text": "ようやくこの国でも目的が出来た時、後方から女性の声が聞こえた。\n"
+        },
+        {
+          "id": "block_1794234952801_3",
+          "type": "dialogue",
+          "speaker": "何の変哲もないTDNお婆さん",
+          "text": "そこの旅人さん。\n少し、話したいことがあるのだけれど。いいかしら。"
+        },
+        {
+          "id": "block_1794234933244_2",
+          "type": "narration",
+          "text": "後ろを振り返ると、渋柿を3年ほど砂漠で放置したかのような風貌の、何の変哲もない{/TDN}={\\ただの}お婆さんがいた。"
+        },
+        {
+          "id": "block_1794235177660_4",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "だ、誰....？"
+        },
+        {
+          "id": "block_1794235197763_5",
+          "type": "dialogue",
+          "speaker": "何の変哲もないTDNお婆さん",
+          "text": "そう身構えなさんな。\n御三方、ただならぬオーラをまとっているわね？\nそんなあなた達に頼みたいことがあるのだけれど...\nいいかしら？"
+        },
+        {
+          "id": "block_1794235363157_6",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "ただならぬ...オーラ...！？\n....なるほど、俺もついに最強のオーラを纏い始めたか..."
+        },
+        {
+          "id": "block_1794235431243_7",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "そんなわけないでしょ。\nお世辞って分からないの？"
+        },
+        {
+          "id": "block_1794235454679_8",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "良いだろ別に...\n...して、頼みたいことって、なんですか？"
+        },
+        {
+          "id": "block_1794235519903_11",
+          "type": "narration",
+          "text": "そんなことは分かっているぞとツァナを軽くあしらいつつ、お婆さんに疑問を投げかける。"
+        },
+        {
+          "id": "block_1794235667684_12",
+          "type": "dialogue",
+          "speaker": "何の変哲もないTDNお婆さん",
+          "text": "そうだ、その前にわたしの自己紹介をしておかなきゃねぇ。"
+        },
+        {
+          "id": "block_1794235732511_13",
+          "type": "dialogue",
+          "speaker": "何の変哲もないTDNお婆さん",
+          "text": "わたしの名前は「出見=ウル子」。\nミドルネームは内緒だわよ♡"
+        },
+        {
+          "id": "block_1794236424276_21",
+          "type": "narration",
+          "text": "続けて、こちらも順に自己紹介をする。"
+        },
+        {
+          "id": "block_1794236088170_16",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "僕は治郎です。"
+        },
+        {
+          "id": "block_1794236103736_17",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "私はケツァナよ。"
+        },
+        {
+          "id": "block_1794236121997_18",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "私はロリルです。\nはじめまして。"
+        },
+        {
+          "id": "block_1794236174910_19",
+          "type": "dialogue",
+          "speaker": "出見=ウル子",
+          "text": "それで、頼みたいことについてだったわね。\nそうね、あなた達に、私の用意したクエストを受けてほしいの。"
+        },
+        {
+          "id": "block_1794236380730_20",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "クエスト？"
+        },
+        {
+          "id": "block_1794236454619_22",
+          "type": "narration",
+          "text": "クエスト、というと酒場などで出されているあのクエストのことだろうか。"
+        },
+        {
+          "id": "block_1794236482337_23",
+          "type": "dialogue",
+          "speaker": "出見=ウル子",
+          "text": "あなた達には、"
+        },
+        {
+          "id": "block_1794236520745_25",
+          "type": "dialogue",
+          "speaker": "出見=ウル子",
+          "text": "「巨鼠\"タロゥハム\"」を倒してほしいのよ。"
+        },
+        {
+          "id": "block_1794236776153_26",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "巨鼠\"タロゥハム\"？\nどんな魔物ですか？"
+        },
+        {
+          "id": "block_1794236821130_27",
+          "type": "dialogue",
+          "speaker": "出見=ウル子",
+          "text": "私も旅をしながら行商をやっているのだけれど、\n以前勃ち寄った....じゃなくて立ち寄った、「ﾎﾞｷｷ大草原」で、\n売る予定だった{/不向日葵}={\\ひまわらず}の種を全部食べられてしまったのよ！"
+        },
+        {
+          "id": "block_1794237096165_28",
+          "type": "dialogue",
+          "speaker": "出見=ウル子",
+          "text": "だからお願いただならぬオーラの旅人さん。\nﾎﾞｷｷ大草原に潜む巨鼠\"タロゥハム\"を倒してちょうだい。"
+        },
+        {
+          "id": "block_1794237202105_29",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "なるほど。\n状況は分かりました。"
+        },
+        {
+          "id": "block_1794237227045_30",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "巨鼠\"タロゥハム\"...？\n聞いたこと無いわね。\nそれはそうとウル子さん、報酬というか、対価はあるのよね？"
+        },
+        {
+          "id": "block_1794237356772_31",
+          "type": "dialogue",
+          "speaker": "出見=ウル子",
+          "text": "もちろん。\nこのクエストを達成してくれたら、私の店のVIP客としてサービスするわ♡"
+        },
+        {
+          "id": "block_1794237561788_33",
+          "type": "narration",
+          "text": "瞬間。ツァナの顔が固まった。"
+        },
+        {
+          "id": "block_1794237650860_34",
+          "type": "effect",
+          "effectType": "shake"
+        },
+        {
+          "id": "block_1794237553340_32",
+          "type": "dialogue",
+          "speaker": "ケツァナ",
+          "text": "(そ れ だ け か よ ッ ッ ッ ッ . . . . . . .  ！)"
+        },
+        {
+          "id": "block_1794237665579_35",
+          "type": "dialogue",
+          "speaker": "ロリル",
+          "text": "どうするの、治郎。"
+        },
+        {
+          "id": "block_1794237687838_36",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "まぁ、仕方ない、\n引き受けてもいいだろう。\n今後への投資ってことで！"
+        },
+        {
+          "id": "block_1794237748631_37",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "今のうちに善行を積んでおけばいつかきっと良いことがあるさっ...！\n\nたぶん。"
+        },
+        {
+          "id": "block_1794237787030_38",
+          "type": "dialogue",
+          "speaker": "ロリルｓ",
+          "text": "さすが治郎。私に出来ないことを平然とやってのける。\nそこに痺れる、憧れるー。"
+        },
+        {
+          "id": "block_1794237843623_39",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "ロリルお前、その言い回しどうやって思いついたんだよ..."
+        },
+        {
+          "id": "block_1794237890528_40",
+          "type": "effect",
+          "effectType": "blackoutOn"
+        },
+        {
+          "id": "block_1794237895660_41",
+          "type": "effect",
+          "effectType": "blackoutOff"
+        },
+        {
+          "id": "block_1794237900150_42",
+          "type": "dialogue",
+          "speaker": "田中治郎",
+          "text": "とりあえず今は落とし物を届けるのが最優先で、ウル子さんの依頼はその後だな。"
+        },
+        {
+          "id": "block_1794237959798_43",
+          "type": "dialogue",
+          "speaker": "出見=ウル子",
+          "text": "ありがとうね。御三方。休日はいつもこの広場の辺りにいるから。\n気長に待っているわね。"
+        },
+        {
+          "id": "block_1794238020531_44",
+          "type": "telop",
+          "text": "そうしてウル子さんと別れ、俺達は落とし物の主を追い、国家研究所へ向かうことになった。"
+        },
+        {
+          "id": "block_1794238070138_45",
+          "type": "telop",
+          "text": "第六話：起点"
+        },
+        {
+          "id": "block_1794238152255_46",
+          "type": "telop",
+          "text": "終わり。"
+        },
+        {
+          "id": "block_1794238201339_47",
+          "type": "clearchapter",
+          "resetProgress": true,
+          "endrollEnabled": false,
+          "endroll": "",
+          "endrollBgm": "",
+          "endrollScrollSeconds": 20,
+          "endrollBgmFadeSeconds": null
         }
-      ],
-      "arcId": "arc_1789833337363_9",
-      "enabled": true,
-      "requiredChapterId": "custom_1789833394406_10",
-      "requiredRank": "C",
-      "requiredProgress": 120,
-      "requiredDays": 20,
-      "startTriggerTavernKey": "facility_facility_1789441959626_2",
-      "objectiveText": "ランクをCにし、進行度を120にして20日生き延びたら城下町の酒場の店主に話しかけよう・",
-      "requiredFlag": null
+      ]
     }
   ],
   "chapterArcs": [
@@ -9233,6 +9488,12 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
       "id": "char_1789778238435_26",
       "name": "トクシュ",
       "note": "お姉さん。",
+      "kind": "main"
+    },
+    {
+      "id": "char_1794236026831_14",
+      "name": "出見=ウル子",
+      "note": "",
       "kind": "main"
     }
   ],
