@@ -9199,3 +9199,44 @@ rt {
   0%, 60% { box-shadow: 0 0 0 3px #ffe066; background-color: rgba(255, 224, 102, 0.25); }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
+
+/* ★要望対応：一覧をジャンル／レア度ごとのカーテンに分けて表示する */
+.scenariobuild-group-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scenariobuild-group-tools {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.scenariobuild-group-tool-btn {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.scenariobuild-group-head {
+  width: 100%;
+  text-align: left;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #ddd;
+  background-color: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.scenariobuild-group-head-open {
+  color: #ffd23f;
+  border-color: #ffd23f;
+}
+
+.scenariobuild-group-body {
+  padding-left: 6px;
+  margin-bottom: 6px;
+}

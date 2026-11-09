@@ -1765,6 +1765,61 @@ function buildCollapsedEntryRow(opts) {
   return row;
 }
 
+// ★要望対応：一覧を「ジャンル（分類）ごと／レア度ごと」のカーテン（開閉式）に分けて表示する共通部品。
+//   stateKey：開閉の状態を覚えておく名前／groups：[{ key, label, entries: [{ item, index }] }]／buildItem(item, index)：1件分の行を作る
+let scenarioBuildGroupOpenState = {};
+
+function scenarioBuildGroupKey(stateKey, groupKey) { return `${stateKey}:${groupKey}`; }
+
+function buildGroupedCurtainList(stateKey, groups, buildItem) {
+  const wrap = document.createElement("div");
+  wrap.className = "scenariobuild-group-wrap";
+  const visible = groups.filter(g => g.entries.length > 0 || g.showEmpty);
+  
+  const toolRow = document.createElement("div");
+  toolRow.className = "scenariobuild-group-tools";
+  [["すべて開く", true], ["すべて閉じる", false]].forEach(([label, open]) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "devmode-btn scenariobuild-group-tool-btn";
+    btn.textContent = label;
+    btn.onclick = (event) => {
+      event.stopPropagation();
+      visible.forEach(g => { scenarioBuildGroupOpenState[scenarioBuildGroupKey(stateKey, g.key)] = open; });
+      renderScenarioBuildPanel();
+    };
+    toolRow.appendChild(btn);
+  });
+  wrap.appendChild(toolRow);
+  
+  visible.forEach(group => {
+    const openKey = scenarioBuildGroupKey(stateKey, group.key);
+    const isOpen = !!scenarioBuildGroupOpenState[openKey];
+    const head = document.createElement("button");
+    head.type = "button";
+    head.className = "scenariobuild-group-head" + (isOpen ? " scenariobuild-group-head-open" : "");
+    head.textContent = `${isOpen ? "▼" : "▶"} ${group.label}（${group.entries.length}）`;
+    head.onclick = (event) => {
+      event.stopPropagation();
+      scenarioBuildGroupOpenState[openKey] = !scenarioBuildGroupOpenState[openKey];
+      renderScenarioBuildPanel();
+    };
+    wrap.appendChild(head);
+    if (!isOpen) return;
+    const body = document.createElement("div");
+    body.className = "scenariobuild-list scenariobuild-group-body";
+    if (group.entries.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "devmode-note";
+      empty.textContent = "（まだありません）";
+      body.appendChild(empty);
+    }
+    group.entries.forEach(({ item, index }) => body.appendChild(buildItem(item, index)));
+    wrap.appendChild(body);
+  });
+  return wrap;
+}
+
 function renderCustomDetailEditor(container) {
   const detail = scenarioBuildCustomDetail;
   const backBtn = document.createElement("button");
@@ -2819,6 +2874,28 @@ function scenarioSearchRun(currentChapter) {
   return { hits, truncated };
 }
 
+// ★要望対応：選択肢・ifブロックの中身／条件エディタから「戻る」時、常に話の一番最初（ルート）へ戻るのではなく、
+//   そのブロックが入っている階層（親の選択肢の中身・ifの中身・話の直下）へ戻し、該当ブロックまでスクロールして強調する
+function scenarioBuildGoBackToBlockLevel(chapter, blockId) {
+  scenarioBuildEditingIfRef = null;
+  scenarioBuildEditingOptionRef = null;
+  const isRealChapter = chapter && (scenarioProject.chapters || []).some(c => c.id === chapter.id);
+  const entry = isRealChapter ? scenarioSearchCollect(chapter).find(e => e.block.id === blockId) : null;
+  const c = entry ? entry.container : null;
+  if (isRealChapter) scenarioBuildEditingChapterId = chapter.id;
+  if (!c) {
+    scenarioBuildMainView = "editor";
+  } else if (c.kind === "if") {
+    scenarioBuildEditingIfRef = { chapterId: chapter.id, blockId: c.blockId, branch: c.branch };
+    scenarioBuildMainView = "ifBranchEditor";
+  } else {
+    scenarioBuildEditingOptionRef = { chapterId: chapter.id, blockId: c.blockId, optionId: c.optionId };
+    scenarioBuildMainView = "optionEditor";
+  }
+  scenarioBuildPendingJumpBlockId = blockId; // 戻った先で、このブロックまでスクロール＋強調（scenarioSearchApplyPendingJump）
+  renderScenarioBuildPanel();
+}
+
 // 検索結果から、該当ブロックのある画面を開く
 function scenarioSearchJump(entry) {
   const chapter = entry.chapter;
@@ -3136,6 +3213,7 @@ function renderChoiceOptionEditor(container) {
   backBtn.textContent = "← ブロック一覧に戻る";
   backBtn.onclick = (event) => {
     event.stopPropagation();
+    if (chapter && block) { scenarioBuildGoBackToBlockLevel(chapter, block.id); return; } // ★この選択肢ブロックがある階層へ戻る
     scenarioBuildMainView = "editor";
     scenarioBuildEditingOptionRef = null;
     renderScenarioBuildPanel();
@@ -3191,6 +3269,7 @@ function renderIfConditionsEditor(container) {
   backBtn.textContent = "← ブロック一覧に戻る";
   backBtn.onclick = (event) => {
     event.stopPropagation();
+    if (chapter && block) { scenarioBuildGoBackToBlockLevel(chapter, block.id); return; } // ★このifブロックがある階層へ戻る
     scenarioBuildMainView = "editor";
     scenarioBuildEditingIfRef = null;
     renderScenarioBuildPanel();
@@ -5739,6 +5818,9 @@ function getGlossaryManagerConfig() {
       "「言い換え」は「、」で区切って複数入れられます（例：月刊魔法記事の「月間魔法記事」）。2文字以上の言葉だけがタップの対象になります。",
     category: "glossary",
     collapsible: true,
+    groupField: "category", // ★要望対応：分類（ゲーム用語・熟語…）ごとのカーテンに分けて表示する
+    groupDefault: "その他",
+    groupOrder: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]),
     getEntitySummary: (entity) => "📚 " + (entity.term || "（未設定）") + (entity.reading ? "（" + entity.reading + "）" : "") + "／" + (entity.category || "その他"),
     getList: () => scenarioProject.glossary,
     fields: [
@@ -6114,6 +6196,7 @@ function renderEntityManager(container, config) {
         const newEntity = opt.build();
         config.getList().push(newEntity);
         if (config.collapsible) scenarioBuildExpandedEntityIds.add(newEntity.id); // ★追加した項目はすぐ編集できるよう展開しておく
+        if (config.groupField) scenarioBuildGroupOpenState[scenarioBuildGroupKey(config.category, newEntity[config.groupField] || config.groupDefault || "その他")] = true; // ★追加した項目のジャンルは開いておく
         markScenarioBuildDirty();
         if (config.onChange) config.onChange();
         renderScenarioBuildPanel();
@@ -6131,6 +6214,7 @@ function renderEntityManager(container, config) {
       const newEntity = config.newEntity();
       config.getList().push(newEntity);
       if (config.collapsible) scenarioBuildExpandedEntityIds.add(newEntity.id); // ★追加した項目はすぐ編集できるよう展開しておく
+      if (config.groupField) scenarioBuildGroupOpenState[scenarioBuildGroupKey(config.category, newEntity[config.groupField] || config.groupDefault || "その他")] = true; // ★追加した項目のジャンルは開いておく
       markScenarioBuildDirty();
       if (config.onChange) config.onChange();
       renderScenarioBuildPanel();
@@ -6175,6 +6259,20 @@ function renderEntityManager(container, config) {
     emptyEl.className = "devmode-note";
     emptyEl.textContent = "まだ何も登録されていません。";
     container.appendChild(emptyEl);
+    return;
+  }
+  
+  // ★要望対応：groupField が設定されているタブ（用語・語彙など）は、その項目の値ごとのカーテンに分けて並べる
+  if (config.groupField) {
+    const groupOf = e => e[config.groupField] || config.groupDefault || "その他";
+    const keys = [];
+    (config.groupOrder || []).forEach(k => { if (list.some(e => groupOf(e) === k)) keys.push(k); });
+    list.forEach(e => { if (!keys.includes(groupOf(e))) keys.push(groupOf(e)); });
+    const groups = keys.map(k => ({
+      key: k, label: k,
+      entries: list.filter(e => groupOf(e) === k).map(e => ({ item: e, index: config.getList().indexOf(e) }))
+    }));
+    container.appendChild(buildGroupedCurtainList(config.category, groups, (entity, realIndex) => buildEntityRow(config, entity, realIndex)));
     return;
   }
   

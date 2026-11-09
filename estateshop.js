@@ -4,6 +4,8 @@
 // ★対象はplayer.ownedProperties[key]（realestate.js）に「shop」というサブ状態を追加して管理する。
 
 const ESTATE_SHOP_OVERPRICE_RATIO = 1.15; // ★真価のこの倍率を超える値付けは、基本的に売れにくくなる
+const ESTATE_SHOP_SALES_MULTIPLIER = 2; // ★要望対応：商品が売れた時に受け取れる陳は、実際の売上の2倍
+const ESTATE_SHOP_SALES_MAX_PER_DAY = 1000000; // ★倍にした後の売上の上限（1店・1日あたり）
 const ESTATE_SHOP_MAX_SALES_PER_SLOT_PER_DAY = 5; // ★1日1商品あたりに売れる上限個数（暴走防止の目安値。調整可）
 
 // ★店ごとの状態（棚・バイト・貯まった陳・開閉モード）を用意する。無ければ初期化
@@ -23,7 +25,8 @@ function ensureShopState(key) {
 
 // ★バイト代（1日あたりの賃金）＝物件価格 ×（2% ＋ グレード%÷2）が仕様書の式だが、
 //   そのまま適用すると物件価格が高いほど日給が桁違いに跳ね上がり（例：230万の店で日給30万〜100万）、
-//   商品の売上（真価は数百陳程度）では到底まかなえず、売っても手元に陳が残らなくなってしまっていた。
+//   商品の売上（真価は数百陳程度）では到底まかなえなかった。
+//   （★その後の要望で、バイト代は売上からではなく主人公の所持陳から払う仕様に変わった）
 //   宿代(200陳)やサビ取り代(500陳)など他の物価と釣り合うよう、同じ式のまま100分の1のスケールに調整した
 //   （調整前の式に戻したい場合は、下のSCALEを1に戻せばよい）
 const ESTATE_SHOP_WAGE_SCALE = 0.01;
@@ -51,6 +54,12 @@ function processEstateShopDailyTick() {
 
 // ★1日分の販売シミュレーション（棚の商品ごとに、値付け・バイトの平均グレード・エリアの「客の来やすさ」から売れ行きを決める簡易モデル）
 function runEstateShopSalesForOneDay(shop, area) {
+  // ★バイト代は主人公の所持陳から払うので、払えない日は店を開けられない（売上も出ない）
+  const dueWages = shop.employees.reduce((sum, e) => sum + (e.wage || 0), 0);
+  if (dueWages > 0 && (typeof gold === "undefined" || gold < dueWages)) {
+    shop.lastReport = { income: 0, wages: 0, skipped: true };
+    return;
+  }
   const avgGrade = shop.employees.reduce((sum, e) => sum + (e.grade || 0), 0) / shop.employees.length;
   const customerRate = (area && area.estateCustomerRate != null) ? area.estateCustomerRate : 500; // ★要望対応：1〜1000（基準500＝等倍）
   const customerFactor = customerRate / 500;
@@ -83,8 +92,13 @@ function runEstateShopSalesForOneDay(shop, area) {
   
   shop.shelves = shop.shelves.filter(slot => slot.quantity > 0); // ★売り切れた棚は自動で片付く
   
+  // ★要望対応：売上は2倍（上限100万陳）で貯まり、バイト代は売上からではなく主人公の所持陳から支払う
+  const income = Math.min(ESTATE_SHOP_SALES_MAX_PER_DAY, gross * ESTATE_SHOP_SALES_MULTIPLIER);
+  shop.accumulatedGold += income;
   const wages = shop.employees.reduce((sum, e) => sum + (e.wage || 0), 0);
-  shop.accumulatedGold = Math.max(0, shop.accumulatedGold + gross - wages);
+  if (wages > 0 && typeof changeGold === "function") changeGold(-wages); // inventory.js
+  if (typeof renderStatusHUD === "function") renderStatusHUD();
+  shop.lastReport = { income, wages, skipped: false }; // ★店のメニューに「前日の営業」として出す
 }
 
 // ===================================================================
@@ -117,6 +131,10 @@ async function showShopMainMenu(area, key, goBack) {
   ];
   
   await displayMessage(`「${area.name || "自分の店"}」（${modeLabel}）`);
+  if (shop.lastReport) {
+    const r = shop.lastReport;
+    await displayMessage(r.skipped ? "前日の営業：バイト代を払えず、店を開けられなかった……" : `前日の営業：売上${r.income}陳／バイト代${r.wages}陳（バイト代は所持している陳から支払い済み）`);
+  }
   const picked = await displayChoices(choices);
   
   if (picked.next === "leave") { goBack(); return; }
@@ -283,7 +301,7 @@ async function hireShopEmployee(area, key, goBack) {
   if (picked.next === "cancel") { await goBack(); return; }
   
   const chosen = candidates[Number(picked.next)];
-  const confirmed = await showGameConfirm(`「${chosen.name}」を雇用費${chosen.hireCost}陳で雇いますか？（以後、開店中は日給${chosen.wage}陳が売上から差し引かれます）`);
+  const confirmed = await showGameConfirm(`「${chosen.name}」を雇用費${chosen.hireCost}陳で雇いますか？（以後、開店中は日給${chosen.wage}陳が、所持している陳から毎日支払われます）`);
   if (!confirmed) { await hireShopEmployee(area, key, goBack); return; }
   
   if (typeof gold === "undefined" || gold < chosen.hireCost) {
