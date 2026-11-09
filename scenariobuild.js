@@ -47,6 +47,7 @@ let scenarioProject = {
   quests: [],     // [{ id, rank, title, description, type:"hunt"|"gather", targetMonsterKey, targetItemId, targetCount, rewardGold, rewardExp, rewardItemId, rewardItemQty, builtin }, ...] ★酒場のクエスト管理タブ
   achievements: [], // [{ id, name, description, hidden, conditionType, conditionValue, classId, monsterKey, areaId, flagName, varName, rewardExp, rewardGold, rewardItemId, rewardItemQty }, ...] ★実績管理タブ（要望対応）
   tutorials: [],  // [{ id, category, title, body }, ...] ★便利タブの「チュートリアル」アイコンから見られる、カテゴリ分けされたヘルプ項目
+  glossary: [],   // [{ id, term, reading, category, meaning, aliases, example }, ...] ★便利タブの「用語・語彙」アプリの言葉（メッセージ中の言葉をタップしても解説が開く。glossary_app.js）
   classStats: {}, // { 職業名: { description, type:"normal"|"advanced"|"master", unlockFlagName, baseStats:{...}, maxSleepiness, maxFatigue, growthPerLevel:{...} }, ... } ★主人公の職業のステータス編集用（追加・削除可能）
   facilities: [], // [{ id, type:"inn"|"townhall"|"flavor", name, bgTrack, bgImage, ownerDialogue, price, sleepinessRecovery, fatigueRecovery, classChangeCost, allowedClassNames }, ...] ★村の「酒場/宿屋/店/冒険する」に追加できる施設
   bgmTracks: [],  // [{ id, name, path }, ...] ★名前とファイルパスを登録しておくと、曲名として選べるようになる
@@ -246,6 +247,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   ensureCustomQuestsRegistered();
   scenarioProject.achievements = data.achievements || []; // ★実績管理タブ（要望対応）
   scenarioProject.tutorials = data.tutorials || [];
+  scenarioProject.glossary = Array.isArray(data.glossary) ? data.glossary : []; // ★用語・語彙アプリ
   scenarioProject.classStats = data.classStats || {};
   scenarioProject.facilities = data.facilities || [];
   scenarioProject.portraitCharacters = data.portraitCharacters || [];
@@ -391,7 +393,7 @@ async function commitScenarioBuildSave() {
     }
   }
   saveCustomScenarioData();
-  if (typeof dmAutoCommitAfterSave === "function") dmAutoCommitAfterSave(); // datamerge.js：保存のたびに変更のあった項目だけをコミット履歴に記録
+  // ※コミット・クラウド同期は、保存では行わない。ヘッダーの「🔄 コミット＆同期」ボタン（datamerge_cloud.js の dmCommitAndSync）で行う
   scenarioBuildHasUnsavedChanges = false;
   updateScenarioBuildSaveButton();
 }
@@ -601,6 +603,7 @@ function normalizeScenarioProject() {
   if (!Array.isArray(scenarioProject.quests)) scenarioProject.quests = [];
   if (!Array.isArray(scenarioProject.achievements)) scenarioProject.achievements = []; // ★実績管理タブ（要望対応）
   if (!Array.isArray(scenarioProject.tutorials)) scenarioProject.tutorials = [];
+  if (!Array.isArray(scenarioProject.glossary)) scenarioProject.glossary = []; // ★用語・語彙アプリ
   if (!Array.isArray(scenarioProject.facilities)) scenarioProject.facilities = [];
   if (!Array.isArray(scenarioProject.portraitCharacters)) scenarioProject.portraitCharacters = []; // ★立ち絵管理（キャラごとの通常時画像＋表情一覧）
   if (!scenarioProject.classStats || typeof scenarioProject.classStats !== "object") scenarioProject.classStats = {};
@@ -1581,6 +1584,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "quests", label: "クエスト管理" },
   { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
   { view: "tutorials", label: "チュートリアル管理" },
+  { view: "glossary", label: "用語・語彙" }, // ★便利タブの「用語・語彙」アプリの言葉（ルビ・意味の解説）。メッセージ中の言葉をタップすると解説が開く
   { view: "skills", label: "スキル管理" },
   { view: "upperskills", label: "上位スキル" }, // ★要望対応：ステータスパネルで習得する、職業技とは別枠の技
   { view: "gachaskills", label: "技ガチャ" }, // ★技ガチャ：ガチャ専用の技と、確率・期間などの設定
@@ -1683,6 +1687,8 @@ function renderScenarioBuildMain() {
     renderBossFormListEditor(container);
   } else if (scenarioBuildMainView === "entityEditor") {
     renderEntityDetailEditor(container);
+  } else if (scenarioBuildMainView === "customDetail") {
+    renderCustomDetailEditor(container);
   } else if (scenarioBuildMainView === "statuses") {
     renderStatusMainList(container);
   } else if (scenarioBuildMainView === "skillBlockEditor") {
@@ -1690,6 +1696,101 @@ function renderScenarioBuildMain() {
   } else {
     renderScenarioBuildList(container);
   }
+}
+
+// ★要望対応：シナリオエディタのサブタブを、ジャンルごとのカーテン（開閉式）にまとめるための定義。
+//   どのジャンルにも入っていないタブは、自動的に末尾の「その他」にまとめる（新タブ追加時の入れ忘れ対策）
+const SCENARIOBUILD_TAB_GROUPS = [
+  { id: "chara", label: "キャラ・敵", views: ["characters", "enemies", "bosses", "companions", "classes", "portraits", "companionchat"] },
+  { id: "item", label: "アイテム・経済", views: ["items", "furniture", "fishmgmt", "recipes", "loginbonus", "randomnames"] },
+  { id: "skill", label: "スキル・戦闘", views: ["skills", "upperskills", "gachaskills", "beasts", "combos", "statuspanels", "statuses", "elements"] },
+  { id: "guild", label: "冒険者協会", views: ["towerunits", "raidunits", "guildrewards"] },
+  { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "flags", "gamevars", "endings"] },
+  { id: "world", label: "マップ・施設・BGM", views: ["maps", "facilities", "bgm"] },
+  { id: "system", label: "データ・システム", views: ["variables", "data", "tabmanager"] }
+];
+let scenarioBuildTabGroupOpen = {};
+
+function getScenarioBuildTabGroups(tabs) {
+  const used = new Set();
+  const groups = [];
+  SCENARIOBUILD_TAB_GROUPS.forEach(def => {
+    const list = def.views.map(view => tabs.find(tab => tab.view === view)).filter(Boolean);
+    list.forEach(tab => used.add(tab.view));
+    if (list.length > 0) groups.push({ id: def.id, label: def.label, tabs: list });
+  });
+  const rest = tabs.filter(tab => !used.has(tab.view));
+  if (rest.length > 0) groups.push({ id: "other", label: "その他", tabs: rest });
+  return groups;
+}
+
+// ★要望対応：おとも魔獣・技ガチャ・施設編集・ログボ報酬・出撃キャラ・タワーユニット・スキル系などの一覧を、
+//   アイテム設定と同じ「見出し＋編集ボタン」の形式にするための共通部品。
+//   見出し行だけを一覧に出し、「編集」を押すと、左（メイン）側に今までと同じ編集欄を丸ごと表示する。
+//   opts: { number, title(関数), builtin, isValid(関数), build(関数＝今までの編集行を作る処理) }
+let scenarioBuildCustomDetail = null;
+
+function buildCollapsedEntryRow(opts) {
+  const row = document.createElement("div");
+  row.className = "scenariobuild-chapter-row" + (opts.builtin ? " scenariobuild-chapter-row-builtin" : "");
+  if (opts.number != null) {
+    const numEl = document.createElement("span");
+    numEl.className = "scenariobuild-chapter-number";
+    numEl.textContent = opts.number;
+    row.appendChild(numEl);
+  }
+  const infoEl = document.createElement("div");
+  infoEl.className = "scenariobuild-chapter-info";
+  const nameEl = document.createElement("p");
+  nameEl.className = "scenariobuild-title-input";
+  nameEl.style.background = "none";
+  nameEl.style.border = "none";
+  nameEl.textContent = opts.title() || "（名前未設定）";
+  infoEl.appendChild(nameEl);
+  row.appendChild(infoEl);
+  
+  const buttonsEl = document.createElement("div");
+  buttonsEl.className = "scenariobuild-chapter-buttons";
+  const editBtn = document.createElement("button");
+  editBtn.className = "devmode-btn";
+  editBtn.textContent = "編集";
+  editBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioBuildCustomDetail = { title: opts.title, isValid: opts.isValid, build: opts.build };
+    scenarioBuildMainView = "customDetail";
+    renderScenarioBuildPanel();
+  };
+  buttonsEl.appendChild(editBtn);
+  row.appendChild(buttonsEl);
+  return row;
+}
+
+function renderCustomDetailEditor(container) {
+  const detail = scenarioBuildCustomDetail;
+  const backBtn = document.createElement("button");
+  backBtn.className = "devmode-btn";
+  backBtn.textContent = "← 一覧に戻る";
+  backBtn.onclick = (event) => {
+    event.stopPropagation();
+    scenarioBuildMainView = "list";
+    scenarioBuildCustomDetail = null;
+    renderScenarioBuildPanel();
+  };
+  container.appendChild(backBtn);
+  // ★削除・元に戻す(undo)などで対象が無くなっていたら、一覧に戻す
+  if (!detail || (detail.isValid && !detail.isValid())) {
+    scenarioBuildMainView = "list";
+    scenarioBuildCustomDetail = null;
+    renderScenarioBuildPanel();
+    return;
+  }
+  const titleEl = document.createElement("h3");
+  titleEl.textContent = `詳細設定：${detail.title() || "（名前未設定）"}`;
+  container.appendChild(titleEl);
+  const wrap = document.createElement("div");
+  wrap.className = "scenariobuild-list";
+  wrap.appendChild(detail.build());
+  container.appendChild(wrap);
 }
 
 function renderScenarioBuildSub() {
@@ -1702,25 +1803,62 @@ function renderScenarioBuildSub() {
   }
   
   tabsEl.innerHTML = "";
-  visibleTabs.forEach(tab => {
-    const btn = document.createElement("button");
-    btn.className = "devmode-btn scenariobuild-tab-btn" + (scenarioBuildSubView === tab.view ? " scenariobuild-tab-btn-active" : "");
-    btn.textContent = tab.label;
-    btn.onclick = (event) => {
+  // ★要望対応：タブをジャンルごとの「カーテン」にまとめ、見出しを押すと開閉できるようにした
+  //   （開いているタブがあるジャンルは、初回表示時に自動で開く）
+  const groups = getScenarioBuildTabGroups(visibleTabs);
+  // ★要望対応：縦幅を取らないよう、ジャンルの見出しは横4列×縦2列までのグリッドにし、開いているジャンルのタブだけを
+  //   その下に1か所で出す（同時に開けるのは1ジャンルだけ。もう一度押すと閉じる）
+  const openGroupId = Object.keys(scenarioBuildTabGroupOpen).find(id => scenarioBuildTabGroupOpen[id] && groups.some(g => g.id === id))
+    || (scenarioBuildTabGroupOpen.__init ? null : (groups.find(g => g.tabs.some(tab => tab.view === scenarioBuildSubView)) || {}).id);
+  scenarioBuildTabGroupOpen = {};
+  scenarioBuildTabGroupOpen.__init = true;
+  if (openGroupId) scenarioBuildTabGroupOpen[openGroupId] = true;
+  
+  const headGrid = document.createElement("div");
+  headGrid.className = "scenariobuild-tab-group-grid";
+  groups.forEach(group => {
+    const isOpen = openGroupId === group.id;
+    const head = document.createElement("button");
+    head.type = "button";
+    head.className = "scenariobuild-tab-group-head" + (isOpen ? " scenariobuild-tab-group-head-open" : "");
+    head.textContent = (isOpen ? "▼ " : "▶ ") + group.label;
+    head.onclick = (event) => {
       event.stopPropagation();
-      scenarioBuildSubView = tab.view;
-      if (tab.view === "maps") {
-        scenarioBuildMainView = "maps"; // ★マップ設定タブを開いたら、メイン側もインタラクティブな地図画面に切り替える
-        renderScenarioBuildPanel();
-      } else if (tab.view === "statuses") {
-        scenarioBuildMainView = "statuses"; // ★状態管理タブを開いたら、メイン側に状態異常/強化の一覧を出す
-        renderScenarioBuildPanel();
-      } else {
-        renderScenarioBuildSub();
-      }
+      const wasOpen = !!scenarioBuildTabGroupOpen[group.id];
+      scenarioBuildTabGroupOpen = { __init: true };
+      if (!wasOpen) scenarioBuildTabGroupOpen[group.id] = true;
+      renderScenarioBuildSub();
     };
-    tabsEl.appendChild(btn);
+    headGrid.appendChild(head);
   });
+  tabsEl.appendChild(headGrid);
+  
+  const openGroup = groups.find(g => g.id === openGroupId);
+  if (openGroup) {
+    const row = document.createElement("div");
+    row.className = "scenariobuild-tab-group-body";
+    openGroup.tabs.forEach(tab => {
+      const btn = document.createElement("button");
+      btn.className = "devmode-btn scenariobuild-tab-btn" + (scenarioBuildSubView === tab.view ? " scenariobuild-tab-btn-active" : "");
+      btn.textContent = tab.label;
+      btn.onclick = (event) => {
+        event.stopPropagation();
+        scenarioBuildSubView = tab.view;
+        if (scenarioBuildMainView === "customDetail") { scenarioBuildMainView = "list"; scenarioBuildCustomDetail = null; renderScenarioBuildPanel(); } // ★別のタブへ移ったら、前のタブの詳細編集は閉じる
+        if (tab.view === "maps") {
+          scenarioBuildMainView = "maps"; // ★マップ設定タブを開いたら、メイン側もインタラクティブな地図画面に切り替える
+          renderScenarioBuildPanel();
+        } else if (tab.view === "statuses") {
+          scenarioBuildMainView = "statuses"; // ★状態管理タブを開いたら、メイン側に状態異常/強化の一覧を出す
+          renderScenarioBuildPanel();
+        } else {
+          renderScenarioBuildSub();
+        }
+      };
+      row.appendChild(btn);
+    });
+    tabsEl.appendChild(row);
+  }
   
   bodyEl.innerHTML = "";
   
@@ -1735,6 +1873,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "companionchat") renderCompanionChatSettingsManager(bodyEl); // ★要望対応：会話AI設定
   else if (scenarioBuildSubView === "achievements") renderEntityManager(bodyEl, getAchievementManagerConfig());
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
+  else if (scenarioBuildSubView === "glossary") renderEntityManager(bodyEl, getGlossaryManagerConfig());
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
   else if (scenarioBuildSubView === "combos") renderComboSkillManager(bodyEl); // ★要望対応：コンボスキル
   else if (scenarioBuildSubView === "towerunits") renderTowerUnitManager(bodyEl); // ★冒険者協会：タワーユニット（tower_defense_editor.js）
@@ -2600,6 +2739,251 @@ function getEditingChapter() {
   return scenarioProject.chapters.find(c => c.id === scenarioBuildEditingChapterId) || null;
 }
 
+// ===================================================================
+// ===== 話編集：ブロック検索（全部／章ごと／話ごと） =====
+// ===================================================================
+// ★要望対応：セリフ・地の文などの文章から、該当するブロックを探して一覧表示する。
+//   ifブロックの中・選択肢の中にあるブロックは「【※入れ子】」と表示される。
+//   結果を選ぶと、そのブロックがある画面（話のブロック一覧／ifの中身／選択肢の中身）を開いて、該当ブロックまで飛ぶ
+const SCENARIO_SEARCH_TEXT_KEYS = ["speaker", "text", "prompt", "message", "defeatMessage", "farewellMessage", "nickname", "title", "endingName", "endroll"];
+const SCENARIO_SEARCH_MAX_RESULTS = 200;
+let scenarioBuildSearchState = { open: false, query: "", scope: "current" }; // scope："current"（今開いている話）／"all"／"arc:章id"／"arc:__none__"／"chapter:話id"
+let scenarioBuildPendingJumpBlockId = null; // ★検索結果から飛んだ直後、再描画後にスクロール・強調するブロックのid
+
+// ブロックの中の「検索対象の文章」を、[{ label, text }] で返す（選択肢の文言も含む）
+function scenarioSearchTextsOf(block) {
+  const list = [];
+  SCENARIO_SEARCH_TEXT_KEYS.forEach(key => {
+    if (typeof block[key] === "string" && block[key]) list.push({ label: key === "speaker" ? "話者" : "", text: block[key] });
+  });
+  if (block.type === "choice" && Array.isArray(block.options)) {
+    block.options.forEach(opt => { if (opt && typeof opt.text === "string" && opt.text) list.push({ label: "選択肢", text: opt.text }); });
+  }
+  return list;
+}
+
+// 話の中の全ブロックを、入れ子の中まで順に集める。container＝そのブロックが直接入っている場所（nullなら話の直下）
+function scenarioSearchCollect(chapter) {
+  const out = [];
+  function walk(blocks, container, trail) {
+    (blocks || []).forEach((b, i) => {
+      const myTrail = trail.concat([String(i + 1)]);
+      out.push({ block: b, container, nested: !!container, number: myTrail.join("›"), chapter });
+      if (b.type === "if") {
+        walk(b.trueBlocks, { kind: "if", blockId: b.id, branch: "true" }, myTrail);
+        walk(b.falseBlocks, { kind: "if", blockId: b.id, branch: "false" }, myTrail);
+      } else if (b.type === "choice") {
+        (b.options || []).forEach(opt => walk(opt.blocks, { kind: "choice", blockId: b.id, optionId: opt.id }, myTrail));
+      }
+    });
+  }
+  walk(chapter.blocks, null, []);
+  return out;
+}
+
+function scenarioSearchChaptersInScope(currentChapter) {
+  const chapters = scenarioProject.chapters || [];
+  const scope = scenarioBuildSearchState.scope;
+  if (scope === "all") return chapters;
+  if (scope === "arc:__none__") return chapters.filter(c => !c.arcId);
+  if (scope.indexOf("arc:") === 0) return chapters.filter(c => c.arcId === scope.slice(4));
+  if (scope.indexOf("chapter:") === 0) return chapters.filter(c => c.id === scope.slice(8));
+  return currentChapter ? [currentChapter] : [];
+}
+
+function scenarioSearchRun(currentChapter) {
+  const terms = scenarioBuildSearchState.query.toLowerCase().split(/[\s　]+/).filter(Boolean);
+  if (terms.length === 0) return { hits: [], truncated: false };
+  const hits = [];
+  let truncated = false;
+  scenarioSearchChaptersInScope(currentChapter).forEach(chapter => {
+    scenarioSearchCollect(chapter).forEach(entry => {
+      if (truncated) return;
+      const texts = scenarioSearchTextsOf(entry.block);
+      if (texts.length === 0) return;
+      const rawAll = texts.map(t => t.text).join("\n").toLowerCase();
+      const plainAll = stripRubyNotation(texts.map(t => t.text).join("\n")).toLowerCase(); // ルビ記法を外した本文でも探す
+      if (!terms.every(t => rawAll.includes(t) || plainAll.includes(t))) return;
+      if (hits.length >= SCENARIO_SEARCH_MAX_RESULTS) { truncated = true; return; }
+      // 表示用の一文：最初の語が見つかった文章から切り出す
+      let snippetSource = texts[0], pos = -1, shown = "";
+      for (const t of texts) {
+        const plain = stripRubyNotation(t.text);
+        const at = plain.toLowerCase().indexOf(terms[0]);
+        if (at >= 0) { snippetSource = t; pos = at; shown = plain; break; }
+      }
+      if (pos < 0) { shown = stripRubyNotation(snippetSource.text); }
+      hits.push({ entry, shown: shown.replace(/\s+/g, " "), pos: Math.max(pos, 0), matchLen: pos >= 0 ? terms[0].length : 0, label: snippetSource.label });
+    });
+  });
+  return { hits, truncated };
+}
+
+// ★要望対応：選択肢・ifブロックの中身／条件エディタから「戻る」時、常に話の一番最初（ルート）へ戻るのではなく、
+//   そのブロックが入っている階層（親の選択肢の中身・ifの中身・話の直下）へ戻し、該当ブロックまでスクロールして強調する
+function scenarioBuildGoBackToBlockLevel(chapter, blockId) {
+  scenarioBuildEditingIfRef = null;
+  scenarioBuildEditingOptionRef = null;
+  const isRealChapter = chapter && (scenarioProject.chapters || []).some(c => c.id === chapter.id);
+  const entry = isRealChapter ? scenarioSearchCollect(chapter).find(e => e.block.id === blockId) : null;
+  const c = entry ? entry.container : null;
+  if (isRealChapter) scenarioBuildEditingChapterId = chapter.id;
+  if (!c) {
+    scenarioBuildMainView = "editor";
+  } else if (c.kind === "if") {
+    scenarioBuildEditingIfRef = { chapterId: chapter.id, blockId: c.blockId, branch: c.branch };
+    scenarioBuildMainView = "ifBranchEditor";
+  } else {
+    scenarioBuildEditingOptionRef = { chapterId: chapter.id, blockId: c.blockId, optionId: c.optionId };
+    scenarioBuildMainView = "optionEditor";
+  }
+  scenarioBuildPendingJumpBlockId = blockId; // 戻った先で、このブロックまでスクロール＋強調（scenarioSearchApplyPendingJump）
+  renderScenarioBuildPanel();
+}
+
+// 検索結果から、該当ブロックのある画面を開く
+function scenarioSearchJump(entry) {
+  const chapter = entry.chapter;
+  scenarioBuildEditingChapterId = chapter.id;
+  scenarioBuildEditingIfRef = null;
+  scenarioBuildEditingOptionRef = null;
+  const c = entry.container;
+  if (!c) {
+    scenarioBuildMainView = "editor";
+  } else if (c.kind === "if") {
+    scenarioBuildEditingIfRef = { chapterId: chapter.id, blockId: c.blockId, branch: c.branch };
+    scenarioBuildMainView = "ifBranchEditor";
+  } else {
+    scenarioBuildEditingOptionRef = { chapterId: chapter.id, blockId: c.blockId, optionId: c.optionId };
+    scenarioBuildMainView = "optionEditor";
+  }
+  scenarioBuildPendingJumpBlockId = entry.block.id;
+  renderScenarioBuildPanel();
+}
+
+// 再描画後に、飛び先のブロックまでスクロールして一瞬強調する
+function scenarioSearchApplyPendingJump() {
+  const id = scenarioBuildPendingJumpBlockId;
+  if (!id) return;
+  scenarioBuildPendingJumpBlockId = null;
+  setTimeout(() => {
+    const rows = document.querySelectorAll("#scenariobuild-main [data-block-id]");
+    const row = Array.from(rows).find(r => r.dataset.blockId === id);
+    if (!row) return;
+    if (row.scrollIntoView) row.scrollIntoView({ block: "center", behavior: "smooth" });
+    row.classList.add("scenariobuild-search-flash");
+    setTimeout(() => row.classList.remove("scenariobuild-search-flash"), 2200);
+  }, 0);
+}
+
+function buildScenarioSearchPanel(currentChapter) {
+  const state = scenarioBuildSearchState;
+  const wrap = document.createElement("div");
+  wrap.className = "scenariobuild-search-panel";
+  // ★敵の演出・ボスイベントなど、話ではないブロック一覧の中では出さない（検索対象は「話」のブロックだけ）
+  if (!currentChapter || !(scenarioProject.chapters || []).some(c => c.id === currentChapter.id)) return wrap;
+  
+  const toggleBtn = document.createElement("button");
+  toggleBtn.className = "devmode-btn";
+  toggleBtn.textContent = state.open ? "🔍 検索を閉じる" : "🔍 ブロックを検索";
+  toggleBtn.onclick = (event) => {
+    event.stopPropagation();
+    state.open = !state.open;
+    renderScenarioBuildPanel();
+  };
+  wrap.appendChild(toggleBtn);
+  if (!state.open) return wrap;
+  
+  const controls = document.createElement("div");
+  controls.className = "scenariobuild-search-controls";
+  
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "scenariobuild-title-input";
+  input.placeholder = "探す言葉（スペース区切りで、全部を含むブロック）";
+  input.value = state.query;
+  
+  const scopeSelect = document.createElement("select");
+  scopeSelect.className = "scenariobuild-jump-select";
+  const addOption = (parent, value, label) => {
+    const o = document.createElement("option");
+    o.value = value;
+    o.textContent = label;
+    parent.appendChild(o);
+  };
+  addOption(scopeSelect, "current", `この話だけ（${currentChapter ? currentChapter.title : "—"}）`);
+  addOption(scopeSelect, "all", "全部（すべての話）");
+  const arcs = scenarioProject.chapterArcs || [];
+  if (arcs.length > 0 || (scenarioProject.chapters || []).some(c => !c.arcId)) {
+    const arcGroup = document.createElement("optgroup");
+    arcGroup.label = "章ごと";
+    arcs.forEach(arc => addOption(arcGroup, `arc:${arc.id}`, `章：${arc.name}`));
+    if (arcs.length > 0 && (scenarioProject.chapters || []).some(c => !c.arcId)) addOption(arcGroup, "arc:__none__", "章：未分類");
+    scopeSelect.appendChild(arcGroup);
+  }
+  const chapterGroup = document.createElement("optgroup");
+  chapterGroup.label = "話ごと";
+  (scenarioProject.chapters || []).forEach(c => addOption(chapterGroup, `chapter:${c.id}`, `話：${c.title}`));
+  scopeSelect.appendChild(chapterGroup);
+  scopeSelect.value = state.scope;
+  if (scopeSelect.value !== state.scope) { state.scope = "current"; scopeSelect.value = "current"; } // 削除された章・話を指していたら戻す
+  
+  controls.appendChild(input);
+  controls.appendChild(scopeSelect);
+  wrap.appendChild(controls);
+  
+  const resultEl = document.createElement("div");
+  resultEl.className = "scenariobuild-search-results";
+  wrap.appendChild(resultEl);
+  
+  const renderResults = () => {
+    resultEl.innerHTML = "";
+    if (!state.query.trim()) return;
+    const { hits, truncated } = scenarioSearchRun(currentChapter);
+    const countEl = document.createElement("div");
+    countEl.className = "devmode-note";
+    countEl.textContent = hits.length === 0 ? "見つかりませんでした。" : `${hits.length}件${truncated ? `以上（先頭${SCENARIO_SEARCH_MAX_RESULTS}件のみ表示）` : ""}見つかりました。選ぶとそのブロックへ飛びます。`;
+    resultEl.appendChild(countEl);
+    hits.forEach(hit => {
+      const { entry } = hit;
+      const btn = document.createElement("button");
+      btn.className = "devmode-btn scenariobuild-search-hit";
+      const head = document.createElement("div");
+      head.className = "scenariobuild-search-hit-head";
+      head.textContent = `${entry.chapter.title}｜ブロック${entry.number}｜${SCENARIO_BLOCK_TYPES[entry.block.type] || entry.block.type}${entry.nested ? "　【※入れ子】" : ""}`;
+      const body = document.createElement("div");
+      body.className = "scenariobuild-search-hit-body";
+      const from = Math.max(0, hit.pos - 12);
+      const to = Math.min(hit.shown.length, hit.pos + hit.matchLen + 40);
+      if (hit.label) body.appendChild(document.createTextNode(`[${hit.label}] `));
+      if (from > 0) body.appendChild(document.createTextNode("…"));
+      body.appendChild(document.createTextNode(hit.shown.slice(from, hit.pos)));
+      if (hit.matchLen > 0) {
+        const mark = document.createElement("mark");
+        mark.textContent = hit.shown.slice(hit.pos, hit.pos + hit.matchLen);
+        body.appendChild(mark);
+      }
+      body.appendChild(document.createTextNode(hit.shown.slice(hit.pos + hit.matchLen, to)));
+      if (to < hit.shown.length) body.appendChild(document.createTextNode("…"));
+      btn.appendChild(head);
+      btn.appendChild(body);
+      btn.onclick = (event) => { event.stopPropagation(); scenarioSearchJump(entry); };
+      resultEl.appendChild(btn);
+    });
+  };
+  
+  let timer = null;
+  input.oninput = () => {
+    state.query = input.value;
+    clearTimeout(timer);
+    timer = setTimeout(renderResults, 150); // 入力のたびに探すと重いので、少し待つ（入力欄は作り直さないのでカーソルは保たれる）
+  };
+  input.addEventListener("keydown", (event) => { event.stopPropagation(); }); // ★エディタ側のショートカットに奪われないようにする
+  scopeSelect.onchange = () => { state.scope = scopeSelect.value; renderResults(); };
+  renderResults();
+  return wrap;
+}
+
 function renderScenarioBlockEditor(container) {
   const chapter = getEditingChapter();
   if (!chapter) {
@@ -2627,6 +3011,9 @@ function renderScenarioBlockEditor(container) {
   introEl.className = "devmode-note";
   introEl.textContent = "上から順番に実行されます。ブロックとブロックの間の「＋」から、その位置に新しいブロックを差し込めます。「選択肢」「戦闘」は分岐先ブロックを個別に指定できます（未指定なら次のブロックに進みます）。";
   container.appendChild(introEl);
+  
+  container.appendChild(buildScenarioSearchPanel(chapter)); // ★ブロック検索（全部／章／話ごと）
+  scenarioSearchApplyPendingJump();
   
   const listEl = document.createElement("div");
   listEl.className = "scenariobuild-block-list";
@@ -2771,6 +3158,7 @@ function renderChoiceOptionEditor(container) {
   backBtn.textContent = "← ブロック一覧に戻る";
   backBtn.onclick = (event) => {
     event.stopPropagation();
+    if (chapter && block) { scenarioBuildGoBackToBlockLevel(chapter, block.id); return; } // ★この選択肢ブロックがある階層へ戻る
     scenarioBuildMainView = "editor";
     scenarioBuildEditingOptionRef = null;
     renderScenarioBuildPanel();
@@ -2798,6 +3186,9 @@ function renderChoiceOptionEditor(container) {
       : "内容を最後まで実行し終えると、選択肢ブロックの次に自然に進みます。");
   container.appendChild(introEl);
   
+  container.appendChild(buildScenarioSearchPanel(chapter)); // ★ブロック検索（全部／章／話ごと）
+  scenarioSearchApplyPendingJump();
+  
   const fakeChapter = { id: chapter.id, blocks: option.blocks }; // ★ブロック一覧描画系の関数をそのまま使い回すための仮の器
   
   const listEl = document.createElement("div");
@@ -2823,6 +3214,7 @@ function renderIfConditionsEditor(container) {
   backBtn.textContent = "← ブロック一覧に戻る";
   backBtn.onclick = (event) => {
     event.stopPropagation();
+    if (chapter && block) { scenarioBuildGoBackToBlockLevel(chapter, block.id); return; } // ★このifブロックがある階層へ戻る
     scenarioBuildMainView = "editor";
     scenarioBuildEditingIfRef = null;
     renderScenarioBuildPanel();
@@ -2885,6 +3277,9 @@ function renderIfBranchEditor(container) {
   introEl.className = "devmode-note";
   introEl.textContent = "話のブロックと同じように、会話・分岐・戦闘などを自由に組み立てられます。内容を最後まで実行し終えると、ifブロックの次に自然に進みます。";
   container.appendChild(introEl);
+  
+  container.appendChild(buildScenarioSearchPanel(chapter)); // ★ブロック検索（全部／章／話ごと）
+  scenarioSearchApplyPendingJump();
   
   const fakeChapter = { id: chapter.id, blocks: block[key] }; // ★ブロック一覧描画系の関数をそのまま使い回すための仮の器
   
@@ -3279,6 +3674,7 @@ function blockPreviewText(block) {
 function buildScenarioBlockRow(chapter, block, index) {
   const row = document.createElement("div");
   row.className = "scenariobuild-chapter-row";
+  row.dataset.blockId = block.id; // ★話内検索の結果から該当ブロックへ飛ぶ時の目印
   // ★バグ修正：以前はrow全体をdraggable=trueにしていたため、セリフ本文などのtextarea内で
   //   文字をドラッグして選択しようとしても、ブラウザがそれを「行の並び替えドラッグ」だと
   //   誤認してしまい、テキスト選択ができなかった。draggableは☰ハンドルだけに絞り、
@@ -5356,6 +5752,28 @@ function getTutorialManagerConfig() {
       { key: "requiredFlag", label: "解放条件：このフラグが立っていたら（フラグ名）", type: "text", placeholder: "空欄なら条件なし" }
     ],
     newEntity: () => ({ id: generateId("tutorial"), category: "その他", title: "新しい項目", body: "" })
+  };
+}
+
+// ★便利タブの「用語・語彙」アプリに載せる言葉（このゲーム専用の用語・ことわざ・熟語など）を編集する（glossary_app.js）
+function getGlossaryManagerConfig() {
+  return {
+    note: "便利タブの「用語・語彙」アプリの言葉を編集します。メッセージの中に「言葉」または「言い換え」と同じ文字が出てきたら、そこをタップすると解説が開きます（言葉の色は変わりません）。" +
+      "「読み」を入れると、アプリの見出しにルビが付きます。「意味の解説」と「用例」には、ルビ記法 {/漢字}={\\かんじ} も使えます。" +
+      "「言い換え」は「、」で区切って複数入れられます（例：月刊魔法記事の「月間魔法記事」）。2文字以上の言葉だけがタップの対象になります。",
+    category: "glossary",
+    collapsible: true,
+    getEntitySummary: (entity) => "📚 " + (entity.term || "（未設定）") + (entity.reading ? "（" + entity.reading + "）" : "") + "／" + (entity.category || "その他"),
+    getList: () => scenarioProject.glossary,
+    fields: [
+      { key: "term", label: "言葉", type: "text", placeholder: "例：真名" },
+      { key: "reading", label: "読み（ルビ）", type: "text", placeholder: "例：まな（空欄ならルビなし）" },
+      { key: "category", label: "分類", type: "select", options: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]).map(c => ({ value: c, label: c })) },
+      { key: "meaning", label: "意味の解説", type: "textarea", placeholder: "言葉の意味・このゲームでの使われ方（改行OK）" },
+      { key: "aliases", label: "言い換え（「、」区切り）", type: "text", placeholder: "例：月間魔法記事（空欄でOK）" },
+      { key: "example", label: "用例（任意）", type: "textarea", placeholder: "例文など（空欄でOK）" }
+    ],
+    newEntity: () => ({ id: generateId("glossary"), term: "新しい言葉", reading: "", category: "ゲーム用語", meaning: "", aliases: "", example: "" })
   };
 }
 
@@ -8026,7 +8444,12 @@ function renderUpperSkillManager(container) {
   container.appendChild(addBtn);
   const listEl = document.createElement("div");
   listEl.className = "scenariobuild-list";
-  scenarioProject.upperSkills.forEach((entry, index) => listEl.appendChild(buildUpperSkillRow(entry, index)));
+  scenarioProject.upperSkills.forEach((entry, index) => listEl.appendChild(buildCollapsedEntryRow({
+    number: `#${index + 1}`,
+    title: () => (scenarioProject.upperSkills[index] || {}).name,
+    isValid: () => !!scenarioProject.upperSkills[index],
+    build: () => buildUpperSkillRow(scenarioProject.upperSkills[index], index)
+  })));
   container.appendChild(listEl);
 }
 
@@ -8244,7 +8667,15 @@ function renderComboSkillManager(container) {
   };
   container.appendChild(addBtn);
 
-  scenarioProject.comboSkills.forEach((combo, index) => container.appendChild(buildComboSkillRow(combo, index)));
+  const comboListEl = document.createElement("div");
+  comboListEl.className = "scenariobuild-list";
+  scenarioProject.comboSkills.forEach((combo, index) => comboListEl.appendChild(buildCollapsedEntryRow({
+    number: `#${index + 1}`,
+    title: () => (scenarioProject.comboSkills[index] || {}).name,
+    isValid: () => !!scenarioProject.comboSkills[index],
+    build: () => buildComboSkillRow(scenarioProject.comboSkills[index], index)
+  })));
+  container.appendChild(comboListEl);
 }
 
 function buildComboSkillRow(combo, index) {
@@ -8695,8 +9126,21 @@ function renderSkillManager(container) {
   
   const listEl = document.createElement("div");
   listEl.className = "scenariobuild-list";
+  const slotClassName = scenarioBuildSkillClassView;
+  const findSlotSkill = (level) => scenarioProject.skills.find(s => s.className === slotClassName && s.unlockLevel === level);
   levels.forEach(level => {
-    listEl.appendChild(buildSkillSlotRow(scenarioBuildSkillClassView, level, levels));
+    const slotEntry = findSlotSkill(level);
+    if (!slotEntry) {
+      listEl.appendChild(buildSkillSlotRow(slotClassName, level, levels)); // ★空き枠は今まで通り「＋この枠に技を追加」ボタンの行
+      return;
+    }
+    listEl.appendChild(buildCollapsedEntryRow({
+      number: `Lv.${level}`,
+      builtin: slotEntry.builtin,
+      title: () => (findSlotSkill(level) || {}).name,
+      isValid: () => !!findSlotSkill(level),
+      build: () => buildSkillSlotRow(slotClassName, level, levels)
+    }));
   });
   container.appendChild(listEl);
 }
@@ -9519,7 +9963,14 @@ function renderFacilityManager(container) {
   const listEl = document.createElement("div");
   listEl.className = "scenariobuild-list";
   facilitiesToShow.forEach(facility => {
-    listEl.appendChild(buildFacilityRow(facility));
+    const facilityId = facility.id;
+    const findFacility = () => scenarioProject.facilities.find(f => f.id === facilityId);
+    listEl.appendChild(buildCollapsedEntryRow({
+      number: FACILITY_TYPE_LABELS[facility.type] || null,
+      title: () => (findFacility() || {}).name,
+      isValid: () => !!findFacility(),
+      build: () => buildFacilityRow(findFacility())
+    }));
   });
   container.appendChild(listEl);
   
@@ -12932,11 +13383,13 @@ function renderEndingListManager(container) {
   introEl.textContent = "全ての話にある「エンディング」「ゲームオーバー」ブロックを、ここでまとめて確認・編集できます（ゲームオーバーも一種のバッドエンディングとして扱っています）。詳しい分岐設定はブロックエディタ側で行ってください。";
   container.appendChild(introEl);
   
+  // ★バグ修正：以前は話の直下のブロックしか見ておらず、ifブロック・選択肢の中に入れ子になっている
+  //   エンディング／ゲームオーバーが一覧に出なかった。ブロック検索と同じ走査（入れ子の中まで）を使う
   const entries = [];
   scenarioProject.chapters.forEach(chapter => {
-    (chapter.blocks || []).forEach((block, blockIndex) => {
-      if (block.type === "ending" || block.type === "gameover") {
-        entries.push({ chapter, block, blockIndex });
+    scenarioSearchCollect(chapter).forEach(found => {
+      if (found.block.type === "ending" || found.block.type === "gameover") {
+        entries.push({ chapter, block: found.block, number: found.number, container: found.container, nested: found.nested });
       }
     });
   });
@@ -12953,7 +13406,7 @@ function renderEndingListManager(container) {
 }
 
 function buildEndingListCard(entry) {
-  const { chapter, block, blockIndex } = entry;
+  const { chapter, block } = entry;
   const persist = () => markScenarioBuildDirty();
   
   const row = document.createElement("div");
@@ -12968,7 +13421,7 @@ function buildEndingListCard(entry) {
   
   const chapterLabel = document.createElement("p");
   chapterLabel.className = "devmode-note scenariobuild-condition";
-  chapterLabel.textContent = `${chapter.title}（${blockIndex + 1}番目のブロック）`;
+  chapterLabel.textContent = `${chapter.title}（${entry.number}番目のブロック）` + (entry.nested ? "【※入れ子】" : "");
   infoEl.appendChild(chapterLabel);
   
   if (block.type === "gameover") {
@@ -13011,12 +13464,11 @@ function buildEndingListCard(entry) {
   
   const openBtn = document.createElement("button");
   openBtn.className = "devmode-btn";
-  openBtn.textContent = "この話のエディタで開く";
+  openBtn.textContent = "該当ブロックへ移動";
   openBtn.onclick = (event) => {
     event.stopPropagation();
-    scenarioBuildEditingChapterId = chapter.id;
-    scenarioBuildMainView = "editor";
-    renderScenarioBuildPanel();
+    // ★ブロック検索の結果と同じ移動処理を使う（入れ子の場合は、ifの中身／選択肢の中身の画面を開いて、そのブロックまでスクロールする）
+    scenarioSearchJump({ chapter, container: entry.container, block });
   };
   buttonsEl.appendChild(openBtn);
   
@@ -13114,7 +13566,9 @@ function renderLoginBonusManager(container) {
     if (!scenarioProject.loginBonusDays[day]) scenarioProject.loginBonusDays[day] = { gold: 0, exp: 0, items: [] };
   }
   
-  scenarioProject.loginBonusDays.forEach((dayData, dayIndex) => {
+  // ★要望対応：1〜7日目を「見出し＋編集ボタン」の一覧にし、報酬の編集欄は「編集」を押した先に出す
+  const buildLoginBonusDayBox = (dayIndex) => {
+    const dayData = scenarioProject.loginBonusDays[dayIndex];
     if (!Array.isArray(dayData.items)) dayData.items = [];
     
     const dayBox = document.createElement("div");
@@ -13200,8 +13654,27 @@ function renderLoginBonusManager(container) {
     };
     dayBox.appendChild(addItemBtn);
     
-    container.appendChild(dayBox);
+    return dayBox;
+  };
+  
+  const dayListEl = document.createElement("div");
+  dayListEl.className = "scenariobuild-list";
+  scenarioProject.loginBonusDays.forEach((dayData, dayIndex) => {
+    dayListEl.appendChild(buildCollapsedEntryRow({
+      number: `${dayIndex + 1}日目`,
+      title: () => {
+        const d = scenarioProject.loginBonusDays[dayIndex] || {};
+        const parts = [];
+        if (d.gold) parts.push(`${d.gold}陳`);
+        if (d.exp) parts.push(`経験値${d.exp}`);
+        if (Array.isArray(d.items) && d.items.length > 0) parts.push(`アイテム${d.items.length}種`);
+        return parts.length > 0 ? parts.join("／") : "（報酬なし）";
+      },
+      isValid: () => !!scenarioProject.loginBonusDays[dayIndex],
+      build: () => buildLoginBonusDayBox(dayIndex)
+    }));
   });
+  container.appendChild(dayListEl);
 }
 
 // ★要望対応：会話AI設定。パーティ名・主人公の二つ名や性格、各仲間の二つ名や性格を編集する
@@ -13391,6 +13864,7 @@ function renderDataManager(container) {
   container.appendChild(jsExportSettingsBtn);
   
   if (typeof renderDataMergeSection === "function") renderDataMergeSection(container); // datamerge.js：履歴・ファイルとのマージ
+  if (typeof renderPublicDataSection === "function") renderPublicDataSection(container); // publicdata.js：プレイヤーへの公開（クラウド）
   
   const statsEl = document.createElement("p");
   statsEl.className = "devmode-note";
@@ -13413,8 +13887,9 @@ function downloadScenarioBuildTextFile(filename, text) {
 
 // ★「シナリオのみ」（話・キャラ）を書き出す。中身はJSONそのままなので、
 //   将来スキル同様「話のブロック」以外の要素が増えても、そのまま一緒に書き出される
-function exportScenarioOnlyAsJsFile() {
-  const data = {
+// ★「シナリオのみ」（話・キャラ）の書き出しデータの中身を作る（JSファイルの書き出し・クラウドでのプレイヤーへの公開［publicdata.js］の両方で、同じ内容を使うため共通化）
+function buildScenarioOnlyExportData() {
+  return {
     version: Date.now(), // ★書き出すたびに新しいバージョンとして扱われ、次に読み込んだ時に上書き取り込みされる
     chapters: scenarioProject.chapters,
     chapterArcs: scenarioProject.chapterArcs || [],
@@ -13426,6 +13901,10 @@ function exportScenarioOnlyAsJsFile() {
       characters: scenarioProject.deletedBuiltinIds.characters || []
     }
   };
+}
+
+function exportScenarioOnlyAsJsFile() {
+  const data = buildScenarioOnlyExportData();
   const lines = [];
   if (typeof dmMarkSynced === "function") dmMarkSynced("import", "scenario", data); // datamerge.js：書き出した時点を「共通の土台」として記録
   lines.push("// scenario_only_data.js");
@@ -13438,8 +13917,9 @@ function exportScenarioOnlyAsJsFile() {
 }
 
 // ★「ゲームの基本設定のみ」（敵・ボス・アイテム・技・仲間・職業ステータス・施設・BGM・マップ）を書き出す
-function exportGameSettingsAsJsFile() {
-  const data = {
+// ★「ゲームの基本設定のみ」の書き出しデータの中身を作る（JSファイルの書き出し・クラウドでのプレイヤーへの公開［publicdata.js］の両方で、同じ内容を使うため共通化）
+function buildGameSettingsExportData() {
+  return {
     version: Date.now(),
     enemies: scenarioProject.enemies,
     bosses: scenarioProject.bosses,
@@ -13453,6 +13933,7 @@ function exportGameSettingsAsJsFile() {
     quests: scenarioProject.quests,
     achievements: scenarioProject.achievements, // ★実績管理タブ（要望対応）
     tutorials: scenarioProject.tutorials,
+    glossary: scenarioProject.glossary, // ★用語・語彙アプリ
     classStats: scenarioProject.classStats,
     facilities: scenarioProject.facilities,
     portraitCharacters: scenarioProject.portraitCharacters,
@@ -13492,6 +13973,10 @@ function exportGameSettingsAsJsFile() {
       classes: scenarioProject.deletedBuiltinIds.classes || []
     }
   };
+}
+
+function exportGameSettingsAsJsFile() {
+  const data = buildGameSettingsExportData();
   const lines = [];
   if (typeof dmMarkSynced === "function") dmMarkSynced("import", "settings", data); // datamerge.js：書き出した時点を「共通の土台」として記録
   lines.push("// game_settings_data.js");
@@ -13767,6 +14252,7 @@ async function runScenarioChapterBlocksForReal(chapter, startBlockId) {
   // ★要望対応：料理タブ等、「シナリオ再生中は使えない」機能の判定用フラグ。
   //   話の実行が始まってから終わるまでの間、ずっとtrueにしておく
   window.isScenarioChapterPlaying = true;
+  if (typeof glossarySetCurrentChapter === "function") glossarySetCurrentChapter(chapter.title); // ★用語・語彙の「初登場の話」記録用（glossary_app.js）
   // ★目標（タスク）表示は「クリア前」だけでなく「まだ始まっていない」間だけ出すためのフラグ。
   //   以前はclearedだけを見ていたため、この話を実際にプレイし始めた後もクリアするまでずっと
   //   目標表示が出続け（そのくせ「一回消えてもまた出てくる」ように見える不具合の原因になっていた）

@@ -190,3 +190,45 @@ function renderDataMergeCloudSection(container, onChanged) {
   wrap.querySelector(".dm-cloud-pull").onclick = async () => { await dmCloudPull(); if (onChanged) onChanged(); };
   wrap.querySelector(".dm-cloud-push").onclick = async () => { await dmCloudPush(); if (onChanged) onChanged(); };
 }
+
+// ===== ヘッダーの「🔄 コミット＆同期」ボタン =====
+// 保存（💾）とは別に、自分で押した時だけ、次の順に進める：
+//   ① 未保存の変更があれば、先にブラウザへ保存　② コミット（メッセージを入力。空欄なら「手動コミット」）
+//   ③ クラウドに、まだ取り込んでいない更新があれば Pull（マージ）　④ Push（クラウドの最新データへ反映）
+// 開発者アカウントでログインしていない時は、②のコミットまでで終わる
+let dmSyncRunning = false;
+async function dmCommitAndSync() {
+  if (dmSyncRunning) return;
+  dmSyncRunning = true;
+  const btn = document.getElementById("scenariobuild-sync-btn");
+  if (btn) btn.disabled = true;
+  try {
+    if (typeof scenarioBuildHasUnsavedChanges !== "undefined" && scenarioBuildHasUnsavedChanges) {
+      await commitScenarioBuildSave();   // 空データの上書き確認で「いいえ」を選んだ時は、保存されないまま残る
+      if (scenarioBuildHasUnsavedChanges) return;
+    }
+    const input = window.prompt("コミットメッセージ（空欄でもOK）", "");
+    if (input === null) return;   // キャンセル
+    const commit = await dmCommit(input.trim() || "手動コミット", "manual");
+    const commitText = commit ? `コミットしました（${commit.n}件の変更）。` : "前回のコミットから変更はありませんでした。";
+    const ready = await dmCloudReady();
+    if (!ready.ok) { await showGameAlert(`${commitText}\nクラウドとの同期はしていません：${ready.reason}`); return; }
+    const meta = await dmCloudGetMeta();
+    const localRev = await dmCloudGetLocalRev();
+    if (meta && Number(meta.rev) > localRev) {
+      const pulled = await dmCloudPull();   // クラウドの更新を、先にマージして取り込む
+      if (!pulled) return;
+    }
+    await dmCloudPush();
+  } catch (e) {
+    console.error("コミット＆同期に失敗しました", e);
+    await showGameAlert(dmCloudErrorText(e));
+  } finally {
+    dmSyncRunning = false;
+    if (btn) btn.disabled = false;
+  }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("scenariobuild-sync-btn");
+  if (btn) btn.onclick = (event) => { event.stopPropagation(); dmCommitAndSync(); };
+});

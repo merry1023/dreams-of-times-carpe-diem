@@ -471,6 +471,7 @@
           <div id="achievements-panel" class="monster-codex-panel hidden"></div>
           <div id="guild-app-panel" class="monster-codex-panel hidden"></div> <!-- ★冒険者協会アプリ（guild_app.js） -->
           <div id="beast-app-panel" class="monster-codex-panel hidden"></div> <!-- ★おとも魔獣アプリ（beast_app.js） -->
+          <div id="glossary-app-panel" class="monster-codex-panel hidden"></div> <!-- ★用語・語彙アプリ（glossary_app.js） -->
           <div id="waza-app-panel" class="monster-codex-panel hidden"></div> <!-- ★覚醒技能アプリ（waza_app.js） -->
         </div>
 
@@ -524,6 +525,7 @@
         <button id="scenariobuild-undo-btn" class="devmode-btn" title="元に戻す">↶ 元に戻す</button>
         <button id="scenariobuild-redo-btn" class="devmode-btn" title="やり直す">↷ やり直す</button>
         <button id="scenariobuild-save-btn" class="devmode-btn" title="ブラウザに保存する">💾 保存済み</button>
+        <button id="scenariobuild-sync-btn" class="devmode-btn" title="今の状態をコミットして、クラウド（開発者用の最新データ）と同期する">🔄 コミット＆同期</button>
         <button id="scenariobuild-close-btn" class="devmode-btn">▶ ゲームに戻る</button>
       </div>
     </div>
@@ -586,6 +588,7 @@
 <script src="scenariobuild.js"></script>
 <script src="datamerge.js"></script>
 <script src="datamerge_cloud.js"></script>
+<script src="publicdata.js"></script> <!-- ★要望対応：プレイヤーへの公開（クラウドから自動配信） -->
 <script src="companionchat.js"></script>
 <script src="mapareas.js"></script>
 <script src="builtin_chapters_seed.js"></script>
@@ -608,6 +611,7 @@
 <script src="beast_battle.js"></script>
 <script src="guild_app.js"></script>
 <script src="beast_app.js"></script>
+<script src="glossary_app.js"></script>
 <script src="waza_app.js"></script>
 <script src="gacha_editor.js"></script>
 <script src="beast_editor.js"></script>

@@ -41,9 +41,18 @@ function renderMapAreaManager(container) {
   addBtn.textContent = "＋新しいエリアを追加";
   addBtn.onclick = (event) => {
     event.stopPropagation();
-    createNewMapArea();
+    startMapAreaPlacement();
   };
+  syncMapAreaAddButton(addBtn);
   container.appendChild(addBtn);
+  
+  // ★要望対応：新しいエリアは、どこにもつなげず、地図でクリック／タップした場所に作る
+  const placeNoteEl = document.createElement("p");
+  placeNoteEl.className = "devmode-note" + (mapEditorPlaceMode ? " scenariobuild-condition" : "");
+  placeNoteEl.textContent = mapEditorPlaceMode
+    ? "左の地図の、エリアを置きたい場所をクリック（タップ）してください。やめる時は、もう一度ボタンを押します。"
+    : "ボタンを押したあと、地図をクリック（タップ）した場所に新しいエリアが作られます。どこにもつながらない状態で作られるので、必要なら「🔗 線をつなぐ／切る」でつなげてください。";
+  container.appendChild(placeNoteEl);
   
   const countEl = document.createElement("p");
   countEl.className = "devmode-note scenariobuild-condition";
@@ -246,17 +255,36 @@ function renderMapAreaManager(container) {
   container.appendChild(listEl);
 }
 
-function createNewMapArea() {
+// ★要望対応：「新しいエリアを追加」を押すと配置モードになり、地図をクリック／タップした場所に、
+//   どこにもつながらない状態（孤立）でエリアを作る
+let mapEditorPlaceMode = false;
+
+function syncMapAreaAddButton(btn) {
+  btn.textContent = mapEditorPlaceMode ? "📍 置く場所を地図でクリック…（押すとキャンセル）" : "＋新しいエリアを追加";
+  btn.classList.toggle("scenariobuild-filter-active", mapEditorPlaceMode);
+}
+
+function startMapAreaPlacement() {
+  mapEditorPlaceMode = !mapEditorPlaceMode; // ★もう一度押すとキャンセル
+  mapEditorConnectMode = false;
+  mapEditorConnectFirstId = null;
+  scenarioBuildMainView = "maps";
+  renderScenarioBuildPanel();
+}
+
+function createNewMapAreaAt(x, y) {
   pushUndoSnapshot();
   const newArea = {
     id: generateId("area"), name: "新しいエリア", type: "village",
-    x: 50, y: 50, bgTrack: "", bgImage: "",
+    x: Math.round(x), y: Math.round(y), bgTrack: "", bgImage: "",
     bossId: "", bossTriggerTypes: ["step"], bossStepChance: 0.08, bossExamineChance: 0.15,
     enemyIds: [], items: [], goldRewards: [], facilitySpawns: [], examineMessage: "", examineMessages: [],
     battleVariations: [], enemyLevel: null
   };
   scenarioProject.mapAreas.push(newArea);
-  scenarioProject.mapEdges.push(["village", "custom_" + newArea.id, 5]); // ★作った直後は、ひとまず村とつなげておく（あとで自由に線を切ったりつなぎ直せる）
+  // ★線（つながり）は作らない。あとから「線をつなぐ／切る」で自由につなげる
+  mapEditorPlaceMode = false;
+  mapEditorSelectedNodeId = "custom_" + newArea.id;
   markScenarioBuildDirty();
   scenarioBuildEditingMapAreaId = newArea.id; // ★作ってすぐ詳細設定に入れるようにする
   scenarioBuildMainView = "mapEditor";
@@ -314,6 +342,7 @@ function renderMapAreaFullList(container) {
   backBtn.onclick = (event) => {
     event.stopPropagation();
     window.removeEventListener("keydown", handleMapEditorKeyDown);
+    mapEditorPlaceMode = false;
     scenarioBuildMainView = "list";
     renderScenarioBuildPanel();
   };
@@ -335,8 +364,8 @@ function renderMapAreaFullList(container) {
   
   const addBtn = document.createElement("button");
   addBtn.className = "devmode-btn";
-  addBtn.textContent = "＋新しいエリアを追加";
-  addBtn.onclick = (event) => { event.stopPropagation(); createNewMapArea(); };
+  addBtn.onclick = (event) => { event.stopPropagation(); startMapAreaPlacement(); };
+  syncMapAreaAddButton(addBtn);
   toolbar.appendChild(addBtn);
   
   const connectBtn = document.createElement("button");
@@ -346,6 +375,7 @@ function renderMapAreaFullList(container) {
     event.stopPropagation();
     mapEditorConnectMode = !mapEditorConnectMode;
     mapEditorConnectFirstId = null;
+    mapEditorPlaceMode = false;
     renderScenarioBuildPanel();
   };
   toolbar.appendChild(connectBtn);
@@ -360,6 +390,13 @@ function renderMapAreaFullList(container) {
   };
   toolbar.appendChild(resetViewBtn);
   container.appendChild(toolbar);
+  
+  if (mapEditorPlaceMode) {
+    const placeNote = document.createElement("p");
+    placeNote.className = "devmode-note scenariobuild-condition";
+    placeNote.textContent = "📍 エリアを置きたい場所を地図でクリック（タップ）してください。どこにもつながらない状態で作られます。";
+    container.appendChild(placeNote);
+  }
   
   if (mapEditorConnectMode) {
     const note = document.createElement("p");
@@ -459,6 +496,7 @@ function renderMapAreaFullList(container) {
     g.appendChild(label);
     
     g.addEventListener("click", (event) => {
+      if (mapEditorPlaceMode) return; // ★配置モード中は、SVG側（地図をクリックして置く処理）に任せる
       event.stopPropagation();
       if (mapEditorPointerState && mapEditorPointerState.moved) return; // ★パン操作の終わりのクリックは無視する
       if (mapEditorNodeDragState) return; // ★ノードをドラッグして動かした直後のクリックは無視する
@@ -476,7 +514,7 @@ function renderMapAreaFullList(container) {
     // ★既に選択中のエリアだけ、その場でつまんでドラッグすると位置を動かせる（村は動かせない）
     if (node.kind === "area") {
       g.addEventListener("pointerdown", (event) => {
-        if (mapEditorConnectMode) return;
+        if (mapEditorConnectMode || mapEditorPlaceMode) return;
         if (node.id !== mapEditorSelectedNodeId) return;
         event.stopPropagation(); // ★SVG側の地図パン操作を始めさせない
         mapEditorNodeDragState = { node, moved: false };
@@ -529,6 +567,7 @@ function handleMapEditorNodeActivate(node) {
   }
   
   if (node.area) {
+    mapEditorSelectedNodeId = node.id;
     scenarioBuildEditingMapAreaId = node.area.id;
     scenarioBuildMainView = "mapEditor";
     renderScenarioBuildPanel();
@@ -588,6 +627,16 @@ function setupMapEditorPointerEvents(svg) {
     const { x: camX, y: camY, zoom } = mapEditorCamera;
     return { x: (vbX - (50 - zoom * camX)) / zoom, y: (vbY - (50 - zoom * camY)) / zoom };
   };
+  
+  if (mapEditorPlaceMode) svg.style.cursor = "crosshair";
+  let placeDownPos = null; // ★配置モード：ドラッグ（地図の移動）ではなく、ただのクリック／タップかを判定する
+  svg.addEventListener("pointerdown", (event) => { placeDownPos = { x: event.clientX, y: event.clientY }; }, true);
+  svg.addEventListener("click", (event) => {
+    if (!mapEditorPlaceMode) return;
+    if (placeDownPos && (Math.abs(event.clientX - placeDownPos.x) > 6 || Math.abs(event.clientY - placeDownPos.y) > 6)) return;
+    const pt = svgPointFromClient(event);
+    createNewMapAreaAt(pt.x, pt.y);
+  });
   
   svg.addEventListener("pointerdown", (event) => {
     if (mapEditorNodeDragState) return; // ★ノード側のpointerdownで既に処理済み（そちらがstopPropagationしている）
@@ -699,6 +748,12 @@ function handleMapEditorKeyDown(event) {
   if (scenarioBuildMainView !== "maps") { window.removeEventListener("keydown", handleMapEditorKeyDown); return; }
   if (typeof isGameDialogOpen !== "undefined" && isGameDialogOpen) return;
   if (event.repeat) return;
+  if (mapEditorPlaceMode && event.key === "Escape") { // ★配置モードのキャンセル
+    event.preventDefault();
+    mapEditorPlaceMode = false;
+    renderScenarioBuildPanel();
+    return;
+  }
   
   const nodes = getMapEditorNodes();
   const current = nodes.find(n => n.id === mapEditorSelectedNodeId);
@@ -751,6 +806,7 @@ function buildMapAreaSummaryRow(area, index) {
   editBtn.onclick = (event) => {
     event.stopPropagation();
     scenarioBuildEditingMapAreaId = area.id;
+    mapEditorSelectedNodeId = area.builtin ? area.locationKey : "custom_" + area.id; // ★「選んだエリア」として、次の新規追加のつなぎ先にもなる
     scenarioBuildMainView = "mapEditor";
     renderScenarioBuildPanel();
   };

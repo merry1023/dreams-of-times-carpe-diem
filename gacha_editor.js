@@ -195,13 +195,22 @@ function renderGachaManager(container) {
   scenarioProject.gachaSkills.forEach((entry, index) => {
     if (!Array.isArray(entry.limitBreaks)) entry.limitBreaks = [];
     for (let i = 0; i < GACHA_MAX_BREAK; i++) if (!Array.isArray(entry.limitBreaks[i])) entry.limitBreaks[i] = [];
-    listEl.appendChild(buildUpperSkillRow(entry, index, {   // scenariobuild.js（上位スキルの編集の作りを使い回す）
-      list: scenarioProject.gachaSkills,
-      hideSources: true,
-      buildTopRow: (infoEl) => gachaBuildTopRow(infoEl, entry),
-      buildCostRow: (infoEl) => gachaBuildCostRow(infoEl, entry),
-      appendExtra: (infoEl) => gachaBuildBreakEditor(infoEl, entry),
-      deleteMessage: (e) => `ガチャ技「${e.name || "名無し"}」を削除しますか？（すでに手に入れているプレイヤーのセーブデータでは、その技は使えなくなります）`
+    // ★要望対応：一覧は「見出し＋編集ボタン」だけにし、編集欄は「編集」を押した先に出す
+    listEl.appendChild(buildCollapsedEntryRow({
+      number: `#${index + 1}`,
+      title: () => (scenarioProject.gachaSkills[index] || {}).name,
+      isValid: () => !!scenarioProject.gachaSkills[index],
+      build: () => {
+        const cur = scenarioProject.gachaSkills[index];
+        return buildUpperSkillRow(cur, index, {   // scenariobuild.js（上位スキルの編集の作りを使い回す）
+          list: scenarioProject.gachaSkills,
+          hideSources: true,
+          buildTopRow: (infoEl) => gachaBuildTopRow(infoEl, cur),
+          buildCostRow: (infoEl) => gachaBuildCostRow(infoEl, cur),
+          appendExtra: (infoEl) => gachaBuildBreakEditor(infoEl, cur),
+          deleteMessage: (e) => `ガチャ技「${e.name || "名無し"}」を削除しますか？（すでに手に入れているプレイヤーのセーブデータでは、その技は使えなくなります）`
+        });
+      }
     }));
   });
   container.appendChild(listEl);
