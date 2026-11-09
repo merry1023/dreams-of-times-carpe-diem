@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1794227683681,
+  "version": 1794228230235,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -5625,7 +5625,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1789139775120_14",
           "type": "narration",
-          "text": "さすが、感の良いガk...じゃなくてロリルが気づいたようだ。"
+          "text": "さすが、勘の良いガk...じゃなくてロリルが気づいたようだ。"
         },
         {
           "id": "block_1789139760156_12",
@@ -8885,7 +8885,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794160360739_70",
                   "type": "dialogue",
                   "speaker": "ロリル",
-                  "text": "これから死地へ旅立つ少年よ。\n旅立つ前に上官である私から質問がある。"
+                  "text": "これから死地へ旅立つ少年よ。\n旅立つ前に皇帝である私から質問がある。"
                 },
                 {
                   "id": "block_1794160711736_76",
@@ -8903,7 +8903,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794160537014_72",
                   "type": "dialogue",
                   "speaker": "クソガキ",
-                  "text": "じょ、上官！\nみ、見たであります！俺、この目ではっきりと見たであります！"
+                  "text": "こ、皇帝陛下！\nみ、見たであります！俺、この目ではっきりと見たであります！"
                 },
                 {
                   "id": "block_1794160684264_74",
@@ -8932,13 +8932,13 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794160939216_79",
                   "type": "dialogue",
                   "speaker": "ロリル",
-                  "text": "解答ご苦労であった。\nでは、我らが帝国の為に死んで征けっ！"
+                  "text": "大儀であった。\nでは、我らが帝国の為に死んで征けっ！"
                 },
                 {
                   "id": "block_1794161018167_80",
                   "type": "dialogue",
                   "speaker": "クソガキ",
-                  "text": "イエス！ユア・ハイネス！\nうおおおおお！"
+                  "text": "イエス！ユア・マジェスティ！\nうおおおおお！"
                 },
                 {
                   "id": "block_1794161105646_81",
@@ -8972,7 +8972,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1794161344930_86",
                   "type": "dialogue",
                   "speaker": "田中治郎",
-                  "text": "まあ、情報が手に入ったしそうかっかするな。\nそれはそれとして、国家研究所か...以外なゴールが見えたな..."
+                  "text": "まあ、情報が手に入ったしそうかっかするな。\nそれはそれとして、国家研究所か...意外なゴールが見えたな..."
                 }
               ],
               "jumpBlockId": null,
