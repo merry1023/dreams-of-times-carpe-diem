@@ -9240,3 +9240,25 @@ rt {
   padding-left: 6px;
   margin-bottom: 6px;
 }
+
+/* ★マージ画面：ブロックをコードではなくブロックの形で表示し、違う所を赤枠で囲む */
+.dm-diff { border: 2px solid #ff3b3b !important; box-shadow: 0 0 0 1px #ff3b3b; }
+.dm-none { color: #888; font-size: 11px; }
+.dm-missing { border: 2px dashed #ff3b3b; color: #ff8a8a; font-size: 11px; padding: 3px 5px; margin: 2px 0; }
+.dm-block { background: #111; border: 2px solid #444; padding: 3px 5px; margin: 2px 0; font-size: 12px; word-break: break-all; }
+.dm-block-head { color: #ffd23f; font-size: 11px; font-weight: bold; }
+.dm-block-text { white-space: pre-wrap; line-height: 1.5; }
+.dm-block-nested { margin-left: 10px; padding-left: 4px; border-left: 3px solid #666; }
+.dm-kv { display: grid; grid-template-columns: 90px 1fr; gap: 4px; border: 2px solid transparent; padding: 1px 3px; margin: 1px 0; }
+.dm-kv-key { color: #9ad; font-size: 11px; }
+.dm-kv-val { white-space: pre-wrap; word-break: break-all; }
+.dm-blockfield { border-top: 2px solid #ffd23f; margin: 6px 0; }
+.dm-bhead { font-weight: bold; text-align: center; }
+.dm-blabel { font-size: 11px; font-weight: normal; }
+.dm-bcell { min-width: 0; padding: 1px; border: 2px solid transparent; }
+.dm-bpick { cursor: pointer; }
+.dm-bpick:hover { border-color: #fff; }
+.dm-bpick.dm-selected { border-color: #ffd23f; background: rgba(255, 210, 63, 0.12); }
+.dm-bhead.dm-selected { background: #ffd23f; color: #111; }
+.dm-same { margin: 3px 0; }
+.dm-same summary { cursor: pointer; color: #ffd23f; font-size: 12px; }
