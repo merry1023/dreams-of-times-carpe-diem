@@ -137,6 +137,23 @@ function handleGuildAppKeyDown(event) {
 }
 
 // ===== 部品 =====
+// ★詳細画面（おとも魔獣・覚醒技）をキーボードでスクロールする。上下キーで、まず画面をスクロールし、
+//   一番下まで来たらボタン（セット・戻る）の間を移動する。戻り値：キーを処理した＝true
+function guildAppDetailKeyScroll(panel, event, buttons, index) {
+  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return false;
+  event.preventDefault();
+  const step = Math.max(40, Math.round(panel.clientHeight * 0.4));
+  const atBottom = panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 2;
+  if (event.key === "ArrowDown") {
+    if (!atBottom) { panel.scrollBy({ top: step }); return true; }
+    if (buttons.length > 0) buttons[Math.min(buttons.length - 1, index + 1)].focus();
+  } else {
+    if (atBottom && index > 0) { buttons[index - 1].focus(); return true; }
+    panel.scrollBy({ top: -step });
+  }
+  return true;
+}
+
 function guildAppEl(tag, className, text) {
   const el = document.createElement(tag);
   if (className) el.className = className;

@@ -6,7 +6,7 @@
 //   1) 魔獣召喚の設定（scenarioProject.summonConfig）：技ガチャと同じ項目（消費数・確率・天井・開催期間・ハズレ枠・5凸後の返却）
 //      ＋「凸ごとの能力の倍率」。設定の部分は gacha_editor.js の gachaEditorBuildConfig を使い回している
 //   2) おとも魔獣のデータ（scenarioProject.beasts）：名前・レア度・役割・属性・画像・能力（5凸＝完成時の値）・凸の強化・相性
-// ★常時行動（idleActions）は、技の編集画面（固定項目／ブロック）を使い回して作る。連動（links）の設定は、次の段階で足す
+// ★常時行動（idleActions）は、技の編集画面（固定項目／ブロック）を使い回して作る。連動（links）も同じ作り
 // ★中身を読んで動かすのは beast.js。画像は後から設定できる（未設定の間は、属性マークと名前の頭文字の円で代用）
 
 function createNewBeast() {
@@ -18,11 +18,13 @@ function createNewBeast() {
     limitBreaks: [[], [], [], [], []],
     affinities: [],
     idleActions: [],   // 常時行動の候補（最大3つ）。それぞれが「技のデータ＋重み・クールタイム・使える条件」
-    links: []          // ★連動（次の段階で、編集画面を足す）
+    links: [],         // 連動（最大3つ）。技のデータ＋きっかけ・使った人・クールタイム・解放される凸
+    linkMaxPerTurn: 1  // 1ターンの連動の発動回数の上限
   };
 }
 
 const BEAST_IDLE_ACTION_MAX = 3;
+const BEAST_LINK_MAX = 3;
 
 // 常時行動の候補を1つ新しく作る（技の入れ物は、ガチャ技と同じ。ガチャ専用の項目だけ外す）
 function createNewBeastIdleAction() {
@@ -38,7 +40,7 @@ function createNewBeastIdleAction() {
 // ブロックエディタ（技の編集画面）が、編集中の技を探す時に使う（scenariobuild.js の getEditingSkill から呼ぶ）
 function beastEditorFindIdleAction(id) {
   for (const beast of (scenarioProject.beasts || [])) {
-    const found = (beast.idleActions || []).find(a => a && a.id === id);
+    const found = (beast.idleActions || []).find(a => a && a.id === id) || (beast.links || []).find(a => a && a.id === id);
     if (found) return found;
   }
   return null;
@@ -184,6 +186,7 @@ function buildBeastRow(entry, index) {
 
   // --- 常時行動 ---
   infoEl.appendChild(buildBeastIdleActionEditor(entry));
+  infoEl.appendChild(buildBeastLinkEditor(entry));
   // --- 凸の強化 ---
   infoEl.appendChild(buildBeastBreakEditor(entry));
   // --- 相性 ---
@@ -269,7 +272,7 @@ function buildBeastAffinityEditor(entry) {
   details.appendChild(summary);
   const note = document.createElement("p");
   note.className = "devmode-note";
-  note.textContent = "相性の良い仲間がパーティにいる戦闘で、効果が付きます（戦闘の開始時に判定し、その戦闘の間は固定）。「おとも魔獣をセット」の一覧に「◎ ○○と相性が良い」と出ます。ifブロックで使う変数「相性」は、連動の段階で追加します。";
+  note.textContent = "相性の良い仲間がパーティにいる戦闘で、効果が付きます（戦闘の開始時に判定し、その戦闘の間は固定）。「おとも魔獣をセット」の一覧に「◎ ○○と相性が良い」と出ます。ifブロックでは、変数「相性」（相性の良い仲間がパーティにいれば1、いなければ0）が使えます。";
   details.appendChild(note);
   const persist = () => markScenarioBuildDirty();
   const targetOptions = [{ value: "player", label: "主人公" }].concat((scenarioProject.companions || []).map(c => ({ value: c.id, label: c.name || c.id })));
@@ -324,7 +327,7 @@ function buildBeastIdleActionEditor(entry) {
     "魔獣は、毎ターン、主人公・仲間の行動がすべて終わったあと（敵のターンの前）に1回、自動で行動します。",
     "行動の候補のうち、「クールタイムが明けていて」「使える条件を満たす」ものから、重みの割合でランダムに選びます。使える候補が無ければ通常攻撃です。",
     "固定項目で作れるのは、攻撃と回復だけです（回復は、単体なら一番HPの割合が低い味方を、全体なら全員を回復します）。支援などは「ブロックで組む」で作ってください。SP・焦力は使いません。",
-    "使える条件の式で使える変数：魔獣HP割合／味方最低HP割合（主人公・生きている仲間・魔獣のうち一番低い割合）／味方人数／敵数／敵HP割合（狙う敵）／自分HP割合（主人公）／ターン数／乱数／凸数 など（例：味方最低HP割合 < 0.7）"
+    "使える条件の式で使える変数：魔獣HP割合／味方最低HP割合（主人公・生きている仲間・魔獣のうち一番低い割合）／味方人数／敵数／敵HP割合（狙う敵）／自分HP割合（主人公）／ターン数／乱数／凸数／相性 など（例：味方最低HP割合 < 0.7）"
   ].join("\n");
   details.appendChild(note);
 
@@ -363,6 +366,90 @@ function buildBeastIdleActionEditor(entry) {
   addBtn.onclick = () => {
     pushUndoSnapshot();
     entry.idleActions.push(createNewBeastIdleAction());
+    persist();
+    renderScenarioBuildPanel();
+  };
+  details.appendChild(addBtn);
+  return details;
+}
+
+// 連動：主人公・仲間が特定の技を使った時、戦闘画面の左に「連動！」ボタンが出る。タップかCキーで、魔獣が追加で行動する
+// （常時行動は、連動のあとも通常どおり動く）。1つ1つの動きは、技の編集画面（固定項目／ブロック）で作る
+function createNewBeastLink() {
+  const base = createNewBeastIdleAction();
+  ["weight", "condition"].forEach(k => delete base[k]);
+  return Object.assign(base, {
+    id: generateId("beastlink"), name: "新しい連動", enabled: true,
+    trigger: { kind: "type", value: "attack" }, userKind: "any", userCompanion: "", cooldown: 1, unlockBreak: 0
+  });
+}
+
+function buildBeastLinkEditor(entry) {
+  if (!Array.isArray(entry.links)) entry.links = [];
+  if (entry.linkMaxPerTurn == null) entry.linkMaxPerTurn = 1;
+  const details = document.createElement("details");
+  details.className = "scenariobuild-skill-details";
+  const summary = document.createElement("summary");
+  summary.textContent = `連動（仲間の技に合わせて発動：${entry.links.length}／${BEAST_LINK_MAX}）`;
+  details.appendChild(summary);
+  const note = document.createElement("p");
+  note.className = "devmode-note";
+  note.style.whiteSpace = "pre-wrap";
+  note.textContent = [
+    "主人公・仲間が、「きっかけ」に合う技を使うと、画面の左から「連動！ 発動可能！」のボタンが出ます（最大2つ）。タップかCキー（2つ出ている時は、Cを押したまま↑↓で選び、離すと発動）で、魔獣がその場で行動します。\n連動しても、そのターンの常時行動は動きます。連動は行動可能数を消費せず、連動が別の連動を起こすことはありません。確率は使いません。\n解放される凸：その凸になるまで、ボタンは出ません（0＝最初から）。"
+  ].join("\n");
+  details.appendChild(note);
+  const persist = () => markScenarioBuildDirty();
+  const topTools = tdEditorFieldTools(entry, details, persist);
+  topTools.numberField(topTools.addRow(), "linkMaxPerTurn", "1ターンの連動の発動回数の上限（魔獣ごと）", 1, 9, 1);
+
+  const kindOptions = [{ value: "name", label: "技の名前" }, { value: "element", label: "技の属性" }, { value: "type", label: "技の種類" }];
+  const typeOptions = [{ value: "attack", label: "攻撃" }, { value: "heal", label: "回復" }, { value: "buff", label: "自己強化" }];
+  const elementOptions = [{ value: "無", label: "無" }].concat((scenarioProject.elementDefs || []).map(el => ({ value: el.id, label: el.name || el.id })));
+  const companionOptions = [{ value: "", label: "（選んでください）" }].concat((scenarioProject.companions || []).map(c => ({ value: c.id, label: c.name || c.id })));
+
+  const listEl = document.createElement("div");
+  listEl.className = "scenariobuild-list";
+  entry.links.forEach((link, index) => {
+    if (link.enabled == null) link.enabled = true;
+    if (!link.trigger || typeof link.trigger !== "object") link.trigger = { kind: "type", value: "attack" };
+    listEl.appendChild(buildUpperSkillRow(link, index, {
+      list: entry.links,
+      hideSources: true,
+      buildTopRow: (infoEl) => {
+        const t = tdEditorFieldTools(link, infoEl, persist);
+        const tt = tdEditorFieldTools(link.trigger, infoEl, persist);
+        const r1 = t.addRow();
+        tt.selectField(r1, "kind", "きっかけ", kindOptions, () => { link.trigger.value = ""; renderScenarioBuildPanel(); });
+        if (link.trigger.kind === "type") tt.selectField(r1, "value", "種類", typeOptions);
+        else if (link.trigger.kind === "element") tt.selectField(r1, "value", "属性", elementOptions);
+        else tt.textField(r1, "value", "技の名前", "例：ファイアボール");
+        const r2 = t.addRow();
+        t.selectField(r2, "userKind", "使った人", [{ value: "any", label: "誰でも" }, { value: "player", label: "主人公だけ" }, { value: "companion", label: "特定の仲間だけ" }], () => renderScenarioBuildPanel());
+        if (link.userKind === "companion") t.selectField(r2, "userCompanion", "仲間", companionOptions);
+        const r3 = t.addRow();
+        t.numberField(r3, "cooldown", "クールタイム（ターン）", 0, 99, 1);
+        t.numberField(r3, "unlockBreak", "解放される凸", 0, 5, 1);
+        r3.appendChild(buildSkillCheckboxInline(link, "enabled", "使う"));
+      },
+      buildCostRow: (infoEl) => {
+        const costNote = document.createElement("div");
+        costNote.className = "devmode-note";
+        costNote.textContent = "魔獣の行動は、SP・焦力を使いません。";
+        infoEl.appendChild(costNote);
+      },
+      deleteMessage: (a) => `連動「${a.name || "名無し"}」を削除しますか？`
+    }));
+  });
+  details.appendChild(listEl);
+
+  const addBtn = document.createElement("button");
+  addBtn.className = "devmode-btn";
+  addBtn.textContent = "＋連動を足す";
+  addBtn.disabled = entry.links.length >= BEAST_LINK_MAX;
+  addBtn.onclick = () => {
+    pushUndoSnapshot();
+    entry.links.push(createNewBeastLink());
     persist();
     renderScenarioBuildPanel();
   };

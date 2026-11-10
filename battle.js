@@ -578,12 +578,14 @@ async function runHeroActionPhase() {
       return "ended";
     }
     
+    if (typeof beastLinkSetMenu === "function") beastLinkSetMenu(true); // ★連動ボタン（Cキー）を受け付ける間（beast_battle.js）
     const action = await displayChoices([
       { text: "たたかう", next: "fight" },
       { text: "こうどう", next: "action" },
       { text: "逃げる", next: "flee" },
       { text: "パス", next: "pass" } // ★要望対応：主人公も行動をパスできるようにする（仲間と同じく、パスしても行動可能数は減らない）
     ]);
+    if (typeof beastLinkSetMenu === "function") beastLinkSetMenu(false);
     
     if (action.next === "pass") {
       changeSpeaker("");
@@ -622,6 +624,7 @@ async function battleLoop() {
     updateBattleActionPoints(actionsRemaining, maxActions);
     
     while (battleState && actionsRemaining > 0) {
+      if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; } // ★連動（おとも魔獣）で、行動選択中に最後の敵を倒した場合
       const order = [null].concat((player.companions || []).filter(c => c.alive)); // null＝主人公
       // ★バグ修正：動けない主人公（戦闘不能・スタン等）は行動選択を聞かれない人なので、「全員パス」の判定人数から除く
       //   （以前は動けない主人公も人数に含めて数えていたため、仲間が最後にパスしただけで、行動可能数が残っているのに敵のターンへ進んでいた）
@@ -647,12 +650,13 @@ async function battleLoop() {
         const heroResult = await runHeroActionPhase();
         if (heroResult === "ended") return;
         if (heroResult === "cancelled") continue; // ★サブメニューから「戻る」で抜けただけ：回数を消費せずもう一度主人公の選択へ
-        if (heroResult === "passed") { consecutivePasses++; cursor++; continue; } // ★パス：行動可能数は減らない
+        if (heroResult === "passed") { if (typeof beastLinkAfterAction === "function") beastLinkAfterAction(); consecutivePasses++; cursor++; continue; } // ★パス：行動可能数は減らない
         // ★主人公の行動（このターンのダメージ・状態異常等）で前の形態のHPが0になっていたら、
         //   仲間や敵のターンを待たず、ここですぐ形態移行の演出・メッセージを出す
         if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
         if (!battleState) return;
         if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
+        if (typeof beastLinkAfterAction === "function") beastLinkAfterAction(); // ★おとも魔獣の連動ボタンの更新（beast_battle.js）
         actionsRemaining--; // heroResult === "acted" または "blocked"
         if (heroResult === "blocked") { heroBlockedThisRound = true; } else { consecutivePasses = 0; } // ★動けなかった場合はパス回数に数えない（回数自体は消費する）
         cursor++;
@@ -665,6 +669,7 @@ async function battleLoop() {
         if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
         if (!battleState) return;
         if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
+        if (typeof beastLinkAfterAction === "function") beastLinkAfterAction(); // ★おとも魔獣の連動ボタンの更新
         if (acted === false) { consecutivePasses++; } else { actionsRemaining--; consecutivePasses = 0; } // ★パス（false）だけ減らない。力尽きて行動を打ち切られた場合（undefined）をパス扱いにしない
         cursor++;
         updateBattleActionPoints(actionsRemaining, maxActions);
@@ -735,6 +740,15 @@ async function battleLoop() {
     if (getAliveEnemies().length === 0) {
       await resolveBattleVictory();
       return;
+    }
+    
+    // ★おとも魔獣の連動ボタンが出ていたら、数秒だけ待つ（決定キーですぐ進める。beast_battle.js）
+    if (typeof beastLinkEndOfRoundWait === "function") {
+      await beastLinkEndOfRoundWait();
+      if (!battleState) return;
+      await announcePendingBossFormChanges();
+      if (!battleState) return;
+      if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
     }
     
     // ★おとも魔獣（beast_battle.js）：主人公・仲間の行動がすべて終わったあと、敵のターンの前に、1回だけ自動で行動する
@@ -846,6 +860,7 @@ async function handleFightMenu() {
     if (done && battleState && battleState.lastPlayerSkill) {
       const usedSkill = battleState.lastPlayerSkill;
       battleState.lastPlayerSkill = null;
+      battleState.beastLinkLastSkill = { actor: "player", skill: usedSkill }; // ★おとも魔獣の連動（beast_battle.js）：battleLoop が行動のあとにボタンを出す
       await recordSkillElementForCombo(usedSkill);
     }
     return done;
@@ -1694,7 +1709,10 @@ async function performCompanionAction(companion) {
   if (!battleState.isColosseum) actionChoices.push({ text: "道具", next: "item" }); // ★要望対応：以前は主人公のターンでしか道具を使えなかったが、仲間の行動選択でも使えるようにする（コロシアムはアイテム使用禁止）
   actionChoices.push({ text: "パス", next: "pass" }); // ★要望対応：この仲間の行動をパスできるようにする。パスすると行動回数を消費せず次の仲間へ進む
   
+  if (typeof beastLinkSetMenu === "function") beastLinkSetMenu(true); // ★連動ボタン（Cキー）を受け付ける間
   const action = await displayChoices(actionChoices);
+  if (typeof beastLinkSetMenu === "function") beastLinkSetMenu(false);
+  if (action && action.beastLinkAbort) return; // ★連動で最後の敵を倒した：battleLoop が勝利処理へ進む
   
   // ★戻り値：true＝実際に行動した（行動回数を1消費）／false＝パスした（行動回数を消費しない）
   if (action.next === "pass") {
@@ -1715,6 +1733,7 @@ async function performCompanionAction(companion) {
     if (battleState && battleState.lastCompanionSkill) {
       const usedSkill = battleState.lastCompanionSkill;
       battleState.lastCompanionSkill = null;
+      battleState.beastLinkLastSkill = { actor: companion.companionId, skill: usedSkill }; // ★おとも魔獣の連動（beast_battle.js）
       await recordSkillElementForCombo(usedSkill); // ★要望対応：コンボ履歴はパーティ共有
     }
   }
@@ -3080,6 +3099,7 @@ function buildSkillExprContext(skill, context) {
     "技威力": skill.power || 0,
     "凸数": skill.limitBreak || 0, // ★技ガチャの技の凸数（0〜5）。ガチャ技以外は0。ifブロックで凸数による分岐ができる
     "ターン数": (battleState && battleState.turnCount) || 1,
+    "相性": (context && context.caster && context.caster.isBeast && context.caster.affinityActive) ? 1 : 0, // ★おとも魔獣：相性の良い仲間がパーティにいれば1（戦闘の開始時に固定）。魔獣以外は0
     // ★要望対応：システム変数（プログラム側が持っている値）も式の中で参照できるようにする
     "眠気": (player && player.gauges && player.gauges.sleepiness) ? player.gauges.sleepiness.current : 0,
     "疲労": (player && player.gauges && player.gauges.fatigue) ? player.gauges.fatigue.current : 0,

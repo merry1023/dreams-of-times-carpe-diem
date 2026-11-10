@@ -13,7 +13,8 @@
 // ★魔獣は「仲間のふりをした入れ物」（isBeast:true の unit）として battleState.beast に持つ。
 //   gauges.hp・alive・level・displayName を持たせてあるので、既存の仲間用の計算（能力値・自己バフ・回復・ブロック技のダメージ）を
 //   そのまま使える。player.companions には入れない（入れると行動可能数・仲間用メニューなどに巻き込まれるため）
-// ★連動（仲間の技に合わせて発動するボタン）と、ifの変数「相性」は、次の段階
+// ★連動（段階3）：仲間・主人公が技を使うと、きっかけに合う連動が「ボタン」で出る。タップかCキーで魔獣が追加行動する（常時行動は別に動く）。
+//   ifの変数「相性」（相性の良い仲間がいれば1）も、ここで決めた beast.affinityActive を buildSkillExprContext（battle.js）が読む
 
 const BEAST_TARGET_WEIGHT = 0.5;   // 敵に狙われる重み（主人公・仲間は1）
 
@@ -35,9 +36,13 @@ function beastBattleInit() {
     stats, bonus,
     gauges: { hp: { current: stats.maxHp, max: stats.maxHp }, sp: { current: 0, max: 0 } },
     alive: true,
+    affinityActive: (typeof beastAffinityList === "function") && beastAffinityList(entry).some(a => a.active),   // 相性の良い仲間がいるか。戦闘の開始時に固定（変数「相性」）
     cooldowns: {},     // { 行動id: あと何回、自分のターンを休むか }
     equipment: {}
   };
+  battleState.beastLink = null;
+  battleState.beastLinkLastSkill = null;
+  beastLinkRender();
 }
 
 function beastActive() {
@@ -260,9 +265,182 @@ function updateBattleBeastHud() {
 }
 
 function hideBattleBeastHud() {
+  const linkEl = document.getElementById("battle-beast-links");
+  if (linkEl) { linkEl.classList.add("hidden"); linkEl.innerHTML = ""; }
   const el = document.getElementById("battle-beast");
   if (!el) return;
   el.classList.add("hidden");
   el.innerHTML = "";
   delete el.dataset.beastId;
 }
+
+// ===================================================================
+// ===== 連動（段階3） =====
+// ===================================================================
+// links の1つ＝技のデータ（常時行動と同じ作り）＋ { trigger:{kind:"name"|"element"|"type", value}, userKind:"any"|"player"|"companion", userCompanion,
+//   cooldown, unlockBreak, enabled }。1ターンの発動回数の上限は、魔獣ごと（entry.linkMaxPerTurn。標準1）
+const BEAST_LINK_WAIT_MS = 3000;   // ターン最後の行動のあと、ボタンを出したまま待つ時間
+
+function beastLinkState() {
+  if (typeof battleState === "undefined" || !battleState) return null;
+  if (!battleState.beastLink) battleState.beastLink = { pending: [], cooldownUntil: {}, turnUses: { turn: 0, count: 0 }, busy: false, menuOpen: false, waiting: false, selecting: false, selIndex: 0 };
+  return battleState.beastLink;
+}
+function beastLinkSetMenu(open) { const st = beastLinkState(); if (st) st.menuOpen = !!open; }
+
+// この技が、連動のきっかけ・使った人に合うか
+function beastLinkMatches(link, actorId, skill) {
+  if (!link || !skill) return false;
+  const t = link.trigger || {};
+  const value = t.value == null ? "" : String(t.value);
+  if (!value) return false;
+  if (t.kind === "name") { if (skill.name !== value) return false; }
+  else if (t.kind === "element") { if ((skill.element || "無") !== value) return false; }
+  else if (t.kind === "type") { if (skill.type !== value) return false; }
+  else return false;
+  if (link.userKind === "player") return actorId === "player";
+  if (link.userKind === "companion") return actorId !== "player" && actorId === link.userCompanion;
+  return true;
+}
+
+// 技が使われたあと、出せる連動（最大2つ）を集める
+function beastLinkCollect(actorId, skill) {
+  const beast = battleState.beast;
+  if (!beast || !beast.alive) return [];
+  const st = beastLinkState();
+  const turn = battleState.turnCount || 1;
+  const limit = Math.max(1, Math.round(Number(beast.entry.linkMaxPerTurn) || 1));
+  if (st.turnUses.turn === turn && st.turnUses.count >= limit) return [];
+  const links = Array.isArray(beast.entry.links) ? beast.entry.links : [];
+  return links
+    .filter(l => l && l.enabled !== false && beast.breakCount >= (Number(l.unlockBreak) || 0) && turn >= (st.cooldownUntil[l.id] || 0) && beastLinkMatches(l, actorId, skill))
+    .slice(0, 2).map(l => ({ link: l, skillName: skill.name }));
+}
+
+// 主人公・仲間の行動が1つ終わるたびに呼ぶ（battleLoop）。前のボタンを消し、いま使われた技に合う連動があれば出す
+function beastLinkAfterAction() {
+  const st = beastLinkState();
+  if (!st) return;
+  const last = battleState.beastLinkLastSkill;
+  battleState.beastLinkLastSkill = null;
+  st.selecting = false;
+  st.pending = (last && beastActive()) ? beastLinkCollect(last.actor, last.skill) : [];
+  beastLinkRender();
+}
+
+function beastLinkRender() {
+  const el = document.getElementById("battle-beast-links");
+  if (!el) return;
+  const st = (typeof battleState !== "undefined" && battleState) ? battleState.beastLink : null;
+  el.innerHTML = "";
+  if (!st || st.pending.length === 0) { el.classList.add("hidden"); return; }
+  el.classList.remove("hidden");
+  st.pending.forEach((item, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "battle-beast-link-btn" + (st.selecting && st.selIndex === i ? " selected" : "");
+    b.textContent = `${item.link.name || battleState.beast.displayName}と連動！ 発動可能！` + (st.pending.length > 1 ? "" : "（C）");
+    b.onclick = () => beastLinkActivate(i);
+    el.appendChild(b);
+  });
+}
+
+function beastLinkEnemiesGone() { return getAliveEnemies().length === 0; }
+
+// 連動を発動する。コマンド選択中・ターン最後の待ちの間だけ受け付ける
+async function beastLinkActivate(index) {
+  const st = beastLinkState();
+  if (!st || st.busy || !beastActive()) return;
+  if (!(st.menuOpen || st.waiting)) return;
+  if (typeof isTextDisplaying !== "undefined" && isTextDisplaying) return;
+  const item = st.pending[index];
+  if (!item || beastLinkEnemiesGone()) return;
+  const beast = battleState.beast;
+  const turn = battleState.turnCount || 1;
+  st.busy = true; st.pending = []; st.selecting = false;
+  beastLinkRender();
+  st.cooldownUntil[item.link.id] = turn + Math.max(0, Math.round(Number(item.link.cooldown) || 0)) + 1;   // クールタイムN：N回休んでから、また使える
+  st.turnUses = { turn, count: (st.turnUses.turn === turn ? st.turnUses.count : 0) + 1 };
+  const savedText = textVar.innerHTML;
+  try {
+    changeSpeaker("");
+    await displayMessage(`${item.skillName}の技に合わせて、${beast.displayName}が動いた！`);
+    const skill = beastBuildActionSkill(beast, item.link);
+    await beastExecuteSkill(beast, skill);   // 連動の行動は、さらに別の連動を起こさない（battleState.beastLinkLastSkill を触らない）
+    updateBattleHud();
+  } catch (error) {
+    console.warn("おとも魔獣の連動でエラーが出ました", error);
+  } finally {
+    st.busy = false;
+    if (beastLinkEnemiesGone()) {
+      // 連動で最後の敵を倒した：開いているコマンド選択を閉じて、battleLoop に勝利処理へ進んでもらう
+      if (st.menuOpen && typeof finishChoice === "function") finishChoice({ text: "（連動で決着）", next: "__beast_link_abort__", beastLinkAbort: true });
+    } else {
+      textVar.innerHTML = savedText;   // コマンド選択中なら、元の文章（「〇〇の番だ」など）に戻す
+    }
+  }
+}
+
+// ターン最後の行動のあと、ボタンが出ていたら数秒だけ待つ（決定キーですぐ進める）
+async function beastLinkEndOfRoundWait() {
+  const st = beastLinkState();
+  if (!st) return;
+  if (st.pending.length === 0 || !beastActive() || beastLinkEnemiesGone()) { st.pending = []; beastLinkRender(); return; }
+  st.waiting = true;
+  await new Promise(resolve => {
+    let elapsed = 0;
+    const onKey = (e) => {
+      if (KEY_CONFIG.decideKeys.includes(e.key) && !st.busy && !st.selecting && !isTextDisplaying) { e.preventDefault(); e.stopImmediatePropagation(); done(); }
+    };
+    const timer = setInterval(() => {
+      if (!battleState || beastLinkEnemiesGone() || (st.pending.length === 0 && !st.busy)) { done(); return; }
+      if (!st.busy && !st.selecting && !isTextDisplaying) elapsed += 100;
+      if (elapsed >= BEAST_LINK_WAIT_MS) done();
+    }, 100);
+    function done() { clearInterval(timer); window.removeEventListener("keydown", onKey, true); resolve(); }
+    window.addEventListener("keydown", onKey, true);
+  });
+  st.waiting = false;
+  st.pending = [];
+  beastLinkRender();
+}
+
+// ===== Cキー：ボタン1つなら押すだけで発動。2つなら、押している間は選択モード（↑↓で選び、離すと発動） =====
+function beastLinkKeyReady() {
+  const st = (typeof battleState !== "undefined" && battleState) ? battleState.beastLink : null;
+  return !!st && st.pending.length > 0 && !st.busy && (st.menuOpen || st.waiting) && !(typeof isTextDisplaying !== "undefined" && isTextDisplaying);
+}
+window.addEventListener("keydown", (e) => {
+  if (typeof battleState === "undefined" || !battleState || !battleState.beastLink) return;
+  const st = battleState.beastLink;
+  if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return;
+  if (st.selecting) {
+    if (e.key.indexOf("Arrow") === 0) {   // 選択モードの間は、矢印キーを戦闘のコマンドメニューに渡さない
+      e.preventDefault(); e.stopImmediatePropagation();
+      if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !e.repeat) {
+        const n = st.pending.length;
+        st.selIndex = (st.selIndex + (e.key === "ArrowDown" ? 1 : -1) + n) % n;
+        beastLinkRender();
+      }
+    }
+    return;
+  }
+  if ((e.key === "c" || e.key === "C") && !e.repeat && beastLinkKeyReady()) {
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (st.pending.length === 1) { beastLinkActivate(0); }
+    else { st.selecting = true; st.selIndex = 0; beastLinkRender(); }
+  }
+}, true);
+window.addEventListener("keyup", (e) => {
+  if (e.key !== "c" && e.key !== "C") return;
+  const st = (typeof battleState !== "undefined" && battleState) ? battleState.beastLink : null;
+  if (!st || !st.selecting) return;
+  const i = st.selIndex;
+  st.selecting = false;
+  beastLinkRender();
+  beastLinkActivate(i);
+}, true);
+window.addEventListener("blur", () => {
+  const st = (typeof battleState !== "undefined" && battleState) ? battleState.beastLink : null;
+  if (st && st.selecting) { st.selecting = false; beastLinkRender(); }
+});
