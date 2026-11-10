@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1794228724318,
+  "version": 1794321720792,
   "enemies": [
     {
       "id": "goblin",
@@ -25335,6 +25335,501 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "reading": "しち",
       "category": "一般語彙",
       "meaning": "死ぬかもしれない、危険な場所や立場。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_119",
+      "term": "出見=ウル子",
+      "reading": "",
+      "category": "ゲーム用語",
+      "meaning": "広場で治郎たちに声をかけてきた、旅をしながら行商をしているお婆さん。ミドルネームは内緒とのこと。巨鼠タロゥハムの討伐クエストを依頼してきた。休日はいつも、この広場の辺りにいる。",
+      "aliases": "ウル子",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_120",
+      "term": "タロゥハム",
+      "reading": "",
+      "category": "ゲーム用語",
+      "meaning": "ウル子が倒してほしいと頼んできた魔物。「巨鼠」と呼ばれる大きなネズミで、ボキキ大草原に潜んでいる。ウル子が売る予定だった不向日葵の種を、全部食べてしまった。治郎たちは聞いたことがない魔物。",
+      "aliases": "巨鼠",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_121",
+      "term": "ﾎﾞｷｷ大草原",
+      "reading": "ボキキだいそうげん",
+      "category": "ゲーム用語",
+      "meaning": "ウル子が行商の途中で立ち寄った大草原。巨鼠タロゥハムが潜んでいる。",
+      "aliases": "ボキキ大草原",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_122",
+      "term": "不向日葵",
+      "reading": "ひまわらず",
+      "category": "ゲーム用語",
+      "meaning": "ウル子が売る予定だった種の植物。名前は「向日葵（ひまわり）」に似ているが、読みは「ひまわらず」。種は巨鼠タロゥハムに全部食べられてしまった。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_123",
+      "term": "VIP客",
+      "reading": "ブイアイピーきゃく",
+      "category": "一般語彙",
+      "meaning": "特別な待遇を受ける、大切なお客さん。ウル子がクエストの報酬として挙げたのは、自分の店のVIP客としてのサービスだった。",
+      "aliases": "VIP",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_124",
+      "term": "行商",
+      "reading": "ぎょうしょう",
+      "category": "一般語彙",
+      "meaning": "商品を持って、あちこちの土地を売り歩くこと。また、その人。",
+      "aliases": "行商人",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_125",
+      "term": "立ち寄る",
+      "reading": "たちよる",
+      "category": "一般語彙",
+      "meaning": "目的地へ向かう途中で、ちょっとだけ寄ること。",
+      "aliases": "立ち寄った、立ち寄り、立ち寄って",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_126",
+      "term": "人混み",
+      "reading": "ひとごみ",
+      "category": "一般語彙",
+      "meaning": "たくさんの人が集まって、ごった返していること。また、その場所。",
+      "aliases": "人込み",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_127",
+      "term": "物騒",
+      "reading": "ぶっそう",
+      "category": "一般語彙",
+      "meaning": "危険なことが起こりそうで、安心できない様子。また、穏やかでない言動のこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_128",
+      "term": "卑猥",
+      "reading": "ひわい",
+      "category": "一般語彙",
+      "meaning": "下品で、いやらしいこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_129",
+      "term": "頬張る",
+      "reading": "ほおばる",
+      "category": "一般語彙",
+      "meaning": "口いっぱいに食べ物を入れること。",
+      "aliases": "頬張って、頬張り",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_130",
+      "term": "一向に",
+      "reading": "いっこうに",
+      "category": "一般語彙",
+      "meaning": "「まったく」「少しも」という意味。あとに「〜ない」などの打ち消しの言葉が続く。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_131",
+      "term": "立ち入り禁止",
+      "reading": "たちいりきんし",
+      "category": "一般語彙",
+      "meaning": "その場所に入ってはいけないこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_132",
+      "term": "失せる",
+      "reading": "うせる",
+      "category": "一般語彙",
+      "meaning": "なくなる、消える。「失せろ」「失せな」は、「立ち去れ」と相手を追い払う乱暴な言い方。",
+      "aliases": "失せろ、失せな",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_133",
+      "term": "ただならぬ",
+      "reading": "",
+      "category": "一般語彙",
+      "meaning": "ふつうではない、ただごとではない、という意味。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_134",
+      "term": "風貌",
+      "reading": "ふうぼう",
+      "category": "一般語彙",
+      "meaning": "その人の顔つきや身なりなど、外見から受ける印象。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_135",
+      "term": "お世辞",
+      "reading": "おせじ",
+      "category": "一般語彙",
+      "meaning": "相手を喜ばせるために言う、うわべだけのほめ言葉。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_136",
+      "term": "あしらう",
+      "reading": "",
+      "category": "一般語彙",
+      "meaning": "相手や物事を、適当に扱うこと。「軽くあしらう」は、まともに取り合わずに相手をすること。",
+      "aliases": "あしらい、あしらっ",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_137",
+      "term": "投資",
+      "reading": "とうし",
+      "category": "一般語彙",
+      "meaning": "将来の利益や成果を見込んで、お金や時間、労力をつぎ込むこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_138",
+      "term": "対価",
+      "reading": "たいか",
+      "category": "一般語彙",
+      "meaning": "何かをしてもらったり、受け取ったりしたお返しとして支払う、お金や品物。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_139",
+      "term": "報酬",
+      "reading": "ほうしゅう",
+      "category": "一般語彙",
+      "meaning": "仕事や依頼を引き受けたお礼として、受け取るお金や品物。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_140",
+      "term": "異質",
+      "reading": "いしつ",
+      "category": "一般語彙",
+      "meaning": "性質や雰囲気が、ほかのものと違っていること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_141",
+      "term": "気長",
+      "reading": "きなが",
+      "category": "一般語彙",
+      "meaning": "のんびりと構えて、せかせかしないこと。「気長に待つ」のように使う。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_142",
+      "term": "幻想",
+      "reading": "げんそう",
+      "category": "一般語彙",
+      "meaning": "現実にはないものを、あるかのように思い描くこと。また、その思い描いたもの。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_143",
+      "term": "赴く",
+      "reading": "おもむく",
+      "category": "一般語彙",
+      "meaning": "ある場所や状況に向かって行くこと。",
+      "aliases": "赴いた、赴き",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_144",
+      "term": "大儀",
+      "reading": "たいぎ",
+      "category": "一般語彙",
+      "meaning": "「大儀であった」の形で、身分の高い人が、目下の者に「ご苦労だった」とねぎらう時に使う古風な言い方。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_145",
+      "term": "石畳",
+      "reading": "いしだたみ",
+      "category": "一般語彙",
+      "meaning": "平らな石を敷き詰めた道や広場。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_146",
+      "term": "軒先",
+      "reading": "のきさき",
+      "category": "一般語彙",
+      "meaning": "家の屋根の端（軒）のすぐ下あたり。店先、家の前という意味でも使う。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_147",
+      "term": "程よい",
+      "reading": "ほどよい",
+      "category": "一般語彙",
+      "meaning": "ちょうどよい加減であること。",
+      "aliases": "程よく",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_148",
+      "term": "歓声",
+      "reading": "かんせい",
+      "category": "一般語彙",
+      "meaning": "喜びや興奮のあまり、あげる大きな声。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_149",
+      "term": "機構",
+      "reading": "きこう",
+      "category": "一般語彙",
+      "meaning": "物事を動かすための、全体の仕組み。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_150",
+      "term": "全うする",
+      "reading": "まっとうする",
+      "category": "一般語彙",
+      "meaning": "物事を最後までやり遂げること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_151",
+      "term": "誠に",
+      "reading": "まことに",
+      "category": "一般語彙",
+      "meaning": "「本当に」「心から」という意味の、改まった言い方。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_152",
+      "term": "貴様",
+      "reading": "きさま",
+      "category": "一般語彙",
+      "meaning": "相手を見下したり、怒ったりして呼ぶ、乱暴な呼び方。もとは敬意のこもった言い方だった。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_153",
+      "term": "てめぇ",
+      "reading": "",
+      "category": "一般語彙",
+      "meaning": "相手を乱暴に呼ぶ言い方。「手前（てまえ）」がくだけた形。",
+      "aliases": "てめえ",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_154",
+      "term": "落とし物",
+      "reading": "おとしもの",
+      "category": "一般語彙",
+      "meaning": "うっかり落として、なくした物。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_155",
+      "term": "ミドルネーム",
+      "reading": "",
+      "category": "一般語彙",
+      "meaning": "名前と名字の間に入れる名前。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_156",
+      "term": "身構える",
+      "reading": "みがまえる",
+      "category": "一般語彙",
+      "meaning": "相手の出方に備えて、体や心の準備をすること。",
+      "aliases": "身構え",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_157",
+      "term": "平然",
+      "reading": "へいぜん",
+      "category": "一般語彙",
+      "meaning": "落ち着いていて、何事もなかったかのような様子。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_158",
+      "term": "やってのける",
+      "reading": "",
+      "category": "一般語彙",
+      "meaning": "難しいことや、ふつうはためらうようなことを、平気な顔で成し遂げること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_159",
+      "term": "咳払い",
+      "reading": "せきばらい",
+      "category": "一般語彙",
+      "meaning": "わざとする咳。注意を引いたり、気まずさをごまかしたりする時にする。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_160",
+      "term": "楽勝",
+      "reading": "らくしょう",
+      "category": "熟語",
+      "meaning": "苦労せず、たやすく勝つこと。また、簡単にできること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_161",
+      "term": "突撃",
+      "reading": "とつげき",
+      "category": "熟語",
+      "meaning": "敵に向かって、勢いよく攻め込むこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_162",
+      "term": "干渉",
+      "reading": "かんしょう",
+      "category": "熟語",
+      "meaning": "他人のことに口を出して、自分の思うように動かそうとすること。また、他の物事に影響を及ぼすこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_163",
+      "term": "適任",
+      "reading": "てきにん",
+      "category": "熟語",
+      "meaning": "その役目や仕事に、ぴったり合っていること。また、そういう人。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_164",
+      "term": "善行",
+      "reading": "ぜんこう",
+      "category": "熟語",
+      "meaning": "よい行い。「善行を積む」は、よいことを重ねること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_165",
+      "term": "人身売買",
+      "reading": "じんしんばいばい",
+      "category": "熟語",
+      "meaning": "人間を、商品のように売り買いすること。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_166",
+      "term": "何の変哲もない",
+      "reading": "なんのへんてつもない",
+      "category": "慣用句・ことわざ",
+      "meaning": "特に変わったところがなく、ごくありふれていること。",
+      "aliases": "変哲もない",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_167",
+      "term": "縁がない",
+      "reading": "えんがない",
+      "category": "慣用句・ことわざ",
+      "meaning": "その物事や人と、巡り合う機会や関わりがないこと。「縁がなかった」は、うまくいかなかったことを、あきらめ混じりに受け止める言い方。",
+      "aliases": "縁がなかった",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_168",
+      "term": "パッとしない",
+      "reading": "",
+      "category": "慣用句・ことわざ",
+      "meaning": "目立ついいところがなく、さえない様子。",
+      "aliases": "ぱっとしない",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_169",
+      "term": "心が洗われる",
+      "reading": "こころがあらわれる",
+      "category": "慣用句・ことわざ",
+      "meaning": "清らかなものに触れて、気持ちがすっきりと澄んでいくこと。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_170",
+      "term": "仰る通り",
+      "reading": "おっしゃるとおり",
+      "category": "慣用句・ことわざ",
+      "meaning": "相手の言ったことを正しいと認める、丁寧な言い方。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_171",
+      "term": "そこに痺れる、憧れる",
+      "reading": "そこにしびれる、あこがれる",
+      "category": "ネット・俗語",
+      "meaning": "『ジョジョの奇妙な冒険』に由来する言い回し。かっこいい行動を見て、感動した時に冗談めかして使う。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_172",
+      "term": "TDN",
+      "reading": "ただの",
+      "category": "ネット・俗語",
+      "meaning": "「ただの」と読ませる遊びの表記。見た目はネット俗語の「DQN」に似せてある。",
+      "aliases": "",
+      "example": ""
+    },
+    {
+      "id": "glossary_seed_173",
+      "term": "クソガキ",
+      "reading": "",
+      "category": "ネット・俗語",
+      "meaning": "口の悪い言い方で、いたずら好きだったり生意気だったりする子どものこと。",
       "aliases": "",
       "example": ""
     }
