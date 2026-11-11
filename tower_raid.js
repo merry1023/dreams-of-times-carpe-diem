@@ -49,6 +49,7 @@ const TR_STONE_PER_BOSS = 3;        // ボス・敵の拠点を倒すと増え�
 const TR_WAVE_CLEAR_FUNDS = 20;     // ウェーブを突破するごとに増える出撃資金
 const TR_WAVE_CLEAR_STONE = 1;      // 同・魔力石
 const TR_DRINK_EVERY = 3;           // このウェーブ数を突破するごとに、赤まむしドリンク♂が1つ増える
+const TR_WAVE_HEAL_RATE = 0.25;    // ウェーブを突破するごとに、味方全員が最大HPのこの割合だけ回復する（戦闘不能のキャラは、この割合のHPで復活する）
 const TR_LEVEL_MAX = 5;             // キャラのレベルの上限
 const TR_LEVEL_EXP_BASE = 60;       // レベルアップに使う出撃経験値＝この値×現在のレベル
 const TR_LEVEL_STAT_RATE = 0.15;    // レベルが1上がるごとに、HPと攻撃力が＋15%
@@ -291,6 +292,24 @@ function trStageGrowth(st, wave) {
 
 // ウェーブの敵を出す：迎撃モンスター（味方に向かって下りてくる）＋防衛タワー（その場から撃ってくる）。
 // 最後のウェーブだけ、ボスと「敵の拠点」（壊すとクリア）が現れる
+// ★ウェーブを突破した時：戦闘不能のキャラは自動で復活（最大HPの25%）、生きているキャラは全員25%回復する
+function trReviveAndHeal(st) {
+  const alive = st.party.filter(u => u.alive);
+  let nextY = alive.reduce((m, u) => Math.max(m, u.y), 0);
+  st.party.forEach(u => {
+    const heal = Math.max(1, Math.round(u.maxHp * TR_WAVE_HEAL_RATE));
+    if (!u.alive) {
+      u.alive = true; u.hp = Math.min(u.maxHp, heal); u.cool = 0;
+      nextY = Math.min(TR_WORLD_H - 30, nextY + 26);   // 生き残った味方の後ろに合流する
+      u.y = nextY; u.x = trLaneX(st.hand.indexOf(u.card));
+      st.popups.push({ x: u.x, y: u.y - 24, text: "復活！", color: "#59e07a", weak: false, t: 1.2 });
+    } else if (u.hp < u.maxHp) {
+      u.hp = Math.min(u.maxHp, u.hp + heal);
+      st.popups.push({ x: u.x, y: u.y - 24, text: `+${heal}`, color: "#59e07a", weak: false, t: 1.0 });
+    }
+  });
+}
+
 function trSpawnWave(st, wave) {
   const encY = trEncounterY(wave);
   const growth = trStageGrowth(st, wave);
@@ -516,6 +535,7 @@ function trStep(st, dt) {
     st.banners.push({ text: `WAVE ${st.currentWave} 突破！`, t: 1.4 });
     st.currentWave++;
     st.phase = "prep";
+    trReviveAndHeal(st);   // ★全員25%回復＋戦闘不能のキャラは復活
     if (trIsStuck(st)) st.phase = "lost";
   }
 }
@@ -550,7 +570,7 @@ function trSelectParty(roster) {
       goBtn.disabled = chosen.size === 0;
       gridEl.querySelectorAll(".td-unit-btn").forEach(btn => btn.classList.toggle("td-selected", chosen.has(btn.dataset.key)));
     }
-    infoEl.textContent = `最大${TR_PARTY_MAX}枚まで選べます（出撃の手札になります）。タップで選ぶ／外す。（キー操作：矢印＝移動／Space・Z＝決定／X＝やめる）`;
+    infoEl.innerHTML = `最大${TR_PARTY_MAX}枚まで選べます（出撃の手札）。タップで選ぶ／外す。<span class="td-keyhint">　キー：矢印＝移動／Space・Z＝決定／X＝やめる</span>`;
     roster.forEach(d => {
       const btn = document.createElement("button");
       btn.type = "button"; btn.className = "td-unit-btn"; btn.dataset.key = d.key;
@@ -597,7 +617,6 @@ function runTowerRaidBattle(rosterDefs, opts) {
           <div class="td-side">
             <div class="td-info"></div>
             <div class="td-hand"></div>
-            <div class="td-combo"></div>
             <div class="td-controls">
               <button type="button" class="td-btn td-btn-start"></button>
               <button type="button" class="td-btn td-btn-speed"></button>
@@ -605,7 +624,10 @@ function runTowerRaidBattle(rosterDefs, opts) {
             </div>
           </div>
           <div class="td-main">
-            <canvas class="td-canvas" width="${view.w * 2}" height="${view.h * 2}" style="aspect-ratio: ${view.w} / ${view.h}; --td-ar: ${view.w / view.h};"></canvas>
+            <div class="td-stage" style="--td-ar: ${view.w / view.h};">
+              <canvas class="td-canvas" width="${view.w * 2}" height="${view.h * 2}" style="aspect-ratio: ${view.w} / ${view.h};"></canvas>
+              <div class="td-combo-hud"></div>
+            </div>
           </div>
         </div>
       </div>`;
@@ -620,7 +642,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
     const hpTextEl = overlay.querySelector(".td-basehp-text");
     const infoEl = overlay.querySelector(".td-info");
     const handEl = overlay.querySelector(".td-hand");
-    const comboEl = overlay.querySelector(".td-combo");
+    const comboEl = overlay.querySelector(".td-combo-hud");   // ★コンボ履歴は、戦場の右上に薄く表示する
     const mainBtn = overlay.querySelector(".td-btn-start");
     const speedBtn = overlay.querySelector(".td-btn-speed");
     const quitBtn = overlay.querySelector(".td-btn-quit");
@@ -700,17 +722,12 @@ function runTowerRaidBattle(rosterDefs, opts) {
       });
       
       if (infoNote && performance.now() < infoNoteUntil) infoEl.textContent = infoNote;
-      else if (st.phase === "prep") infoEl.textContent = `準備中：手札から「出撃」「Lv↑」を選んで、「進軍開始」。リソースは進軍中に時間と撃破で貯まります。（キー操作：矢印＝移動／Space・Z＝決定／X＝やめる）`;
+      else if (st.phase === "prep") infoEl.innerHTML = `準備中：手札から「出撃」「Lv↑」を選んで「進軍開始」。<span class="td-keyhint">　キー：矢印＝移動／Space・Z＝決定／X＝やめる</span>`;
       else if (st.phase === "play") infoEl.textContent = "進軍中：自動で進みます。スキルは各キャラのボタンで発動。ウェーブを突破すると準備中に戻ります。";
       else infoEl.textContent = "";
       
-      if (st.combos.length === 0) {
-        comboEl.innerHTML = `<span class="td-combo-label">COMBO</span><span class="td-combo-none">使えるコンボはまだない（本編でコンボを解禁すると使える）</span>`;
-      } else {
-        const hist = st.history.length > 0 ? st.history.map(tdElementChipHtml).join('<span class="td-arrow">→</span>') : '<span class="td-combo-none">なし</span>';
-        const list = st.combos.map(c => `<div class="td-combo-item"><b>${c.name || "名無しのコンボ"}</b> ${(c.elements || []).filter(Boolean).map(tdElementChipHtml).join('<span class="td-arrow">→</span>')}</div>`).join("");
-        comboEl.innerHTML = `<div class="td-combo-row"><span class="td-combo-label">履歴</span>${hist}</div>${list}`;
-      }
+      comboEl.innerHTML = tdComboHudHtml(st);
+      comboEl.hidden = st.combos.length === 0;
     }
     mainBtn.onclick = () => {
       if (st.phase === "prep") { const r = trStartMarch(st); if (!r.ok) note(r.reason); else refreshUI(); }

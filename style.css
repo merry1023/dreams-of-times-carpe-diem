@@ -8431,22 +8431,29 @@ rt {
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
 }
-.td-combo {
-  margin: 6px 0;
-  padding: 4px 8px;
-  background: #1b222c;
-  border-left: 5px solid #fff;
-  font-size: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.td-combo-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .td-combo-label { background: #ffd23f; color: #111; font-weight: bold; padding: 0 6px; margin-right: 4px; }
 .td-combo-none { color: #9aa4ad; }
-.td-combo-item { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .td-chip { display: inline-block; background: #111; color: #fff; border: 2px solid #fff; padding: 0 5px; font-weight: bold; }
 .td-arrow { color: #ffd23f; font-weight: bold; }
+/* ★戦場（キャンバス）を包む枠。コンボ履歴を、戦場の右上に薄く重ねて出す */
+.td-stage { position: relative; width: 100%; }
+.td-stage .td-canvas { width: 100%; }
+.td-combo-hud {
+  position: absolute; top: 6px; right: 6px; max-width: 62%;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 3px;
+  padding: 2px 6px; background: rgba(0, 0, 0, 0.38); border-radius: 3px;
+  opacity: 0.72; pointer-events: none; font-size: 10px;
+}
+.td-combo-hud[hidden] { display: none; }
+.td-combo-hud .td-combo-label { font-size: 10px; padding: 0 4px; margin-right: 2px; }
+.td-combo-hud .td-chip { font-size: 10px; border-width: 1px; padding: 0 3px; }
+.td-keyhint { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .td-keyhint { display: inline; color: #9aa4ad; font-size: 11px; }
+}
+.td-unit-cost { background: #ffd23f; color: #111; font-weight: bold; padding: 0 10px; border-radius: 10px; font-size: 12px; }
+.td-unit-btn.td-selected .td-unit-cost { background: #111; color: #ffd23f; }
+.td-unit-btn.td-disabled .td-unit-cost { background: #e5484d; color: #fff; }
 .td-unit-btn {
   background: #111;
   color: #fff;
@@ -8460,7 +8467,7 @@ rt {
   font-size: 12px;
 }
 .td-unit-btn.td-selected { background: #ffd23f; color: #111; }
-.td-unit-btn.td-disabled { opacity: 0.45; }
+.td-unit-btn.td-disabled { opacity: 0.62; }
 .td-unit-name { font-weight: bold; }
 .td-unit-meta { font-size: 11px; }
 .td-controls { display: flex; gap: 6px; margin-top: 6px; }
@@ -8514,6 +8521,16 @@ rt {
    =================================================================== */
 .td-body { display: block; }
 .td-main { display: block; }
+/* ★縦画面（スマホ）：戦場を先に見せ、ボタン類は下に。「開始」「やめる」などの操作ボタンは画面の下に固定する */
+@media not ((orientation: landscape) and (min-width: 640px)) {
+  .td-body { display: flex; flex-direction: column; gap: 6px; }
+  .td-side { display: contents; }
+  .td-main { order: 1; }
+  .td-info { order: 2; margin: 0; }
+  .td-units, .td-hand { order: 3; }
+  .td-combo-hud { top: 24px; }   /* 上部のバナー文字と重ならないよう、少し下げる */
+  .td-controls { order: 4; position: sticky; bottom: 0; background: #0b0f14; padding: 6px 0 2px; margin-top: 0; z-index: 2; }
+}
 @media (orientation: landscape) and (min-width: 640px) {
   .td-panel {
     max-width: 1400px;
@@ -8543,11 +8560,11 @@ rt {
     align-items: center;
     justify-content: center;
   }
-  .td-canvas {
+  .td-stage {
     width: min(100cqw, calc(100cqh * var(--td-ar, 1.5)));
-    height: auto;
     flex: none;
   }
+  .td-stage .td-canvas { height: auto; }
   .td-side .td-units { grid-template-columns: repeat(2, 1fr); }
   .td-side .td-hand { grid-template-columns: repeat(2, 1fr); }
   .td-side .td-controls { flex-wrap: wrap; position: sticky; bottom: 0; background: #0b0f14; padding-top: 4px; }
