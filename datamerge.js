@@ -476,6 +476,176 @@ function dmValueText(v, max) {
   if (s.length > max) s = s.slice(0, max) + "…";
   return s;
 }
+// ===== マージ画面の表示部品（ブロックをコードではなくブロックの形で見せる／違う所を赤枠で囲む） =====
+// ブロック（id と type を持つオブジェクト）が1つ以上並んだ配列かどうか
+function dmIsBlockList(v) {
+  return Array.isArray(v) && v.length > 0 && v.every(x => dmIsObj(x) && x.type !== undefined && x.id != null);
+}
+// 「id を持つオブジェクトの配列」（子ブロックや選択肢）かどうか
+function dmIsIdObjList(v) {
+  return Array.isArray(v) && v.length > 0 && v.every(x => dmIsObj(x) && x.id != null);
+}
+// 子ブロック・選択肢の中身を除いた、そのブロック自身だけの比較用文字列
+function dmOwnStable(o) {
+  const c = {};
+  Object.keys(o).forEach(k => { if (!dmIsIdObjList(o[k])) c[k] = o[k]; });
+  return dmStable(c);
+}
+function dmFindById(list, id) {
+  return Array.isArray(list) ? list.find(x => dmIsObj(x) && x.id === id) : undefined;
+}
+function dmBlockLabel(type) {
+  try { if (typeof SCENARIO_BLOCK_TYPES !== "undefined" && SCENARIO_BLOCK_TYPES[type]) return SCENARIO_BLOCK_TYPES[type]; } catch (e) { /* 表示だけなので無視 */ }
+  return type;
+}
+function dmBlockSummary(b) {
+  if (b.type === "dialogue") return (b.speaker ? b.speaker + "：" : "") + (b.text || "");
+  if (b.type === "narration" || b.type === "telop") return b.text || "";
+  if (b.type === "choice") return b.prompt || "";
+  try { if (typeof blockPreviewText === "function") return blockPreviewText(b) || ""; } catch (e) { /* 表示だけなので無視 */ }
+  return "";
+}
+// ブロック1つを、エディタのブロックのように表示する（読み取り専用）。
+//   other：比べる相手側の同じidのブロック（無ければundefined＝この側にだけある）。plain=trueなら赤枠をつけない（土台の列用）
+//   違う所（このブロック自身の中身が違う／相手側に無い）だけを赤枠で囲む。子ブロック・選択肢の中身は、それぞれ個別に比べる
+function dmBlockCard(b, other, plain, labelOverride) {
+  const el = document.createElement("div");
+  el.className = "dm-block";
+  const diff = !plain && (other === undefined || dmOwnStable(b) !== dmOwnStable(other));
+  if (diff) el.classList.add("dm-diff");
+  const head = document.createElement("div");
+  head.className = "dm-block-head";
+  head.textContent = (labelOverride || dmBlockLabel(b.type)) + (!plain && other === undefined ? "（こちら側にだけある）" : "");
+  el.appendChild(head);
+  const sm = labelOverride ? (b.text || "") : dmBlockSummary(b);
+  if (sm) { const t = document.createElement("div"); t.className = "dm-block-text"; t.textContent = sm; el.appendChild(t); }
+  Object.keys(b).forEach(k => {
+    if (!dmIsIdObjList(b[k])) return;
+    const ol = dmIsObj(other) ? other[k] : undefined;
+    const nest = document.createElement("div");
+    nest.className = "dm-block-nested";
+    b[k].forEach(x => {
+      const ox = dmFindById(ol, x.id);
+      if (x.type === undefined) { // 選択肢など（typeを持たない）
+        const opt = dmBlockCard(x, plain ? undefined : ox, plain, k === "options" ? "選択肢" : k);
+        nest.appendChild(opt);
+      } else nest.appendChild(dmBlockCard(x, ox, plain));
+    });
+    el.appendChild(nest);
+  });
+  return el;
+}
+// 値1つを表示する部品。other：比べる相手側の値（nullなら赤枠なし＝土台の列）
+function dmValueEl(v, other) {
+  const wrap = document.createElement("div");
+  if (v === undefined) { wrap.className = "dm-none"; wrap.textContent = "（なし）"; return wrap; }
+  const plain = other === null;
+  if (dmIsBlockList(v)) {
+    v.forEach(b => wrap.appendChild(dmBlockCard(b, plain ? undefined : dmFindById(other, b.id), plain)));
+    return wrap;
+  }
+  if (dmIsObj(v)) {
+    Object.keys(v).forEach(k => {
+      const row = document.createElement("div");
+      row.className = "dm-kv";
+      const ov = !plain && dmIsObj(other) ? other[k] : undefined;
+      if (!plain && dmStable(v[k]) !== dmStable(ov)) row.classList.add("dm-diff");
+      const kk = document.createElement("div"); kk.className = "dm-kv-key"; kk.textContent = k;
+      const vv = document.createElement("div"); vv.className = "dm-kv-val";
+      if (dmIsBlockList(v[k])) v[k].forEach(b => vv.appendChild(dmBlockCard(b, plain ? undefined : dmFindById(ov, b.id), plain)));
+      else vv.textContent = dmValueText(v[k], 400);
+      row.appendChild(kk); row.appendChild(vv);
+      wrap.appendChild(row);
+    });
+    return wrap;
+  }
+  wrap.textContent = dmValueText(v, 400);
+  return wrap;
+}
+// 複数の並び（idの配列）を、できるだけ順番を保ったまま1本にそろえる（片方にしか無いものも拾う）
+function dmAlignIds(lists) {
+  let order = lists[0].slice();
+  for (let n = 1; n < lists.length; n++) {
+    const L = lists[n], inO = new Set(order), inL = new Set(L), out = [];
+    const push = id => { if (!out.includes(id)) out.push(id); };
+    let i = 0, j = 0;
+    while (i < order.length || j < L.length) {
+      if (i < order.length && j < L.length && order[i] === L[j]) { push(order[i]); i++; j++; }
+      else if (i < order.length && !inL.has(order[i])) push(order[i++]);
+      else if (j < L.length && !inO.has(L[j])) push(L[j++]);
+      else if (i < order.length) push(order[i++]);
+      else push(L[j++]);
+    }
+    order = out;
+  }
+  return order;
+}
+// ブロックの並び（話の中身）を、1ブロックずつ「自分｜土台｜相手」を横に並べて見せる。
+//   selKey：選択用のdata-sel（"競合番号:フィールド番号:"）。onPick(side)：どちらかを選んだ時に呼ぶ
+function dmBuildBlockField(label, vm, vb, vt, selKey, onPick) {
+  const ml = Array.isArray(vm) ? vm : [], bl = Array.isArray(vb) ? vb : [], tl = Array.isArray(vt) ? vt : [];
+  const mm = new Map(ml.map(b => [b.id, b])), bm = new Map(bl.map(b => [b.id, b])), tm = new Map(tl.map(b => [b.id, b]));
+  const ids = dmAlignIds([ml.map(b => b.id), tl.map(b => b.id), bl.map(b => b.id)]).filter(id => mm.has(id) || tm.has(id));
+  const rows = ids.map(id => ({ id, m: mm.get(id), b: bm.get(id), t: tm.get(id) }));
+  const isSame = r => r.m && r.t && dmStable(r.m) === dmStable(r.t);
+  const root = document.createElement("div");
+  root.className = "dm-blockfield";
+
+  const head = document.createElement("div");
+  head.className = "dm-grid";
+  const hl = document.createElement("div"); hl.className = "dm-cell dm-cell-label"; hl.textContent = `${label}（ブロック）`; head.appendChild(hl);
+  const mkHead = (text, side) => {
+    const h = document.createElement("div");
+    h.className = "dm-cell dm-bhead" + (side ? " dm-pick" : "");
+    h.textContent = side ? `${text}を採用` : text;
+    if (side) { h.dataset.sel = selKey + side; h.onclick = () => onPick(side); }
+    return h;
+  };
+  head.appendChild(mkHead("自分", "mine")); head.appendChild(mkHead("共通の土台", null)); head.appendChild(mkHead("相手", "theirs"));
+  root.appendChild(head);
+
+  const addRow = (r, host) => {
+    const row = document.createElement("div");
+    row.className = "dm-grid";
+    const lab = document.createElement("div");
+    lab.className = "dm-cell dm-cell-label dm-blabel";
+    lab.textContent = dmBlockLabel((r.m || r.t).type);
+    row.appendChild(lab);
+    const cell = (card, side) => {
+      const d = document.createElement("div");
+      d.className = "dm-bcell" + (side ? " dm-bpick" : "");
+      if (card) d.appendChild(card);
+      if (side) { d.dataset.sel = selKey + side; d.onclick = () => onPick(side); }
+      return d;
+    };
+    const missing = text => { const x = document.createElement("div"); x.className = "dm-missing"; x.textContent = text; return x; };
+    row.appendChild(cell(r.m ? dmBlockCard(r.m, r.t) : missing("（自分側には無い）"), "mine"));
+    row.appendChild(cell(r.b ? dmBlockCard(r.b, undefined, true) : (r.m || r.t ? (() => { const x = document.createElement("div"); x.className = "dm-none"; x.textContent = "（土台には無い）"; return x; })() : null), null));
+    row.appendChild(cell(r.t ? dmBlockCard(r.t, r.m) : missing("（相手側には無い）"), "theirs"));
+    host.appendChild(row);
+  };
+  // 自分と相手で同じブロックが3つ以上続く所は、たたんでおく
+  let i = 0;
+  while (i < rows.length) {
+    if (!isSame(rows[i])) { addRow(rows[i], root); i++; continue; }
+    let j = i;
+    while (j < rows.length && isSame(rows[j])) j++;
+    const n = j - i;
+    if (n <= 2) { for (let k = i; k < j; k++) addRow(rows[k], root); }
+    else {
+      const det = document.createElement("details");
+      det.className = "dm-same";
+      const sm = document.createElement("summary");
+      sm.textContent = `違いのないブロック ${n}件（押すと表示）`;
+      det.appendChild(sm);
+      for (let k = i; k < j; k++) addRow(rows[k], det);
+      root.appendChild(det);
+    }
+    i = j;
+  }
+  return root;
+}
+
 function dmShowMergeUI(res, title, noBase) {
   return new Promise(resolve => {
     const ov = document.createElement("div");
@@ -556,23 +726,31 @@ function dmShowMergeUI(res, title, noBase) {
       t.textContent = `${c.title}${c.kind === "fields" ? "（フィールドごとに選ぶ）" : ""}`;
       box.appendChild(t);
       const addRow = (label, vm, vb, vt, fi, selectable) => {
+        const pick = side => { if (c.kind === "whole") c.choice = side; else c.fields[fi].choice = side; refresh(); };
+        const listOrNone = x => x === undefined || Array.isArray(x);
+        if (c.kind === "fields" && (dmIsBlockList(vm) || dmIsBlockList(vt)) && listOrNone(vm) && listOrNone(vt) && listOrNone(vb)) {
+          box.appendChild(dmBuildBlockField(label, vm, vb, vt, `${ci}:${fi}:`, pick));
+          return;
+        }
         const row = document.createElement("div");
         row.className = "dm-grid";
         const l = document.createElement("div"); l.className = "dm-cell dm-cell-label"; l.textContent = label; row.appendChild(l);
-        const mk = (v, side) => {
+        const mk = (v, side, other) => {
           const cell = document.createElement("div");
           cell.className = "dm-cell" + (side ? " dm-pick" : "");
-          cell.textContent = dmValueText(v, 400);
+          cell.appendChild(dmValueEl(v, other));
+          // 中身を分けて見せられない値（文字・数字など）は、相手と違うことをセル全体の赤枠で示す
+          if (other !== null && v !== undefined && !dmIsObj(v) && !dmIsBlockList(v) && dmStable(v) !== dmStable(other)) cell.classList.add("dm-diff");
           cell.title = dmValueText(v, 4000);
           if (side) {
             cell.dataset.sel = `${ci}:${fi}:${side}`;
-            cell.onclick = () => { if (c.kind === "whole") c.choice = side; else c.fields[fi].choice = side; refresh(); };
+            cell.onclick = () => pick(side);
           }
           return cell;
         };
-        row.appendChild(mk(vm, selectable ? "mine" : null));
-        row.appendChild(mk(vb, null));
-        row.appendChild(mk(vt, selectable ? "theirs" : null));
+        row.appendChild(mk(vm, selectable ? "mine" : null, vt));
+        row.appendChild(mk(vb, null, null));
+        row.appendChild(mk(vt, selectable ? "theirs" : null, vm));
         box.appendChild(row);
       };
       if (c.kind === "whole") addRow(c.hasMine && c.hasTheirs ? "全体" : (c.hasMine ? "全体（相手は削除）" : "全体（自分は削除）"), c.mine, c.base, c.theirs, 0, true);
