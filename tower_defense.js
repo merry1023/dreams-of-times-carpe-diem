@@ -44,6 +44,7 @@ const TD_UPG_HP_RATE = 0.10;        // 拠点HP：1レベルごとに＋10%
 const TD_UPG_FUNDS = 25;            // 開始時の資金：1レベルごとに＋25
 const TD_UPG_INCOME = 0.05;         // 資金の稼ぎやすさ：1レベルごとに、敵を倒した時の資金＋5%
 // ----- コンボ（本編のコンボスキル定義をそのまま使う） -----
+const TD_WAVE_HEAL_RATE = 0.25;     // ウェーブをしのぐごとに、味方全員が最大HPのこの割合だけ回復する（撃破されていた味方は、この割合のHPで復活する）
 const TD_COMBO_HISTORY_MAX = 8;     // 属性の履歴の上限（本編と同じ。発動した時だけリセット）
 const TD_COMBO_LOCK = 2.0;          // コンボ発動後、履歴を取らない秒数（連発しすぎないようにする）
 const TD_COMBO_BASE = 0.12;         // コンボ1発のダメージ＝敵の平均HP×（この値＋威力×下の値）
@@ -307,6 +308,7 @@ function tdCreateState(pool, opts) {
     baseMaxHp, baseHp: baseMaxHp,
     kills: 0, time: 0, speed: 1, killKeys: [],            // killKeys＝倒した魔物の種類のID（クリア時のドロップ判定に使う）
     units: [],                // { slot, tpl, level, cool, hp, maxHp }
+    fallen: [],               // 撃破された味方（次のウェーブの準備中に、同じマスで復活する）
     enemies: [],
     spawnQueue: [], spawnTimer: 0,
     fx: [], popups: [],       // 画面に出す演出（撃った線・ダメージ数字）
@@ -362,10 +364,30 @@ function tdStartWave(st) {
   return true;
 }
 
+// ★ウェーブをしのいだ時：撃破されていた味方は自動で復活（最大HPの25%）、生きている味方は全員25%回復する
+function tdReviveAndHeal(st) {
+  st.units.forEach(u => {
+    const heal = Math.round(u.maxHp * TD_WAVE_HEAL_RATE);
+    if (u.hp >= u.maxHp) return;
+    u.hp = Math.min(u.maxHp, u.hp + heal);
+    const sp = tdSlotPos(u.slot);
+    st.popups.push({ x: sp.x, y: sp.y - 26, text: `+${heal}`, color: "#59e07a", weak: false, t: 1.0 });
+  });
+  (st.fallen || []).forEach(u => {
+    u.hp = Math.max(1, Math.round(u.maxHp * TD_WAVE_HEAL_RATE));
+    u.cool = 0;
+    st.units.push(u);
+    const sp = tdSlotPos(u.slot);
+    st.popups.push({ x: sp.x, y: sp.y - 26, text: "復活！", color: "#59e07a", weak: false, t: 1.2 });
+  });
+  st.fallen = [];
+}
+
 function tdIsBossWave(st, wave) { return wave % TD_BOSS_EVERY === 0; }
 
 function tdPlaceUnit(st, slotIndex, templateKey) {
   if (st.units.some(u => u.slot === slotIndex)) return { ok: false, reason: "そこにはもう置いてある" };
+  if ((st.fallen || []).some(u => u.slot === slotIndex)) return { ok: false, reason: "撃破された仲間の場所（次のウェーブで復活します）" };
   const tpl = st.templates.find(t => t.key === templateKey);
   if (!tpl) return { ok: false, reason: "ユニットが選ばれていない" };
   if (st.funds < tpl.cost) return { ok: false, reason: "資金が足りない" };
@@ -545,7 +567,9 @@ function tdStep(st, dt) {
   st.units = st.units.filter(u => {
     if (u.hp > 0) return true;
     const sp = tdSlotPos(u.slot);
-    st.popups.push({ x: sp.x, y: sp.y - 26, text: "撃破された", color: "#9aa4ad", weak: false, t: 1.0 });
+    st.popups.push({ x: sp.x, y: sp.y - 26, text: "撃破された…", color: "#9aa4ad", weak: false, t: 1.0 });
+    u.hp = 0;
+    st.fallen.push(u);   // ★捨てずに取っておき、次のウェーブで自動復活させる
     return false;
   });
   
@@ -604,6 +628,7 @@ function tdStep(st, dt) {
       st.funds += TD_WAVE_CLEAR_BONUS;
       st.wave++;
       st.phase = "prep";
+      tdReviveAndHeal(st);   // ★全員25%回復＋撃破された味方は復活
     }
   }
 }
@@ -706,6 +731,15 @@ function tdElementName(elementId) {
 function tdElementChipHtml(elementId) {
   const color = (typeof getElementColor === "function") ? getElementColor(elementId) : "#fff";
   return `<span class="td-chip" style="border-color:${color}">${tdElementName(elementId)}</span>`;
+}
+
+// ★コンボ履歴（戦場の右上に薄く出す。使えるコンボが無い時は何も出さない）
+function tdComboHudHtml(st) {
+  if (!st.combos || st.combos.length === 0) return "";
+  const chips = st.history.length > 0
+    ? st.history.slice(-5).map(tdElementChipHtml).join('<span class="td-arrow">→</span>')
+    : '<span class="td-combo-none">―</span>';
+  return `<span class="td-combo-label">COMBO</span>${chips}`;
 }
 
 function tdElementColor(elementId) {
@@ -861,7 +895,6 @@ function runTowerDefenseBattle(pool, opts) {
         <div class="td-body">
           <div class="td-side">
             <div class="td-info"></div>
-            <div class="td-combo"></div>
             <div class="td-units"></div>
             <div class="td-controls">
               <button type="button" class="td-btn td-btn-start"></button>
@@ -871,7 +904,10 @@ function runTowerDefenseBattle(pool, opts) {
             </div>
           </div>
           <div class="td-main">
-            <canvas class="td-canvas" width="${view.w * 2}" height="${view.h * 2}" style="aspect-ratio: ${view.w} / ${view.h}; --td-ar: ${view.w / view.h};"></canvas>
+            <div class="td-stage" style="--td-ar: ${view.w / view.h};">
+              <canvas class="td-canvas" width="${view.w * 2}" height="${view.h * 2}" style="aspect-ratio: ${view.w} / ${view.h};"></canvas>
+              <div class="td-combo-hud"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -886,7 +922,7 @@ function runTowerDefenseBattle(pool, opts) {
     const baseFillEl = overlay.querySelector(".td-basehp-fill");
     const baseTextEl = overlay.querySelector(".td-basehp-text");
     const infoEl = overlay.querySelector(".td-info");
-    const comboEl = overlay.querySelector(".td-combo");
+    const comboEl = overlay.querySelector(".td-combo-hud");   // ★コンボ履歴は、戦場の右上に薄く表示する
     const unitsEl = overlay.querySelector(".td-units");
     const startBtn = overlay.querySelector(".td-btn-start");
     const speedBtn = overlay.querySelector(".td-btn-speed");
@@ -900,7 +936,7 @@ function runTowerDefenseBattle(pool, opts) {
       btn.className = "td-unit-btn";
       btn.dataset.key = tpl.key;
       btn.style.borderColor = tdElementColor(tpl.element);
-      btn.innerHTML = `<span class="td-unit-name">${tpl.label}</span><span class="td-unit-meta">${tdUnitSummary(tpl)}　${tpl.cost}</span>`;
+      btn.innerHTML = `<span class="td-unit-name">${tpl.label}</span><span class="td-unit-meta">${tdUnitSummary(tpl)}</span><span class="td-unit-cost">${tpl.cost}</span>`;
       btn.onclick = () => {
         selectedType = (selectedType === tpl.key) ? null : tpl.key;
         selectedSlot = null; infoNote = "";
@@ -928,14 +964,9 @@ function runTowerDefenseBattle(pool, opts) {
       camBtn.textContent = camAuto ? "カメラ：自動" : "カメラ：陣地";
       quitBtn.textContent = quitArmed ? "本当にやめる？" : "やめる";
       
-      // コンボ欄：今の履歴と、使えるコンボの一覧
-      if (st.combos.length === 0) {
-        comboEl.innerHTML = `<span class="td-combo-label">COMBO</span><span class="td-combo-none">使えるコンボはまだない（本編でコンボを解禁すると使える）</span>`;
-      } else {
-        const hist = st.history.length > 0 ? st.history.map(tdElementChipHtml).join('<span class="td-arrow">→</span>') : '<span class="td-combo-none">なし</span>';
-        const list = st.combos.map(c => `<div class="td-combo-item"><b>${c.name || "名無しのコンボ"}</b> ${(c.elements || []).filter(Boolean).map(tdElementChipHtml).join('<span class="td-arrow">→</span>')}</div>`).join("");
-        comboEl.innerHTML = `<div class="td-combo-row"><span class="td-combo-label">履歴</span>${hist}</div>${list}`;
-      }
+      // コンボ履歴（戦場の右上に薄く表示）
+      comboEl.innerHTML = tdComboHudHtml(st);
+      comboEl.hidden = st.combos.length === 0;
       
       // 情報行
       const unit = selectedSlot !== null ? st.units.find(u => u.slot === selectedSlot) : null;
@@ -966,7 +997,7 @@ function runTowerDefenseBattle(pool, opts) {
         const tpl = st.templates.find(t => t.key === selectedType);
         infoEl.textContent = `${tpl.label}（${tdUnitSummary(tpl)}）：置きたい陣地のマスをタップ`;
       } else {
-        infoEl.textContent = "下から仲間を選んで、陣地のマスに置こう。敵は上から来て、味方も攻撃してくる。白い数字＝弱点、灰色＝耐性。（キー操作：矢印＝移動／Space・Z＝決定／Tab＝陣地とボタンの切替／X＝やめる）";
+        infoEl.innerHTML = '仲間を選んで、陣地のマスをタップ。白い数字＝弱点／灰色＝耐性<span class="td-keyhint">　キー：矢印＝移動／Space・Z＝決定／Tab＝陣地とボタン切替／X＝やめる</span>';
       }
     }
     
@@ -987,6 +1018,7 @@ function runTowerDefenseBattle(pool, opts) {
       if (slotIndex < 0) { selectedSlot = null; selectedType = null; refreshUI(); return; }
       const existing = st.units.find(u => u.slot === slotIndex);
       if (existing) { selectedSlot = slotIndex; selectedType = null; refreshUI(); return; }
+      if (st.fallen.some(u => u.slot === slotIndex)) { infoNote = "ここは撃破された仲間の場所です（次のウェーブで自動で復活します）"; refreshUI(); return; }
       if (selectedType) {
         const r = tdPlaceUnit(st, slotIndex, selectedType);
         if (!r.ok) infoNote = r.reason;
@@ -1040,7 +1072,7 @@ function runTowerDefenseBattle(pool, opts) {
       // 味方陣地のマス
       ctx.fillStyle = "rgba(255,255,255,0.05)"; ctx.fillRect(TD_GRID_X0, TD_GRID_Y0, TD_GRID_COLS * TD_CELL, TD_GRID_ROWS * TD_CELL);
       TD_SLOTS.forEach((sl, i) => {
-        const occupied = st.units.some(u => u.slot === i);
+        const occupied = st.units.some(u => u.slot === i) || st.fallen.some(u => u.slot === i);
         const x = sl[0] - TD_CELL / 2 + 3, y = sl[1] - TD_CELL / 2 + 3, w = TD_CELL - 6;
         if (selectedType && !occupied) { ctx.fillStyle = "rgba(255,210,63,0.12)"; ctx.fillRect(x, y, w, w); }
         ctx.setLineDash([5, 4]);
@@ -1067,6 +1099,18 @@ function runTowerDefenseBattle(pool, opts) {
           ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
         }
       }
+      
+      // 撃破された味方（次のウェーブで復活するまで、薄く表示する）
+      st.fallen.forEach(u => {
+        const sp = tdSlotPos(u.slot);
+        ctx.globalAlpha = 0.35;
+        ctx.beginPath(); ctx.arc(sp.x, sp.y, 22, 0, Math.PI * 2);
+        ctx.fillStyle = tdElementColor(u.tpl.element); ctx.fill();
+        ctx.setLineDash([4, 3]); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke(); ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#fff"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("復活待ち", sp.x, sp.y + 1);
+      });
       
       // ユニット
       st.units.forEach(u => {

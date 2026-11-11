@@ -667,6 +667,7 @@ function normalizeScenarioProject() {
     if (!area.type) area.type = "village";
     if (typeof area.enemyLevel === "undefined") area.enemyLevel = null; // ★このエリアで出る敵の固定レベル（未設定なら主人公のレベル基準のまま）
     if (!Array.isArray(area.facilityIds)) area.facilityIds = []; // ★このエリア（拠点）に表示する施設編集タブの施設id一覧
+    if (typeof ensureAreaPlaces === "function") ensureAreaPlaces(area); // ★街・村・国の「場所」。未対応の既存データには「入口」を自動で作り、施設を全てそこに置く（mapareas.js）
     // ★「調べる」メッセージを複数パターン持たせて、毎回ランダムに1つ表示できるようにした。
     //   旧データ（examineMessageが1本の文字列）は、そのまま配列の1件目として引き継ぐ
     if (!Array.isArray(area.examineMessages)) {
@@ -689,6 +690,8 @@ function normalizeScenarioProject() {
       facilityIds: scenarioProject.facilities.map(f => f.id)
     });
   }
+  // ★上で新しく差し込んだカリの村にも「入口」の場所を作る
+  if (typeof ensureAreaPlaces === "function") scenarioProject.mapAreas.forEach(a => ensureAreaPlaces(a));
   
   if (!scenarioProject.chapters.some(c => c.id === "builtin_chapter1") && !isDeletedBuiltin("chapters", "builtin_chapter1")) {
     scenarioProject.chapters.unshift({
@@ -1584,6 +1587,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "quests", label: "クエスト管理" },
   { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
   { view: "tutorials", label: "チュートリアル管理" },
+  { view: "notationcheck", label: "表記ゆれチェック" }, // ★要望対応：話者名・カタカナ語などの表記ゆれを探して一括置換（notationcheck.js）
   { view: "glossary", label: "用語・語彙" }, // ★便利タブの「用語・語彙」アプリの言葉（ルビ・意味の解説）。メッセージ中の言葉をタップすると解説が開く
   { view: "skills", label: "スキル管理" },
   { view: "upperskills", label: "上位スキル" }, // ★要望対応：ステータスパネルで習得する、職業技とは別枠の技
@@ -1705,7 +1709,7 @@ const SCENARIOBUILD_TAB_GROUPS = [
   { id: "item", label: "アイテム・経済", views: ["items", "furniture", "fishmgmt", "recipes", "loginbonus", "randomnames"] },
   { id: "skill", label: "スキル・戦闘", views: ["skills", "upperskills", "gachaskills", "beasts", "combos", "statuspanels", "statuses", "elements"] },
   { id: "guild", label: "冒険者協会", views: ["towerunits", "raidunits", "guildrewards"] },
-  { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "flags", "gamevars", "endings"] },
+  { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "notationcheck", "flags", "gamevars", "endings"] },
   { id: "world", label: "マップ・施設・BGM", views: ["maps", "facilities", "bgm"] },
   { id: "system", label: "データ・システム", views: ["variables", "data", "tabmanager"] }
 ];
@@ -1929,6 +1933,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "achievements") renderEntityManager(bodyEl, getAchievementManagerConfig());
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
   else if (scenarioBuildSubView === "glossary") renderEntityManager(bodyEl, getGlossaryManagerConfig());
+  else if (scenarioBuildSubView === "notationcheck") renderNotationCheckManager(bodyEl); // ★要望対応：表記ゆれチェック（notationcheck.js）
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
   else if (scenarioBuildSubView === "combos") renderComboSkillManager(bodyEl); // ★要望対応：コンボスキル
   else if (scenarioBuildSubView === "towerunits") renderTowerUnitManager(bodyEl); // ★冒険者協会：タワーユニット（tower_defense_editor.js）
@@ -2039,6 +2044,7 @@ function renderSkillVariableReference(container) {
     ["自分魔力", "装備・強化込みの、今の魔力"],
     ["技威力", "今使っている技自身の威力（skill.power）"],
     ["凸数", "技ガチャの技の凸数（0〜5）。ガチャ技以外では常に0。「凸数 >= 3」のように、ifで凸数による分岐ができる"],
+    ["相性", "おとも魔獣の行動で使える。相性の良い仲間がパーティにいれば1、いなければ0（戦闘の開始時に固定）。「凸数 >= 3 かつ 相性 = 1」のように組み合わせられる。魔獣以外の技では常に0"],
     ["乱数", "0以上100未満のランダムな実数。式を評価するたびに新しく引き直されます"]
   ]);
   
@@ -5818,20 +5824,20 @@ function getGlossaryManagerConfig() {
       "「言い換え」は「、」で区切って複数入れられます（例：月刊魔法記事の「月間魔法記事」）。2文字以上の言葉だけがタップの対象になります。",
     category: "glossary",
     collapsible: true,
-    groupField: "category", // ★要望対応：分類（ゲーム用語・熟語…）ごとのカーテンに分けて表示する
+    groupField: "category", // ★要望対応：分類（この作品の用語・ゲーム用語・熟語…）ごとのカーテンに分けて表示する
     groupDefault: "その他",
-    groupOrder: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]),
+    groupOrder: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["この作品の用語", "ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]),
     getEntitySummary: (entity) => "📚 " + (entity.term || "（未設定）") + (entity.reading ? "（" + entity.reading + "）" : "") + "／" + (entity.category || "その他"),
     getList: () => scenarioProject.glossary,
     fields: [
       { key: "term", label: "言葉", type: "text", placeholder: "例：真名" },
       { key: "reading", label: "読み（ルビ）", type: "text", placeholder: "例：まな（空欄ならルビなし）" },
-      { key: "category", label: "分類", type: "select", options: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]).map(c => ({ value: c, label: c })) },
+      { key: "category", label: "分類", type: "select", options: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["この作品の用語", "ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]).map(c => ({ value: c, label: c })) },
       { key: "meaning", label: "意味の解説", type: "textarea", placeholder: "言葉の意味・このゲームでの使われ方（改行OK）" },
       { key: "aliases", label: "言い換え（「、」区切り）", type: "text", placeholder: "例：月間魔法記事（空欄でOK）" },
       { key: "example", label: "用例（任意）", type: "textarea", placeholder: "例文など（空欄でOK）" }
     ],
-    newEntity: () => ({ id: generateId("glossary"), term: "新しい言葉", reading: "", category: "ゲーム用語", meaning: "", aliases: "", example: "" })
+    newEntity: () => ({ id: generateId("glossary"), term: "新しい言葉", reading: "", category: "この作品の用語", meaning: "", aliases: "", example: "" })
   };
 }
 
@@ -8202,7 +8208,8 @@ function getEditingSkill() {
   return scenarioProject.skills.find(s => s.id === scenarioBuildEditingSkillId)
     || (scenarioProject.comboSkills || []).find(s => s.id === scenarioBuildEditingSkillId)
     || (scenarioProject.upperSkills || []).find(s => s.id === scenarioBuildEditingSkillId)
-    || (scenarioProject.gachaSkills || []).find(s => s.id === scenarioBuildEditingSkillId) || null; // ★技ガチャの技も、ブロックエディタを使い回す
+    || (scenarioProject.gachaSkills || []).find(s => s.id === scenarioBuildEditingSkillId) // ★技ガチャの技も、ブロックエディタを使い回す
+    || ((typeof beastEditorFindIdleAction === "function") ? beastEditorFindIdleAction(scenarioBuildEditingSkillId) : null) || null; // ★おとも魔獣の常時行動も、ブロックエディタを使い回す（beast_editor.js）
 }
 
 // ===== ステータスパネル管理（要望対応） =====
@@ -9060,7 +9067,7 @@ function renderSkillBlockEditor(container) {
   
   const backBtn = document.createElement("button");
   backBtn.className = "devmode-btn";
-  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : (scenarioBuildSubView === "combos" ? "← コンボスキルに戻る" : (scenarioBuildSubView === "upperskills" ? "← 上位スキルに戻る" : (scenarioBuildSubView === "gachaskills" ? "← 技ガチャに戻る" : "← スキル管理に戻る")));
+  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : (scenarioBuildSubView === "combos" ? "← コンボスキルに戻る" : (scenarioBuildSubView === "upperskills" ? "← 上位スキルに戻る" : (scenarioBuildSubView === "gachaskills" ? "← 技ガチャに戻る" : (scenarioBuildSubView === "beasts" ? "← おとも魔獣に戻る" : "← スキル管理に戻る"))));
   backBtn.onclick = (event) => {
     event.stopPropagation();
     scenarioBuildSkillInsertMenuTarget = null;
@@ -10007,10 +10014,26 @@ function buildClassStatsRow(className) {
 // ===================================================================
 const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", realEstate: "不動産屋系（家・店の売買・賃貸）", furnitureShop: "家具屋系（家具・倉庫の販売）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", memoryHall: "追憶の館系（クリア済みの話を再体験できる）", towerDefense: "冒険者協会系（掃討作戦＝タワーディフェンス）", flavor: "その他（セリフのみ）" };
 
+// ★施設が置かれている場所の表示文。例：「カリの村・広場／牧場付近」。複数エリアに置かれていれば「、」で並べる。
+//   どこにも置かれていなければ「未配置」。場所を持たないエリアに付いている場合はエリア名だけを出す
+function getFacilityPlacementLabel(facility) {
+  const parts = [];
+  (scenarioProject.mapAreas || []).forEach(area => {
+    const areaName = area.name || "（名前未設定）";
+    if (Array.isArray(area.places) && area.places.length > 0) {
+      const placeNames = area.places.filter(p => (p.facilityIds || []).includes(facility.id)).map(p => p.name || "（名前未設定）");
+      if (placeNames.length > 0) parts.push(`${areaName}・${placeNames.join("／")}`);
+    } else if (Array.isArray(area.facilityIds) && area.facilityIds.includes(facility.id)) {
+      parts.push(areaName);
+    }
+  });
+  return parts.length > 0 ? parts.join("、") : "未配置";
+}
+
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
-  introEl.textContent = "村の「酒場・宿屋・店・冒険する」に加えて、独自の施設を追加・削除できます（例：酒場、店、寂れた宿、平凡な宿、街の宿、豪華なホテル、役場、役所……）。追加した施設は町メニューに一覧の下へそのまま並びます。";
+  introEl.textContent = "村の「酒場・宿屋・店・冒険する」に加えて、独自の施設を追加・削除できます（例：酒場、店、寂れた宿、平凡な宿、街の宿、豪華なホテル、役場、役所……）。追加した施設は、マップ設定タブで各エリアの「場所」に置くと町メニューに並びます。各行の📍は置いてある場所です。";
   container.appendChild(introEl);
   
   // ★要望対応：種類ごとにタブ分けして見やすくする
@@ -10039,7 +10062,7 @@ function renderFacilityManager(container) {
     const facilityId = facility.id;
     const findFacility = () => scenarioProject.facilities.find(f => f.id === facilityId);
     listEl.appendChild(buildCollapsedEntryRow({
-      number: FACILITY_TYPE_LABELS[facility.type] || null,
+      number: `${FACILITY_TYPE_LABELS[facility.type] || ""}　📍${getFacilityPlacementLabel(facility)}`, // ★置いてある場所（どこにも置かれていなければ「未配置」）
       title: () => (findFacility() || {}).name,
       isValid: () => !!findFacility(),
       build: () => buildFacilityRow(findFacility())
@@ -11306,7 +11329,10 @@ function buildFacilityRow(facility) {
     pushUndoSnapshot();
     const idx = scenarioProject.facilities.indexOf(facility);
     if (idx >= 0) scenarioProject.facilities.splice(idx, 1);
-    scenarioProject.mapAreas.forEach(a => { a.facilityIds = a.facilityIds.filter(id => id !== facility.id); }); // ★削除した施設は、全ての拠点のアタッチ一覧からも外す
+    scenarioProject.mapAreas.forEach(a => {
+      a.facilityIds = a.facilityIds.filter(id => id !== facility.id); // ★削除した施設は、全ての拠点のアタッチ一覧からも外す
+      if (Array.isArray(a.places)) a.places.forEach(p => { p.facilityIds = (p.facilityIds || []).filter(id => id !== facility.id); }); // ★全ての場所の置く施設からも外す
+    });
     markScenarioBuildDirty();
     renderScenarioBuildPanel();
   };
@@ -13926,6 +13952,24 @@ function renderDataManager(container) {
     exportScenarioOnlyAsJsFile();
   };
   container.appendChild(jsExportBtn);
+  
+  // ★要望対応：シナリオ文章のみをtxt／mdで書き出す（scenariotext.js）。会話は「話者名:｢ 文章｣」、地の文はそのまま、
+  //   テロップ・演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }else{ … }」の形
+  const textExportNote = document.createElement("p");
+  textExportNote.className = "devmode-note";
+  textExportNote.textContent = "全ての話を、純粋なシナリオ文章だけのテキストファイルとして書き出します（読み物・校正用。ゲームへの取り込みには使えません）。会話は「話者名:｢ 文章｣」、地の文はそのまま、テロップや演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }else{ … }」の形になります。";
+  container.appendChild(textExportNote);
+  
+  ["txt", "md"].forEach(ext => {
+    const textExportBtn = document.createElement("button");
+    textExportBtn.className = "devmode-btn";
+    textExportBtn.textContent = `シナリオ文章のみ ${ext}ファイルで出力`;
+    textExportBtn.onclick = (event) => {
+      event.stopPropagation();
+      if (typeof exportScenarioAsTextFile === "function") exportScenarioAsTextFile(ext);
+    };
+    container.appendChild(textExportBtn);
+  });
   
   const jsExportSettingsBtn = document.createElement("button");
   jsExportSettingsBtn.className = "devmode-btn";

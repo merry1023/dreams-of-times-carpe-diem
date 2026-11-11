@@ -8431,22 +8431,29 @@ rt {
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
 }
-.td-combo {
-  margin: 6px 0;
-  padding: 4px 8px;
-  background: #1b222c;
-  border-left: 5px solid #fff;
-  font-size: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.td-combo-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .td-combo-label { background: #ffd23f; color: #111; font-weight: bold; padding: 0 6px; margin-right: 4px; }
 .td-combo-none { color: #9aa4ad; }
-.td-combo-item { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .td-chip { display: inline-block; background: #111; color: #fff; border: 2px solid #fff; padding: 0 5px; font-weight: bold; }
 .td-arrow { color: #ffd23f; font-weight: bold; }
+/* ★戦場（キャンバス）を包む枠。コンボ履歴を、戦場の右上に薄く重ねて出す */
+.td-stage { position: relative; width: 100%; }
+.td-stage .td-canvas { width: 100%; }
+.td-combo-hud {
+  position: absolute; top: 6px; right: 6px; max-width: 62%;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 3px;
+  padding: 2px 6px; background: rgba(0, 0, 0, 0.38); border-radius: 3px;
+  opacity: 0.72; pointer-events: none; font-size: 10px;
+}
+.td-combo-hud[hidden] { display: none; }
+.td-combo-hud .td-combo-label { font-size: 10px; padding: 0 4px; margin-right: 2px; }
+.td-combo-hud .td-chip { font-size: 10px; border-width: 1px; padding: 0 3px; }
+.td-keyhint { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .td-keyhint { display: inline; color: #9aa4ad; font-size: 11px; }
+}
+.td-unit-cost { background: #ffd23f; color: #111; font-weight: bold; padding: 0 10px; border-radius: 10px; font-size: 12px; }
+.td-unit-btn.td-selected .td-unit-cost { background: #111; color: #ffd23f; }
+.td-unit-btn.td-disabled .td-unit-cost { background: #e5484d; color: #fff; }
 .td-unit-btn {
   background: #111;
   color: #fff;
@@ -8460,7 +8467,7 @@ rt {
   font-size: 12px;
 }
 .td-unit-btn.td-selected { background: #ffd23f; color: #111; }
-.td-unit-btn.td-disabled { opacity: 0.45; }
+.td-unit-btn.td-disabled { opacity: 0.62; }
 .td-unit-name { font-weight: bold; }
 .td-unit-meta { font-size: 11px; }
 .td-controls { display: flex; gap: 6px; margin-top: 6px; }
@@ -8514,6 +8521,16 @@ rt {
    =================================================================== */
 .td-body { display: block; }
 .td-main { display: block; }
+/* ★縦画面（スマホ）：戦場を先に見せ、ボタン類は下に。「開始」「やめる」などの操作ボタンは画面の下に固定する */
+@media not ((orientation: landscape) and (min-width: 640px)) {
+  .td-body { display: flex; flex-direction: column; gap: 6px; }
+  .td-side { display: contents; }
+  .td-main { order: 1; }
+  .td-info { order: 2; margin: 0; }
+  .td-units, .td-hand { order: 3; }
+  .td-combo-hud { top: 24px; }   /* 上部のバナー文字と重ならないよう、少し下げる */
+  .td-controls { order: 4; position: sticky; bottom: 0; background: #0b0f14; padding: 6px 0 2px; margin-top: 0; z-index: 2; }
+}
 @media (orientation: landscape) and (min-width: 640px) {
   .td-panel {
     max-width: 1400px;
@@ -8543,11 +8560,11 @@ rt {
     align-items: center;
     justify-content: center;
   }
-  .td-canvas {
+  .td-stage {
     width: min(100cqw, calc(100cqh * var(--td-ar, 1.5)));
-    height: auto;
     flex: none;
   }
+  .td-stage .td-canvas { height: auto; }
   .td-side .td-units { grid-template-columns: repeat(2, 1fr); }
   .td-side .td-hand { grid-template-columns: repeat(2, 1fr); }
   .td-side .td-controls { flex-wrap: wrap; position: sticky; bottom: 0; background: #0b0f14; padding-top: 4px; }
@@ -9240,3 +9257,72 @@ rt {
   padding-left: 6px;
   margin-bottom: 6px;
 }
+
+/* ★戦闘中のおとも魔獣の表示（beast_battle.js の updateBattleBeastHud）。左上に、見た目・名前・HPの小さなパネルを出す */
+.battle-beast {
+    position: absolute;
+    top: 20px;
+    left: 12px;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 190px;
+    padding: 6px 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(164, 107, 255, 0.7);
+    border-radius: 10px;
+    box-shadow: 0 0 8px rgba(164, 107, 255, 0.35);
+    pointer-events: none;
+}
+.battle-beast.hidden { display: none !important; }
+.battle-beast.battle-beast-down { opacity: 0.55; filter: grayscale(0.85); box-shadow: none; }
+.battle-beast-info { display: flex; flex-direction: column; gap: 2px; min-width: 92px; }
+.battle-beast-name { font-size: 12px; font-weight: bold; color: #e9dcff; }
+.battle-beast-bar { height: 6px; background: rgba(255, 255, 255, 0.18); border-radius: 3px; overflow: hidden; }
+.battle-beast-fill { height: 100%; background: linear-gradient(90deg, #8e5bd6, #d04aa8); transition: width 0.25s ease; }
+.battle-beast-value { font-size: 10px; color: #cfc2e6; }
+
+/* ★おとも魔獣の連動ボタン（beast_battle.js の beastLinkRender）。左から出て、最大2つ縦に並ぶ。魔獣のパネル（左上）の下 */
+.battle-beast-links { position: absolute; top: 84px; left: 0; z-index: 4; display: flex; flex-direction: column; gap: 6px; }
+.battle-beast-links.hidden { display: none !important; }
+.battle-beast-link-btn {
+    padding: 8px 14px 8px 12px; font-size: 13px; font-weight: bold; color: #fff; cursor: pointer;
+    background: linear-gradient(90deg, rgba(142, 91, 214, 0.95), rgba(208, 74, 168, 0.9));
+    border: 1px solid #ffd7f3; border-left: none; border-radius: 0 18px 18px 0;
+    box-shadow: 0 0 10px rgba(208, 74, 168, 0.6); text-align: left;
+    animation: beast-link-in 0.25s ease-out;
+}
+.battle-beast-link-btn.selected { outline: 2px solid #ffe08a; filter: brightness(1.25); }
+@keyframes beast-link-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+
+/* ★マージ画面：ブロックをコードではなくブロックの形で表示し、違う所を赤枠で囲む */
+.dm-diff { border: 2px solid #ff3b3b !important; box-shadow: 0 0 0 1px #ff3b3b; }
+.dm-none { color: #888; font-size: 11px; }
+.dm-missing { border: 2px dashed #ff3b3b; color: #ff8a8a; font-size: 11px; padding: 3px 5px; margin: 2px 0; }
+.dm-block { background: #111; border: 2px solid #444; padding: 3px 5px; margin: 2px 0; font-size: 12px; word-break: break-all; }
+.dm-block-head { color: #ffd23f; font-size: 11px; font-weight: bold; }
+.dm-block-text { white-space: pre-wrap; line-height: 1.5; }
+.dm-block-nested { margin-left: 10px; padding-left: 4px; border-left: 3px solid #666; }
+.dm-kv { display: grid; grid-template-columns: 90px 1fr; gap: 4px; border: 2px solid transparent; padding: 1px 3px; margin: 1px 0; }
+.dm-kv-key { color: #9ad; font-size: 11px; }
+.dm-kv-val { white-space: pre-wrap; word-break: break-all; }
+.dm-blockfield { border-top: 2px solid #ffd23f; margin: 6px 0; }
+.dm-bhead { font-weight: bold; text-align: center; }
+.dm-blabel { font-size: 11px; font-weight: normal; }
+.dm-bcell { min-width: 0; padding: 1px; border: 2px solid transparent; }
+.dm-bpick { cursor: pointer; }
+.dm-bpick:hover { border-color: #fff; }
+.dm-bpick.dm-selected { border-color: #ffd23f; background: rgba(255, 210, 63, 0.12); }
+.dm-bhead.dm-selected { background: #ffd23f; color: #111; }
+.dm-same { margin: 3px 0; }
+.dm-same summary { cursor: pointer; color: #ffd23f; font-size: 12px; }
+
+/* ★要望対応：釣りの記録画面（fishing.js の openFishingRecordScreen） */
+.fishing-record-overlay { position: fixed; inset: 0; z-index: 9000; background: rgba(0, 0, 0, 0.75); display: flex; align-items: center; justify-content: center; }
+.fishing-record-panel { width: min(520px, 92vw); max-height: 86vh; overflow-y: auto; background: #1b2430; color: #fff; border: 2px solid #6fb8e8; border-radius: 10px; padding: 16px; }
+.fishing-record-list { margin: 8px 0 12px; max-height: 50vh; overflow-y: auto; }
+.fishing-record-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); }
+.fishing-record-row-unknown { opacity: 0.55; }
+.fishing-record-name { color: #7fd4ff; }
+.fishing-record-info { white-space: nowrap; }

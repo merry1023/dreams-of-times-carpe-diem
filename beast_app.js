@@ -86,6 +86,7 @@ function handleBeastAppKeyDown(event) {
   }
   const buttons = Array.from(panel.querySelectorAll("button:not([disabled])"));
   const index = buttons.indexOf(document.activeElement);
+  if (beastAppView === "detail" && guildAppDetailKeyScroll(panel, event, buttons, index)) return;   // 詳細画面は、上下キーでスクロール
   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
     event.preventDefault();
     if (buttons.length === 0) return;
@@ -112,7 +113,7 @@ function renderBeastAppPanel(focusIndex = 0) {
   }
   const buttons = Array.from(panel.querySelectorAll("button:not([disabled])"));
   const target = buttons[Math.min(Math.max(0, focusIndex), buttons.length - 1)];
-  if (target) target.focus();
+  if (target) target.focus({ preventScroll: beastAppView === "detail" });   // 詳細画面は、一番上から読み始められるように、フォーカスでスクロールさせない
 }
 
 function beastAppBackButton(panel, label = "◀ 戻る") {
@@ -304,6 +305,36 @@ function beastAppRenderDetail(panel) {
     });
   }
   panel.appendChild(affCard);
+
+  // --- 連動 ---
+  const links = (Array.isArray(entry.links) ? entry.links : []).filter(l => l && l.enabled !== false);
+  const linkCard = guildAppEl("div", "element-combo-item waza-detail-card");
+  linkCard.appendChild(guildAppEl("div", "element-combo-name", "連動"));
+  if (links.length === 0) {
+    linkCard.appendChild(guildAppEl("div", "element-combo-note", "連動は、ありません。"));
+  } else {
+    linkCard.appendChild(guildAppEl("div", "element-combo-note", "仲間の技に合わせて、戦闘画面の左に出るボタン（タップかCキー）で発動します。"));
+    links.forEach(l => {
+      const unlocked = brk >= (Number(l.unlockBreak) || 0);
+      const t = l.trigger || {};
+      const kindLabel = { name: "技の名前", element: "技の属性", type: "技の種類" }[t.kind] || "？";
+      const typeLabel = { attack: "攻撃", heal: "回復", buff: "自己強化" };
+      let valueLabel = t.value || "？";
+      if (t.kind === "type") valueLabel = typeLabel[t.value] || valueLabel;
+      if (t.kind === "element" && t.value !== "無") {
+        const el = (scenarioProject.elementDefs || []).find(e => e.id === t.value);
+        valueLabel = el ? (el.name || t.value) : valueLabel;
+      }
+      const who = l.userKind === "player" ? "主人公" : (l.userKind === "companion" ? beastTargetName(l.userCompanion) : "誰でも");
+      const cd = Math.max(0, Math.round(Number(l.cooldown) || 0));
+      beastAppDetailRow(linkCard, `${unlocked ? "✔ " : "🔒 "}${l.name || "連動"}`,
+        `きっかけ：${kindLabel}が「${valueLabel}」／使った人：${who}／クールタイム${cd}ターン` + (unlocked ? "" : `（${l.unlockBreak}${cfg.breakLabel}で解放）`),
+        unlocked ? "waza-detail-done" : "");
+    });
+    const limit = Math.max(1, Math.round(Number(entry.linkMaxPerTurn) || 1));
+    beastAppDetailRow(linkCard, "1ターンの上限", `${limit}回`);
+  }
+  panel.appendChild(linkCard);
 
   // --- セット／外す ---
   if (entry.id === equippedId) {
