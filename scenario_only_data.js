@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1794364237402,
+  "version": 1794418764284,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -7885,18 +7885,18 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1790003749567_6",
           "type": "telop",
-          "text": " "
+          "text": "重苦しい空気を漂わせる間にて\n玉座に座る男の周りには、跪く者が数名。"
         },
         {
           "id": "block_1790003623871_4",
           "type": "dialogue",
-          "speaker": "？？？？？？？？？？",
+          "speaker": "玉座の男",
           "text": "....----の循環...."
         },
         {
           "id": "block_1790003686121_5",
           "type": "dialogue",
-          "speaker": "？？？？？？？？？？",
+          "speaker": "玉座の男",
           "text": "言わば----のリサイクル。"
         },
         {
@@ -7907,37 +7907,37 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1790003935669_8",
           "type": "dialogue",
-          "speaker": "？？？？？？？",
+          "speaker": "跪く女",
           "text": "いきなり、どうしたのですか？"
         },
         {
           "id": "block_1790003993923_9",
           "type": "dialogue",
-          "speaker": "？？？？？？？？？？",
+          "speaker": "玉座の男",
           "text": "いや、なんとなく、この循環の{/摂理}={\\せつり}は実に効率が良いと、ふと思っただけだ。"
         },
         {
           "id": "block_1790004043828_10",
           "type": "dialogue",
-          "speaker": "？？？？？？？？？？",
+          "speaker": "玉座の男",
           "text": "\"{/久遠の環}={\\スターチス・キルクルス}\"全体を廻すこの機構は、お前の役にも立てているはずだ。"
         },
         {
           "id": "block_1790004618350_12",
           "type": "dialogue",
-          "speaker": "？？？？？？？",
+          "speaker": "跪く女",
           "text": "仰る通りでございます。\n誠に感謝しております。"
         },
         {
           "id": "block_1790004606643_11",
           "type": "dialogue",
-          "speaker": "？？？？？？？？？？",
+          "speaker": "玉座の男",
           "text": "お前に任せた\"--\"は、お前の{/裁量}={\\さいりょう}において永遠に全うするように。これからも頼むぞ。"
         },
         {
           "id": "block_1790004802790_15",
           "type": "dialogue",
-          "speaker": "？？？？？？？",
+          "speaker": "跪く女",
           "text": "{/御意}={\\ぎょい}、{/遵奉}={\\じゅんぽう}いたします。"
         },
         {
@@ -7948,59 +7948,59 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1790004793372_14",
           "type": "dialogue",
-          "speaker": "？？？？？？？？？？",
+          "speaker": "跪く男",
           "text": "------よ、お前にはいつも感謝している。--間の{/干渉}={\\かんしょう}において、お前ほどの{/適任}={\\てきにん}はいないだろう。\n-------同じく、これからも頼むぞ。"
         },
         {
           "id": "block_1790005430347_17",
           "type": "narration",
-          "text": "跪く者は少しだけ顔を上げる。"
+          "text": "跪く男は少しだけ顔を上げる。"
         },
         {
           "id": "block_1790005425473_16",
           "type": "dialogue",
-          "speaker": "？？？？？？",
+          "speaker": "跪く男",
           "text": "分かりやした。\n貴方様の仰せのままに。これからも続けてまいりやしょう。"
         },
         {
           "id": "block_1791727802736_1",
           "type": "dialogue",
-          "speaker": "？？？？？？",
+          "speaker": "跪く男",
           "text": "...して、-------様。\n少しばかり興味深い話がありまして、、、"
         },
         {
           "id": "block_1791728151426_2",
           "type": "dialogue",
-          "speaker": "？？？？？？？？？？",
+          "speaker": "玉座の男",
           "text": "...なんだ。言うが良い。"
         },
         {
           "id": "block_1791728299007_4",
           "type": "narration",
-          "text": "跪く者は、実に楽しそうな声で言った。"
+          "text": "跪く男は、実に楽しそうな声で言った。"
         },
         {
           "id": "block_1791728356924_5",
           "type": "dialogue",
-          "speaker": "？？？？？？",
+          "speaker": "跪く男",
           "text": "実は...\n先の循環の過程で、面白い{/能力}={\\ちから}が発現した人間がおりまして..."
         },
         {
           "id": "block_1791728297118_3",
           "type": "dialogue",
-          "speaker": "？？？？？？？？？？",
+          "speaker": "玉座の男",
           "text": "...ほう？\nどんな{/能力}={\\ちから}だ？"
         },
         {
           "id": "block_1791728729613_6",
           "type": "dialogue",
-          "speaker": "？？？？？？",
+          "speaker": "跪く男",
           "text": "それがですね...."
         },
         {
           "id": "block_1791728759088_7",
           "type": "dialogue",
-          "speaker": "？？？？？？",
+          "speaker": "跪く男",
           "text": "彼の{/能力}={\\ちから}はーーーーー"
         },
         {
@@ -8236,7 +8236,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1791735229474_37",
                   "type": "dialogue",
                   "speaker": "黒スーツメン",
-                  "text": "申し訳ございません。本日は、ご{/貴賓}={\\きひん}のお客様のために、全館を貸し切らせていただいております。"
+                  "text": "申し訳ございません。本日は、ご{/貴賓}={\\きひん}の方のために、全館を貸し切らせていただいております。"
                 },
                 {
                   "id": "block_1791735259468_38",
@@ -8669,7 +8669,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1794155936561_2",
           "type": "narration",
-          "text": "そんな話をしていると対向から来た黒いフードを被った男とぶつかった。"
+          "text": "そんな話をしていると向かいから来た黒いフードを被った男とぶつかった。"
         },
         {
           "id": "block_1794157338798_15",
@@ -9180,7 +9180,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1794235732511_13",
           "type": "dialogue",
           "speaker": "何の変哲もないTDNお婆さん",
-          "text": "わたしの名前は「出見=ウル子」。\nミドルネームは内緒だわよ♡"
+          "text": "わたしの名前は「{/出見=ウル子}={\\でみ うるこ}」。\nミドルネームは内緒だわよ♡"
         },
         {
           "id": "block_1794236424276_21",
@@ -9232,7 +9232,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1794236520745_25",
           "type": "dialogue",
           "speaker": "出見=ウル子",
-          "text": "「巨鼠\"タロゥハム\"」を倒してほしいのよ。"
+          "text": "「{/巨鼠}={\\きょそ}\"タロゥハム\"」を倒してほしいのよ。"
         },
         {
           "id": "block_1794236776153_26",
@@ -9307,14 +9307,14 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
         {
           "id": "block_1794237787030_38",
           "type": "dialogue",
-          "speaker": "ロリルｓ",
+          "speaker": "ロリル",
           "text": "さすが治郎。私に出来ないことを平然とやってのける。\nそこに{/痺}={\\しび}れる、憧れるー。"
         },
         {
           "id": "block_1794237843623_39",
           "type": "dialogue",
           "speaker": "田中治郎",
-          "text": "ロリルお前、その言い回しどうやって思いついたんだよ..."
+          "text": "ロリルお前、その言い回しどうやって思いついたんだよ...\nグレートすぎるぞ。"
         },
         {
           "id": "block_1794237890528_40",
@@ -9363,7 +9363,8 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "endrollScrollSeconds": 20,
           "endrollBgmFadeSeconds": null
         }
-      ]
+      ],
+      "started": true
     }
   ],
   "chapterArcs": [

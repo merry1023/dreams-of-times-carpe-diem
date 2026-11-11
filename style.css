@@ -9324,3 +9324,12 @@ rt {
 .scenario-stats-table th, .scenario-stats-table td { border: 1px solid rgba(255, 255, 255, 0.2); padding: 4px 8px; text-align: left; white-space: nowrap; }
 .scenario-stats-table th { background: rgba(255, 255, 255, 0.1); }
 .scenario-stats-table td.scenario-stats-num { text-align: right; }
+
+/* ★要望対応：釣りの記録画面（fishing.js の openFishingRecordScreen） */
+.fishing-record-overlay { position: fixed; inset: 0; z-index: 9000; background: rgba(0, 0, 0, 0.75); display: flex; align-items: center; justify-content: center; }
+.fishing-record-panel { width: min(520px, 92vw); max-height: 86vh; overflow-y: auto; background: #1b2430; color: #fff; border: 2px solid #6fb8e8; border-radius: 10px; padding: 16px; }
+.fishing-record-list { margin: 8px 0 12px; max-height: 50vh; overflow-y: auto; }
+.fishing-record-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); }
+.fishing-record-row-unknown { opacity: 0.55; }
+.fishing-record-name { color: #7fd4ff; }
+.fishing-record-info { white-space: nowrap; }

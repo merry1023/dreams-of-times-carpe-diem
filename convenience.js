@@ -400,7 +400,7 @@ function getCodexEntries(tab) {
     ((typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.fishItems)) ? scenarioProject.fishItems : []).forEach(f => {
       if (!f || !f.id) return;
       entries.push({ id: f.id, name: f.name || "（無名）", discovered: isCodexItemDiscovered(f.id), tag: f.rank ? `ランク${f.rank}` : "",
-        lines: [f.description, f.fishType ? `種類：${f.fishType}` : null, f.rank ? `ランク：${f.rank}` : null, f.size != null ? `大きさ：${f.size}` : null, price(f)].filter(Boolean) });
+        lines: [f.description, f.fishType ? `種類：${f.fishType}` : null, f.rank ? `ランク：${f.rank}` : null, f.size != null ? `大きさ：${f.size}` : null, ...getCodexFishRecordLines(f.id), price(f)].filter(Boolean) });
     });
   } else if (tab === "dish") {
     const seen = {};
@@ -1743,6 +1743,55 @@ function renderMonsterCodex() {
 }
 
 // 図鑑で選んだ1体の詳細（画像・好感度・専用スキルボタンなど）
+// ★要望対応：魚図鑑の詳細に出す釣りの記録（records.js）
+function getCodexFishRecordLines(fishId) {
+  if (typeof getFishRecord !== "function") return [];
+  const r = getFishRecord(fishId);
+  return [`釣った数：${r.count}匹`, r.count > 0 && r.maxSize > 0 ? `最大サイズ：${r.maxSize}` : null];
+}
+
+// ★要望対応：魔物図鑑の詳細に「属性・弱点・討伐数・見逃し数・ドロップ品」を足す
+//   ・属性と弱点は、戦闘画面のアイコンと同じ判定（getBattleEnemyElements／getEnemyWeakElementIds）を使うので、
+//     図鑑の表示と実際の効きが必ず一致する
+//   ・ドロップ品は、そのアイテムを一度でも手に入れたことがある場合だけ名前を出す（未入手は「？？？」）
+function appendMonsterCodexExtras(panel, key, master, isBossEntry) {
+  const addLine = (text) => {
+    const el = document.createElement("p");
+    el.className = "monster-codex-description";
+    el.textContent = text;
+    panel.appendChild(el);
+    return el;
+  };
+  const addIconLine = (label, ids) => {
+    const el = addLine(label);
+    if (ids.length === 0) { el.textContent = label + "なし"; return; }
+    ids.forEach(id => {
+      const def = (typeof getElementDefById === "function") ? getElementDefById(id) : null;
+      if (typeof createElementIconEl === "function") {
+        const icon = createElementIconEl(id);
+        if (icon) el.appendChild(icon);
+      }
+      el.appendChild(document.createTextNode((def && def.name) ? def.name + " " : id + " "));
+    });
+  };
+  
+  if (typeof getBattleEnemyElements === "function") {
+    const enemy = { monsterKey: key };
+    addIconLine("属性：", getBattleEnemyElements(enemy));
+    addIconLine("弱点：", typeof getEnemyWeakElementIds === "function" ? getEnemyWeakElementIds(enemy) : []);
+  }
+  
+  if (typeof getMonsterRecord === "function") {
+    const r = getMonsterRecord(key);
+    addLine(isBossEntry ? `討伐数：${r.killed}` : `討伐数：${r.killed}　見逃し数：${r.spared}`);
+  }
+  
+  if (master.dropItemId) {
+    const dropName = isCodexItemDiscovered(master.dropItemId) ? getCodexItemName(master.dropItemId) : null;
+    addLine(`ドロップ品：${dropName || "？？？"}`);
+  }
+}
+
 function renderMonsterCodexDetail(panel) {
   // ★要望対応：一覧が「通常の魔物＋ボス」の結合リストになったので、同じ結合順で引く
   const codexKeys = [...SPAREABLE_KEYS, ...BOSS_MONSTER_KEYS];
@@ -1769,6 +1818,8 @@ function renderMonsterCodexDetail(panel) {
     descEl.textContent = master.description;
     panel.appendChild(descEl);
   }
+  
+  appendMonsterCodexExtras(panel, key, master, isBossEntry); // ★属性・弱点・討伐数・見逃し数・ドロップ品
   
   if (isBossEntry) {
     // ★要望対応：ボスには好感度が無いのでバー・ラベルは出さない。代わりに基本ステータスを表示
