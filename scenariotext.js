@@ -3,8 +3,11 @@
 //   ・会話文      → 話者名:｢ 文章｣
 //   ・地の文      → そのまま文字
 //   ・テロップ・演出・その他のゲーム処理ブロック → 〈種類名〉「内容」
-//   ・IF条件分岐／選択肢 → if(条件){ 内容 }else{ 内容 }
-//   （選択肢は、選択肢1つ1つを if(選択肢「質問文」:「選択肢文」){ 内容 } として書き出す）
+//   ・IF条件分岐／選択肢 → if(条件){ 内容 }elif(条件){ 内容 }else{ 内容 }
+//   （選択肢は、1つ目を if(選択肢「質問文」:「選択肢文」){ 内容 }、2つ目以降を }elif(選択肢「質問文」:「選択肢文」){ 内容 } と繋げて書き出す。
+//     IFの「偽の時」の中身がIFブロック1つだけの場合も、}elif(条件){ として繋げる）
+//   ・各ブロックの行頭に、話ごとの通し番号（入れ子の中も含め、上から順に1,2,3…）を [番号] の形で付ける
+//   ・ジャンプ系ブロックは、ジャンプ先のブロック番号を →[番号] の形で書く
 //   データ管理タブ（scenariobuild.js）のボタンから exportScenarioAsTextFile("txt" | "md") を呼ぶ。
 //   書き出し専用で、ゲームデータ（scenarioProject）は一切書き換えない。
 
@@ -67,6 +70,33 @@ function scTxtCollectBlocks(blocks, out) {
   return out;
 }
 
+// ★ブロック番号を振る。書き出す順（上から下、入れ子の中も含む：IFは真→偽、選択肢は選択肢1→2…）と同じ順で1から数える
+function scTxtNumberBlocks(blocks, ctx) {
+  (blocks || []).forEach(block => {
+    if (!block) return;
+    ctx.counter += 1;
+    ctx.numberOf.set(block, ctx.counter);
+    if (block.type === "if") {
+      scTxtNumberBlocks(block.trueBlocks, ctx);
+      scTxtNumberBlocks(block.falseBlocks, ctx);
+    }
+    if (block.type === "choice") (block.options || []).forEach(opt => scTxtNumberBlocks(opt.blocks, ctx));
+  });
+}
+
+// ★番号を桁をそろえた文字にする（例：総数120件なら 007 → [007]）
+function scTxtNumberText(ctx, block) {
+  const n = ctx.numberOf.get(block);
+  if (n == null) return "";
+  return `[${String(n).padStart(ctx.width, "0")}]`;
+}
+
+// ★行頭に付けるブロック番号（後ろに半角スペース1つ）
+function scTxtLabel(ctx, block) {
+  const text = scTxtNumberText(ctx, block);
+  return text ? `${text} ` : "";
+}
+
 function scTxtBlockTypeLabel(type) {
   if (typeof SCENARIO_BLOCK_TYPES !== "undefined" && SCENARIO_BLOCK_TYPES[type]) return SCENARIO_BLOCK_TYPES[type];
   return type;
@@ -82,7 +112,9 @@ function scTxtJumpTarget(ctx, targetId) {
   else if (block.type === "bgm") head = block.track || "";
   else if (block.type === "background") head = block.path || "";
   head = head.replace(/\s+/g, " ").slice(0, 16);
-  return head ? `${scTxtBlockTypeLabel(block.type)}：${head}` : scTxtBlockTypeLabel(block.type);
+  const num = scTxtNumberText(ctx, block);
+  const arrow = num ? `→${num} ` : "";
+  return head ? `${arrow}${scTxtBlockTypeLabel(block.type)}：${head}` : `${arrow}${scTxtBlockTypeLabel(block.type)}`;
 }
 
 // ★IF条件1件を文字にする（例：echichi=ON／主人公のレベル>=10／薬草を持っている）
@@ -282,35 +314,50 @@ function scTxtRenderBlock(ctx, block) {
       lines.push(tag("ボス演出：技を撃つ", block.skillName || "（未指定）"));
       break;
     case "if": {
-      lines.push(`if(${scTxtConditions(block)}){`);
-      lines.push("");
-      const trueLines = scTxtRenderBlocks(ctx, block.trueBlocks);
-      if (trueLines.length) lines.push(...trueLines, "");
-      else if (block.trueJumpBlockId) lines.push(tag("ジャンプ", scTxtJumpTarget(ctx, block.trueJumpBlockId)), "");
-      const hasElse = (block.falseBlocks || []).length > 0 || !!block.falseJumpBlockId; // 偽の時の中身がある時だけelseを付ける
-      if (hasElse) {
-        lines.push("}else{");
+      // 「偽の時」の中身がIFブロック1つだけなら、else{ if… } ではなく }elif(条件){ と繋げて書く（何段続いても同じ）
+      let cur = block;
+      let head = `${scTxtLabel(ctx, cur)}if(${scTxtConditions(cur)}){`;
+      while (cur) {
+        lines.push(head);
         lines.push("");
-        const falseLines = scTxtRenderBlocks(ctx, block.falseBlocks);
-        if (falseLines.length) lines.push(...falseLines, "");
-        else if (block.falseJumpBlockId) lines.push(tag("ジャンプ", scTxtJumpTarget(ctx, block.falseJumpBlockId)), "");
+        const trueLines = scTxtRenderBlocks(ctx, cur.trueBlocks);
+        if (trueLines.length) lines.push(...trueLines, "");
+        else if (cur.trueJumpBlockId) lines.push(tag("ジャンプ", scTxtJumpTarget(ctx, cur.trueJumpBlockId)), "");
+        const falseBlocks = cur.falseBlocks || [];
+        const onlyIf = falseBlocks.length === 1 && falseBlocks[0] && falseBlocks[0].type === "if" && !cur.falseJumpBlockId;
+        if (onlyIf) {
+          cur = falseBlocks[0];
+          head = `${scTxtLabel(ctx, cur)}}elif(${scTxtConditions(cur)}){`;
+          continue;
+        }
+        const hasElse = falseBlocks.length > 0 || !!cur.falseJumpBlockId; // 偽の時の中身がある時だけelseを付ける
+        if (hasElse) {
+          lines.push("}else{");
+          lines.push("");
+          const falseLines = scTxtRenderBlocks(ctx, cur.falseBlocks);
+          if (falseLines.length) lines.push(...falseLines, "");
+          else if (cur.falseJumpBlockId) lines.push(tag("ジャンプ", scTxtJumpTarget(ctx, cur.falseJumpBlockId)), "");
+        }
+        lines.push("}");
+        cur = null;
       }
-      lines.push("}");
       break;
     }
     case "choice": {
-      // 選択肢は「1つ1つをifブロック」として書き出す
-      (block.options || []).forEach((opt, i) => {
-        if (i > 0) lines.push("");
-        lines.push(`if(選択肢${scTxtQuote(block.prompt || "")}:${scTxtQuote(opt.text || "")}){`);
+      // 選択肢は、1つ目を if(…){、2つ目以降を }elif(…){ と繋げて書き出す
+      const options = block.options || [];
+      options.forEach((opt, i) => {
+        const cond = `選択肢${scTxtQuote(block.prompt || "")}:${scTxtQuote(opt.text || "")}`;
+        lines.push(i === 0 ? `${scTxtLabel(ctx, block)}if(${cond}){` : `}elif(${cond}){`);
         lines.push("");
         const inner = scTxtRenderBlocks(ctx, opt.blocks);
         if (inner.length) lines.push(...inner, "");
         if (opt.isCorrect) lines.push(tag("正解"), "");
         if (opt.jumpBlockId) lines.push(tag("ジャンプ", scTxtJumpTarget(ctx, opt.jumpBlockId)), "");
         if (opt.loops) lines.push(tag("選択肢に戻る"), "");
-        lines.push("}");
       });
+      if (options.length) lines.push("}");
+      else lines.push(`${scTxtLabel(ctx, block)}${tag("選択肢", block.prompt || "")}`); // 選択肢が0件の時は、せめて質問文だけ出す
       break;
     }
     default: {
@@ -319,6 +366,9 @@ function scTxtRenderBlock(ctx, block) {
       lines.push(content !== undefined ? tag(scTxtBlockTypeLabel(block.type), content) : tag(scTxtBlockTypeLabel(block.type)));
     }
   }
+  // 行頭にブロック番号を付ける（IF・選択肢は、上の処理の中で「if(」の行にだけ付けてある）。
+  // 複数行になるブロック（戦闘のジャンプ行など）は、1行目だけに付け、続きの行は番号なしで直後に並べる
+  if (block.type !== "if" && block.type !== "choice" && lines.length) lines[0] = scTxtLabel(ctx, block) + lines[0];
   return lines;
 }
 
@@ -334,7 +384,9 @@ function scTxtRenderBlocks(ctx, blocks) {
 
 // ★話1件 → 行の配列
 function scTxtRenderChapter(chapter) {
-  const ctx = { blockMap: scTxtCollectBlocks(chapter.blocks, {}) };
+  const ctx = { blockMap: scTxtCollectBlocks(chapter.blocks, {}), numberOf: new Map(), counter: 0, width: 1 };
+  scTxtNumberBlocks(chapter.blocks, ctx);
+  ctx.width = String(ctx.counter).length; // 番号の桁数（総数に合わせてゼロ埋めする）
   return scTxtRenderBlocks(ctx, chapter.blocks);
 }
 
