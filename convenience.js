@@ -11,6 +11,10 @@ const SAVE_KEY_PREFIX = "demoge_save_slot_"; // localStorageのキーの接頭�
 // セーブデータに含めることで、ロード時に同じ場所へ戻れるようにする。
 let currentLocationKey = "town";
 
+// ★エリア内の「場所」（広場・牧場付近など）。街・村・国タイプのエリアの中で今いる場所のid。
+//   null、またはエリアに存在しないidの時は「入口の場所」として扱う（town.js getCurrentPlace）
+let currentPlaceId = null;
+
 // 第一話（scenario.js）が完了しているかどうか。
 // true になる前にセーブした場合は、ロード時にシナリオを最初から高速リプレイして
 // セーブ地点まで一気に追いつかせることができる（true になった後は自由行動パートなので、
@@ -2510,6 +2514,7 @@ function buildSaveData() {
     inventorySlots: deepClone(inventorySlots),
     gold: gold,
     currentLocationKey: currentLocationKey, // ★自由行動パートでロードした時、この場所へ戻すための記録
+    currentPlaceId: currentPlaceId, // ★エリア内の「場所」。ロードで同じ場所へ戻す（削除されていれば入口に戻る）
     chapter1Finished: chapter1Finished, // ★第一話が終わっているかどうか
     scenarioStep: messageLog.length, // ★第一話の途中でロードする時、ここまで一気に再生するための記録
     messageLog: deepClone(messageLog), // ★ログタブの履歴＆選択肢の再生に使う
@@ -2599,6 +2604,7 @@ async function restoreGameFromSaveData(data, persistLoadedDataFn) {
   
   gold = data.gold;
   currentLocationKey = data.currentLocationKey || "town";
+  currentPlaceId = data.currentPlaceId || null;
   chapter1Finished = !!data.chapter1Finished;
   if (typeof glossaryRestoreSeen === "function") glossaryRestoreSeen(data); // ★見つけた用語・語彙を復元（glossary_app.js）
   
