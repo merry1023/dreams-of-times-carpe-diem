@@ -1614,6 +1614,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "endings", label: "エンディング一覧" },
   { view: "variables", label: "変数一覧" }, // ★要望対応：式の中で使えるシステム変数の名前が分かるよう、サブ画面に一覧を出す
   { view: "data", label: "データ管理" },
+  { view: "scenariostats", label: "統計" }, // ★要望対応：全話・各話の文字数／発言回数／ブロック数／演出数などの集計（scenariostats.js）
   { view: "tabmanager", label: "タブ管理" } // ★バグ修正：中身はプレイ画面タブ（メイン/インベントリ/スキル…）の管理に変更した
 ];
 
@@ -1710,7 +1711,7 @@ const SCENARIOBUILD_TAB_GROUPS = [
   { id: "guild", label: "冒険者協会", views: ["towerunits", "raidunits", "guildrewards"] },
   { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "flags", "gamevars", "endings"] },
   { id: "world", label: "マップ・施設・BGM", views: ["maps", "facilities", "bgm"] },
-  { id: "system", label: "データ・システム", views: ["variables", "data", "tabmanager"] }
+  { id: "system", label: "データ・システム", views: ["variables", "data", "scenariostats", "tabmanager"] }
 ];
 let scenarioBuildTabGroupOpen = {};
 
@@ -1947,6 +1948,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "recipes") renderRecipeManager(bodyEl);
   else if (scenarioBuildSubView === "randomnames") renderRandomNameManager(bodyEl);
   else if (scenarioBuildSubView === "elements") renderElementManager(bodyEl);
+  else if (scenarioBuildSubView === "scenariostats") renderScenarioStatsManager(bodyEl); // ★要望対応：統計（scenariostats.js）
   else if (scenarioBuildSubView === "companions") renderCompanionManager(bodyEl);
   else if (scenarioBuildSubView === "classes") renderClassStatsManager(bodyEl);
   else if (scenarioBuildSubView === "bgm") renderEntityManager(bodyEl, getBgmManagerConfig());

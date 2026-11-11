@@ -9317,3 +9317,10 @@ rt {
 .dm-bhead.dm-selected { background: #ffd23f; color: #111; }
 .dm-same { margin: 3px 0; }
 .dm-same summary { cursor: pointer; color: #ffd23f; font-size: 12px; }
+
+/* ★要望対応：統計タブの表（scenariostats.js） */
+.scenario-stats-wrap { overflow-x: auto; margin: 6px 0 12px; }
+.scenario-stats-table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+.scenario-stats-table th, .scenario-stats-table td { border: 1px solid rgba(255, 255, 255, 0.2); padding: 4px 8px; text-align: left; white-space: nowrap; }
+.scenario-stats-table th { background: rgba(255, 255, 255, 0.1); }
+.scenario-stats-table td.scenario-stats-num { text-align: right; }
