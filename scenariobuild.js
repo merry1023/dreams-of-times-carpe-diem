@@ -13929,6 +13929,24 @@ function renderDataManager(container) {
   };
   container.appendChild(jsExportBtn);
   
+  // ★要望対応：シナリオ文章のみをtxt／mdで書き出す（scenariotext.js）。会話は「話者名:｢ 文章｣」、地の文はそのまま、
+  //   テロップ・演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }else{ … }」の形
+  const textExportNote = document.createElement("p");
+  textExportNote.className = "devmode-note";
+  textExportNote.textContent = "全ての話を、純粋なシナリオ文章だけのテキストファイルとして書き出します（読み物・校正用。ゲームへの取り込みには使えません）。会話は「話者名:｢ 文章｣」、地の文はそのまま、テロップや演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }else{ … }」の形になります。";
+  container.appendChild(textExportNote);
+  
+  ["txt", "md"].forEach(ext => {
+    const textExportBtn = document.createElement("button");
+    textExportBtn.className = "devmode-btn";
+    textExportBtn.textContent = `シナリオ文章のみ ${ext}ファイルで出力`;
+    textExportBtn.onclick = (event) => {
+      event.stopPropagation();
+      if (typeof exportScenarioAsTextFile === "function") exportScenarioAsTextFile(ext);
+    };
+    container.appendChild(textExportBtn);
+  });
+  
   const jsExportSettingsBtn = document.createElement("button");
   jsExportSettingsBtn.className = "devmode-btn";
   jsExportSettingsBtn.textContent = "ゲームの基本設定のみ JSファイルで出力（敵・ボス・アイテム・技・仲間・職業・施設・BGM・マップ）";
