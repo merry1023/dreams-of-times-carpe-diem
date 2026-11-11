@@ -4141,6 +4141,7 @@ async function resolveBattleVictory() {
     if (!SPAREABLE_KEYS.includes(monsterKey)) {
       decisions[monsterKey] = "kill"; // ★ボス級など、見逃せない相手は今まで通り自動的に倒す
       discoveredMonsters[monsterKey] = true; // ★要望対応：ボスも倒したら魔物図鑑に載るようにする
+      recordMonsterEncounter(monsterKey, "killed", countOfType); // records.js：討伐数
       continue;
     }
     
@@ -4159,6 +4160,7 @@ async function resolveBattleVictory() {
         changeMonsterAffection(monsterKey, -8); // ★殺すと好感度が下がる
       }
       discoveredMonsters[monsterKey] = true; // ★倒したので図鑑に載る
+      recordMonsterEncounter(monsterKey, "killed", countOfType); // records.js：討伐数
       if (Array.isArray(master.killBlocks) && master.killBlocks.length > 0 && typeof runBlockSequence === "function") {
         await runBlockSequence({ id: "enemyflavor_" + monsterKey, blocks: master.killBlocks }, master.killBlocks, []); // scenariobuild.js
       } else if (master.killFlavor) {
@@ -4171,6 +4173,7 @@ async function resolveBattleVictory() {
       const affectionGain = gainMin + Math.floor(Math.random() * (gainMax - gainMin + 1));
       changeMonsterAffection(monsterKey, affectionGain);
       discoveredMonsters[monsterKey] = true; // ★見逃したので図鑑に載る
+      recordMonsterEncounter(monsterKey, "spared", countOfType); // records.js：見逃し数
       if (Array.isArray(master.spareBlocks) && master.spareBlocks.length > 0 && typeof runBlockSequence === "function") {
         await runBlockSequence({ id: "enemyflavor_" + monsterKey, blocks: master.spareBlocks }, master.spareBlocks, []); // scenariobuild.js
       } else if (master.spareFlavor) {
