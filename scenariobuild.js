@@ -13957,7 +13957,7 @@ function renderDataManager(container) {
   //   テロップ・演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }else{ … }」の形
   const textExportNote = document.createElement("p");
   textExportNote.className = "devmode-note";
-  textExportNote.textContent = "全ての話を、純粋なシナリオ文章だけのテキストファイルとして書き出します（読み物・校正用。ゲームへの取り込みには使えません）。会話は「話者名:｢ 文章｣」、地の文はそのまま、テロップや演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }else{ … }」の形になります。";
+  textExportNote.textContent = "全ての話を、純粋なシナリオ文章だけのテキストファイルとして書き出します（読み物・校正用。ゲームへの取り込みには使えません）。会話は「話者名:｢ 文章｣」、地の文はそのまま、テロップや演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }elif(条件){ … }else{ … }」の形になります（選択肢が複数ある時は、2つ目以降を elif で繋げます）。各ブロックの行頭には話ごとの番号「[001]」が付き、ジャンプ系ブロックにはジャンプ先の番号「→[012]」も書かれます。";
   container.appendChild(textExportNote);
   
   ["txt", "md"].forEach(ext => {
