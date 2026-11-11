@@ -52,12 +52,18 @@ function renderTowerUnitManager(container) {
   // ★最初の叩き台：今の自動生成と同じユニットをそのまま登録する（そこから名前・数値を直していける）
   const seedBtn = document.createElement("button");
   seedBtn.className = "devmode-btn";
-  seedBtn.textContent = "標準のユニットを登録する（属性ごとに1つ＋サポート1つ）";
-  seedBtn.disabled = scenarioProject.towerUnits.length > 0 || typeof tdBuildDefaultUnitData !== "function";
-  seedBtn.title = scenarioProject.towerUnits.length > 0 ? "すでに登録があるため使えません（先に全部削除してください）" : "";
+  // ★すでに登録があっても使える：標準のユニットのうち、同じ名前がまだ無いものだけを足す（組み込みのキャラも、あとから編集できる）
+  const missingStd = (typeof tdBuildDefaultUnitData === "function")
+    ? tdBuildDefaultUnitData().filter(d => !scenarioProject.towerUnits.some(u => u && u.name === d.name))
+    : [];
+  seedBtn.textContent = scenarioProject.towerUnits.length === 0
+    ? "標準のユニットを登録する（属性ごとに1つ＋サポート1つ）"
+    : `標準のユニットのうち、足りない分を追加する（${missingStd.length}件）`;
+  seedBtn.disabled = missingStd.length === 0;
+  seedBtn.title = missingStd.length === 0 ? "標準のユニットは、すべて登録済みです（名前で判定します）" : "同じ名前がまだ無い標準のユニットだけを、末尾に追加します";
   seedBtn.onclick = () => {
     pushUndoSnapshot();
-    scenarioProject.towerUnits = tdBuildDefaultUnitData();
+    scenarioProject.towerUnits = scenarioProject.towerUnits.concat(missingStd);
     markScenarioBuildDirty();
     renderScenarioBuildPanel();
   };
@@ -271,12 +277,18 @@ function renderRaidUnitManager(container) {
 
   const seedBtn = document.createElement("button");
   seedBtn.className = "devmode-btn";
-  seedBtn.textContent = "標準の編成を登録する（主人公・仲間などから自動で作る）";
-  seedBtn.disabled = scenarioProject.raidUnits.length > 0 || typeof trBuildDefaultRaidData !== "function";
-  seedBtn.title = scenarioProject.raidUnits.length > 0 ? "すでに登録があるため使えません（先に全部削除してください）" : "";
+  // ★すでに登録があっても使える：標準の編成（主人公・仲間など）のうち、同じ名前がまだ無いキャラだけを足す
+  const missingStdRaid = (typeof trBuildDefaultRaidData === "function")
+    ? trBuildDefaultRaidData().filter(d => !scenarioProject.raidUnits.some(u => u && u.name === d.name))
+    : [];
+  seedBtn.textContent = scenarioProject.raidUnits.length === 0
+    ? "標準の編成を登録する（主人公・仲間などから自動で作る）"
+    : `標準の編成のうち、足りないキャラを追加する（${missingStdRaid.length}件）`;
+  seedBtn.disabled = missingStdRaid.length === 0;
+  seedBtn.title = missingStdRaid.length === 0 ? "標準の編成は、すべて登録済みです（名前で判定します）" : "同じ名前がまだ無い標準のキャラだけを、末尾に追加します";
   seedBtn.onclick = () => {
     pushUndoSnapshot();
-    scenarioProject.raidUnits = trBuildDefaultRaidData();
+    scenarioProject.raidUnits = scenarioProject.raidUnits.concat(missingStdRaid);
     markScenarioBuildDirty();
     renderScenarioBuildPanel();
   };
