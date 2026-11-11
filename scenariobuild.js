@@ -1587,6 +1587,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "quests", label: "クエスト管理" },
   { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
   { view: "tutorials", label: "チュートリアル管理" },
+  { view: "notationcheck", label: "表記ゆれチェック" }, // ★要望対応：話者名・カタカナ語などの表記ゆれを探して一括置換（notationcheck.js）
   { view: "glossary", label: "用語・語彙" }, // ★便利タブの「用語・語彙」アプリの言葉（ルビ・意味の解説）。メッセージ中の言葉をタップすると解説が開く
   { view: "skills", label: "スキル管理" },
   { view: "upperskills", label: "上位スキル" }, // ★要望対応：ステータスパネルで習得する、職業技とは別枠の技
@@ -1708,7 +1709,7 @@ const SCENARIOBUILD_TAB_GROUPS = [
   { id: "item", label: "アイテム・経済", views: ["items", "furniture", "fishmgmt", "recipes", "loginbonus", "randomnames"] },
   { id: "skill", label: "スキル・戦闘", views: ["skills", "upperskills", "gachaskills", "beasts", "combos", "statuspanels", "statuses", "elements"] },
   { id: "guild", label: "冒険者協会", views: ["towerunits", "raidunits", "guildrewards"] },
-  { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "flags", "gamevars", "endings"] },
+  { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "notationcheck", "flags", "gamevars", "endings"] },
   { id: "world", label: "マップ・施設・BGM", views: ["maps", "facilities", "bgm"] },
   { id: "system", label: "データ・システム", views: ["variables", "data", "tabmanager"] }
 ];
@@ -1932,6 +1933,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "achievements") renderEntityManager(bodyEl, getAchievementManagerConfig());
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
   else if (scenarioBuildSubView === "glossary") renderEntityManager(bodyEl, getGlossaryManagerConfig());
+  else if (scenarioBuildSubView === "notationcheck") renderNotationCheckManager(bodyEl); // ★要望対応：表記ゆれチェック（notationcheck.js）
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
   else if (scenarioBuildSubView === "combos") renderComboSkillManager(bodyEl); // ★要望対応：コンボスキル
   else if (scenarioBuildSubView === "towerunits") renderTowerUnitManager(bodyEl); // ★冒険者協会：タワーユニット（tower_defense_editor.js）
@@ -13955,7 +13957,7 @@ function renderDataManager(container) {
   //   テロップ・演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }else{ … }」の形
   const textExportNote = document.createElement("p");
   textExportNote.className = "devmode-note";
-  textExportNote.textContent = "全ての話を、純粋なシナリオ文章だけのテキストファイルとして書き出します（読み物・校正用。ゲームへの取り込みには使えません）。会話は「話者名:｢ 文章｣」、地の文はそのまま、テロップや演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }else{ … }」の形になります。";
+  textExportNote.textContent = "全ての話を、純粋なシナリオ文章だけのテキストファイルとして書き出します（読み物・校正用。ゲームへの取り込みには使えません）。会話は「話者名:｢ 文章｣」、地の文はそのまま、テロップや演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }elif(条件){ … }else{ … }」の形になります（選択肢が複数ある時は、2つ目以降を elif で繋げます）。各ブロックの行頭には話ごとの番号「[001]」が付き、ジャンプ系ブロックにはジャンプ先の番号「→[012]」も書かれます。";
   container.appendChild(textExportNote);
   
   ["txt", "md"].forEach(ext => {

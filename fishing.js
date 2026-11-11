@@ -41,6 +41,7 @@ function showFishingMenu() {
     { label: `釣る（${rodLabel} / ${baitLabel}）`, action: () => startFishing() },
     { label: "釣竿を変える", action: () => chooseFishingRod() },
     { label: "釣り餌を変える", action: () => chooseFishingBait() },
+    { label: "釣りの記録", action: () => openFishingRecordScreen() }, // ★要望対応：魚ごとの釣った数・最大サイズ
     { label: "戻る", action: () => fishingReturnTo() }
   ], fishingFacility.name || "釣り場");
 }
@@ -233,10 +234,15 @@ async function startFishing() {
   if (result.win) {
     const added = addItem(spot.fishId, 1); // inventory.js
     renderStatusHUD();
+    // ★要望対応：釣りの記録（records.js）。サイズは魚管理タブの「大きさ」を基準に毎回少し変わる
+    const size = rollFishSize(fishMaster);
+    const record = recordFishCatch(spot.fishId, size);
+    const sizeText = size != null ? `（サイズ：${size}）` : "";
+    const recordText = record.isNewRecord ? "\n最大サイズの記録を更新した！" : "";
     if (added) {
-      await displayMessage(`やった！ 「${fishMaster.name}」を釣り上げた！`);
+      await displayMessage(`やった！ 「${fishMaster.name}」を釣り上げた！${sizeText}${recordText}`);
     } else {
-      await displayMessage(`「${fishMaster.name}」を釣り上げたが、持ち物がいっぱいで受け取れなかった……`);
+      await displayMessage(`「${fishMaster.name}」を釣り上げたが、持ち物がいっぱいで受け取れなかった……${sizeText}${recordText}`);
     }
   } else {
     await displayMessage(`くっ……！ 糸を持ちこたえられず、「${fishMaster.name}」に逃げられてしまった……`);
@@ -408,4 +414,78 @@ function runFishingMinigame(fishMaster, rodMaster, fishId) {
     
     renderMinigameUI();
   });
+}
+
+
+// ===== 釣りの記録画面（要望対応） =====
+// ★魚ごとの「釣った数」「最大サイズ」の一覧。まだ一度も釣っていない魚は「？？？」で伏せる。
+//   Xキー／Escキー／「戻る」ボタンで閉じて、釣り場のメニューへ戻る
+function openFishingRecordScreen() {
+  hideLocationMenu();
+  const fishList = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.fishItems)) ? scenarioProject.fishItems.filter(f => f && f.id) : [];
+  
+  const overlay = document.createElement("div");
+  overlay.className = "fishing-record-overlay";
+  const panel = document.createElement("div");
+  panel.className = "fishing-record-panel";
+  overlay.appendChild(panel);
+  
+  const caughtKinds = fishList.filter(f => getFishRecord(f.id).count > 0).length; // records.js
+  const totalCount = fishList.reduce((sum, f) => sum + getFishRecord(f.id).count, 0);
+  
+  const title = document.createElement("h3");
+  title.className = "monster-codex-title";
+  title.textContent = "釣りの記録";
+  panel.appendChild(title);
+  
+  const summary = document.createElement("p");
+  summary.className = "monster-codex-description";
+  summary.textContent = `釣った魚の種類：${caughtKinds}/${fishList.length}　釣った合計：${totalCount}匹`;
+  panel.appendChild(summary);
+  
+  const list = document.createElement("div");
+  list.className = "fishing-record-list";
+  if (fishList.length === 0) {
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "monster-codex-description";
+    emptyEl.textContent = "まだ魚が登録されていません。";
+    list.appendChild(emptyEl);
+  }
+  fishList.forEach(f => {
+    const r = getFishRecord(f.id);
+    const row = document.createElement("div");
+    row.className = "fishing-record-row" + (r.count > 0 ? "" : " fishing-record-row-unknown");
+    const nameEl = document.createElement("span");
+    nameEl.className = "fishing-record-name";
+    nameEl.textContent = r.count > 0 ? (f.name || "（無名）") : "？？？";
+    row.appendChild(nameEl);
+    const infoEl = document.createElement("span");
+    infoEl.className = "fishing-record-info";
+    infoEl.textContent = r.count > 0 ? `${r.count}匹　最大サイズ：${r.maxSize || "-"}` : "未発見";
+    row.appendChild(infoEl);
+    list.appendChild(row);
+  });
+  panel.appendChild(list);
+  
+  const close = () => {
+    document.removeEventListener("keydown", onKeyDown, true);
+    overlay.remove();
+    showFishingMenu();
+  };
+  const onKeyDown = (event) => {
+    if (event.key === "x" || event.key === "X" || event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+    }
+  };
+  document.addEventListener("keydown", onKeyDown, true);
+  
+  const backBtn = document.createElement("button");
+  backBtn.className = "monster-codex-back-btn";
+  backBtn.textContent = "戻る（Xキー）";
+  backBtn.onclick = (event) => { event.stopPropagation(); close(); };
+  panel.appendChild(backBtn);
+  
+  document.body.appendChild(overlay);
 }
