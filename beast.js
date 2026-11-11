@@ -28,9 +28,16 @@ const BEAST_STATS = [
   { key: "skillPower", label: "魔力" },
   { key: "agi", label: "素早さ" }
 ];
-// 凸の強化・相性で増やせるもの。value は「％」（その能力が何％増えるか。マイナスで減らせる）
-// ★常時行動・連動の強化（威力・クールタイムなど）は、戦闘に組み込む次の段階で足す
-const BEAST_PARAMS = BEAST_STATS.map(s => ({ key: s.key, label: `${s.label}（％）` }));
+// 凸の強化・相性で増やせるもの。value は、能力は「％」（その能力が何％増えるか）／クールタイム短縮は「ターン数」。マイナスで減らせる
+//   ・能力（HP・攻撃・魔力・素早さ）：実際の能力に％で上乗せ
+//   ・行動の威力（％）：常時行動の技の威力に上乗せ（beast_battle.js）
+//   ・クールタイム短縮（ターン）：常時行動の技のクールタイムを短くする（0未満にはならない）
+const BEAST_STAT_PARAMS = BEAST_STATS.map(s => ({ key: s.key, label: `${s.label}（％）`, unit: "%" }));
+const BEAST_ACTION_PARAMS = [
+  { key: "actionPower", label: "行動の威力（％）", unit: "%" },
+  { key: "cooldownCut", label: "クールタイム短縮（ターン）", unit: "turn" }
+];
+const BEAST_PARAMS = BEAST_STAT_PARAMS.concat(BEAST_ACTION_PARAMS);
 // 凸ごとの能力の倍率（％）。0凸〜5凸。設定「魔獣召喚」で変えられる
 const BEAST_DEFAULT_MULTIPLIERS = [60, 68, 76, 84, 92, 100];
 
@@ -100,6 +107,7 @@ function beastBonusText(bonuses) {
     .map(b => {
       const def = BEAST_PARAMS.find(p => p.key === b.param);
       const v = Number(b.value);
+      if (def.key === "cooldownCut") return `クールタイム${v > 0 ? "−" : "＋"}${Math.abs(v)}ターン`;   // 短縮はプラスの値＝クールタイムは減る
       return `${def.label.replace("（％）", "")}${v > 0 ? "＋" : "−"}${Math.abs(v)}％`;
     });
   return parts.join("／");
@@ -112,16 +120,23 @@ function beastAffinityList(entry) {
 }
 
 // ===== 能力値 =====
-// ％の足し合わせ（stat ごと）。凸の強化は「今の凸数まで」、相性は「今のパーティで効いているもの」
-function beastBonusPercents(entry, breakCount, partyAffinities = true) {
-  const pct = {};
-  BEAST_STATS.forEach(s => { pct[s.key] = 0; });
+// 凸の強化・相性の効果の足し合わせ（BEAST_PARAMS ごと）。凸の強化は「今の凸数まで」、相性は「今のパーティで効いているもの」
+function beastBonusSums(entry, breakCount, partyAffinities = true) {
+  const sums = {};
+  BEAST_PARAMS.forEach(p => { sums[p.key] = 0; });
   const add = (list) => (Array.isArray(list) ? list : []).slice(0, 3).forEach(b => {
-    if (b && pct[b.param] != null) pct[b.param] += Number(b.value) || 0;
+    if (b && sums[b.param] != null) sums[b.param] += Number(b.value) || 0;
   });
   const table = Array.isArray(entry && entry.limitBreaks) ? entry.limitBreaks : [];
   for (let i = 0; i < Math.min(GACHA_MAX_BREAK, Math.max(0, breakCount)); i++) add(table[i]);
   if (partyAffinities) beastAffinityList(entry).filter(a => a.active).forEach(a => add(a.bonuses));
+  return sums;
+}
+// 能力ごとの％だけ（beastStatsAt が使う）
+function beastBonusPercents(entry, breakCount, partyAffinities = true) {
+  const sums = beastBonusSums(entry, breakCount, partyAffinities);
+  const pct = {};
+  BEAST_STATS.forEach(s => { pct[s.key] = sums[s.key]; });
   return pct;
 }
 // 能力値。level＝主人公のレベル、breakCount＝凸数。戻り値：{ maxHp, atk, skillPower, agi }

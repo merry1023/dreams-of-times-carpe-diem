@@ -9240,3 +9240,41 @@ rt {
   padding-left: 6px;
   margin-bottom: 6px;
 }
+
+/* ★戦闘中のおとも魔獣の表示（beast_battle.js の updateBattleBeastHud）。左上に、見た目・名前・HPの小さなパネルを出す */
+.battle-beast {
+    position: absolute;
+    top: 20px;
+    left: 12px;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 190px;
+    padding: 6px 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(164, 107, 255, 0.7);
+    border-radius: 10px;
+    box-shadow: 0 0 8px rgba(164, 107, 255, 0.35);
+    pointer-events: none;
+}
+.battle-beast.hidden { display: none !important; }
+.battle-beast.battle-beast-down { opacity: 0.55; filter: grayscale(0.85); box-shadow: none; }
+.battle-beast-info { display: flex; flex-direction: column; gap: 2px; min-width: 92px; }
+.battle-beast-name { font-size: 12px; font-weight: bold; color: #e9dcff; }
+.battle-beast-bar { height: 6px; background: rgba(255, 255, 255, 0.18); border-radius: 3px; overflow: hidden; }
+.battle-beast-fill { height: 100%; background: linear-gradient(90deg, #8e5bd6, #d04aa8); transition: width 0.25s ease; }
+.battle-beast-value { font-size: 10px; color: #cfc2e6; }
+
+/* ★おとも魔獣の連動ボタン（beast_battle.js の beastLinkRender）。左から出て、最大2つ縦に並ぶ。魔獣のパネル（左上）の下 */
+.battle-beast-links { position: absolute; top: 84px; left: 0; z-index: 4; display: flex; flex-direction: column; gap: 6px; }
+.battle-beast-links.hidden { display: none !important; }
+.battle-beast-link-btn {
+    padding: 8px 14px 8px 12px; font-size: 13px; font-weight: bold; color: #fff; cursor: pointer;
+    background: linear-gradient(90deg, rgba(142, 91, 214, 0.95), rgba(208, 74, 168, 0.9));
+    border: 1px solid #ffd7f3; border-left: none; border-radius: 0 18px 18px 0;
+    box-shadow: 0 0 10px rgba(208, 74, 168, 0.6); text-align: left;
+    animation: beast-link-in 0.25s ease-out;
+}
+.battle-beast-link-btn.selected { outline: 2px solid #ffe08a; filter: brightness(1.25); }
+@keyframes beast-link-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }

@@ -2039,6 +2039,7 @@ function renderSkillVariableReference(container) {
     ["自分魔力", "装備・強化込みの、今の魔力"],
     ["技威力", "今使っている技自身の威力（skill.power）"],
     ["凸数", "技ガチャの技の凸数（0〜5）。ガチャ技以外では常に0。「凸数 >= 3」のように、ifで凸数による分岐ができる"],
+    ["相性", "おとも魔獣の行動で使える。相性の良い仲間がパーティにいれば1、いなければ0（戦闘の開始時に固定）。「凸数 >= 3 かつ 相性 = 1」のように組み合わせられる。魔獣以外の技では常に0"],
     ["乱数", "0以上100未満のランダムな実数。式を評価するたびに新しく引き直されます"]
   ]);
   
@@ -8202,7 +8203,8 @@ function getEditingSkill() {
   return scenarioProject.skills.find(s => s.id === scenarioBuildEditingSkillId)
     || (scenarioProject.comboSkills || []).find(s => s.id === scenarioBuildEditingSkillId)
     || (scenarioProject.upperSkills || []).find(s => s.id === scenarioBuildEditingSkillId)
-    || (scenarioProject.gachaSkills || []).find(s => s.id === scenarioBuildEditingSkillId) || null; // ★技ガチャの技も、ブロックエディタを使い回す
+    || (scenarioProject.gachaSkills || []).find(s => s.id === scenarioBuildEditingSkillId) // ★技ガチャの技も、ブロックエディタを使い回す
+    || ((typeof beastEditorFindIdleAction === "function") ? beastEditorFindIdleAction(scenarioBuildEditingSkillId) : null) || null; // ★おとも魔獣の常時行動も、ブロックエディタを使い回す（beast_editor.js）
 }
 
 // ===== ステータスパネル管理（要望対応） =====
@@ -9060,7 +9062,7 @@ function renderSkillBlockEditor(container) {
   
   const backBtn = document.createElement("button");
   backBtn.className = "devmode-btn";
-  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : (scenarioBuildSubView === "combos" ? "← コンボスキルに戻る" : (scenarioBuildSubView === "upperskills" ? "← 上位スキルに戻る" : (scenarioBuildSubView === "gachaskills" ? "← 技ガチャに戻る" : "← スキル管理に戻る")));
+  backBtn.textContent = isItemSkill ? "← アイテムの詳細設定に戻る" : (scenarioBuildSubView === "combos" ? "← コンボスキルに戻る" : (scenarioBuildSubView === "upperskills" ? "← 上位スキルに戻る" : (scenarioBuildSubView === "gachaskills" ? "← 技ガチャに戻る" : (scenarioBuildSubView === "beasts" ? "← おとも魔獣に戻る" : "← スキル管理に戻る"))));
   backBtn.onclick = (event) => {
     event.stopPropagation();
     scenarioBuildSkillInsertMenuTarget = null;
@@ -13926,6 +13928,24 @@ function renderDataManager(container) {
     exportScenarioOnlyAsJsFile();
   };
   container.appendChild(jsExportBtn);
+  
+  // ★要望対応：シナリオ文章のみをtxt／mdで書き出す（scenariotext.js）。会話は「話者名:｢ 文章｣」、地の文はそのまま、
+  //   テロップ・演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }else{ … }」の形
+  const textExportNote = document.createElement("p");
+  textExportNote.className = "devmode-note";
+  textExportNote.textContent = "全ての話を、純粋なシナリオ文章だけのテキストファイルとして書き出します（読み物・校正用。ゲームへの取り込みには使えません）。会話は「話者名:｢ 文章｣」、地の文はそのまま、テロップや演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }else{ … }」の形になります。";
+  container.appendChild(textExportNote);
+  
+  ["txt", "md"].forEach(ext => {
+    const textExportBtn = document.createElement("button");
+    textExportBtn.className = "devmode-btn";
+    textExportBtn.textContent = `シナリオ文章のみ ${ext}ファイルで出力`;
+    textExportBtn.onclick = (event) => {
+      event.stopPropagation();
+      if (typeof exportScenarioAsTextFile === "function") exportScenarioAsTextFile(ext);
+    };
+    container.appendChild(textExportBtn);
+  });
   
   const jsExportSettingsBtn = document.createElement("button");
   jsExportSettingsBtn.className = "devmode-btn";
