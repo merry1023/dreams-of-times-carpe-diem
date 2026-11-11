@@ -5824,13 +5824,13 @@ function getGlossaryManagerConfig() {
     collapsible: true,
     groupField: "category", // ★要望対応：分類（この作品の用語・ゲーム用語・熟語…）ごとのカーテンに分けて表示する
     groupDefault: "その他",
-    groupOrder: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["この作品の用語", "ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]),
+    groupOrder: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["この作品の用語", "人物", "ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]),
     getEntitySummary: (entity) => "📚 " + (entity.term || "（未設定）") + (entity.reading ? "（" + entity.reading + "）" : "") + "／" + (entity.category || "その他"),
     getList: () => scenarioProject.glossary,
     fields: [
       { key: "term", label: "言葉", type: "text", placeholder: "例：真名" },
       { key: "reading", label: "読み（ルビ）", type: "text", placeholder: "例：まな（空欄ならルビなし）" },
-      { key: "category", label: "分類", type: "select", options: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["この作品の用語", "ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]).map(c => ({ value: c, label: c })) },
+      { key: "category", label: "分類", type: "select", options: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["この作品の用語", "人物", "ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]).map(c => ({ value: c, label: c })) },
       { key: "meaning", label: "意味の解説", type: "textarea", placeholder: "言葉の意味・このゲームでの使われ方（改行OK）" },
       { key: "aliases", label: "言い換え（「、」区切り）", type: "text", placeholder: "例：月間魔法記事（空欄でOK）" },
       { key: "example", label: "用例（任意）", type: "textarea", placeholder: "例文など（空欄でOK）" }
