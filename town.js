@@ -31,14 +31,65 @@ async function runFacilityDialogueBlocks(facility, blocks, fallbackText) {
 //   「前に進む/調べる」のダンジョン探索フロー（ランダムエンカウントあり）に入ってしまい、
 //   設定した施設(facilityIds)に一切アクセスできず、敵エリアと変わらないように見える不具合の原因だった。
 //   街／国／村タイプは、カリの村（openTownMenu）と同じように施設一覧から選ぶ平和な拠点として開く
+// ===== エリア内の「場所」（広場・牧場付近など）。仕様書：エリア内の場所構造 =====
+//   街・村・国タイプのエリアは area.places（場所の配列）と area.entrancePlaceId（入口の場所）を持てる。
+//   場所を1つも持たないエリアは、従来どおり area.facilityIds の施設を並べる。
+
+// ★このエリアの場所一覧（持っていなければ空配列）
+function getAreaPlaces(area) {
+  return (area && Array.isArray(area.places)) ? area.places : [];
+}
+
+// ★今いる場所を返す。場所を持たないエリアはnull。currentPlaceIdが無効（削除済み・別エリアのid）なら入口の場所
+function getCurrentPlace(area) {
+  const places = getAreaPlaces(area);
+  if (places.length === 0) return null;
+  const found = places.find(p => p.id === currentPlaceId);
+  if (found) return found;
+  const entrance = places.find(p => p.id === area.entrancePlaceId) || places[0];
+  currentPlaceId = entrance.id;
+  return entrance;
+}
+
+// ★今いる場所が入口か（場所を持たないエリアは常にtrue＝今までどおり）
+function isAtEntrancePlace(area) {
+  const place = getCurrentPlace(area);
+  if (!place) return true;
+  return place.id === (area.entrancePlaceId || getAreaPlaces(area)[0].id);
+}
+
+// ★今表示する施設のid一覧。場所があればその場所の施設、なければエリアに付いた施設（nullは「制限なし」の旧仕様）
+function getActiveFacilityIds(area) {
+  const place = getCurrentPlace(area);
+  if (place) return Array.isArray(place.facilityIds) ? place.facilityIds : [];
+  return area && Array.isArray(area.facilityIds) ? area.facilityIds : null;
+}
+
+// ★「移動」ボタン：隣の場所の一覧を出し、選ぶとその場所へ移る（今は時間・疲労などは消費しない）
+function buildPlaceMoveButton(area, reopen) {
+  const place = getCurrentPlace(area);
+  if (!place) return null;
+  const places = getAreaPlaces(area);
+  const neighbors = (Array.isArray(place.neighborIds) ? place.neighborIds : [])
+    .map(id => places.find(p => p.id === id)).filter(p => p && p.id !== place.id);
+  if (neighbors.length === 0) return null; // 隣の場所が無い場所では「移動」を出さない
+  return { label: "移動", action: () => {
+    const moveLocations = neighbors.map(n => ({ label: n.name || "？", action: () => { currentPlaceId = n.id; reopen(); } }));
+    moveLocations.push({ label: "戻る", action: () => reopen() });
+    showLocationMenu(moveLocations, "どこへ移動する？");
+  } };
+}
+
 async function openCustomSettlementArea(area) {
   currentLocationKey = "settlement_" + area.id; // ★セーブ/ロードで現在地を復元するための記録
   if (player) player.lastVisitedBaseKey = currentLocationKey; // ★要望対応：敗北時に「直前に立ち寄った拠点」へ戻すための記録
   // ★バグ修正：店の画像だけ指定してこの拠点自体の画像を指定していない場合、店から「戻る」で
   //   ここに戻ってきても背景画像が店のままになってしまっていた。画像が無指定の時は、
   //   種類に応じたそれっぽい既定の画像に戻すようにする
-  setBackgroundImage(area.bgImage || (area.type === "village" ? "img/村.jpeg" : "img/街.jpg"));
-  if (area.bgTrack && typeof switchScenarioBGM === "function") switchScenarioBGM(area.bgTrack, { fadeMs: 600 });
+  const currentPlace = getCurrentPlace(area); // ★場所を持つエリアなら、今いる場所（無ければnull）
+  setBackgroundImage((currentPlace && currentPlace.bgImage) || area.bgImage || (area.type === "village" ? "img/村.jpeg" : "img/街.jpg"));
+  const settlementBgTrack = (currentPlace && currentPlace.bgTrack) || area.bgTrack;
+  if (settlementBgTrack && typeof switchScenarioBGM === "function") switchScenarioBGM(settlementBgTrack, { fadeMs: 600 });
   
   if (typeof loadCustomScenarioData === "function") loadCustomScenarioData(); // scenariobuild.js
   
@@ -48,7 +99,7 @@ async function openCustomSettlementArea(area) {
   
   const locations = [];
   if (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.facilities)) {
-    const attachedIds = Array.isArray(area.facilityIds) ? area.facilityIds : null;
+    const attachedIds = getActiveFacilityIds(area);
     const attachedFacilities = scenarioProject.facilities.filter(facility => !attachedIds || attachedIds.includes(facility.id));
     
     // ★店タイプの施設は、他の施設のようにここへ直接並べるのではなく、後述の「店」を選んだ時の
@@ -68,7 +119,7 @@ async function openCustomSettlementArea(area) {
   const examineVariants = Array.isArray(area.examineMessages) && area.examineMessages.length > 0
     ? area.examineMessages
     : (area.examineMessage ? [area.examineMessage] : []);
-  if (examineVariants.length > 0) {
+  if (examineVariants.length > 0 && isAtEntrancePlace(area)) {
     locations.push({ label: "調べる", action: async () => {
       changeSpeaker("");
       await displayMessage(examineVariants[Math.floor(Math.random() * examineVariants.length)]);
@@ -80,12 +131,17 @@ async function openCustomSettlementArea(area) {
   //   戻されてしまっていた。マップ画面から自由に次の行き先を選べるよう、ボタンを
   //   「冒険に出る」に変更し、マップ画面（adventuremap.js）を開くようにした。
   //   行き先を選ばずにマップを閉じた時は、村ではなく「今いたこの拠点」に戻るよう戻り先を明示的に渡す
-  locations.push({ label: "冒険に出る", action: () => {
-    hideLocationMenu();
-    if (typeof openAdventureMap === "function") openAdventureMap(() => openCustomSettlementArea(area)); // adventuremap.js
-  } });
+  const moveButton = buildPlaceMoveButton(area, () => openCustomSettlementArea(area));
+  if (moveButton) locations.push(moveButton);
+  // ★エリアの外へ出る操作は入口の場所だけに出す
+  if (isAtEntrancePlace(area)) {
+    locations.push({ label: "冒険に出る", action: () => {
+      hideLocationMenu();
+      if (typeof openAdventureMap === "function") openAdventureMap(() => openCustomSettlementArea(area)); // adventuremap.js
+    } });
+  }
   
-  showLocationMenu(locations, area.name || "？？？");
+  showLocationMenu(locations, currentPlace ? `${area.name || "？？？"}・${currentPlace.name || "？"}` : (area.name || "？？？"));
 }
 
 // 町のトップメニュー（酒場・宿屋・店・冒険する）
@@ -103,9 +159,10 @@ async function openTownMenu() {
   if (typeof loadCustomScenarioData === "function") loadCustomScenarioData(); // scenariobuild.js
   const villageArea = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.mapAreas))
     ? scenarioProject.mapAreas.find(a => a.locationKey === "village") : null;
-  setBackgroundImage((villageArea && villageArea.bgImage) || "img/村.jpeg"); // ★冒険や戦闘で背景が変わっていても、村に戻ったら必ず村の背景に戻す
+  const villagePlace = villageArea ? getCurrentPlace(villageArea) : null; // ★村が「場所」を持つなら今いる場所
+  setBackgroundImage((villagePlace && villagePlace.bgImage) || (villageArea && villageArea.bgImage) || "img/村.jpeg"); // ★冒険や戦闘で背景が変わっていても、村に戻ったら必ず村の背景に戻す
   if (typeof resetAllPortraits === "function") resetAllPortraits(); // mainfunc.js（村に戻ったら、話の中で出していた立ち絵は消しておく）
-  if (typeof switchScenarioBGM === "function") switchScenarioBGM("town", { fadeMs: 600 }); // bgm.js（既に流れていれば何もしない。曲ファイルが無ければ静かに失敗するだけ）
+  if (typeof switchScenarioBGM === "function") switchScenarioBGM((villagePlace && villagePlace.bgTrack) || "town", { fadeMs: 600 }); // bgm.js（既に流れていれば何もしない。曲ファイルが無ければ静かに失敗するだけ）
   // ★要望対応：オートセーブは「5分ごと」「話直前」「終了時」の専用3枠に変わったため、
   //   ここ（村に戻るたび）での上書き保存は廃止した（5分ごとの枠を、5分間隔と無関係に
   //   頻繁に上書きしてしまうことになるため）
@@ -120,20 +177,22 @@ async function openTownMenu() {
   if (typeof hideRoomView === "function") hideRoomView(); // furniture.js（部屋を出ずに移動した場合の保険）
   if (typeof flushRealEstateNotices === "function") await flushRealEstateNotices();
   
-  const locations = [
+  // ★組み込みの酒場・店・冒険する・試練の祭殿は、場所を持つ村では「入口の場所」にだけ並べる（更新前と同じ見た目）
+  const atVillageEntrance = !villageArea || isAtEntrancePlace(villageArea);
+  const locations = atVillageEntrance ? [
     { label: "酒場", action: () => { tavernReturnTo = null; currentLocationKey = "tavern"; openTavern(); } },
     { label: "店", action: () => openShopMenu() },
     { label: "冒険する", action: () => openQuestMenu() },
     { label: "試練の祭殿", action: () => openTrialShrine() } // adventure.js（★以前はマップ画面から。広場から直接行けるように）
     // ★組み込みの「宿屋」はここから削除。施設編集タブで新しく作った宿を、マップ編集でカリの村にアタッチして使う想定
-  ];
+  ] : [];
   
   // ★マップ設定タブの「施設編集」で追加した施設のうち、村にアタッチされているものだけを町メニューに追加する
   //   （以前は施設編集で作った施設が全ての拠点に出てしまっていたため、マップ編集の拠点編集画面でアタッチできるようにした）
   if (typeof loadCustomScenarioData === "function") loadCustomScenarioData(); // scenariobuild.js
   if (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.facilities)) {
     const villageArea = scenarioProject.mapAreas.find(a => a.locationKey === "village");
-    const attachedIds = villageArea && Array.isArray(villageArea.facilityIds) ? villageArea.facilityIds : null;
+    const attachedIds = villageArea ? getActiveFacilityIds(villageArea) : null;
     scenarioProject.facilities
       .filter(facility => !attachedIds || attachedIds.includes(facility.id))
       .filter(facility => facility.type !== "shop") // ★店タイプは「店」メニュー（openShopMenu）側に一覧で出すので、ここには並べない
@@ -142,7 +201,19 @@ async function openTownMenu() {
       });
   }
   
-  showLocationMenu(locations, "カリの村");
+  // ★入口以外の場所には組み込みの「店」ボタンが無いので、その場所に店タイプの施設があればここで出す
+  if (!atVillageEntrance && villageArea && typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.facilities)) {
+    const placeIds = getActiveFacilityIds(villageArea) || [];
+    if (scenarioProject.facilities.some(f => f.type === "shop" && placeIds.includes(f.id))) {
+      locations.push({ label: "店", action: () => openShopMenu() });
+    }
+  }
+  
+  // ★場所を持つ村なら「移動」を足し、エリアの外へ出る操作（冒険する）は入口の場所だけに出す
+  const villageMoveButton = villageArea ? buildPlaceMoveButton(villageArea, () => openTownMenu()) : null;
+  if (villageMoveButton) locations.push(villageMoveButton);
+  
+  showLocationMenu(locations, villagePlace ? `カリの村・${villagePlace.name || "？"}` : "カリの村");
 }
 
 // 「店」を選んだ時のサブメニュー（買取屋・武器屋・防具屋など＋施設編集で追加した独自の店）
@@ -159,7 +230,7 @@ async function openShopMenu() {
   const shopFacilities = [];
   if (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.facilities)) {
     const villageArea = scenarioProject.mapAreas.find(a => a.locationKey === "village");
-    const attachedIds = villageArea && Array.isArray(villageArea.facilityIds) ? villageArea.facilityIds : null;
+    const attachedIds = villageArea ? getActiveFacilityIds(villageArea) : null;
     scenarioProject.facilities
       .filter(facility => facility.type === "shop" && (!attachedIds || attachedIds.includes(facility.id)))
       .forEach(facility => shopFacilities.push(facility));

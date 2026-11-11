@@ -281,6 +281,7 @@ function createNewMapAreaAt(x, y) {
     enemyIds: [], items: [], goldRewards: [], facilitySpawns: [], examineMessage: "", examineMessages: [],
     battleVariations: [], enemyLevel: null
   };
+  ensureAreaPlaces(newArea); // ★街・村・国タイプは、最初から「入口」の場所を1つ持つ
   scenarioProject.mapAreas.push(newArea);
   // ★線（つながり）は作らない。あとから「線をつなぐ／切る」で自由につなげる
   mapEditorPlaceMode = false;
@@ -1123,8 +1124,11 @@ function buildMapAreaCard(area, index) {
   infoEl.appendChild(bgImageInput);
   
   // ★拠点（村・街・国）には、施設編集タブで作った施設をアタッチできる（複数可）
+  //   場所（places）を持つエリアは、施設を場所ごとに置く（場所の編集欄）。場所を持たないエリアは従来のアタッチ欄
   if (isBaseArea) {
-    infoEl.appendChild(buildFacilityAttachEditor(area, persist));
+    ensureAreaPlaces(area);
+    if (Array.isArray(area.places) && area.places.length > 0) infoEl.appendChild(buildPlacesEditor(area, persist));
+    else infoEl.appendChild(buildFacilityAttachEditor(area, persist));
   }
   
   if (!isHubArea) {
@@ -1244,6 +1248,229 @@ function buildMapAreaCard(area, index) {
   row.appendChild(infoEl);
   row.appendChild(buttonsEl);
   return row;
+}
+
+// ===== エリア内の「場所」（仕様書：エリア内の場所構造） =====
+
+// ★街・村・国タイプ（カリの村を含む）のエリアか
+function isSettlementAreaForPlaces(area) {
+  return !!area && (area.locationKey === "village" || ["village", "city", "country"].includes(area.type));
+}
+
+// ★場所データの整合を取る。読み込み時（normalize）・編集画面・新規作成時に呼ぶ。
+//   ・placesが未定義の街・村・国には「入口」の場所を1つ自動で作り、今エリアに付いている施設(facilityIds)を全てそこに置く
+//   ・places配列があるのに空（全部消した）の場合は、今までどおりエリアのfacilityIdsを使う（ここでは触らない）
+//   ・入口の場所のidが無効なら先頭の場所を入口にする／存在しない隣の場所・施設idは取り除く
+//   ・エリアのfacilityIdsは、場所に置かれた施設の和集合にそろえる（施設の親エリア検索など既存処理との互換用）
+function ensureAreaPlaces(area) {
+  if (!isSettlementAreaForPlaces(area)) return;
+  if (!Array.isArray(area.facilityIds)) area.facilityIds = [];
+  if (!Array.isArray(area.places)) {
+    const entranceId = generateId("place");
+    area.places = [{ id: entranceId, name: "入口", bgImage: "", bgTrack: "", neighborIds: [], facilityIds: area.facilityIds.slice() }];
+    area.entrancePlaceId = entranceId;
+  }
+  if (area.places.length === 0) return;
+  const placeIds = new Set(area.places.map(p => p.id));
+  const facilityIdSet = (typeof scenarioProject !== "undefined" && Array.isArray(scenarioProject.facilities))
+    && scenarioProject.facilities.length > 0 ? new Set(scenarioProject.facilities.map(f => f.id)) : null; // ★施設が1件も読み込まれていない間は、施設idを消さない
+  area.places.forEach(place => {
+    if (typeof place.name !== "string") place.name = "";
+    if (typeof place.bgImage !== "string") place.bgImage = "";
+    if (typeof place.bgTrack !== "string") place.bgTrack = "";
+    place.neighborIds = (Array.isArray(place.neighborIds) ? place.neighborIds : [])
+      .filter((id, i, arr) => placeIds.has(id) && id !== place.id && arr.indexOf(id) === i);
+    place.facilityIds = (Array.isArray(place.facilityIds) ? place.facilityIds : [])
+      .filter((id, i, arr) => (!facilityIdSet || facilityIdSet.has(id)) && arr.indexOf(id) === i);
+  });
+  if (!placeIds.has(area.entrancePlaceId)) area.entrancePlaceId = area.places[0].id;
+  syncAreaFacilityIdsFromPlaces(area);
+}
+
+function syncAreaFacilityIdsFromPlaces(area) {
+  if (!area || !Array.isArray(area.places) || area.places.length === 0) return;
+  const union = [];
+  area.places.forEach(p => (p.facilityIds || []).forEach(id => { if (!union.includes(id)) union.push(id); }));
+  area.facilityIds = union;
+}
+
+// ★入口の場所からたどり着けない場所の名前一覧（警告用。保存は止めない）
+function getUnreachablePlaceNames(area) {
+  const places = Array.isArray(area.places) ? area.places : [];
+  if (places.length === 0) return [];
+  const visited = new Set([area.entrancePlaceId]);
+  const queue = [area.entrancePlaceId];
+  while (queue.length > 0) {
+    const current = places.find(p => p.id === queue.shift());
+    if (!current) continue;
+    (current.neighborIds || []).forEach(id => { if (!visited.has(id)) { visited.add(id); queue.push(id); } });
+  }
+  return places.filter(p => !visited.has(p.id)).map(p => p.name || "（名前未設定）");
+}
+
+// ★場所の編集欄（街・村・国タイプのみ）。場所の追加／削除／名前・背景・BGM／隣の場所／置く施設
+function buildPlacesEditor(area, persist) {
+  ensureAreaPlaces(area);
+  const wrap = document.createElement("div");
+  wrap.className = "scenariobuild-skill-details";
+  wrap.style.display = "block";
+  
+  const heading = document.createElement("p");
+  heading.className = "devmode-note";
+  heading.style.margin = "0 0 6px 0";
+  heading.textContent = "このエリアの「場所」（入口付近・広場・牧場付近など）。場所ごとに施設を置け、隣の場所へ「移動」できます。背景・BGMが空欄ならエリアのものを使います：";
+  wrap.appendChild(heading);
+  
+  const places = area.places;
+  const rerender = () => { persist(); renderScenarioBuildPanel(); };
+  
+  const unreachable = getUnreachablePlaceNames(area);
+  if (unreachable.length > 0) {
+    const warnEl = document.createElement("p");
+    warnEl.className = "devmode-note scenariobuild-condition";
+    warnEl.style.color = "#ff9d6e";
+    warnEl.textContent = `⚠ 入口の場所からたどり着けない場所があります：${unreachable.join("、")}（保存はできますが、ゲーム内では行けません）`;
+    wrap.appendChild(warnEl);
+  }
+  
+  places.forEach(place => {
+    const isEntrance = place.id === area.entrancePlaceId;
+    const box = document.createElement("div");
+    box.className = "scenariobuild-condition-row";
+    box.style.display = "block";
+    box.style.border = "1px solid rgba(255,255,255,0.2)";
+    box.style.borderRadius = "6px";
+    box.style.padding = "6px";
+    box.style.margin = "6px 0";
+    
+    const nameRow = document.createElement("div");
+    nameRow.className = "scenariobuild-condition-row";
+    nameRow.appendChild(labelSpan(isEntrance ? "場所の名前（入口）：" : "場所の名前："));
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "scenariobuild-title-input";
+    nameInput.placeholder = "例：広場";
+    nameInput.value = place.name;
+    nameInput.onchange = () => { place.name = nameInput.value.trim(); rerender(); };
+    nameRow.appendChild(nameInput);
+    if (!isEntrance) { // 入口の場所は削除できない（名前の変更は可）
+      const delBtn = document.createElement("button");
+      delBtn.className = "devmode-btn devmode-btn-danger";
+      delBtn.textContent = "この場所を削除";
+      delBtn.onclick = async (event) => {
+        event.stopPropagation();
+        const ok = await showGameConfirm(`場所「${place.name || "（名前未設定）"}」を削除しますか？`);
+        if (!ok) return;
+        pushUndoSnapshot();
+        area.places = area.places.filter(p => p.id !== place.id);
+        area.places.forEach(p => { p.neighborIds = p.neighborIds.filter(id => id !== place.id); });
+        syncAreaFacilityIdsFromPlaces(area);
+        rerender();
+      };
+      nameRow.appendChild(delBtn);
+    }
+    box.appendChild(nameRow);
+    
+    const bgImageInput = document.createElement("input");
+    bgImageInput.type = "text";
+    bgImageInput.className = "scenariobuild-title-input";
+    bgImageInput.placeholder = "背景画像のファイルパス（空欄＝エリアの背景）";
+    bgImageInput.value = place.bgImage;
+    bgImageInput.onchange = () => { place.bgImage = bgImageInput.value.trim(); persist(); };
+    box.appendChild(bgImageInput);
+    
+    const bgTrackInput = document.createElement("input");
+    bgTrackInput.type = "text";
+    bgTrackInput.className = "scenariobuild-title-input";
+    bgTrackInput.placeholder = "BGM（曲名 or ファイルパス。空欄＝エリアのBGM）";
+    bgTrackInput.value = place.bgTrack;
+    bgTrackInput.setAttribute("list", "scenariobuild-bgm-datalist");
+    bgTrackInput.onchange = () => { place.bgTrack = bgTrackInput.value.trim(); persist(); };
+    box.appendChild(bgTrackInput);
+    
+    // 隣の場所（片方でチェックしたら相手側も自動でチェックされる）
+    const others = places.filter(p => p.id !== place.id);
+    const neighborTitle = document.createElement("p");
+    neighborTitle.className = "devmode-note";
+    neighborTitle.style.margin = "6px 0 2px";
+    neighborTitle.textContent = "隣の場所（チェックすると相手側からも行き来できます）：";
+    box.appendChild(neighborTitle);
+    if (others.length === 0) {
+      const emptyEl = document.createElement("p");
+      emptyEl.className = "devmode-note scenariobuild-condition";
+      emptyEl.textContent = "他の場所がありません（下の「＋場所を追加」で増やせます）。";
+      box.appendChild(emptyEl);
+    }
+    others.forEach(other => {
+      const optionRow = document.createElement("label");
+      optionRow.className = "scenariobuild-condition-row";
+      optionRow.style.cursor = "pointer";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = place.neighborIds.includes(other.id);
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          if (!place.neighborIds.includes(other.id)) place.neighborIds.push(other.id);
+          if (!other.neighborIds.includes(place.id)) other.neighborIds.push(place.id);
+        } else {
+          place.neighborIds = place.neighborIds.filter(id => id !== other.id);
+          other.neighborIds = other.neighborIds.filter(id => id !== place.id);
+        }
+        rerender(); // 到達警告を更新するため再描画
+      };
+      optionRow.appendChild(checkbox);
+      optionRow.appendChild(document.createTextNode(` ${other.name || "（名前未設定）"}`));
+      box.appendChild(optionRow);
+    });
+    
+    // 置く施設（同じ施設を複数の場所に置ける）
+    const facilityTitle = document.createElement("p");
+    facilityTitle.className = "devmode-note";
+    facilityTitle.style.margin = "6px 0 2px";
+    facilityTitle.textContent = "この場所に置く施設（複数の場所に同じ施設を置けます）：";
+    box.appendChild(facilityTitle);
+    if (scenarioProject.facilities.length === 0) {
+      const emptyEl = document.createElement("p");
+      emptyEl.className = "devmode-note scenariobuild-condition";
+      emptyEl.textContent = "まだ施設がありません（施設編集タブから追加できます）。";
+      box.appendChild(emptyEl);
+    }
+    scenarioProject.facilities.forEach(facility => {
+      const optionRow = document.createElement("label");
+      optionRow.className = "scenariobuild-condition-row";
+      optionRow.style.cursor = "pointer";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = place.facilityIds.includes(facility.id);
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          if (!place.facilityIds.includes(facility.id)) place.facilityIds.push(facility.id);
+        } else {
+          place.facilityIds = place.facilityIds.filter(id => id !== facility.id);
+        }
+        syncAreaFacilityIdsFromPlaces(area);
+        persist();
+      };
+      optionRow.appendChild(checkbox);
+      optionRow.appendChild(document.createTextNode(` ${facility.name || "（名前未設定）"}（${FACILITY_TYPE_LABELS[facility.type] || facility.type}）`));
+      box.appendChild(optionRow);
+    });
+    
+    wrap.appendChild(box);
+  });
+  
+  const addBtn = document.createElement("button");
+  addBtn.className = "devmode-btn";
+  addBtn.textContent = "＋場所を追加";
+  addBtn.onclick = (event) => {
+    event.stopPropagation();
+    pushUndoSnapshot();
+    area.places.push({ id: generateId("place"), name: "新しい場所", bgImage: "", bgTrack: "", neighborIds: [], facilityIds: [] });
+    rerender();
+  };
+  wrap.appendChild(addBtn);
+  
+  return wrap;
 }
 
 // ★拠点（村・街・国）に、施設編集タブで作った施設をチェックボックスでアタッチする（複数可）

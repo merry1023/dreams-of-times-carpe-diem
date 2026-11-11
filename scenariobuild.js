@@ -667,6 +667,7 @@ function normalizeScenarioProject() {
     if (!area.type) area.type = "village";
     if (typeof area.enemyLevel === "undefined") area.enemyLevel = null; // ★このエリアで出る敵の固定レベル（未設定なら主人公のレベル基準のまま）
     if (!Array.isArray(area.facilityIds)) area.facilityIds = []; // ★このエリア（拠点）に表示する施設編集タブの施設id一覧
+    if (typeof ensureAreaPlaces === "function") ensureAreaPlaces(area); // ★街・村・国の「場所」。未対応の既存データには「入口」を自動で作り、施設を全てそこに置く（mapareas.js）
     // ★「調べる」メッセージを複数パターン持たせて、毎回ランダムに1つ表示できるようにした。
     //   旧データ（examineMessageが1本の文字列）は、そのまま配列の1件目として引き継ぐ
     if (!Array.isArray(area.examineMessages)) {
@@ -689,6 +690,8 @@ function normalizeScenarioProject() {
       facilityIds: scenarioProject.facilities.map(f => f.id)
     });
   }
+  // ★上で新しく差し込んだカリの村にも「入口」の場所を作る
+  if (typeof ensureAreaPlaces === "function") scenarioProject.mapAreas.forEach(a => ensureAreaPlaces(a));
   
   if (!scenarioProject.chapters.some(c => c.id === "builtin_chapter1") && !isDeletedBuiltin("chapters", "builtin_chapter1")) {
     scenarioProject.chapters.unshift({
@@ -10009,10 +10012,26 @@ function buildClassStatsRow(className) {
 // ===================================================================
 const FACILITY_TYPE_LABELS = { inn: "宿系（睡眠・疲労回復）", townhall: "役場・役所系（職業変更）", blacksmith: "鍛冶屋系（装備の強化・作成）", synthesis: "素材合成屋系（レシピでアイテム作成）", shop: "店系（アイテムの売買）", tavern: "酒場系（世間話・クエスト掲示板）", casino: "カジノ系（賭け事・ギャンブル）", rustRemoval: "錆取り屋系（錆びたシリーズ装備のサビ取り）", auction: "オークション系（入札で希少品を競り落とす）", realEstate: "不動産屋系（家・店の売買・賃貸）", furnitureShop: "家具屋系（家具・倉庫の販売）", colosseum: "コロシアム系（アイテム使用禁止の連戦タワー）", fishing: "釣り場系（釣りミニゲームで魚を釣る）", memoryHall: "追憶の館系（クリア済みの話を再体験できる）", towerDefense: "冒険者協会系（掃討作戦＝タワーディフェンス）", flavor: "その他（セリフのみ）" };
 
+// ★施設が置かれている場所の表示文。例：「カリの村・広場／牧場付近」。複数エリアに置かれていれば「、」で並べる。
+//   どこにも置かれていなければ「未配置」。場所を持たないエリアに付いている場合はエリア名だけを出す
+function getFacilityPlacementLabel(facility) {
+  const parts = [];
+  (scenarioProject.mapAreas || []).forEach(area => {
+    const areaName = area.name || "（名前未設定）";
+    if (Array.isArray(area.places) && area.places.length > 0) {
+      const placeNames = area.places.filter(p => (p.facilityIds || []).includes(facility.id)).map(p => p.name || "（名前未設定）");
+      if (placeNames.length > 0) parts.push(`${areaName}・${placeNames.join("／")}`);
+    } else if (Array.isArray(area.facilityIds) && area.facilityIds.includes(facility.id)) {
+      parts.push(areaName);
+    }
+  });
+  return parts.length > 0 ? parts.join("、") : "未配置";
+}
+
 function renderFacilityManager(container) {
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
-  introEl.textContent = "村の「酒場・宿屋・店・冒険する」に加えて、独自の施設を追加・削除できます（例：酒場、店、寂れた宿、平凡な宿、街の宿、豪華なホテル、役場、役所……）。追加した施設は町メニューに一覧の下へそのまま並びます。";
+  introEl.textContent = "村の「酒場・宿屋・店・冒険する」に加えて、独自の施設を追加・削除できます（例：酒場、店、寂れた宿、平凡な宿、街の宿、豪華なホテル、役場、役所……）。追加した施設は、マップ設定タブで各エリアの「場所」に置くと町メニューに並びます。各行の📍は置いてある場所です。";
   container.appendChild(introEl);
   
   // ★要望対応：種類ごとにタブ分けして見やすくする
@@ -10041,7 +10060,7 @@ function renderFacilityManager(container) {
     const facilityId = facility.id;
     const findFacility = () => scenarioProject.facilities.find(f => f.id === facilityId);
     listEl.appendChild(buildCollapsedEntryRow({
-      number: FACILITY_TYPE_LABELS[facility.type] || null,
+      number: `${FACILITY_TYPE_LABELS[facility.type] || ""}　📍${getFacilityPlacementLabel(facility)}`, // ★置いてある場所（どこにも置かれていなければ「未配置」）
       title: () => (findFacility() || {}).name,
       isValid: () => !!findFacility(),
       build: () => buildFacilityRow(findFacility())
@@ -11308,7 +11327,10 @@ function buildFacilityRow(facility) {
     pushUndoSnapshot();
     const idx = scenarioProject.facilities.indexOf(facility);
     if (idx >= 0) scenarioProject.facilities.splice(idx, 1);
-    scenarioProject.mapAreas.forEach(a => { a.facilityIds = a.facilityIds.filter(id => id !== facility.id); }); // ★削除した施設は、全ての拠点のアタッチ一覧からも外す
+    scenarioProject.mapAreas.forEach(a => {
+      a.facilityIds = a.facilityIds.filter(id => id !== facility.id); // ★削除した施設は、全ての拠点のアタッチ一覧からも外す
+      if (Array.isArray(a.places)) a.places.forEach(p => { p.facilityIds = (p.facilityIds || []).filter(id => id !== facility.id); }); // ★全ての場所の置く施設からも外す
+    });
     markScenarioBuildDirty();
     renderScenarioBuildPanel();
   };
