@@ -439,6 +439,7 @@ async function leaveAdventure() {
   // ★要望対応：以前は必ずカリの村（openTownMenu）へ戻していたが、直前に立ち寄った拠点
   //   （player.lastVisitedBaseKey。敗北時の強制送還と同じ記録）へ戻すように変更。
   //   記録が無い・見つからない場合だけ、従来通りカリの村へ戻す
+  currentPlaceId = null; // ★エリア内の場所は戻さず、入口の場所から始める
   const returnedToBase = typeof resumeLocationDynamic === "function" && player.lastVisitedBaseKey
     && resumeLocationDynamic(player.lastVisitedBaseKey); // convenience.js
   if (!returnedToBase) openTownMenu();
@@ -970,6 +971,7 @@ async function returnToAdventureAfterBattle(outcome) {
     await displayMessage(goldLostMessage);
     // ★要望対応：直前に立ち寄った拠点（player.lastVisitedBaseKey）へ戻す。
     //   記録が無い・見つからない場合だけ、従来通りカリの村へ戻す
+    currentPlaceId = null; // ★エリア内の場所は戻さず、入口の場所から始める
     const returnedToBase = typeof resumeLocationDynamic === "function" && player.lastVisitedBaseKey
       && resumeLocationDynamic(player.lastVisitedBaseKey); // convenience.js
     if (!returnedToBase) openTownMenu(); // ★ここでtown.js側が村のBGMに切り替える

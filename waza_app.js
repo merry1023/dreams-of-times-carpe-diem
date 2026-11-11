@@ -79,6 +79,7 @@ function handleWazaAppKeyDown(event) {
   }
   const buttons = Array.from(panel.querySelectorAll("button:not([disabled])"));
   const index = buttons.indexOf(document.activeElement);
+  if (wazaAppView === "detail" && guildAppDetailKeyScroll(panel, event, buttons, index)) return;   // 詳細画面は、上下キーでスクロール（guild_app.js）
   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
     event.preventDefault();
     if (buttons.length === 0) return;
@@ -105,7 +106,7 @@ function renderWazaAppPanel(focusIndex = 0) {
   }
   const buttons = Array.from(panel.querySelectorAll("button:not([disabled])"));
   const target = buttons[Math.min(Math.max(0, focusIndex), buttons.length - 1)];
-  if (target) target.focus();
+  if (target) target.focus({ preventScroll: wazaAppView === "detail" });   // 詳細画面は、一番上から読み始められるように、フォーカスでスクロールさせない
 }
 
 function wazaAppBackButton(panel, label = "◀ 戻る") {
