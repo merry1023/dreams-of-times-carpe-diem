@@ -12440,7 +12440,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "tutorial_1794210168749_10",
       "category": "基本",
       "title": "用語・語彙アプリについて",
-      "body": "便利タブの「用語・語彙」アプリでは、このゲームの用語や、熟語・ことわざ・慣用句などの意味を、読み仮名つきで調べられます。分類は「ゲーム用語」「熟語」「慣用句・ことわざ」「一般語彙」「ネット・俗語」です。\n会話中に解説のある言葉を、クリック（タップ）すると、その解説ページが開きます。見終わったら「メッセージに戻る」を押すと、続きから読めます。解説のない言葉をクリックした時は、そのままメッセージが進みます。"
+      "body": "便利タブの「用語・語彙」アプリでは、このゲームの用語や、熟語・ことわざ・慣用句などの意味を、読み仮名つきで調べられます。分類は「この作品の用語」「ゲーム用語」「熟語」「慣用句・ことわざ」「一般語彙」「ネット・俗語」です。\n会話中に解説のある言葉を、クリック（タップ）すると、その解説ページが開きます。見終わったら「メッセージに戻る」を押すと、続きから読めます。解説のない言葉をクリックした時は、そのままメッセージが進みます。"
     }
   ],
   "glossary": [
@@ -24280,7 +24280,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_01",
       "term": "真名",
       "reading": "まな",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "この世界で、その人の本当の名前のこと。真名を口にすることは「服従」を意味し、真名を知る者は相手を隷属させる力を得る。そのため誰も自分から明かさないのが常識で、奴隷商はこの決まりを悪用して人々を奴隷にしている。",
       "aliases": "",
       "example": ""
@@ -24289,7 +24289,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_02",
       "term": "二つ名",
       "reading": "ふたつな",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "冒険者につく通称。自分では決められず、自分以外の人から付けてもらう決まりになっている。（例：「竜殺し」）",
       "aliases": "",
       "example": ""
@@ -24298,7 +24298,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_03",
       "term": "竜殺し",
       "reading": "りゅうごろし",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "酒場で出会った女性冒険者の二つ名。この辺りではそこそこ有名なソロ冒険者で、職業は狂戦士（バーサーカー）。",
       "aliases": "",
       "example": ""
@@ -24316,7 +24316,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_05",
       "term": "異世界トラック",
       "reading": "いせかいトラック",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "信号無視で突っ込んできて、ひかれた人を異世界へ送り込む、いわゆる「お約束」のトラック。異世界転生ものの定番ネタで、主人公・田中治郎が死ぬきっかけになった。",
       "aliases": "",
       "example": ""
@@ -24325,7 +24325,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_06",
       "term": "転移者",
       "reading": "てんいしゃ",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "元いた世界から、この世界へ送り込まれてきた人。治郎のように、神によって異世界へ転送された者を指す。",
       "aliases": "",
       "example": ""
@@ -24343,7 +24343,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_08",
       "term": "魔導王国",
       "reading": "まどうおうこく",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "魔法の研究に力を入れている大国。正式名は「魔導王国スペル＝マ・ギア」。国家研究所があり、月刊魔法記事にもたびたび取り上げられる。治郎たちの新たな目的地。",
       "aliases": "スペル=マ・ギア、スペル＝マ・ギア",
       "example": ""
@@ -24352,7 +24352,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_09",
       "term": "国家研究所",
       "reading": "こっかけんきゅうじょ",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "魔導王国の王様が、主に魔法の研究のために作った国の研究機関。",
       "aliases": "",
       "example": ""
@@ -24361,7 +24361,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_10",
       "term": "月刊魔法記事",
       "reading": "げっかんまほうきじ",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "魔法の最新情報を載せた、毎月発行される読み物。「月間魔法記事」と書かれることもある。",
       "aliases": "月間魔法記事",
       "example": ""
@@ -24370,7 +24370,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_11",
       "term": "奴隷商",
       "reading": "どれいしょう",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "人を奴隷として売り買いする商人。この世界には、村を襲わせ、魔術で無理やり真名を吐かせて奴隷を作る悪質な者がいる。",
       "aliases": "",
       "example": ""
@@ -24379,7 +24379,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_12",
       "term": "奴隷市場",
       "reading": "どれいしじょう",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "奴隷が売り買いされる市場。表には出ない、闇の取引の場でもある。",
       "aliases": "",
       "example": ""
@@ -24388,7 +24388,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_13",
       "term": "近衛騎士",
       "reading": "このえきし",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "王や王家を直接守る、精鋭の騎士。その部隊の長が「近衛騎士隊長」。",
       "aliases": "近衛騎士隊長、近衛騎士部隊、王国近衛騎士部隊",
       "example": ""
@@ -24397,7 +24397,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_14",
       "term": "爆牛乳",
       "reading": "ばくぎゅうにゅう",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "カリの村の名産品の牛乳。村では農作物や牧畜が盛ん。",
       "aliases": "",
       "example": ""
@@ -24406,7 +24406,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_15",
       "term": "魔精霊",
       "reading": "ませいれい",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "魔の力を宿した精霊。指輪などの媒体を使って召喚される。ブヒーモスが呼び出された。",
       "aliases": "",
       "example": ""
@@ -24415,7 +24415,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_16",
       "term": "偽装作戦",
       "reading": "ぎそうさくせん",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "本当の目的を隠し、別の目的があるように見せかける作戦。ロリルを捕まえて引き渡すふりをして、屋敷へ潜入する。",
       "aliases": "",
       "example": ""
@@ -24487,7 +24487,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_24",
       "term": "陳",
       "reading": "ちん",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "この世界のお金の単位。（例：報奨金300000陳）",
       "aliases": "",
       "example": ""
@@ -24883,7 +24883,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_68",
       "term": "久遠の環",
       "reading": "スターチス・キルクルス",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "「久遠」は果てしなく長く続くこと、「環」は輪のこと。玉座の男が語る、すべてを廻す大きな仕組みの名前。「スターチス・キルクルス」と読ませている。",
       "aliases": "スターチス・キルクルス",
       "example": ""
@@ -24982,7 +24982,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_79",
       "term": "ペロンパン",
       "reading": "",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "「ほぼメロンパン」と評される、程よい甘さのパン。大きさに似合わず満腹感があり、ベーカリーの一番人気。",
       "aliases": "",
       "example": ""
@@ -24991,7 +24991,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_80",
       "term": "バ汁ソース",
       "reading": "",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "ショーロンオイルで作られるソース。たっぷり塗った食パン（バ汁ソースブレッド）が、ケツァナの大好物。",
       "aliases": "バ汁ソースブレッド",
       "example": ""
@@ -25000,7 +25000,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_81",
       "term": "ショーロンオイル",
       "reading": "",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "バ汁ソースを作るのに使われる油。",
       "aliases": "",
       "example": ""
@@ -25009,7 +25009,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_82",
       "term": "オーク肉",
       "reading": "",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "魔物のオークの肉。安くて高タンパクなため、大通りの店でよく使われている。",
       "aliases": "",
       "example": ""
@@ -25063,7 +25063,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_88",
       "term": "スペル=マ・ギアズオークション",
       "reading": "すぺるま・ぎあずおーくしょん",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "魔導王国にあるオークション会場の名前。競りは五日に一回開かれる。",
       "aliases": "スペル＝マ・ギアズオークション、スペル・マ・ギアズオークション",
       "example": ""
@@ -25180,7 +25180,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_101",
       "term": "治安所",
       "reading": "ちあんしょ",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "街の治安を守る場所。落とし物などを届ける先として挙げられている。",
       "aliases": "",
       "example": ""
@@ -25342,7 +25342,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_119",
       "term": "出見=ウル子",
       "reading": "",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "広場で治郎たちに声をかけてきた、旅をしながら行商をしているお婆さん。ミドルネームは内緒とのこと。巨鼠タロゥハムの討伐クエストを依頼してきた。休日はいつも、この広場の辺りにいる。",
       "aliases": "ウル子",
       "example": ""
@@ -25351,7 +25351,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_120",
       "term": "タロゥハム",
       "reading": "",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "ウル子が倒してほしいと頼んできた魔物。「巨鼠」と呼ばれる大きなネズミで、ボキキ大草原に潜んでいる。ウル子が売る予定だった不向日葵の種を、全部食べてしまった。治郎たちは聞いたことがない魔物。",
       "aliases": "巨鼠",
       "example": ""
@@ -25360,7 +25360,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_121",
       "term": "ﾎﾞｷｷ大草原",
       "reading": "ボキキだいそうげん",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "ウル子が行商の途中で立ち寄った大草原。巨鼠タロゥハムが潜んでいる。",
       "aliases": "ボキキ大草原",
       "example": ""
@@ -25369,7 +25369,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "glossary_seed_122",
       "term": "不向日葵",
       "reading": "ひまわらず",
-      "category": "ゲーム用語",
+      "category": "この作品の用語",
       "meaning": "ウル子が売る予定だった種の植物。名前は「向日葵（ひまわり）」に似ているが、読みは「ひまわらず」。種は巨鼠タロゥハムに全部食べられてしまった。",
       "aliases": "",
       "example": ""
