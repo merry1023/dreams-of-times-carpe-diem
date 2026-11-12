@@ -11,7 +11,18 @@ const TD_EDITOR_ROLE_OPTIONS = [
   { value: "single",  label: "単体（1体ずつ攻撃）" },
   { value: "area",    label: "範囲（まとめて攻撃）" },
   { value: "slow",    label: "遅延（攻撃して足を遅くする）" },
-  { value: "support", label: "サポート（近くの味方の攻撃力を上げる）" }
+  { value: "support", label: "サポート（近くの味方の攻撃力を上げる）" },
+  { value: "skill",   label: "スキルカード（手動で発動／置いて自動発動）" }
+];
+const TD_EDITOR_CARD_MODE_OPTIONS = [
+  { value: "manual", label: "手動（購入して、ウェーブ中に好きなタイミングで発動・クールタイムあり）" },
+  { value: "placed", label: "設置（ユニットのように陣地に置いて、射程内へ自動で発動）" }
+];
+const TD_EDITOR_CARD_EFFECT_OPTIONS = [
+  { value: "damage", label: "敵にダメージ" },
+  { value: "heal",   label: "拠点と味方を回復" },
+  { value: "slow",   label: "敵の足を遅くする" },
+  { value: "buff",   label: "味方の攻撃力アップ" }
 ];
 const TD_EDITOR_TARGETING_OPTIONS = [
   { value: "near", label: "射程内で一番近い敵" },
@@ -26,7 +37,8 @@ function createNewTowerUnit() {
     element: firstElement, role: "single", targeting: "near",
     power: 22, range: 140, interval: 0.8, cost: 50,
     slowPercent: 50, slowSec: 1.5,   // 遅延：足の速さを何%下げるか／何秒続けるか
-    supportPercent: 25,              // サポート：近くの味方の攻撃力を何%上げるか
+    supportPercent: 25,              // サポート／スキルカード（攻撃力アップ）：味方の攻撃力を何%上げるか
+    cardMode: "manual", cardEffect: "damage", cooldown: 15, healPercent: 25, buffSec: 6,   // スキルカード用（role === "skill" の時だけ使う）
     imagePath: ""
   };
 }
@@ -35,7 +47,7 @@ function renderTowerUnitManager(container) {
   if (!Array.isArray(scenarioProject.towerUnits)) scenarioProject.towerUnits = [];
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
-  introEl.textContent = "冒険者協会「掃討作戦」の迎撃モードで、プレイヤーが購入して配置するユニットを登録します。1つも登録しない（または全部「無効」にする）と、属性管理の属性ごとに1ユニットを自動で作ります。攻撃力は「出てくる敵の平均HPに対する割合（%）」で、敵のデータが変わってもバランスが崩れにくくなっています。";
+  introEl.textContent = "冒険者協会「掃討作戦」の迎撃モードで、プレイヤーが購入して配置するユニットと、スキルカード（役割「スキルカード」）を登録します。迎撃モードの画面では、役割ごとのタブに分かれて表示されます。1つも登録しない（または全部「無効」にする）と、属性管理の属性ごとに1ユニットを自動で作ります。攻撃力は「出てくる敵の平均HPに対する割合（%）」で、敵のデータが変わってもバランスが崩れにくくなっています。";
   container.appendChild(introEl);
 
   const addBtn = document.createElement("button");
@@ -168,6 +180,31 @@ function buildTowerUnitRow(unit, index) {
   selectField(r2, "element", "属性", elementOptions);
   selectField(r2, "role", "役割", TD_EDITOR_ROLE_OPTIONS, () => renderScenarioBuildPanel());
 
+  const isSkill = unit.role === "skill";
+  if (isSkill) {
+    // ★スキルカード：使い方（手動／設置）と効果の種類で、入力欄が変わる。レベルで効果が強くなるのはユニットと同じ
+    const placed = unit.cardMode === "placed";
+    const effect = unit.cardEffect || "damage";
+    const rs = addRow();
+    selectField(rs, "cardMode", "使い方", TD_EDITOR_CARD_MODE_OPTIONS, () => renderScenarioBuildPanel());
+    selectField(rs, "cardEffect", "効果", TD_EDITOR_CARD_EFFECT_OPTIONS, () => renderScenarioBuildPanel());
+    const re = addRow();
+    if (effect === "damage") numberField(re, "power", "ダメージ（敵の平均HPに対する%）", 1, 500, 1);
+    if (effect === "heal") numberField(re, "healPercent", "回復量（拠点と味方の最大HPの%）", 1, 100, 1);
+    if (effect === "slow") { numberField(re, "slowPercent", "足の速さを下げる（%）", 1, 95, 1); numberField(re, "slowSec", "続く時間（秒）", 0.2, 10, 0.1); }
+    if (effect === "buff") { numberField(re, "supportPercent", "味方の攻撃力を上げる（%）", 1, 300, 1); numberField(re, "buffSec", "続く時間（秒）", 0.5, 60, 0.5); }
+    const rc = addRow();
+    numberField(rc, "cooldown", placed ? "発動の間隔（秒）" : "クールタイム（秒）", 1, 300, 1);
+    if (placed) numberField(rc, "range", "射程", 20, 400, 5);
+    numberField(rc, "cost", "購入価格", 1, 99999, 1);
+    const noteEl = document.createElement("span");
+    noteEl.className = "devmode-note";
+    noteEl.textContent = (placed
+      ? "陣地のマスに置きます（ユニットと同じく敵に攻撃され、ウェーブ後に復活します）。回復は射程に関係なく、拠点と味方全員が対象です。"
+      : "購入するとカード欄に入り、ウェーブ中に発動できます。対象は敵・味方の全体です。")
+      + "レベルを上げると、効果量と続く時間が伸びます。属性は、ダメージの属性相性とコンボの履歴に使われます。";
+    rc.appendChild(noteEl);
+  } else {
   if (unit.role !== "support") {
     const r3 = addRow();
     if (unit.role === "area") {
@@ -198,6 +235,7 @@ function buildTowerUnitRow(unit, index) {
     noteEl.textContent = "射程の中にいる味方ユニットが対象です。サポート自身は攻撃せず、コンボの履歴にも入りません。";
     r5.appendChild(noteEl);
   }
+  }   // ←スキルカード以外の入力欄ここまで
   const r6 = addRow();
   textField(r6, "imagePath", "画像のパス（空なら役割の文字で表示）", "例：img/ユニット/弓兵.png");
   row.appendChild(infoEl);
