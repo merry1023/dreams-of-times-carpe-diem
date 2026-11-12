@@ -12,7 +12,7 @@
 const DM_ID_ARRAYS = [
   "enemies", "bosses", "items", "furniture", "fishItems", "skills", "statusAilments", "statusBuffs",
   "companions", "quests", "achievements", "tutorials", "glossary", "facilities", "portraitCharacters", "recipes",
-  "elementDefs", "comboSkills", "towerUnits", "raidUnits", "upperSkills", "gachaSkills", "beasts", "bgmTracks", "mapAreas",
+  "elementDefs", "comboSkills", "effectMixes", "towerUnits", "raidUnits", "upperSkills", "gachaSkills", "beasts", "bgmTracks", "mapAreas",
   "chapters", "chapterArcs", "characters", "flagDefs", "variableDefs"
 ];
 const DM_DICTS = [
@@ -28,7 +28,7 @@ const DM_LABELS = {
   enemies: "敵", bosses: "ボス", items: "アイテム", furniture: "家具", fishItems: "魚", skills: "技",
   statusAilments: "状態異常", statusBuffs: "状態強化", companions: "仲間", quests: "クエスト", achievements: "実績",
   tutorials: "チュートリアル", glossary: "用語・語彙", facilities: "施設", portraitCharacters: "立ち絵キャラ", recipes: "レシピ",
-  elementDefs: "属性", comboSkills: "コンボ", towerUnits: "タワーユニット", raidUnits: "出撃キャラ", upperSkills: "上位スキル",
+  elementDefs: "属性", comboSkills: "コンボ", effectMixes: "エフェクト", towerUnits: "タワーユニット", raidUnits: "出撃キャラ", upperSkills: "上位スキル",
   gachaSkills: "ガチャ技", beasts: "おとも魔獣", bgmTracks: "BGM", mapAreas: "マップ", chapters: "話", chapterArcs: "章", characters: "キャラ",
   flagDefs: "フラグ", variableDefs: "変数", classStats: "職業ステータス", elementMatchups: "属性相性", statusPanels: "ステータスパネル",
   trialGuardianOverrides: "試練の守護者", fameThresholds: "名声しきい値", companionChatSettings: "会話AI設定",

@@ -39,6 +39,7 @@ function createNewTowerUnit() {
     power: 22, range: 140, interval: 0.8, cost: 50,
     slowPercent: 50, slowSec: 1.5,   // 遅延：足の速さを何%下げるか／何秒続けるか
     supportPercent: 25,              // サポート／スキルカード（攻撃力アップ）：味方の攻撃力を何%上げるか
+    effectMixId: "",   // エフェクトミックス（effectmix.js）。空なら標準の線・輪
     cardMode: "manual", cardEffect: "damage", cooldown: 15, healPercent: 25, buffSec: 6, shieldPercent: 30,   // スキルカード用（role === "skill" の時だけ使う）
     imagePath: ""
   };
@@ -238,6 +239,8 @@ function buildTowerUnitRow(unit, index) {
     r5.appendChild(noteEl);
   }
   }   // ←スキルカード以外の入力欄ここまで
+  const rfx = addRow();
+  selectField(rfx, "effectMixId", "エフェクト（エフェクトミックスタブで作ったもの）", efxEditorMixOptions());
   const r6 = addRow();
   textField(r6, "imagePath", "画像のパス（空なら役割の文字で表示）", "例：img/ユニット/弓兵.png");
   row.appendChild(infoEl);
@@ -449,6 +452,9 @@ function buildRaidUnitRow(unit, index) {
     rc.appendChild(wrap);
   });
 
+  const rfx = addRow();
+  selectField(rfx, "effectMixId", "通常攻撃のエフェクト", efxEditorMixOptions());
+  selectField(rfx, "skillEffectMixId", "スキルのエフェクト", efxEditorMixOptions());
   const r6 = addRow();
   textField(r6, "imagePath", "画像のパス（空なら名前の1文字で表示）", "例：img/キャラ/ケツァナ.png");
   row.appendChild(infoEl);

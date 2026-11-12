@@ -137,7 +137,8 @@ function trGetRosterDefs() {
     skillName: u.skillName || "スキル", skillElement: u.skillElement || u.element || "無",
     skillPower: trClamp(u.skillPower, 1, 2000, 200), skillCooldown: trClamp(u.skillCooldown, 1, 120, 8),
     cost: u.cost ? trNormalizeCost(u.cost) : trNormalizeCost({ funds: 100 }),
-    imagePath: u.imagePath || ""
+    imagePath: u.imagePath || "",
+    effectMixId: u.effectMixId || "", skillEffectMixId: u.skillEffectMixId || ""   // ★エフェクトミックス（通常攻撃／スキル）
   }));
   return custom.length > 0 ? custom : trAutoPartyDefs();
 }
@@ -233,9 +234,9 @@ function trMakeUnit(st, card, x, y) {
   const maxHp = Math.round(d.hp * st.hpRate * trLevelRate(card.level));
   return {
     card, def: d, name: d.name, element: d.element, hp: maxHp, maxHp, atk: d.atk * trLevelRate(card.level),
-    range: d.range, interval: d.interval, speed: d.speed, imagePath: d.imagePath,
+    range: d.range, interval: d.interval, speed: d.speed, imagePath: d.imagePath, effectMixId: d.effectMixId || "",
     x, y, laneX: trLaneX(st.hand.indexOf(card)), cool: 0, alive: true, shield: 0,
-    skill: { kind: d.skillKind, name: d.skillName, element: d.skillElement, power: d.skillPower, cooldown: d.skillCooldown, left: 0 },
+    skill: { effectMixId: d.skillEffectMixId || "", kind: d.skillKind, name: d.skillName, element: d.skillElement, power: d.skillPower, cooldown: d.skillCooldown, left: 0 },
     // コンボ（迎撃モードの部品）が参照する形：属性・狙い方・射程
     tpl: { element: d.element, targeting: "near", range: d.range, role: "single" }
   };
@@ -401,7 +402,7 @@ function trUseSkill(st, index) {
     const base = Math.max(1, trAtk(st, u) * sk.power / 100);
     targets.forEach(e => {
       tdDealDamage(st, e, base, sk.element, color);
-      st.fx.push({ kind: "line", x1: u.x, y1: u.y, x2: e.x, y2: e.y, color, t: 0.25 });
+      if (!(typeof efxSpawn === "function" && sk.effectMixId && efxSpawn(st.fx, sk.effectMixId, u, e, color))) st.fx.push({ kind: "line", x1: u.x, y1: u.y, x2: e.x, y2: e.y, color, t: 0.25 });
     });
     st.banners.push({ text: sk.name, t: 0.9 });
     // スキルの属性も、コンボの履歴に積む（積まれる属性はスキルの属性。単体コンボの標的は、使った味方から一番近い敵）
@@ -457,7 +458,7 @@ function trUseCard(st, card) {
       tdDealDamage(st, e, base, tpl.element, color);
       let from = alive[0];
       alive.forEach(u => { if (trDist(e, u.x, u.y) < trDist(e, from.x, from.y)) from = u; });
-      st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.25 });
+      if (!(typeof efxSpawn === "function" && tpl.effectMixId && efxSpawn(st.fx, tpl.effectMixId, from, e, color))) st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.25 });
     });
     tdRecordCombo(st, { tpl: { element: tpl.element, targeting: "near", range: TR_SKILL_ALL_RANGE, role: "single" } }, { x: alive[0].x, y: alive[0].y });
   } else if (tpl.cardEffect === "heal") {
@@ -525,7 +526,7 @@ function trStep(st, dt) {
       if (u.cool <= 0) {
         const color = (typeof getElementColor === "function") ? getElementColor(u.element) : "#ffffff";
         tdDealDamage(st, target.e, Math.max(1, trAtk(st, u)), u.element, color);
-        st.fx.push({ kind: "line", x1: u.x, y1: u.y, x2: target.e.x, y2: target.e.y, color, t: 0.1 });
+        if (!(typeof efxSpawn === "function" && u.effectMixId && efxSpawn(st.fx, u.effectMixId, u, target.e, color))) st.fx.push({ kind: "line", x1: u.x, y1: u.y, x2: target.e.x, y2: target.e.y, color, t: 0.1 });
         u.cool = u.interval;
         tdRecordCombo(st, u, { x: u.x, y: u.y });
       }
@@ -995,6 +996,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
       
       // 演出
       st.fx.forEach(f => {
+        if (typeof efxIsMix === "function" && efxIsMix(f)) { efxDraw(ctx, f); return; }   // ★エフェクトミックス
         ctx.globalAlpha = Math.min(1, f.t / 0.1);
         ctx.strokeStyle = f.color; ctx.lineWidth = 3;
         if (f.kind === "line") { ctx.beginPath(); ctx.moveTo(f.x1, f.y1); ctx.lineTo(f.x2, f.y2); ctx.stroke(); }

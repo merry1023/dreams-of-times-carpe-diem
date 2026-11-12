@@ -37,6 +37,7 @@ let scenarioProject = {
   upperSkills: [], // ★要望対応：上位スキル（ステータスパネルで習得する、職業技とは別枠の技）。[{ id, name, type, element, spCost, power, ... }, ...]
   guildRewards: {}, // ★冒険者協会（掃討作戦）のクリア報酬の設定。{ useMonsterDrops, gachaStoneName, defense:{...}, raid:{...} }（tower_defense_editor.js / tower_rewards.js）
   raidUnits: [], // ★冒険者協会（掃討作戦・出撃モード）で送り込むキャラ。[{ id, name, element, hp, atk, range, interval, speed, skillKind, ... }]（tower_defense_editor.js）
+  effectMixes: [], // ★エフェクトミックス：ベースエフェクトを重ねて作る技の演出。[{ id, name, enabled, layers:[{ base, anchor, color, size, delay, duration, count, alpha, glow }] }]（effectmix.js／effectmix_editor.js）
   towerUnits: [], // ★冒険者協会（掃討作戦・迎撃モード）で購入・配置するユニット。[{ id, name, element, role, targeting, power, range, interval, cost, ... }]（tower_defense_editor.js）
   comboSkills: [], // ★要望対応：コンボスキル（属性の順番で発動する追加効果）。[{ id, name, elements:[属性id...], requiredSkillNames:[...], requiredChapterId... }, ...]
   skills: [],     // [{ id, className, skillId, name, description, type, element, spCost, unlockLevel, power, target, hitCount, statusEffectKind... }, ...]
@@ -255,6 +256,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   if (Array.isArray(data.randomNamePool)) scenarioProject.randomNamePool = data.randomNamePool; // ★要望対応：ランダム名前管理タブ
   if (Array.isArray(data.elementDefs)) scenarioProject.elementDefs = data.elementDefs; // ★要望対応：属性管理タブ
   if (Array.isArray(data.comboSkills)) scenarioProject.comboSkills = data.comboSkills; // ★要望対応：コンボスキル
+  if (Array.isArray(data.effectMixes)) scenarioProject.effectMixes = data.effectMixes; // ★エフェクトミックス
   if (Array.isArray(data.towerUnits)) scenarioProject.towerUnits = data.towerUnits; // ★冒険者協会：タワーユニット
   if (Array.isArray(data.raidUnits)) scenarioProject.raidUnits = data.raidUnits; // ★冒険者協会：出撃キャラ
   if (data.guildRewards && typeof data.guildRewards === "object" && !Array.isArray(data.guildRewards)) scenarioProject.guildRewards = data.guildRewards; // ★冒険者協会：クリア報酬の設定
@@ -483,6 +485,7 @@ function normalizeScenarioProject() {
   //   未設定は通常扱い）
   if (!Array.isArray(scenarioProject.elementDefs)) scenarioProject.elementDefs = []; // [{ id, name }, ...]
   if (!Array.isArray(scenarioProject.comboSkills)) scenarioProject.comboSkills = []; // ★要望対応：コンボスキル
+  if (!Array.isArray(scenarioProject.effectMixes)) scenarioProject.effectMixes = []; // ★エフェクトミックス
   if (!Array.isArray(scenarioProject.towerUnits)) scenarioProject.towerUnits = []; // ★冒険者協会：タワーユニット
   if (!Array.isArray(scenarioProject.raidUnits)) scenarioProject.raidUnits = []; // ★冒険者協会：出撃キャラ
   if (!scenarioProject.guildRewards || typeof scenarioProject.guildRewards !== "object" || Array.isArray(scenarioProject.guildRewards)) scenarioProject.guildRewards = {}; // ★冒険者協会：クリア報酬の設定
@@ -1593,6 +1596,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "upperskills", label: "上位スキル" }, // ★要望対応：ステータスパネルで習得する、職業技とは別枠の技
   { view: "gachaskills", label: "技ガチャ" }, // ★技ガチャ：ガチャ専用の技と、確率・期間などの設定
   { view: "beasts", label: "おとも魔獣" }, // ★おとも魔獣：魔獣召喚の設定と、魔獣のデータ（beast_editor.js）
+  { view: "effectmixes", label: "エフェクトミックス" }, // ★ベースエフェクトを重ねて作る、技の演出（effectmix_editor.js）
   { view: "combos", label: "コンボスキル" }, // ★要望対応：属性の順番で発動する追加効果の技
   { view: "towerunits", label: "タワーユニット" }, // ★冒険者協会：掃討作戦（迎撃モード）のユニット登録
   { view: "raidunits", label: "出撃キャラ" }, // ★冒険者協会：掃討作戦（出撃モード）で送り込むキャラの登録
@@ -1708,7 +1712,7 @@ function renderScenarioBuildMain() {
 const SCENARIOBUILD_TAB_GROUPS = [
   { id: "chara", label: "キャラ・敵", views: ["characters", "enemies", "bosses", "companions", "classes", "portraits", "companionchat"] },
   { id: "item", label: "アイテム・経済", views: ["items", "furniture", "fishmgmt", "recipes", "loginbonus", "randomnames"] },
-  { id: "skill", label: "スキル・戦闘", views: ["skills", "upperskills", "gachaskills", "beasts", "combos", "statuspanels", "statuses", "elements"] },
+  { id: "skill", label: "スキル・戦闘", views: ["skills", "upperskills", "gachaskills", "beasts", "combos", "effectmixes", "statuspanels", "statuses", "elements"] },
   { id: "guild", label: "冒険者協会", views: ["towerunits", "raidunits", "guildrewards"] },
   { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "notationcheck", "flags", "gamevars", "endings"] },
   { id: "world", label: "マップ・施設・BGM", views: ["maps", "facilities", "bgm"] },
@@ -1937,6 +1941,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "notationcheck") renderNotationCheckManager(bodyEl); // ★要望対応：表記ゆれチェック（notationcheck.js）
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
   else if (scenarioBuildSubView === "combos") renderComboSkillManager(bodyEl); // ★要望対応：コンボスキル
+  else if (scenarioBuildSubView === "effectmixes") renderEffectMixManager(bodyEl); // ★エフェクトミックス（effectmix_editor.js）
   else if (scenarioBuildSubView === "towerunits") renderTowerUnitManager(bodyEl); // ★冒険者協会：タワーユニット（tower_defense_editor.js）
   else if (scenarioBuildSubView === "raidunits") renderRaidUnitManager(bodyEl); // ★冒険者協会：出撃キャラ（tower_defense_editor.js）
   else if (scenarioBuildSubView === "guildrewards") renderGuildRewardManager(bodyEl); // ★冒険者協会：掃討作戦の報酬（tower_defense_editor.js）
@@ -8788,6 +8793,17 @@ function buildComboSkillRow(combo, index) {
   cutRow.className = "scenariobuild-condition-row";
   buildSkillTextInput(combo, "cutInText", "カットインの文字（空なら技名）", cutRow);
   infoEl.appendChild(cutRow);
+  // ★エフェクトミックス：迎撃モード／出撃モードでコンボが発動した時の演出（本編の戦闘にはまだ使わない）
+  const efxRow = document.createElement("div");
+  efxRow.className = "scenariobuild-condition-row";
+  efxRow.appendChild(labelSpan("掃討作戦でのエフェクト："));
+  const efxSelect = document.createElement("select");
+  efxSelect.className = "scenariobuild-title-input";
+  efxEditorMixOptions().forEach(opt => { const o = document.createElement("option"); o.value = opt.value; o.textContent = opt.label; efxSelect.appendChild(o); });
+  efxSelect.value = combo.effectMixId || "";
+  efxSelect.onchange = () => { combo.effectMixId = efxSelect.value; persist(); };
+  efxRow.appendChild(efxSelect);
+  infoEl.appendChild(efxRow);
 
   const enabledRow = document.createElement("label");
   enabledRow.className = "scenariobuild-condition-row";
@@ -14061,6 +14077,7 @@ function buildGameSettingsExportData() {
     elementDefs: scenarioProject.elementDefs, // ★要望対応：属性管理タブ
     elementMatchups: scenarioProject.elementMatchups,
     comboSkills: scenarioProject.comboSkills, // ★要望対応：コンボスキル
+    effectMixes: scenarioProject.effectMixes, // ★エフェクトミックス
     towerUnits: scenarioProject.towerUnits, // ★冒険者協会：タワーユニット
     raidUnits: scenarioProject.raidUnits, // ★冒険者協会：出撃キャラ
     guildRewards: scenarioProject.guildRewards, // ★冒険者協会：クリア報酬の設定
