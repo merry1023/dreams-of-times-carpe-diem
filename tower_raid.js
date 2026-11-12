@@ -884,7 +884,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
     mainBtn.onclick = () => {
       if (st.phase === "prep") { const r = trStartMarch(st); if (!r.ok) note(r.reason); else refreshUI(); }
     };
-    speedBtn.onclick = () => { st.speed = st.speed === 1 ? 2 : 1; refreshUI(); };
+    speedBtn.onclick = () => { st.speed = st.speed >= 3 ? 1 : st.speed + 1; refreshUI(); };   // ★1→2→3倍速
     quitBtn.onclick = () => {
       if (!quitArmed) { quitArmed = true; quitTimer = setTimeout(() => { quitArmed = false; refreshUI(); }, 3000); refreshUI(); return; }
       finish("quit");
@@ -1042,7 +1042,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
       const realDt = Math.min(0.05, (ts - lastTs) / 1000);
       lastTs = ts;
       const prevPhase = st.phase;
-      trStep(st, realDt * st.speed);
+      for (let k = 0; k < st.speed; k++) trStep(st, realDt);   // ★倍速は、細かく刻んで何回も進める
       cam += (trCameraTarget(st, view) - cam) * Math.min(1, realDt * TD_CAMERA_SPEED);   // カメラ：目標の位置へ、なめらかに近づく
       uiAccum += realDt;
       if (st.phase !== prevPhase || uiAccum > 0.15) { uiAccum = 0; refreshUI(); }
