@@ -157,17 +157,21 @@ const TD_ROLE_INFO = {
   single:  { roleLabel: "単体",     roleChar: "単" },
   area:    { roleLabel: "範囲",     roleChar: "範" },
   slow:    { roleLabel: "遅延",     roleChar: "遅" },
-  support: { roleLabel: "サポート", roleChar: "援" }
+  support: { roleLabel: "サポート", roleChar: "援" },
+  skill:   { roleLabel: "スキル",   roleChar: "技" }    // ★スキルカード（手動で発動／陣地に置いて自動発動）
 };
+// ★スキルカードの効果の種類（エディタの cardEffect）
+const TD_CARD_EFFECT_LABELS = { damage: "敵にダメージ", heal: "拠点と味方を回復", slow: "敵の足を遅くする", buff: "味方の攻撃力アップ" };
+const TD_TAB_ORDER = ["single", "area", "slow", "support", "skill"];   // タブの並び（役割別）
 function tdClamp(v, min, max, fallback) {
   const n = Number(v);
   return Math.min(max, Math.max(min, Number.isFinite(n) ? n : fallback));
 }
 function tdCustomUnitTemplates() {
   const list = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.towerUnits)) ? scenarioProject.towerUnits : [];
-  return list.filter(u => u && u.enabled !== false).slice(0, 24).map((u, i) => {
+  return list.filter(u => u && u.enabled !== false).slice(0, 40).map((u, i) => {
     const role = TD_ROLE_INFO[u.role] ? u.role : "single";
-    const targeting = role === "support" ? "none" : (role === "area" ? "all" : (TD_TARGETING_LABELS[u.targeting] && u.targeting !== "none" ? u.targeting : "near")); // 範囲は常に「射程内の全て」
+    const targeting = (role === "support" || role === "skill") ? "none" : (role === "area" ? "all" : (TD_TARGETING_LABELS[u.targeting] && u.targeting !== "none" ? u.targeting : "near")); // 範囲は常に「射程内の全て」
     return {
       key: "c" + i, label: u.name || "名無しのユニット", element: u.element || "無",
       role, roleLabel: TD_ROLE_INFO[role].roleLabel, roleChar: TD_ROLE_INFO[role].roleChar, targeting,
@@ -176,7 +180,14 @@ function tdCustomUnitTemplates() {
       cost: Math.round(tdClamp(u.cost, 1, 99999, 50)),
       slowRate: 1 - tdClamp(u.slowPercent, 1, 95, 50) / 100, slowSec: tdClamp(u.slowSec, 0.2, 10, 1.5),
       supportRate: tdClamp(u.supportPercent, 1, 300, 25) / 100,
-      imagePath: u.imagePath || ""
+      imagePath: u.imagePath || "",
+      // ★スキルカード用（role === "skill" の時だけ使う）
+      cardMode: u.cardMode === "placed" ? "placed" : "manual",
+      cardEffect: TD_CARD_EFFECT_LABELS[u.cardEffect] ? u.cardEffect : "damage",
+      cooldown: tdClamp(u.cooldown, 1, 300, 15),
+      healRate: tdClamp(u.healPercent, 1, 100, 25) / 100,
+      buffRate: tdClamp(u.supportPercent, 1, 300, 25) / 100,
+      buffSec: tdClamp(u.buffSec, 0.5, 60, 6)
     };
   });
 }
@@ -198,6 +209,17 @@ function tdBuildDefaultUnitData() {
   const firstElement = list.length > 0 ? list[0].element : "無";
   list.push({ id: idOf(list.length), name: "支援兵", enabled: true, element: firstElement, role: "support", targeting: "near",
     power: 0, range: 130, interval: 1, cost: 90, slowPercent: 50, slowSec: 1.5, supportPercent: 25, imagePath: "" });
+  // ★標準のスキルカード（手動3種＋設置2種）
+  const elOf = i => (tdAutoUnitTemplates()[i % Math.max(1, tdAutoUnitTemplates().length)] || {}).element || firstElement;
+  const card = (i, name, cardMode, cardEffect, extra) => Object.assign({
+    id: idOf(list.length), name, enabled: true, element: elOf(i), role: "skill", targeting: "none", cardMode, cardEffect,
+    power: 20, range: 130, interval: 1, cooldown: 15, cost: 100, slowPercent: 50, slowSec: 3, supportPercent: 25, healPercent: 25, buffSec: 6, imagePath: ""
+  }, extra);
+  list.push(card(0, "烈火の号令", "manual", "damage", { power: 40, cooldown: 20, cost: 120 }));
+  list.push(card(1, "癒しの祈り", "manual", "heal", { healPercent: 25, cooldown: 25, cost: 100 }));
+  list.push(card(2, "凍てつく霧", "manual", "slow", { slowPercent: 60, slowSec: 4, cooldown: 18, cost: 90 }));
+  list.push(card(3, "鼓舞の旗印", "placed", "buff", { supportPercent: 20, buffSec: 7, cooldown: 6, range: 160, cost: 110 }));
+  list.push(card(4, "火の粉の罠", "placed", "damage", { power: 15, cooldown: 3, range: 120, cost: 80 }));
   return list;
 }
 
@@ -308,6 +330,7 @@ function tdCreateState(pool, opts) {
     baseMaxHp, baseHp: baseMaxHp,
     kills: 0, time: 0, speed: 1, killKeys: [],            // killKeys＝倒した魔物の種類のID（クリア時のドロップ判定に使う）
     units: [],                // { slot, tpl, level, cool, hp, maxHp }
+    cards: [],                // ★手動スキルカード（購入済み）{ tpl, level, cool }
     fallen: [],               // 撃破された味方（次のウェーブの準備中に、同じマスで復活する）
     enemies: [],
     spawnQueue: [], spawnTimer: 0,
@@ -340,7 +363,7 @@ function tdSupportBonus(st, unit) {
 }
 
 function tdUnitDamage(st, unit) {
-  return unit.tpl.dmgRatio * st.refHp * TD_DAMAGE_SCALE * (1 + TD_LEVEL_ATK_RATE * (unit.level - 1)) * (1 + tdSupportBonus(st, unit));
+  return unit.tpl.dmgRatio * st.refHp * TD_DAMAGE_SCALE * (1 + TD_LEVEL_ATK_RATE * (unit.level - 1)) * (1 + tdSupportBonus(st, unit)) * (1 + ((unit.cardBuff && unit.cardBuff.until > st.time) ? unit.cardBuff.rate : 0));
 }
 
 function tdUpgradeCost(unit) {
@@ -381,6 +404,7 @@ function tdReviveAndHeal(st) {
     st.popups.push({ x: sp.x, y: sp.y - 26, text: "復活！", color: "#59e07a", weak: false, t: 1.2 });
   });
   st.fallen = [];
+  (st.cards || []).forEach(c => { c.cool = 0; });   // 手動カードは、次のウェーブの準備中に使えるようになる
 }
 
 function tdIsBossWave(st, wave) { return wave % TD_BOSS_EVERY === 0; }
@@ -390,6 +414,7 @@ function tdPlaceUnit(st, slotIndex, templateKey) {
   if ((st.fallen || []).some(u => u.slot === slotIndex)) return { ok: false, reason: "撃破された仲間の場所（次のウェーブで復活します）" };
   const tpl = st.templates.find(t => t.key === templateKey);
   if (!tpl) return { ok: false, reason: "ユニットが選ばれていない" };
+  if (tpl.role === "skill" && tpl.cardMode === "manual") return { ok: false, reason: "手動のスキルカードは、購入して下のカード欄から使います" };
   if (st.funds < tpl.cost) return { ok: false, reason: "資金が足りない" };
   st.funds -= tpl.cost;
   const maxHp = tdUnitMaxHp(st, 1);
@@ -407,6 +432,110 @@ function tdUpgradeUnit(st, unit) {
   unit.hp += newMax - unit.maxHp;        // 増えた分のHPは、その場で回復する
   unit.maxHp = newMax;
   return { ok: true };
+}
+
+// ===== スキルカード =====
+// ★手動：購入するとカード欄に入り、ウェーブ中に好きなタイミングで発動（クールタイムあり）。ユニットと同じようにレベルを上げられる
+// ★設置：ユニットと同じく陣地のマスに置き、射程内で自動発動する（敵に攻撃される・復活する・強化できるのもユニットと同じ）
+function tdCardUpgradeCost(card) { return Math.round(card.tpl.cost * TD_UPGRADE_COST_RATE * card.level); }
+function tdBuyCard(st, templateKey) {
+  const tpl = st.templates.find(t => t.key === templateKey);
+  if (!tpl || tpl.role !== "skill" || tpl.cardMode !== "manual") return { ok: false, reason: "スキルカードが選ばれていない" };
+  if (st.cards.some(c => c.tpl.key === tpl.key)) return { ok: false, reason: "もう持っています（下のカード欄で強化できます）" };
+  if (st.funds < tpl.cost) return { ok: false, reason: "資金が足りない" };
+  st.funds -= tpl.cost;
+  const card = { tpl, level: 1, cool: 0 };
+  st.cards.push(card);
+  return { ok: true, card };
+}
+function tdUpgradeCard(st, card) {
+  if (card.level >= TD_UNIT_MAX_LEVEL) return { ok: false, reason: "これ以上強化できない" };
+  const cost = tdCardUpgradeCost(card);
+  if (st.funds < cost) return { ok: false, reason: "資金が足りない" };
+  st.funds -= cost;
+  card.level++;
+  return { ok: true };
+}
+function tdUseCard(st, card) {
+  if (st.phase !== "wave") return { ok: false, reason: "カードは、ウェーブが始まってから使えます" };
+  if (card.cool > 0) return { ok: false, reason: "クールタイム中" };
+  if (!tdCardHasUse(st, card.tpl, null)) return { ok: false, reason: "今は使っても効果がない" };
+  tdCastCard(st, card.tpl, card.level, null);
+  card.cool = card.tpl.cooldown;
+  return { ok: true };
+}
+// 効果を出す意味があるか（設置カードが空振りしないように。origin＝設置カードのマス、null＝手動で全体）
+function tdCardHasUse(st, tpl, origin) {
+  const range = origin ? tpl.range : Infinity;
+  const near = (x, y) => !origin || Math.hypot(x - origin.x, y - origin.y) <= range;
+  if (tpl.cardEffect === "heal") return st.baseHp < st.baseMaxHp || st.units.some(u => u.hp < u.maxHp);
+  if (tpl.cardEffect === "buff") return st.units.some(u => u.tpl.role !== "skill" && u.tpl.role !== "support" && near(tdSlotPos(u.slot).x, tdSlotPos(u.slot).y));
+  return st.enemies.some(e => e.hp > 0 && near(e.x, e.y));
+}
+// カードの効果を出す。origin が null なら手動（敵・味方の全体が対象）、あれば設置（射程内が対象。回復だけは射程を問わない）
+function tdCastCard(st, tpl, level, origin) {
+  const lv = 1 + TD_LEVEL_ATK_RATE * (level - 1);
+  const from = origin || { x: TD_WORLD_W / 2, y: TD_BASE_TOP };
+  const range = origin ? tpl.range : Infinity;
+  const color = tdElementColor(tpl.element);
+  const inRange = (x, y) => Math.hypot(x - from.x, y - from.y) <= range;
+  const foes = st.enemies.filter(e => e.hp > 0 && inRange(e.x, e.y));
+  if (!origin) st.popups.push({ x: TD_WORLD_W / 2, y: TD_BASE_TOP - 24, text: tpl.label, color, weak: false, t: 1.1 });
+  if (tpl.cardEffect === "damage") {
+    const base = tpl.dmgRatio * st.refHp * TD_DAMAGE_SCALE * lv;
+    foes.forEach(e => {
+      tdDealDamage(st, e, base, tpl.element, color);
+      st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.25 });
+    });
+    st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color, t: 0.3 });
+    if (foes.length > 0) tdRecordCombo(st, { tpl }, from);   // ★属性コンボの履歴にも積む
+  } else if (tpl.cardEffect === "heal") {
+    const baseHeal = Math.round(st.baseMaxHp * tpl.healRate * lv);
+    st.baseHp = Math.min(st.baseMaxHp, st.baseHp + baseHeal);
+    st.popups.push({ x: TD_WORLD_W / 2, y: TD_BASE_TOP + 4, text: `+${baseHeal}`, color: "#59e07a", weak: false, t: 0.9 });
+    st.units.forEach(u => {
+      const h = Math.round(u.maxHp * tpl.healRate * lv);
+      u.hp = Math.min(u.maxHp, u.hp + h);
+      const sp = tdSlotPos(u.slot);
+      st.popups.push({ x: sp.x, y: sp.y - 26, text: `+${h}`, color: "#59e07a", weak: false, t: 0.9 });
+    });
+  } else if (tpl.cardEffect === "slow") {
+    foes.forEach(e => {
+      e.slowUntil = st.time + tpl.slowSec * lv;
+      e.slowRate = tpl.slowRate;
+      st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.2 });
+    });
+    st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color, t: 0.3 });
+  } else if (tpl.cardEffect === "buff") {
+    st.units.forEach(u => {
+      if (u.tpl.role === "skill" || u.tpl.role === "support") return;
+      const sp = tdSlotPos(u.slot);
+      if (!inRange(sp.x, sp.y)) return;
+      u.cardBuff = { until: st.time + tpl.buffSec * lv, rate: tpl.buffRate * lv };
+      st.popups.push({ x: sp.x, y: sp.y - 26, text: `攻撃+${Math.round(tpl.buffRate * lv * 100)}%`, color: "#ffd23f", weak: false, t: 0.9 });
+    });
+    st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color: "#ffd23f", t: 0.3 });
+  }
+}
+// 設置したスキルカード：クールタイムごとに、射程内へ自動で発動する
+function tdStepPlacedCard(st, unit, dt) {
+  unit.cool -= dt;
+  if (unit.cool > 0) return;
+  const sp = tdSlotPos(unit.slot);
+  if (!tdCardHasUse(st, unit.tpl, sp)) { unit.cool = 0; return; }
+  tdCastCard(st, unit.tpl, unit.level, sp);
+  unit.cool = unit.tpl.cooldown;
+}
+// 表示用：カードの効果を1行で（レベルで強くなった後の値）
+function tdCardEffectText(tpl, level) {
+  const lv = 1 + TD_LEVEL_ATK_RATE * (level - 1);
+  const eff = {
+    damage: `ダメージ${Math.round(tpl.dmgRatio * lv * 100)}%`,
+    heal: `回復${Math.round(tpl.healRate * lv * 100)}%`,
+    slow: `足−${Math.round((1 - tpl.slowRate) * 100)}%・${(tpl.slowSec * lv).toFixed(1)}秒`,
+    buff: `攻撃+${Math.round(tpl.buffRate * lv * 100)}%・${(tpl.buffSec * lv).toFixed(1)}秒`
+  }[tpl.cardEffect] || "";
+  return eff + "　" + (tpl.cardMode === "placed" ? `設置・${tpl.cooldown}秒ごと・射程${tpl.range}` : `手動・CT${tpl.cooldown}秒`);
 }
 
 function tdSpawnEnemy(st, entry) {
@@ -574,7 +703,9 @@ function tdStep(st, dt) {
   });
   
   // ユニットの攻撃（狙い方はユニットごとの設定に従う）
+  st.cards.forEach(c => { c.cool = Math.max(0, c.cool - dt); });   // ★手動カードのクールタイム
   st.units.forEach(u => {
+    if (u.tpl.role === "skill") { tdStepPlacedCard(st, u, dt); return; }   // ★設置のスキルカード
     if (u.tpl.role === "support") return;           // サポートは攻撃しない
     u.cool -= dt;
     if (u.cool > 0) return;
@@ -719,6 +850,7 @@ function tdGetImage(src) {
 
 // ユニットの役割・狙い・効果を1行で表す（ボタンや案内に使う）
 function tdUnitSummary(tpl) {
+  if (tpl.role === "skill") return `${TD_CARD_EFFECT_LABELS[tpl.cardEffect]}・${tpl.cardMode === "placed" ? "設置" : "手動"}`;
   if (tpl.role === "support") return `サポート・攻撃+${Math.round(tpl.supportRate * 100)}%`;
   return `${tpl.roleLabel}・${TD_TARGETING_LABELS[tpl.targeting]}`;
 }
@@ -880,6 +1012,9 @@ function runTowerDefenseBattle(pool, opts) {
     let selectedSlot = null;   // 選んでいる配置済みユニットのマス
     let infoNote = "";         // 一時的なお知らせ（資金不足など）
     let quitArmed = false, quitTimer = null;
+    const tabRoles = TD_TAB_ORDER.filter(r => st.templates.some(t => t.role === r));   // ★役割別のタブ（登録のある役割だけ）
+    let activeTab = tabRoles[0] || "single";
+    const cardRows = [];       // 購入済みの手動カードの行（作りっぱなしにして、文字と有効／無効だけ更新する）
     let rafId = null, lastTs = null;
     
     const overlay = document.createElement("div");
@@ -895,7 +1030,9 @@ function runTowerDefenseBattle(pool, opts) {
         <div class="td-body">
           <div class="td-side">
             <div class="td-info"></div>
+            <div class="td-tabs"></div>
             <div class="td-units"></div>
+            <div class="td-cardbar"></div>
             <div class="td-controls">
               <button type="button" class="td-btn td-btn-start"></button>
               <button type="button" class="td-btn td-btn-speed"></button>
@@ -924,6 +1061,8 @@ function runTowerDefenseBattle(pool, opts) {
     const infoEl = overlay.querySelector(".td-info");
     const comboEl = overlay.querySelector(".td-combo-hud");   // ★コンボ履歴は、戦場の右上に薄く表示する
     const unitsEl = overlay.querySelector(".td-units");
+    const tabsEl = overlay.querySelector(".td-tabs");
+    const cardBarEl = overlay.querySelector(".td-cardbar");
     const startBtn = overlay.querySelector(".td-btn-start");
     const speedBtn = overlay.querySelector(".td-btn-speed");
     const camBtn = overlay.querySelector(".td-btn-cam");
@@ -937,13 +1076,58 @@ function runTowerDefenseBattle(pool, opts) {
       btn.dataset.key = tpl.key;
       btn.style.borderColor = tdElementColor(tpl.element);
       btn.innerHTML = `<span class="td-unit-name">${tpl.label}</span><span class="td-unit-meta">${tdUnitSummary(tpl)}</span><span class="td-unit-cost">${tpl.cost}</span>`;
+      btn.hidden = tpl.role !== activeTab;
       btn.onclick = () => {
-        selectedType = (selectedType === tpl.key) ? null : tpl.key;
         selectedSlot = null; infoNote = "";
+        if (tpl.role === "skill" && tpl.cardMode === "manual") {   // ★手動カード：置かずに購入する
+          selectedType = null;
+          const r = tdBuyCard(st, tpl.key);
+          infoNote = r.ok ? `${tpl.label}を手に入れた！下の「スキルカード」欄から発動・強化できます` : r.reason;
+          if (r.ok) addCardRow(r.card);
+          refreshUI();
+          return;
+        }
+        selectedType = (selectedType === tpl.key) ? null : tpl.key;
         refreshUI();
       };
       unitsEl.appendChild(btn);
     });
+    // ★タブ（役割別）
+    tabRoles.forEach(role => {
+      const tab = document.createElement("button");
+      tab.type = "button";
+      tab.className = "td-tab";
+      tab.dataset.key = role;
+      tab.textContent = TD_ROLE_INFO[role].roleLabel;
+      tab.onclick = () => {
+        activeTab = role;
+        unitsEl.querySelectorAll(".td-unit-btn").forEach(b => { b.hidden = st.templates.find(t => t.key === b.dataset.key).role !== activeTab; });
+        refreshUI();
+      };
+      tabsEl.appendChild(tab);
+    });
+    // ★手動スキルカードの行（購入した時に1行ずつ足す）
+    function addCardRow(card) {
+      if (cardRows.length === 0) {
+        const head = document.createElement("div");
+        head.className = "td-cardbar-head";
+        head.textContent = "スキルカード（手動発動）";
+        cardBarEl.appendChild(head);
+      }
+      const row = document.createElement("div");
+      row.className = "td-cardrow";
+      const nameEl = document.createElement("span");
+      nameEl.className = "td-cardname";
+      const useBtn = document.createElement("button");
+      useBtn.type = "button"; useBtn.className = "td-btn td-card-use"; useBtn.dataset.key = "use:" + card.tpl.key;
+      useBtn.onclick = () => { const r = tdUseCard(st, card); infoNote = r.ok ? "" : r.reason; refreshUI(); };
+      const upBtn = document.createElement("button");
+      upBtn.type = "button"; upBtn.className = "td-btn td-card-up"; upBtn.dataset.key = "up:" + card.tpl.key;
+      upBtn.onclick = () => { const r = tdUpgradeCard(st, card); infoNote = r.ok ? "" : r.reason; refreshUI(); };
+      row.appendChild(nameEl); row.appendChild(useBtn); row.appendChild(upBtn);
+      cardBarEl.appendChild(row);
+      cardRows.push({ card, nameEl, useBtn, upBtn });
+    }
     
     function refreshUI() {
       waveEl.textContent = `WAVE ${st.wave}/${st.wavesTotal}` + (tdIsBossWave(st, st.wave) && st.bossPool.length > 0 ? " ★BOSS" : "");
@@ -954,8 +1138,21 @@ function runTowerDefenseBattle(pool, opts) {
       
       unitsEl.querySelectorAll(".td-unit-btn").forEach(btn => {
         const tpl = st.templates.find(t => t.key === btn.dataset.key);
+        const owned = tpl.role === "skill" && tpl.cardMode === "manual" && st.cards.some(c => c.tpl.key === tpl.key);
         btn.classList.toggle("td-selected", selectedType === tpl.key);
-        btn.classList.toggle("td-disabled", st.funds < tpl.cost);
+        btn.classList.toggle("td-disabled", owned || st.funds < tpl.cost);
+        const costEl = btn.querySelector(".td-unit-cost");
+        const costText = owned ? "所持" : String(tpl.cost);
+        if (costEl && costEl.textContent !== costText) costEl.textContent = costText;
+      });
+      tabsEl.querySelectorAll(".td-tab").forEach(tab => tab.classList.toggle("td-selected", tab.dataset.key === activeTab));
+      cardRows.forEach(r => {
+        const maxed = r.card.level >= TD_UNIT_MAX_LEVEL;
+        r.nameEl.textContent = `${r.card.tpl.label} Lv${r.card.level}　${tdCardEffectText(r.card.tpl, r.card.level)}`;
+        r.useBtn.textContent = r.card.cool > 0 ? `CT ${Math.ceil(r.card.cool)}` : "発動";
+        r.useBtn.disabled = st.phase !== "wave" || r.card.cool > 0;
+        r.upBtn.textContent = maxed ? "最大Lv" : `強化 ${tdCardUpgradeCost(r.card)}`;
+        r.upBtn.disabled = maxed || st.funds < tdCardUpgradeCost(r.card);
       });
       
       startBtn.textContent = st.phase === "prep" ? `WAVE ${st.wave} 開始` : (st.phase === "wave" ? "迎撃中……" : "終了");
@@ -977,7 +1174,9 @@ function runTowerDefenseBattle(pool, opts) {
         const maxed = unit.level >= TD_UNIT_MAX_LEVEL;
         infoEl.innerHTML = "";
         const text = document.createElement("span");
-        text.textContent = (tpl.role === "support"
+        text.textContent = (tpl.role === "skill"
+          ? `${tpl.label} Lv${unit.level}　${tdCardEffectText(tpl, unit.level)}`
+          : tpl.role === "support"
           ? `${tpl.label} Lv${unit.level}　味方の攻撃+${Math.round(tpl.supportRate * (1 + TD_LEVEL_ATK_RATE * (unit.level - 1)) * 100)}%　射程${tpl.range}`
           : `${tpl.label} Lv${unit.level}　攻撃${Math.round(tdUnitDamage(st, unit))}　射程${tpl.range}　狙い:${TD_TARGETING_LABELS[tpl.targeting]}` + (tdSupportBonus(st, unit) > 0 ? `　サポート+${Math.round(tdSupportBonus(st, unit) * 100)}%` : ""))
           + `　HP${Math.max(0, Math.round(unit.hp))}/${unit.maxHp}`;
