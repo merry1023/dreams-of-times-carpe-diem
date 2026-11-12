@@ -4399,6 +4399,14 @@ rt {
   clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
   filter: drop-shadow(0 0 3px rgba(255, 196, 0, 0.9));
 }
+.battle-action-point.tier-2 {
+  background: linear-gradient(135deg, #b9ffd9, #00c26e);
+  filter: drop-shadow(0 0 4px rgba(0, 220, 120, 0.95));
+}
+.battle-action-point.tier-3 {
+  background: linear-gradient(135deg, #ffffff, #9eefff 45%, #c9a8ff);
+  filter: drop-shadow(0 0 5px rgba(150, 230, 255, 1));
+}
 .battle-action-point.spent {
   background: rgba(255, 255, 255, 0.18);
   filter: none;

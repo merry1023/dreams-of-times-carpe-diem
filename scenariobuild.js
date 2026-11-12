@@ -7422,7 +7422,8 @@ const SKILL_BLOCK_TYPES = {
   damage: "ダメージを与える",
   heal: "HP/SPを回復する",
   revive: "戦闘不能から蘇生させる", // ★要望対応：HP/SP回復ブロックとは別に、蘇生専用のブロックを追加
-  adjustGauge: "HP/SPを増減する（マイナス指定で消費・減少にも使える）",
+  adjustGauge: "HP/SP/焦力を増減する（マイナス指定で消費・減少にも使える）",
+  adjustActions: "行動数を増減する（プラスで回復／マイナスでさらに減らす）",
   selfDamage: "自分にダメージ（代償）",
   applyStatus: "状態異常/強化を付与",
   setVariable: "専用変数を書き換える",
@@ -7444,6 +7445,7 @@ function createSkillBlock(type) {
   if (type === "heal") return { ...base, target: "self", gauge: "hp", amount: "0" };
   if (type === "revive") return { ...base, target: "self", companionId: "", amount: "50", amountIsPercent: true };
   if (type === "adjustGauge") return { ...base, target: "self", gauge: "sp", amount: "0" }; // ★amountの式がマイナスなら減少、プラスなら回復として扱う（敵は対象にできない）
+  if (type === "adjustActions") return { ...base, amount: "1", allowOverMax: false }; // ★プラス＝行動可能数を回復／マイナス＝普通は1つ減るところをさらに減らす
   if (type === "selfDamage") return { ...base, amount: "0" };
   if (type === "applyStatus") return { ...base, targetSide: "enemy", target: "single", statusId: "", duration: "3", power: "0", chance: "1" };
   if (type === "setVariable") return { ...base, varName: "", expression: "0" };
@@ -7465,7 +7467,8 @@ function skillBlockPreviewText(block) {
     const gaugeLabel = block.gauge === "sp" ? "SP" : block.gauge === "fatigue" ? "疲労度" : block.gauge === "sleepiness" ? "眠気" : "HP";
     return `${block.target === "all" ? "全員" : "自分"}の${gaugeLabel}を${block.amount}${block.amountIsPercent ? "%" : ""}回復`;
   }
-  if (block.type === "adjustGauge") return `${block.target === "all" ? "全員" : "自分"}の${block.gauge === "sp" ? "SP" : "HP"}を${block.amount}増減`;
+  if (block.type === "adjustGauge") return `${block.target === "all" ? "全員" : "自分"}の${block.gauge === "sp" ? "SP" : block.gauge === "shouryoku" ? "焦力" : "HP"}を${block.amount}増減`;
+  if (block.type === "adjustActions") return `行動数を${block.amount}増減${block.allowOverMax === true ? "（上限超え可）" : ""}`;
   if (block.type === "selfDamage") return `自分に${block.amount}ダメージ`;
   if (block.type === "applyStatus") {
     const list = block.targetSide === "self" || block.targetSide === "allies" ? scenarioProject.statusBuffs : scenarioProject.statusAilments;
@@ -7891,7 +7894,7 @@ function buildSkillBlockFormFields(blocksArray, block, skill, persist) {
     row.appendChild(targetSelect);
     const gaugeSelect = document.createElement("select");
     gaugeSelect.className = "scenariobuild-jump-select";
-    [["hp", "HP"], ["sp", "SP"]].forEach(([v, l]) => {
+    [["hp", "HP"], ["sp", "SP"], ["shouryoku", "焦力（0〜100）"]].forEach(([v, l]) => {
       const opt = document.createElement("option"); opt.value = v; opt.textContent = l; gaugeSelect.appendChild(opt);
     });
     gaugeSelect.value = block.gauge || "sp";
@@ -7903,6 +7906,26 @@ function buildSkillBlockFormFields(blocksArray, block, skill, persist) {
     amountRow.appendChild(labelSpan("増減量（式・マイナスで減少）："));
     amountRow.appendChild(buildSkillExpressionInput(block, "amount", "例：-10（SPを10消費）", persist));
     wrap.appendChild(amountRow);
+    
+  } else if (block.type === "adjustActions") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note";
+    noteEl.textContent = "戦闘中の「行動できる回数」（メイン画面のアイコン）を増減します。プラスの値で回復（最大数までしか増えません）、マイナスの値で、普通は1つ減るところをさらに減らします（例：-1なら、この技で合計2つ減る。残りが0になると敵のターンへ進みます）。技を使った行動の消費と合わせて、技が終わった後に反映されます。主人公・仲間の技でだけ効果があります。";
+    wrap.appendChild(noteEl);
+    const row = document.createElement("div");
+    row.className = "scenariobuild-condition-row";
+    row.appendChild(labelSpan("増減する行動数（式・マイナスでさらに減る）："));
+    row.appendChild(buildSkillExpressionInput(block, "amount", "例：1（1回復）　／　-1（さらに1減る）", persist));
+    wrap.appendChild(row);
+    const overLabel = document.createElement("label");
+    overLabel.className = "scenariobuild-inline-checkbox";
+    const overCheckbox = document.createElement("input");
+    overCheckbox.type = "checkbox";
+    overCheckbox.checked = block.allowOverMax === true;
+    overCheckbox.onchange = () => { block.allowOverMax = overCheckbox.checked; persist(); };
+    overLabel.appendChild(overCheckbox);
+    overLabel.append(" 回復する時、行動数の最大数（パーティ人数）を超えて増やせる（最大12。4つ超えは色が変わる）（OFFなら最大数までしか回復しません。マイナスの時は関係ありません）");
+    wrap.appendChild(overLabel);
     
   } else if (block.type === "selfDamage") {
     const row = document.createElement("div");
