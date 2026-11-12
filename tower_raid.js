@@ -7,7 +7,7 @@
 //   出撃したキャラが全員倒れたら失敗。画面は迎撃モードと同じく横長（スマホは縦長）で、カメラが敵と味方の中心を追いかける。
 //   手札は運に左右されない（毎回同じ手札）。ウェーブの合間に、その時点のリソースで「追加で出撃」「レベルアップ」ができる（継ぎ足していく）。
 // ★リソース（出撃資金・食料・出撃経験値・魔力石・赤まむしドリンク♂）は、戦闘中に時間や撃破で貯まる。カードごとのコストは、エディタで自由に決める。
-// ★操作：準備中に出撃・強化して「進軍開始」／進軍中は自動で進む（「停止」で止まる）／射程に敵が入ると自動で止まって攻撃／スキルは手動で発動。
+// ★操作：準備中に出撃・強化して「進軍開始」／進軍中は自動で進む／射程に敵が入ると自動で止まって攻撃／スキルは戦闘画面の下のボタン（数字キー1〜8）で手動発動。スキルカードは出撃資金で購入・強化（数字キー9・0）。
 // ★迎撃モード（tower_defense.js）の部品をそのまま使う：道・属性相性・コンボ・状態異常・報酬・協会ポイント。
 //   （tdElementMultiplier / tdGetUsableCombos / tdRecordCombo / tdDealDamage / tdApplyStatus / tdGuildState / 窓の大きさ・カメラの速さ など）
 // ★ファイルの作り：上半分＝ゲームの中身（画面に触れない。単体で動作確認できる）／下半分＝画面と施設メニューからの流れ
@@ -203,7 +203,7 @@ function trCreateState(rosterDefs, opts) {
   const partyAvgHp = Math.max(1, defs.reduce((s, d) => s + d.hp, 0) / Math.max(1, defs.length)) * hpRate;
   const st = {
     mode: "raid", phase: "prep", stage: Math.max(1, Number(opts.stage) || 1),
-    time: 0, speed: 1, hold: false, hpRate,
+    time: 0, speed: 1, hpRate,
     hand: defs.map(d => ({ def: d, level: 1, unit: null })),    // 手札（毎回同じ。運に左右されない）
     party: [],                                                  // 出撃したキャラ（倒れたものも、再出撃するまで残る）
     res: Object.assign({}, TR_START_RES),
@@ -211,6 +211,8 @@ function trCreateState(rosterDefs, opts) {
     currentWave: 1, waveActive: false, kills: 0, bossKills: 0, killKeys: [],   // killKeys＝倒した魔物の種類のID（クリア時のドロップ判定に使う）
     pool, bossPool: tdGetBossPool(refHp, refAtk), refHp, refAtk, refExp, partyAvgHp, wavesTotal: TR_WAVES,
     combos: tdGetUsableCombos(), history: [], comboLockUntil: 0, comboCount: 0,
+    cards: [],                                                  // ★購入したスキルカード { tpl, level, cool }
+    cardTemplates: tdBuildUnitTemplates().filter(t => t.role === "skill"),   // ★エディタで登録したスキルカード（出撃モードでは設置も手動と同じ扱い）
     fx: [], popups: [], banners: []
   };
   // 回復コンボは、味方を回復させる
@@ -220,6 +222,8 @@ function trCreateState(rosterDefs, opts) {
   return st;
 }
 
+// ★スキルカード（攻撃力アップ）の効果中は、攻撃力が上がる
+function trAtk(st, u) { return u.atk * (1 + ((u.cardBuff && u.cardBuff.until > st.time) ? u.cardBuff.rate : 0)); }
 function trLevelRate(level) { return 1 + TR_LEVEL_STAT_RATE * (level - 1); }
 function trLevelUpCost(card) { return { exp: TR_LEVEL_EXP_BASE * card.level }; }
 
@@ -230,7 +234,7 @@ function trMakeUnit(st, card, x, y) {
   return {
     card, def: d, name: d.name, element: d.element, hp: maxHp, maxHp, atk: d.atk * trLevelRate(card.level),
     range: d.range, interval: d.interval, speed: d.speed, imagePath: d.imagePath,
-    x, y, laneX: trLaneX(st.hand.indexOf(card)), cool: 0, alive: true,
+    x, y, laneX: trLaneX(st.hand.indexOf(card)), cool: 0, alive: true, shield: 0,
     skill: { kind: d.skillKind, name: d.skillName, element: d.skillElement, power: d.skillPower, cooldown: d.skillCooldown, left: 0 },
     // コンボ（迎撃モードの部品）が参照する形：属性・狙い方・射程
     tpl: { element: d.element, targeting: "near", range: d.range, role: "single" }
@@ -394,7 +398,7 @@ function trUseSkill(st, index) {
       if (pick) targets = [pick.e];
     }
     if (targets.length === 0) return { ok: false, reason: "届く敵がいない" };
-    const base = Math.max(1, u.atk * sk.power / 100);
+    const base = Math.max(1, trAtk(st, u) * sk.power / 100);
     targets.forEach(e => {
       tdDealDamage(st, e, base, sk.element, color);
       st.fx.push({ kind: "line", x1: u.x, y1: u.y, x2: e.x, y2: e.y, color, t: 0.25 });
@@ -404,6 +408,79 @@ function trUseSkill(st, index) {
     tdRecordCombo(st, { tpl: { element: sk.element, targeting: "near", range: TR_SKILL_ALL_RANGE, role: "single" } }, { x: u.x, y: u.y });
   }
   sk.left = sk.cooldown;
+  return { ok: true };
+}
+
+// ===== スキルカード（出撃モード） =====
+// ★出撃資金で購入・強化し、進軍中に手動で発動する（クールタイムあり）。効果の種類は迎撃モードと同じ（tower_defense.js の定義）
+function trCardUpgradeCost(card) { return Math.round(card.tpl.cost * TD_UPGRADE_COST_RATE * card.level); }
+function trBuyCard(st, tpl) {
+  if (st.cards.some(c => c.tpl.key === tpl.key)) return { ok: false, reason: "もう持っています" };
+  if (st.res.funds + 1e-9 < tpl.cost) return { ok: false, reason: "出撃資金が足りない" };
+  st.res.funds -= tpl.cost;
+  const card = { tpl, level: 1, cool: 0 };
+  st.cards.push(card);
+  return { ok: true, card };
+}
+function trUpgradeCard(st, card) {
+  if (card.level >= TD_UNIT_MAX_LEVEL) return { ok: false, reason: "これ以上強化できない" };
+  const cost = trCardUpgradeCost(card);
+  if (st.res.funds + 1e-9 < cost) return { ok: false, reason: "出撃資金が足りない" };
+  st.res.funds -= cost;
+  card.level++;
+  return { ok: true };
+}
+function trCardFoes(st) {
+  const alive = st.party.filter(u => u.alive);
+  return st.defenders.filter(e => e.hp > 0 && alive.some(u => trDist(e, u.x, u.y) <= TR_SKILL_ALL_RANGE));
+}
+function trCardHasUse(st, tpl) {
+  const alive = st.party.filter(u => u.alive);
+  if (alive.length === 0) return false;
+  if (tpl.cardEffect === "heal") return alive.some(u => u.hp < u.maxHp);
+  if (tpl.cardEffect === "shield") return alive.some(u => (u.shield || 0) < u.maxHp);
+  if (tpl.cardEffect === "buff") return true;
+  return trCardFoes(st).length > 0;
+}
+function trUseCard(st, card) {
+  if (st.phase !== "play") return { ok: false, reason: "カードは、進軍中に使えます" };
+  if (card.cool > 0) return { ok: false, reason: "クールタイム中" };
+  if (!trCardHasUse(st, card.tpl)) return { ok: false, reason: "今は使っても効果がない" };
+  const tpl = card.tpl, lv = 1 + TD_LEVEL_ATK_RATE * (card.level - 1);
+  const alive = st.party.filter(u => u.alive);
+  const color = tdElementColor(tpl.element);
+  st.banners.push({ text: tpl.label, t: 0.9 });
+  if (tpl.cardEffect === "damage") {
+    const foes = trCardFoes(st);
+    const base = tpl.dmgRatio * st.refHp * TD_DAMAGE_SCALE * lv;
+    foes.forEach(e => {
+      tdDealDamage(st, e, base, tpl.element, color);
+      let from = alive[0];
+      alive.forEach(u => { if (trDist(e, u.x, u.y) < trDist(e, from.x, from.y)) from = u; });
+      st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.25 });
+    });
+    tdRecordCombo(st, { tpl: { element: tpl.element, targeting: "near", range: TR_SKILL_ALL_RANGE, role: "single" } }, { x: alive[0].x, y: alive[0].y });
+  } else if (tpl.cardEffect === "heal") {
+    alive.forEach(u => {
+      const h = Math.max(1, Math.round(u.maxHp * tpl.healRate * lv));
+      u.hp = Math.min(u.maxHp, u.hp + h);
+      st.popups.push({ x: u.x, y: u.y - 18, text: `+${h}`, color: "#59e07a", weak: false, t: 0.8 });
+    });
+  } else if (tpl.cardEffect === "slow") {
+    trCardFoes(st).forEach(e => { e.slowUntil = st.time + tpl.slowSec * lv; e.slowRate = tpl.slowRate; });
+  } else if (tpl.cardEffect === "buff") {
+    alive.forEach(u => {
+      u.cardBuff = { until: st.time + tpl.buffSec * lv, rate: tpl.buffRate * lv };
+      st.popups.push({ x: u.x, y: u.y - 18, text: `攻撃+${Math.round(tpl.buffRate * lv * 100)}%`, color: "#ffd23f", weak: false, t: 0.8 });
+    });
+  } else if (tpl.cardEffect === "shield") {
+    alive.forEach(u => {
+      const a = Math.round(u.maxHp * tpl.shieldRate * lv);
+      u.shield = Math.min(u.maxHp, (u.shield || 0) + a);
+      st.popups.push({ x: u.x, y: u.y - 18, text: `盾+${a}`, color: "#4aa8ff", weak: false, t: 0.8 });
+    });
+  }
+  card.cool = tpl.cooldown;
   return { ok: true };
 }
 
@@ -420,6 +497,7 @@ function trStep(st, dt) {
   
   const aliveParty = () => st.party.filter(u => u.alive);
   
+  st.cards.forEach(c => { c.cool = Math.max(0, c.cool - dt); });   // ★スキルカードのクールタイム
   // 時間でたまるリソース（進軍中だけ。準備中は止まっている）
   st.res.funds += TR_FUNDS_PER_SEC * dt;
   st.res.food += TR_FOOD_PER_SEC * dt;
@@ -446,14 +524,13 @@ function trStep(st, dt) {
     if (target) {
       if (u.cool <= 0) {
         const color = (typeof getElementColor === "function") ? getElementColor(u.element) : "#ffffff";
-        tdDealDamage(st, target.e, Math.max(1, u.atk), u.element, color);
+        tdDealDamage(st, target.e, Math.max(1, trAtk(st, u)), u.element, color);
         st.fx.push({ kind: "line", x1: u.x, y1: u.y, x2: target.e.x, y2: target.e.y, color, t: 0.1 });
         u.cool = u.interval;
         tdRecordCombo(st, u, { x: u.x, y: u.y });
       }
       return;                                     // 射程に敵がいる間は、止まって戦う
     }
-    if (st.hold) return;
     if (sight) {                                  // 射程の外の敵に向かって歩く（素通りしない）
       const pt = trApproachPoint(sight.e, u.x, u.y);
       const dx = pt.x - u.x, dy = pt.y - u.y, len = Math.hypot(dx, dy) || 1, step = Math.min(len, u.speed * dt);
@@ -489,7 +566,7 @@ function trStep(st, dt) {
         const attackEl = (e.elements && e.elements.length > 0) ? e.elements[0] : "無";
         const mult = tdElementMultiplier(attackEl, { elements: [target.u.element] });
         const dmg = Math.max(1, Math.round(e.atk * mult * (e.atkDownUntil > st.time ? TD_ATKDOWN_RATE : 1)));
-        target.u.hp -= dmg;
+        target.u.hp -= tdAbsorbShield(target.u, dmg);
         e.cool = e.interval;
         st.popups.push({ x: target.u.x, y: target.u.y - 18, text: String(dmg), color: "#ff6b6b", weak: false, t: 0.5 });
         if (e.kind === "tower" || e.kind === "base") st.fx.push({ kind: "line", x1: e.x, y1: e.y, x2: target.u.x, y2: target.u.y, color: "#ff6b6b", t: 0.1 });
@@ -501,7 +578,7 @@ function trStep(st, dt) {
       return;
     }
     if (e.kind === "monster" && nearest) {         // 迎撃モンスターは、いちばん近い味方に向かって歩く
-      const dx = nearest.u.x - e.x, dy = nearest.u.y - e.y, len = Math.hypot(dx, dy) || 1, step = Math.min(len, e.speed * dt);
+      const dx = nearest.u.x - e.x, dy = nearest.u.y - e.y, len = Math.hypot(dx, dy) || 1, step = Math.min(len, e.speed * (e.slowUntil > st.time ? e.slowRate : 1) * dt);
       e.x += dx / len * step; e.y += dy / len * step;
     }
   });
@@ -535,6 +612,7 @@ function trStep(st, dt) {
     st.banners.push({ text: `WAVE ${st.currentWave} 突破！`, t: 1.4 });
     st.currentWave++;
     st.phase = "prep";
+    st.cards.forEach(c => { c.cool = 0; });   // スキルカードは、次の準備中にリセット
     trReviveAndHeal(st);   // ★全員25%回復＋戦闘不能のキャラは復活
     if (trIsStuck(st)) st.phase = "lost";
   }
@@ -603,7 +681,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
     let infoNote = "", infoNoteUntil = 0;
     
     const overlay = document.createElement("div");
-    overlay.className = "td-overlay";
+    overlay.className = "td-overlay td-has-skillbar";   // ★戦闘画面の下に、スキルのボタンを並べる
     overlay.innerHTML = `
       <div class="td-panel">
         <div class="td-header">
@@ -617,6 +695,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
           <div class="td-side">
             <div class="td-info"></div>
             <div class="td-hand"></div>
+            <div class="td-cardbar td-cardshop"></div>
             <div class="td-controls">
               <button type="button" class="td-btn td-btn-start"></button>
               <button type="button" class="td-btn td-btn-speed"></button>
@@ -628,6 +707,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
               <canvas class="td-canvas" width="${view.w * 2}" height="${view.h * 2}" style="aspect-ratio: ${view.w} / ${view.h};"></canvas>
               <div class="td-combo-hud"></div>
             </div>
+            <div class="td-skillbar"></div>
           </div>
         </div>
       </div>`;
@@ -642,6 +722,8 @@ function runTowerRaidBattle(rosterDefs, opts) {
     const hpTextEl = overlay.querySelector(".td-basehp-text");
     const infoEl = overlay.querySelector(".td-info");
     const handEl = overlay.querySelector(".td-hand");
+    const skillBarEl = overlay.querySelector(".td-skillbar");
+    const cardShopEl = overlay.querySelector(".td-cardshop");
     const comboEl = overlay.querySelector(".td-combo-hud");   // ★コンボ履歴は、戦場の右上に薄く表示する
     const mainBtn = overlay.querySelector(".td-btn-start");
     const speedBtn = overlay.querySelector(".td-btn-speed");
@@ -682,6 +764,60 @@ function runTowerRaidBattle(rosterDefs, opts) {
       return { el, card, name: el.querySelector(".td-card-name"), lv: el.querySelector(".td-card-lv"), cost: el.querySelector(".td-card-cost"), act1, act2 };
     });
     
+    // ★戦闘画面の下に並べるスキルのボタン。出撃中のキャラの技（手札の順に数字キー1〜8）と、購入したスキルカード（9・0）
+    const skillBtns = [];
+    st.hand.forEach((card, i) => {
+      const el = document.createElement("button");
+      el.type = "button"; el.className = "td-btn td-skill-btn"; el.dataset.key = "skill:" + i; el.hidden = true;
+      el.style.borderColor = tdElementColor(card.def.element);
+      el.onclick = () => { const r = trUseSkill(st, st.party.indexOf(card.unit)); if (!r.ok) note(r.reason); else refreshUI(); };
+      skillBarEl.appendChild(el);
+      skillBtns.push({ el, keyChar: String(i + 1), label: () => (card.unit && card.unit.alive) ? card.unit.skill.name : null, left: () => card.unit.skill.left });
+    });
+    st.cardTemplates.forEach((tpl, j) => {
+      const el = document.createElement("button");
+      el.type = "button"; el.className = "td-btn td-skill-btn td-skill-card"; el.dataset.key = "cardskill:" + tpl.key; el.hidden = true;
+      el.style.borderColor = tdElementColor(tpl.element);
+      el.onclick = () => {
+        const card = st.cards.find(c => c.tpl.key === tpl.key);
+        if (!card) return;
+        const r = trUseCard(st, card); if (!r.ok) note(r.reason); else refreshUI();
+      };
+      skillBarEl.appendChild(el);
+      skillBtns.push({ el, keyChar: j < 2 ? String(j === 0 ? 9 : 0) : "", label: () => { const c = st.cards.find(x => x.tpl.key === tpl.key); return c ? `${tpl.label} Lv${c.level}` : null; }, left: () => st.cards.find(x => x.tpl.key === tpl.key).cool });
+    });
+    // ★スキルカードの購入・強化（出撃資金）
+    const cardShopRows = [];
+    if (st.cardTemplates.length > 0) {
+      const head = document.createElement("div");
+      head.className = "td-cardbar-head"; head.textContent = "スキルカード（出撃資金で購入・強化／戦闘画面の下から発動）";
+      cardShopEl.appendChild(head);
+      st.cardTemplates.forEach(tpl => {
+        const row = document.createElement("div");
+        row.className = "td-cardrow";
+        const nameEl = document.createElement("span"); nameEl.className = "td-cardname";
+        const btn = document.createElement("button");
+        btn.type = "button"; btn.className = "td-btn"; btn.dataset.key = "cardbuy:" + tpl.key;
+        btn.onclick = () => {
+          const owned = st.cards.find(c => c.tpl.key === tpl.key);
+          const r = owned ? trUpgradeCard(st, owned) : trBuyCard(st, tpl);
+          if (!r.ok) note(r.reason); else refreshUI();
+        };
+        row.appendChild(nameEl); row.appendChild(btn);
+        cardShopEl.appendChild(row);
+        cardShopRows.push({ tpl, nameEl, btn });
+      });
+    }
+    // ★数字キーでスキル発動（1〜8＝キャラの技／9・0＝スキルカード）
+    const onDigitKey = (ev) => {
+      if (finished || !overlay.isConnected || ev.ctrlKey || ev.altKey || ev.metaKey) return;
+      const hit = skillBtns.find(b => b.keyChar && b.keyChar === ev.key && !b.el.hidden);
+      if (!hit) return;
+      ev.preventDefault(); ev.stopImmediatePropagation();
+      if (!ev.repeat && !hit.el.disabled) hit.el.click();
+    };
+    window.addEventListener("keydown", onDigitKey, true);
+
     function refreshUI() {
       const bossWave = st.currentWave >= TR_WAVES;
       waveEl.textContent = `WAVE ${Math.min(st.currentWave, TR_WAVES)}/${TR_WAVES}` + (bossWave ? " ★最後" : "");
@@ -691,8 +827,8 @@ function runTowerRaidBattle(rosterDefs, opts) {
       const hp = alive.reduce((sum, u) => sum + u.hp, 0), maxHp = alive.reduce((sum, u) => sum + u.maxHp, 0);
       fillEl.style.width = `${Math.round(hp / Math.max(1, maxHp) * 100)}%`;
       hpTextEl.textContent = `出撃中 ${alive.length}体　HP合計 ${Math.round(hp)}/${maxHp}`;
-      mainBtn.textContent = st.phase === "prep" ? `進軍開始（WAVE ${Math.min(st.currentWave, TR_WAVES)}）` : (st.hold ? "進軍する" : "停止する");
-      mainBtn.disabled = st.phase === "won" || st.phase === "lost" || (st.phase === "prep" && alive.length === 0);
+      mainBtn.textContent = st.phase === "prep" ? `進軍開始（WAVE ${Math.min(st.currentWave, TR_WAVES)}）` : (st.phase === "play" ? "進軍中……" : "終了");   // ★停止ボタンは廃止
+      mainBtn.disabled = st.phase !== "prep" || alive.length === 0;
       speedBtn.textContent = `速度 ×${st.speed}`;
       quitBtn.textContent = quitArmed ? "本当にやめる？" : "やめる";
       
@@ -714,16 +850,32 @@ function runTowerRaidBattle(rosterDefs, opts) {
           ce.act2.disabled = !isAlive || card.level >= TR_LEVEL_MAX || st.res.exp + 1e-9 < lvCost;
         } else {
           ce.act2.hidden = true;
-          ce.act1.hidden = false;
-          const ready = isAlive && unit.skill.left <= 0;
-          ce.act1.textContent = !unit ? "（未出撃）" : (isAlive ? `${unit.skill.name}${ready ? "" : `　あと${Math.ceil(unit.skill.left)}秒`}` : "戦闘不能");
-          ce.act1.disabled = !ready || st.phase !== "play";
+          ce.act1.hidden = true;   // ★進軍中の技は、戦闘画面の下のボタンから使う
         }
+      });
+      // 戦闘画面の下のスキルボタン（出撃中の技・購入済みカード）
+      skillBtns.forEach(b => {
+        const label = b.label();
+        b.el.hidden = !label;
+        if (!label) return;
+        const left = b.left();
+        const ready = left <= 0;
+        const text = `${b.keyChar ? `[${b.keyChar}] ` : ""}${label}${ready ? "" : `　あと${Math.ceil(left)}秒`}`;
+        if (b.el.textContent !== text) b.el.textContent = text;
+        b.el.disabled = !ready || st.phase !== "play";
+      });
+      cardShopRows.forEach(r => {
+        const owned = st.cards.find(c => c.tpl.key === r.tpl.key);
+        r.nameEl.textContent = owned ? `${r.tpl.label} Lv${owned.level}　${tdCardEffectText(r.tpl, owned.level)}` : `${r.tpl.label}　${tdCardEffectText(r.tpl, 1)}`;
+        const cost = owned ? trCardUpgradeCost(owned) : r.tpl.cost;
+        const maxed = owned && owned.level >= TD_UNIT_MAX_LEVEL;
+        r.btn.textContent = maxed ? "最大Lv" : `${owned ? "強化" : "購入"} 資金${cost}`;
+        r.btn.disabled = maxed || st.res.funds + 1e-9 < cost;
       });
       
       if (infoNote && performance.now() < infoNoteUntil) infoEl.textContent = infoNote;
-      else if (st.phase === "prep") infoEl.innerHTML = `準備中：手札から「出撃」「Lv↑」を選んで「進軍開始」。<span class="td-keyhint">　キー：矢印＝移動／Space・Z＝決定／X＝やめる</span>`;
-      else if (st.phase === "play") infoEl.textContent = "進軍中：自動で進みます。スキルは各キャラのボタンで発動。ウェーブを突破すると準備中に戻ります。";
+      else if (st.phase === "prep") infoEl.innerHTML = `準備中：手札から「出撃」「Lv↑」を選んで「進軍開始」。<span class="td-keyhint">　キー：矢印＝移動／Space・Z＝決定／数字キー＝スキル（進軍中）／X＝やめる</span>`;
+      else if (st.phase === "play") infoEl.textContent = "進軍中：自動で進みます。スキルは画面下のボタン（数字キー）で発動。ウェーブを突破すると準備中に戻ります。";
       else infoEl.textContent = "";
       
       comboEl.innerHTML = tdComboHudHtml(st);
@@ -731,7 +883,6 @@ function runTowerRaidBattle(rosterDefs, opts) {
     }
     mainBtn.onclick = () => {
       if (st.phase === "prep") { const r = trStartMarch(st); if (!r.ok) note(r.reason); else refreshUI(); }
-      else if (st.phase === "play") { st.hold = !st.hold; refreshUI(); }
     };
     speedBtn.onclick = () => { st.speed = st.speed === 1 ? 2 : 1; refreshUI(); };
     quitBtn.onclick = () => {
@@ -838,6 +989,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
           ctx.fillText(String(u.name).charAt(0), x, y + 1);
         }
         if (u.alive) drawBar(x - 14, y - 27, 28, u.hp / u.maxHp, "#59e07a");
+        if (u.alive && u.shield > 0) drawBar(x - 14, y - 34, 28, Math.min(1, u.shield / u.maxHp), "#4aa8ff");   // ★シールド（別枠のHP）
         ctx.globalAlpha = 1;
       });
       
@@ -881,10 +1033,6 @@ function runTowerRaidBattle(rosterDefs, opts) {
         ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(0, 0, view.w, 34);
         ctx.fillStyle = "#ffd23f"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillText(`WAVE ${Math.min(st.currentWave, TR_WAVES)} の準備中：手札から出撃・レベルアップして「進軍開始」` + (st.currentWave >= TR_WAVES ? "（最後のウェーブ！）" : ""), view.w / 2, 17);
-      } else if (st.hold && st.phase === "play") {
-        ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(0, 0, view.w, 30);
-        ctx.fillStyle = "#ffd23f"; ctx.font = "bold 15px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText("停止中：「進軍する」で再開", view.w / 2, 15);
       }
     }
     
@@ -911,6 +1059,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
       if (rafId) cancelAnimationFrame(rafId);
       if (quitTimer) clearTimeout(quitTimer);
       if (kb) kb.detach();
+      window.removeEventListener("keydown", onDigitKey, true);
       overlay.remove();
       resolve({ result, kills: st.kills, bossKills: st.bossKills, stage: st.stage, wavesTotal: TR_WAVES, killKeys: st.killKeys });
     }

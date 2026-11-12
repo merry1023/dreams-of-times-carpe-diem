@@ -1964,11 +1964,11 @@ function handleMonsterCodexKeyDown(event) {
   if (codexTab !== "monster") {
     if (codexViewMode === "detail") return;
     const entries = getCodexEntries(codexTab);
-    if (event.key === "ArrowDown") {
+    if (event.key === "ArrowDown" || event.key === "ArrowRight") {   // ★要望対応：左右キーでも動かせる
       event.preventDefault();
       codexCursorIndex = Math.min(Math.max(0, entries.length - 1), codexCursorIndex + 1);
       renderMonsterCodex();
-    } else if (event.key === "ArrowUp") {
+    } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
       event.preventDefault();
       codexCursorIndex = Math.max(0, codexCursorIndex - 1);
       renderMonsterCodex();
@@ -1998,11 +1998,11 @@ function handleMonsterCodexKeyDown(event) {
     return; // ★詳細画面ではカーソル移動はしない
   }
   
-  if (event.key === "ArrowDown") {
+  if (event.key === "ArrowDown" || event.key === "ArrowRight") {   // ★要望対応：左右キーでも動かせる
     event.preventDefault();
     codexCursorIndex = Math.min(codexKeys.length - 1, codexCursorIndex + 1);
     renderMonsterCodex();
-  } else if (event.key === "ArrowUp") {
+  } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
     event.preventDefault();
     codexCursorIndex = Math.max(0, codexCursorIndex - 1);
     renderMonsterCodex();
