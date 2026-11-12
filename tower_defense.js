@@ -62,11 +62,11 @@ const TD_WORLD_W = 720;
 const TD_WORLD_H = 1060;
 const TD_VIEW_LANDSCAPE = { w: 720, h: 480 };   // 横長の窓（PC・タブレット）
 const TD_VIEW_PORTRAIT = { w: 720, h: 1000 };   // 縦長の窓（スマホだけ）
-const TD_GRID_COLS = 7;             // 味方陣地のマス（横）
-const TD_GRID_ROWS = 4;             // 同（縦）
-const TD_CELL = 92;                 // マス1つの大きさ
+const TD_GRID_COLS = 11;            // 味方陣地のマス（横）★以前の約2倍（7×4＝28 → 11×5＝55）に増やした
+const TD_GRID_ROWS = 5;             // 同（縦）
+const TD_CELL = 65;                 // マス1つの大きさ（マスを増やしたぶん小さくしている）
 const TD_GRID_X0 = (TD_WORLD_W - TD_GRID_COLS * TD_CELL) / 2;
-const TD_GRID_Y0 = 600;
+const TD_GRID_Y0 = 620;
 const TD_BASE_TOP = 985;            // 拠点の上端（ここから下が拠点）
 const TD_SPAWN_Y = -20;             // 敵が出てくる位置
 const TD_SLOTS = [];                // ユニットを置けるマスの中心（左上から右へ、上から下へ）
@@ -148,7 +148,7 @@ function tdAutoUnitTemplates() {
     : [{ id: "無", name: "無" }];
   return defs.slice(0, 12).map((def, i) => {
     const arch = TD_ROLE_ARCHETYPES[i % TD_ROLE_ARCHETYPES.length];
-    return Object.assign({}, arch, { key: "u" + i, label: `${def.name}の${arch.name}`, element: def.id });
+    return Object.assign({}, arch, { id: "u" + i, key: "u" + i, label: `${def.name}の${arch.name}`, element: def.id });
   });
 }
 
@@ -161,7 +161,15 @@ const TD_ROLE_INFO = {
   skill:   { roleLabel: "スキル",   roleChar: "技" }    // ★スキルカード（手動で発動／陣地に置いて自動発動）
 };
 // ★スキルカードの効果の種類（エディタの cardEffect）
-const TD_CARD_EFFECT_LABELS = { damage: "敵にダメージ", heal: "拠点と味方を回復", slow: "敵の足を遅くする", buff: "味方の攻撃力アップ" };
+const TD_CARD_EFFECT_LABELS = { damage: "敵にダメージ", heal: "拠点と味方を回復", slow: "敵の足を遅くする", buff: "味方の攻撃力アップ", shield: "シールドを付与" };
+// ★シールド＝HPとは別枠の体力。ダメージを先にシールドが受け止め、壊れるまで残る（最大HPまで）。holder.shield（拠点は st.baseShield）に入る
+function tdAbsorbShield(holder, dmg, key) {
+  key = key || "shield";
+  if (!holder || !(holder[key] > 0)) return dmg;
+  const a = Math.min(holder[key], dmg);
+  holder[key] -= a;
+  return dmg - a;
+}
 const TD_TAB_ORDER = ["single", "area", "slow", "support", "skill"];   // タブの並び（役割別）
 function tdClamp(v, min, max, fallback) {
   const n = Number(v);
@@ -173,7 +181,7 @@ function tdCustomUnitTemplates() {
     const role = TD_ROLE_INFO[u.role] ? u.role : "single";
     const targeting = (role === "support" || role === "skill") ? "none" : (role === "area" ? "all" : (TD_TARGETING_LABELS[u.targeting] && u.targeting !== "none" ? u.targeting : "near")); // 範囲は常に「射程内の全て」
     return {
-      key: "c" + i, label: u.name || "名無しのユニット", element: u.element || "無",
+      id: u.id || ("c" + i), key: "c" + i, label: u.name || "名無しのユニット", element: u.element || "無",
       role, roleLabel: TD_ROLE_INFO[role].roleLabel, roleChar: TD_ROLE_INFO[role].roleChar, targeting,
       dmgRatio: tdClamp(u.power, 1, 500, 20) / 100,
       range: tdClamp(u.range, 20, 400, 140), interval: tdClamp(u.interval, 0.2, 10, 1),
@@ -187,11 +195,26 @@ function tdCustomUnitTemplates() {
       cooldown: tdClamp(u.cooldown, 1, 300, 15),
       healRate: tdClamp(u.healPercent, 1, 100, 25) / 100,
       buffRate: tdClamp(u.supportPercent, 1, 300, 25) / 100,
-      buffSec: tdClamp(u.buffSec, 0.5, 60, 6)
+      buffSec: tdClamp(u.buffSec, 0.5, 60, 6),
+      shieldRate: tdClamp(u.shieldPercent, 1, 300, 30) / 100
     };
   });
 }
 
+// ===== 迎撃モードの候補ユニットの編成 =====
+// ★プレイヤーが、購入画面に出すユニット（スキルカード含む）を選べる。保存先は協会の状態（player.adventurerGuild.defLoadout）。
+//   一度も編成していなければ、登録されているものを全部出す。編成後に登録が消えた分は無視し、1つも残らなければ全部出す
+const TD_LOADOUT_MAX = 16;   // 追加で選べる上限（未編成のまま全部出ている状態から減らす時は、この数を超えていても減らせる）
+function tdGetLoadoutIds() {
+  const g = tdGuildState();
+  return Array.isArray(g.defLoadout) ? g.defLoadout.slice() : null;
+}
+function tdFilterByLoadout(list) {
+  const ids = tdGetLoadoutIds();
+  if (!ids) return list;
+  const picked = list.filter(t => ids.includes(t.id));
+  return picked.length > 0 ? picked : list;
+}
 function tdBuildUnitTemplates() {
   const custom = tdCustomUnitTemplates();
   return custom.length > 0 ? custom : tdAutoUnitTemplates();
@@ -213,13 +236,15 @@ function tdBuildDefaultUnitData() {
   const elOf = i => (tdAutoUnitTemplates()[i % Math.max(1, tdAutoUnitTemplates().length)] || {}).element || firstElement;
   const card = (i, name, cardMode, cardEffect, extra) => Object.assign({
     id: idOf(list.length), name, enabled: true, element: elOf(i), role: "skill", targeting: "none", cardMode, cardEffect,
-    power: 20, range: 130, interval: 1, cooldown: 15, cost: 100, slowPercent: 50, slowSec: 3, supportPercent: 25, healPercent: 25, buffSec: 6, imagePath: ""
+    power: 20, range: 130, interval: 1, cooldown: 15, cost: 100, slowPercent: 50, slowSec: 3, supportPercent: 25, healPercent: 25, buffSec: 6, shieldPercent: 30, imagePath: ""
   }, extra);
   list.push(card(0, "烈火の号令", "manual", "damage", { power: 40, cooldown: 20, cost: 120 }));
   list.push(card(1, "癒しの祈り", "manual", "heal", { healPercent: 25, cooldown: 25, cost: 100 }));
   list.push(card(2, "凍てつく霧", "manual", "slow", { slowPercent: 60, slowSec: 4, cooldown: 18, cost: 90 }));
   list.push(card(3, "鼓舞の旗印", "placed", "buff", { supportPercent: 20, buffSec: 7, cooldown: 6, range: 160, cost: 110 }));
   list.push(card(4, "火の粉の罠", "placed", "damage", { power: 15, cooldown: 3, range: 120, cost: 80 }));
+  list.push(card(1, "守りの加護", "manual", "shield", { shieldPercent: 35, cooldown: 22, cost: 110 }));
+  list.push(card(2, "護りの結界", "placed", "shield", { shieldPercent: 20, cooldown: 8, range: 150, cost: 100 }));
   return list;
 }
 
@@ -323,7 +348,7 @@ function tdCreateState(pool, opts) {
     stage: Math.max(1, Number(opts.stage) || 1),
     incomeRate: 1 + TD_UPG_INCOME * (up.income || 0),   // 敵を倒した時にもらえる資金の倍率（事前強化）
     bossKills: 0,
-    templates: tdBuildUnitTemplates(),
+    templates: tdFilterByLoadout(tdBuildUnitTemplates()),
     phase: "prep",            // prep＝準備中／wave＝ウェーブ進行中／won／lost
     wave: 1, wavesTotal: Math.max(1, Number(opts.wavesTotal) || TD_WAVE_OPTIONS[0]),
     funds: TD_START_FUNDS + TD_UPG_FUNDS * (up.funds || 0),
@@ -468,6 +493,7 @@ function tdUseCard(st, card) {
 function tdCardHasUse(st, tpl, origin) {
   const range = origin ? tpl.range : Infinity;
   const near = (x, y) => !origin || Math.hypot(x - origin.x, y - origin.y) <= range;
+  if (tpl.cardEffect === "shield") return (!origin && (st.baseShield || 0) < st.baseMaxHp) || st.units.some(u => (u.shield || 0) < u.maxHp && near(tdSlotPos(u.slot).x, tdSlotPos(u.slot).y));
   if (tpl.cardEffect === "heal") return st.baseHp < st.baseMaxHp || st.units.some(u => u.hp < u.maxHp);
   if (tpl.cardEffect === "buff") return st.units.some(u => u.tpl.role !== "skill" && u.tpl.role !== "support" && near(tdSlotPos(u.slot).x, tdSlotPos(u.slot).y));
   return st.enemies.some(e => e.hp > 0 && near(e.x, e.y));
@@ -506,6 +532,20 @@ function tdCastCard(st, tpl, level, origin) {
       st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.2 });
     });
     st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color, t: 0.3 });
+  } else if (tpl.cardEffect === "shield") {
+    if (!origin) {   // 手動の時だけ、拠点にもシールドを張る
+      const a = Math.round(st.baseMaxHp * tpl.shieldRate * lv);
+      st.baseShield = Math.min(st.baseMaxHp, (st.baseShield || 0) + a);
+      st.popups.push({ x: TD_WORLD_W / 2, y: TD_BASE_TOP + 4, text: `盾+${a}`, color: "#4aa8ff", weak: false, t: 0.9 });
+    }
+    st.units.forEach(u => {
+      const sp = tdSlotPos(u.slot);
+      if (!inRange(sp.x, sp.y)) return;
+      const a = Math.round(u.maxHp * tpl.shieldRate * lv);
+      u.shield = Math.min(u.maxHp, (u.shield || 0) + a);
+      st.popups.push({ x: sp.x, y: sp.y - 26, text: `盾+${a}`, color: "#4aa8ff", weak: false, t: 0.9 });
+    });
+    st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color: "#4aa8ff", t: 0.3 });
   } else if (tpl.cardEffect === "buff") {
     st.units.forEach(u => {
       if (u.tpl.role === "skill" || u.tpl.role === "support") return;
@@ -533,7 +573,8 @@ function tdCardEffectText(tpl, level) {
     damage: `ダメージ${Math.round(tpl.dmgRatio * lv * 100)}%`,
     heal: `回復${Math.round(tpl.healRate * lv * 100)}%`,
     slow: `足−${Math.round((1 - tpl.slowRate) * 100)}%・${(tpl.slowSec * lv).toFixed(1)}秒`,
-    buff: `攻撃+${Math.round(tpl.buffRate * lv * 100)}%・${(tpl.buffSec * lv).toFixed(1)}秒`
+    buff: `攻撃+${Math.round(tpl.buffRate * lv * 100)}%・${(tpl.buffSec * lv).toFixed(1)}秒`,
+    shield: `シールド${Math.round(tpl.shieldRate * lv * 100)}%`
   }[tpl.cardEffect] || "";
   return eff + "　" + (tpl.cardMode === "placed" ? `設置・${tpl.cooldown}秒ごと・射程${tpl.range}` : `手動・CT${tpl.cooldown}秒`);
 }
@@ -673,7 +714,7 @@ function tdStep(st, dt) {
         const attackEl = (e.elements && e.elements.length > 0) ? e.elements[0] : "無";
         const mult = tdElementMultiplier(attackEl, { elements: [target.u.tpl.element] });
         const dmg = Math.max(1, Math.round(dmgBase * mult));
-        target.u.hp -= dmg;
+        target.u.hp -= tdAbsorbShield(target.u, dmg);
         e.cool = e.interval;
         st.popups.push({ x: target.sp.x, y: target.sp.y - 22, text: String(dmg), color: "#ff6b6b", weak: false, t: 0.5 });
       }
@@ -682,7 +723,7 @@ function tdStep(st, dt) {
     if (e.y >= TD_BASE_TOP - e.range * 0.6) {         // 拠点に着いた：拠点を攻撃する
       if (e.cool <= 0) {
         const dmg = Math.max(1, Math.round(dmgBase));
-        st.baseHp -= dmg;
+        st.baseHp -= tdAbsorbShield(st, dmg, "baseShield");
         e.cool = e.interval;
         st.popups.push({ x: Math.max(60, Math.min(TD_WORLD_W - 60, e.x)), y: TD_BASE_TOP + 20, text: `-${dmg}`, color: "#ff5a5a", weak: false, t: 0.8 });
       }
@@ -1231,7 +1272,7 @@ function runTowerDefenseBattle(pool, opts) {
       handleCell(cellAt(toWorld(ev)));
     });
     startBtn.onclick = () => { if (tdStartWave(st)) { infoNote = ""; refreshUI(); } };
-    speedBtn.onclick = () => { st.speed = st.speed === 1 ? 2 : 1; refreshUI(); };
+    speedBtn.onclick = () => { st.speed = st.speed >= 3 ? 1 : st.speed + 1; refreshUI(); };   // ★1→2→3倍速
     camBtn.onclick = () => { camAuto = !camAuto; refreshUI(); };
     quitBtn.onclick = () => {
       if (!quitArmed) {
@@ -1287,6 +1328,10 @@ function runTowerDefenseBattle(pool, opts) {
       ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText(`拠点　HP ${Math.max(0, Math.round(st.baseHp))}/${st.baseMaxHp}`, TD_WORLD_W / 2, TD_BASE_TOP + 22);
       drawBar(TD_WORLD_W / 2 - 150, TD_BASE_TOP + 40, 300, st.baseHp / st.baseMaxHp, "#e5484d");
+      if (st.baseShield > 0) {
+        drawBar(TD_WORLD_W / 2 - 150, TD_BASE_TOP + 50, 300, Math.min(1, st.baseShield / st.baseMaxHp), "#4aa8ff");
+        ctx.fillStyle = "#9bd0ff"; ctx.font = "bold 11px sans-serif"; ctx.fillText(`シールド ${Math.round(st.baseShield)}`, TD_WORLD_W / 2, TD_BASE_TOP + 66);
+      }
       
       // 選択中ユニットの射程
       if (selectedSlot !== null) {
@@ -1329,6 +1374,7 @@ function runTowerDefenseBattle(pool, opts) {
           ctx.fillText(u.tpl.roleChar, sp.x, sp.y + 1);
         }
         drawBar(sp.x - 20, sp.y + 24, 40, u.hp / u.maxHp, "#59e07a");
+        if (u.shield > 0) drawBar(sp.x - 20, sp.y + 32, 40, Math.min(1, u.shield / u.maxHp), "#4aa8ff");   // ★シールド（別枠のHP）
         if (u.level > 1) {
           ctx.fillStyle = "#000"; ctx.fillRect(sp.x + 8, sp.y - 30, 24, 13);
           ctx.fillStyle = "#ffd23f"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(`Lv${u.level}`, sp.x + 20, sp.y - 23);
@@ -1431,7 +1477,7 @@ function runTowerDefenseBattle(pool, opts) {
       const realDt = Math.min(0.05, (ts - lastTs) / 1000);
       lastTs = ts;
       const prevPhase = st.phase;
-      tdStep(st, realDt * st.speed);
+      for (let k = 0; k < st.speed; k++) tdStep(st, realDt);   // ★倍速は、細かく刻んで何回も進める（飛ばし過ぎを防ぐ）
       // カメラ：目標の位置へ、なめらかに近づく
       const target = tdCameraTarget(st, view, !camAuto);
       cam += (target - cam) * Math.min(1, realDt * TD_CAMERA_SPEED);
@@ -1484,6 +1530,7 @@ function showTowerDefenseModeMenu() {
   const g = tdGuildState();
   const options = [
     { label: "迎撃モード（守る）", action: () => showTowerDefenseWaveMenu() },
+    { label: `迎撃の候補ユニット編成（${tdLoadoutCount()}/${TD_LOADOUT_MAX}）`, action: () => showTowerDefenseLoadoutMenu() },
     { label: "出撃モード（攻める）", action: async () => {
         if (typeof startTowerRaid === "function") { startTowerRaid(1); return; }   // tower_raid.js
         hideLocationMenu();
@@ -1495,6 +1542,36 @@ function showTowerDefenseModeMenu() {
     { label: "戻る", action: () => showTowerDefenseMainMenu() }
   ];
   showLocationMenu(options, `掃討作戦（${tdGachaStoneName()} ${tdGetGachaStones()}）`);
+}
+
+// 迎撃の候補ユニット編成：押すたびに「候補に出す／出さない」を切り替える
+function tdLoadoutCount() {
+  const all = tdBuildUnitTemplates();
+  const ids = tdGetLoadoutIds();
+  return ids ? tdFilterByLoadout(all).length : all.length;
+}
+function showTowerDefenseLoadoutMenu() {
+  const all = tdBuildUnitTemplates();
+  const g = tdGuildState();
+  const current = tdFilterByLoadout(all).map(t => t.id);   // 未編成なら全部
+  const picked = new Set(current);
+  const options = all.map(t => {
+    const on = picked.has(t.id);
+    return { label: `${on ? "☑" : "☐"} ${t.label}（${tdUnitSummary(t)}・${t.cost}）`, action: async () => {
+        if (!on && picked.size >= TD_LOADOUT_MAX) {
+          hideLocationMenu(); changeSpeaker("");
+          await displayMessage(`候補に出せるのは${TD_LOADOUT_MAX}種類までだ。`);
+          showTowerDefenseLoadoutMenu();
+          return;
+        }
+        if (on) picked.delete(t.id); else picked.add(t.id);
+        g.defLoadout = all.map(x => x.id).filter(id => picked.has(id));
+        showTowerDefenseLoadoutMenu();
+      } };
+  });
+  options.push({ label: "すべて候補にする（編成をやめる）", action: () => { delete g.defLoadout; showTowerDefenseLoadoutMenu(); } });
+  options.push({ label: "戻る", action: () => showTowerDefenseModeMenu() });
+  showLocationMenu(options, `迎撃の候補ユニット編成（${picked.size}/${TD_LOADOUT_MAX}）`);
 }
 
 // 迎撃のウェーブ数の選択
