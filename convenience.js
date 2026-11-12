@@ -1932,6 +1932,20 @@ function renderMonsterCodexDetail(panel) {
   panel.appendChild(backBtn);
 }
 
+// ★図鑑の一覧は2列のグリッド：左右キー＝横の隣へ、上下キー＝1行ぶん（2つ）上下へ
+function codexGridMove(index, key, length, cols) {
+  cols = cols || 2;
+  if (length <= 0) return 0;
+  let next = index;
+  if (key === "ArrowLeft") { if (index % cols > 0) next = index - 1; }
+  else if (key === "ArrowRight") { if (index % cols < cols - 1 && index + 1 < length) next = index + 1; }
+  else if (key === "ArrowUp") { if (index - cols >= 0) next = index - cols; }
+  else if (key === "ArrowDown") {
+    if (index + cols < length) next = index + cols;
+    else if (Math.floor(index / cols) < Math.floor((length - 1) / cols)) next = length - 1;   // 最後の行が欠けている時は、いちばん最後へ
+  }
+  return next;
+}
 function handleMonsterCodexKeyDown(event) {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★要望対応：シナリオエディタ表示中は本編を操作させない
   if (controlFocus !== "sub") return;
@@ -1964,13 +1978,9 @@ function handleMonsterCodexKeyDown(event) {
   if (codexTab !== "monster") {
     if (codexViewMode === "detail") return;
     const entries = getCodexEntries(codexTab);
-    if (event.key === "ArrowDown" || event.key === "ArrowRight") {   // ★要望対応：左右キーでも動かせる
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {   // ★左右＝横、上下＝縦（2列グリッド）
       event.preventDefault();
-      codexCursorIndex = Math.min(Math.max(0, entries.length - 1), codexCursorIndex + 1);
-      renderMonsterCodex();
-    } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-      event.preventDefault();
-      codexCursorIndex = Math.max(0, codexCursorIndex - 1);
+      codexCursorIndex = codexGridMove(codexCursorIndex, event.key, entries.length);
       renderMonsterCodex();
     } else if (KEY_CONFIG.decideKeys.includes(event.key)) {
       event.preventDefault();
@@ -1998,13 +2008,9 @@ function handleMonsterCodexKeyDown(event) {
     return; // ★詳細画面ではカーソル移動はしない
   }
   
-  if (event.key === "ArrowDown" || event.key === "ArrowRight") {   // ★要望対応：左右キーでも動かせる
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {   // ★左右＝横、上下＝縦（2列グリッド）
     event.preventDefault();
-    codexCursorIndex = Math.min(codexKeys.length - 1, codexCursorIndex + 1);
-    renderMonsterCodex();
-  } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-    event.preventDefault();
-    codexCursorIndex = Math.max(0, codexCursorIndex - 1);
+    codexCursorIndex = codexGridMove(codexCursorIndex, event.key, codexKeys.length);
     renderMonsterCodex();
   } else if (KEY_CONFIG.decideKeys.includes(event.key)) {
     event.preventDefault();

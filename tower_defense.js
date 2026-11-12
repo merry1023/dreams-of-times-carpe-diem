@@ -62,11 +62,11 @@ const TD_WORLD_W = 720;
 const TD_WORLD_H = 1060;
 const TD_VIEW_LANDSCAPE = { w: 720, h: 480 };   // 横長の窓（PC・タブレット）
 const TD_VIEW_PORTRAIT = { w: 720, h: 1000 };   // 縦長の窓（スマホだけ）
-const TD_GRID_COLS = 7;             // 味方陣地のマス（横）
-const TD_GRID_ROWS = 4;             // 同（縦）
-const TD_CELL = 92;                 // マス1つの大きさ
+const TD_GRID_COLS = 11;            // 味方陣地のマス（横）★以前の約2倍（7×4＝28 → 11×5＝55）に増やした
+const TD_GRID_ROWS = 5;             // 同（縦）
+const TD_CELL = 65;                 // マス1つの大きさ（マスを増やしたぶん小さくしている）
 const TD_GRID_X0 = (TD_WORLD_W - TD_GRID_COLS * TD_CELL) / 2;
-const TD_GRID_Y0 = 600;
+const TD_GRID_Y0 = 620;
 const TD_BASE_TOP = 985;            // 拠点の上端（ここから下が拠点）
 const TD_SPAWN_Y = -20;             // 敵が出てくる位置
 const TD_SLOTS = [];                // ユニットを置けるマスの中心（左上から右へ、上から下へ）
@@ -148,7 +148,7 @@ function tdAutoUnitTemplates() {
     : [{ id: "無", name: "無" }];
   return defs.slice(0, 12).map((def, i) => {
     const arch = TD_ROLE_ARCHETYPES[i % TD_ROLE_ARCHETYPES.length];
-    return Object.assign({}, arch, { key: "u" + i, label: `${def.name}の${arch.name}`, element: def.id });
+    return Object.assign({}, arch, { id: "u" + i, key: "u" + i, label: `${def.name}の${arch.name}`, element: def.id });
   });
 }
 
@@ -181,7 +181,7 @@ function tdCustomUnitTemplates() {
     const role = TD_ROLE_INFO[u.role] ? u.role : "single";
     const targeting = (role === "support" || role === "skill") ? "none" : (role === "area" ? "all" : (TD_TARGETING_LABELS[u.targeting] && u.targeting !== "none" ? u.targeting : "near")); // 範囲は常に「射程内の全て」
     return {
-      key: "c" + i, label: u.name || "名無しのユニット", element: u.element || "無",
+      id: u.id || ("c" + i), key: "c" + i, label: u.name || "名無しのユニット", element: u.element || "無",
       role, roleLabel: TD_ROLE_INFO[role].roleLabel, roleChar: TD_ROLE_INFO[role].roleChar, targeting,
       dmgRatio: tdClamp(u.power, 1, 500, 20) / 100,
       range: tdClamp(u.range, 20, 400, 140), interval: tdClamp(u.interval, 0.2, 10, 1),
@@ -201,6 +201,20 @@ function tdCustomUnitTemplates() {
   });
 }
 
+// ===== 迎撃モードの候補ユニットの編成 =====
+// ★プレイヤーが、購入画面に出すユニット（スキルカード含む）を選べる。保存先は協会の状態（player.adventurerGuild.defLoadout）。
+//   一度も編成していなければ、登録されているものを全部出す。編成後に登録が消えた分は無視し、1つも残らなければ全部出す
+const TD_LOADOUT_MAX = 16;   // 追加で選べる上限（未編成のまま全部出ている状態から減らす時は、この数を超えていても減らせる）
+function tdGetLoadoutIds() {
+  const g = tdGuildState();
+  return Array.isArray(g.defLoadout) ? g.defLoadout.slice() : null;
+}
+function tdFilterByLoadout(list) {
+  const ids = tdGetLoadoutIds();
+  if (!ids) return list;
+  const picked = list.filter(t => ids.includes(t.id));
+  return picked.length > 0 ? picked : list;
+}
 function tdBuildUnitTemplates() {
   const custom = tdCustomUnitTemplates();
   return custom.length > 0 ? custom : tdAutoUnitTemplates();
@@ -334,7 +348,7 @@ function tdCreateState(pool, opts) {
     stage: Math.max(1, Number(opts.stage) || 1),
     incomeRate: 1 + TD_UPG_INCOME * (up.income || 0),   // 敵を倒した時にもらえる資金の倍率（事前強化）
     bossKills: 0,
-    templates: tdBuildUnitTemplates(),
+    templates: tdFilterByLoadout(tdBuildUnitTemplates()),
     phase: "prep",            // prep＝準備中／wave＝ウェーブ進行中／won／lost
     wave: 1, wavesTotal: Math.max(1, Number(opts.wavesTotal) || TD_WAVE_OPTIONS[0]),
     funds: TD_START_FUNDS + TD_UPG_FUNDS * (up.funds || 0),
@@ -1258,7 +1272,7 @@ function runTowerDefenseBattle(pool, opts) {
       handleCell(cellAt(toWorld(ev)));
     });
     startBtn.onclick = () => { if (tdStartWave(st)) { infoNote = ""; refreshUI(); } };
-    speedBtn.onclick = () => { st.speed = st.speed === 1 ? 2 : 1; refreshUI(); };
+    speedBtn.onclick = () => { st.speed = st.speed >= 3 ? 1 : st.speed + 1; refreshUI(); };   // ★1→2→3倍速
     camBtn.onclick = () => { camAuto = !camAuto; refreshUI(); };
     quitBtn.onclick = () => {
       if (!quitArmed) {
@@ -1463,7 +1477,7 @@ function runTowerDefenseBattle(pool, opts) {
       const realDt = Math.min(0.05, (ts - lastTs) / 1000);
       lastTs = ts;
       const prevPhase = st.phase;
-      tdStep(st, realDt * st.speed);
+      for (let k = 0; k < st.speed; k++) tdStep(st, realDt);   // ★倍速は、細かく刻んで何回も進める（飛ばし過ぎを防ぐ）
       // カメラ：目標の位置へ、なめらかに近づく
       const target = tdCameraTarget(st, view, !camAuto);
       cam += (target - cam) * Math.min(1, realDt * TD_CAMERA_SPEED);
@@ -1516,6 +1530,7 @@ function showTowerDefenseModeMenu() {
   const g = tdGuildState();
   const options = [
     { label: "迎撃モード（守る）", action: () => showTowerDefenseWaveMenu() },
+    { label: `迎撃の候補ユニット編成（${tdLoadoutCount()}/${TD_LOADOUT_MAX}）`, action: () => showTowerDefenseLoadoutMenu() },
     { label: "出撃モード（攻める）", action: async () => {
         if (typeof startTowerRaid === "function") { startTowerRaid(1); return; }   // tower_raid.js
         hideLocationMenu();
@@ -1527,6 +1542,36 @@ function showTowerDefenseModeMenu() {
     { label: "戻る", action: () => showTowerDefenseMainMenu() }
   ];
   showLocationMenu(options, `掃討作戦（${tdGachaStoneName()} ${tdGetGachaStones()}）`);
+}
+
+// 迎撃の候補ユニット編成：押すたびに「候補に出す／出さない」を切り替える
+function tdLoadoutCount() {
+  const all = tdBuildUnitTemplates();
+  const ids = tdGetLoadoutIds();
+  return ids ? tdFilterByLoadout(all).length : all.length;
+}
+function showTowerDefenseLoadoutMenu() {
+  const all = tdBuildUnitTemplates();
+  const g = tdGuildState();
+  const current = tdFilterByLoadout(all).map(t => t.id);   // 未編成なら全部
+  const picked = new Set(current);
+  const options = all.map(t => {
+    const on = picked.has(t.id);
+    return { label: `${on ? "☑" : "☐"} ${t.label}（${tdUnitSummary(t)}・${t.cost}）`, action: async () => {
+        if (!on && picked.size >= TD_LOADOUT_MAX) {
+          hideLocationMenu(); changeSpeaker("");
+          await displayMessage(`候補に出せるのは${TD_LOADOUT_MAX}種類までだ。`);
+          showTowerDefenseLoadoutMenu();
+          return;
+        }
+        if (on) picked.delete(t.id); else picked.add(t.id);
+        g.defLoadout = all.map(x => x.id).filter(id => picked.has(id));
+        showTowerDefenseLoadoutMenu();
+      } };
+  });
+  options.push({ label: "すべて候補にする（編成をやめる）", action: () => { delete g.defLoadout; showTowerDefenseLoadoutMenu(); } });
+  options.push({ label: "戻る", action: () => showTowerDefenseModeMenu() });
+  showLocationMenu(options, `迎撃の候補ユニット編成（${picked.size}/${TD_LOADOUT_MAX}）`);
 }
 
 // 迎撃のウェーブ数の選択
