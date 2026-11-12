@@ -363,6 +363,7 @@ let scenarioBuildHasUnsavedChanges = false;
 function markScenarioBuildDirty() {
   scenarioBuildHasUnsavedChanges = true;
   updateScenarioBuildSaveButton();
+  if (typeof writingGuideScheduleRefresh === "function") writingGuideScheduleRefresh(); // ★分量表示（原稿用紙・ページ・読了時間）を最新にする
 }
 
 function updateScenarioBuildSaveButton() {
@@ -1588,6 +1589,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
   { view: "tutorials", label: "チュートリアル管理" },
   { view: "notationcheck", label: "表記ゆれチェック" }, // ★要望対応：話者名・カタカナ語などの表記ゆれを探して一括置換（notationcheck.js）
+  { view: "writingguide", label: "執筆ガイド" }, // ★要望対応：分量（原稿用紙・ページ・読了時間）の設定／文字数カウンタ／簡易辞書（writingguide.js）
   { view: "glossary", label: "用語・語彙" }, // ★便利タブの「用語・語彙」アプリの言葉（ルビ・意味の解説）。メッセージ中の言葉をタップすると解説が開く
   { view: "skills", label: "スキル管理" },
   { view: "upperskills", label: "上位スキル" }, // ★要望対応：ステータスパネルで習得する、職業技とは別枠の技
@@ -1710,7 +1712,7 @@ const SCENARIOBUILD_TAB_GROUPS = [
   { id: "item", label: "アイテム・経済", views: ["items", "furniture", "fishmgmt", "recipes", "loginbonus", "randomnames"] },
   { id: "skill", label: "スキル・戦闘", views: ["skills", "upperskills", "gachaskills", "beasts", "combos", "statuspanels", "statuses", "elements"] },
   { id: "guild", label: "冒険者協会", views: ["towerunits", "raidunits", "guildrewards"] },
-  { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "notationcheck", "flags", "gamevars", "endings"] },
+  { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "writingguide", "notationcheck", "flags", "gamevars", "endings"] },
   { id: "world", label: "マップ・施設・BGM", views: ["maps", "facilities", "bgm"] },
   { id: "system", label: "データ・システム", views: ["variables", "data", "scenariostats", "tabmanager"] }
 ];
@@ -1934,6 +1936,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "achievements") renderEntityManager(bodyEl, getAchievementManagerConfig());
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
   else if (scenarioBuildSubView === "glossary") renderEntityManager(bodyEl, getGlossaryManagerConfig());
+  else if (scenarioBuildSubView === "writingguide") renderWritingGuideManager(bodyEl); // ★要望対応：執筆ガイド（writingguide.js）
   else if (scenarioBuildSubView === "notationcheck") renderNotationCheckManager(bodyEl); // ★要望対応：表記ゆれチェック（notationcheck.js）
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
   else if (scenarioBuildSubView === "combos") renderComboSkillManager(bodyEl); // ★要望対応：コンボスキル
@@ -2220,6 +2223,7 @@ function buildScenarioArcTabsBar() {
 function renderScenarioBuildList(container) {
   const introEl = document.createElement("p");
   container.appendChild(introEl);
+  if (typeof buildWritingGuideSummary === "function") container.appendChild(buildWritingGuideSummary("all", { title: "全話の分量" })); // ★要望対応：全話の合計
   
   container.appendChild(buildScenarioArcTabsBar());
   
@@ -2593,6 +2597,7 @@ function buildScenarioChapterRow(chapter, index) {
   }
   
   infoEl.appendChild(titleInput);
+  if (typeof buildWritingGuideSummary === "function") infoEl.appendChild(buildWritingGuideSummary(chapter.id, { compact: true })); // ★要望対応：その話の分量（1行）
   
   // ★要望対応：この話がどの章に属するかを、ここで直接切り替えられるようにする
   const arcRow = document.createElement("div");
@@ -3069,6 +3074,7 @@ function renderScenarioBlockEditor(container) {
   const titleEl = document.createElement("h3");
   titleEl.textContent = `「${chapter.title}」のブロック`;
   container.appendChild(titleEl);
+  if (typeof buildWritingGuideSummary === "function") container.appendChild(buildWritingGuideSummary(chapter.id, { title: "この話の分量" })); // ★要望対応：原稿用紙・ページ・読了時間
   
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
