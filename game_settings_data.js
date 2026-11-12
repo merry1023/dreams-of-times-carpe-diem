@@ -18183,7 +18183,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
               "id": "skillblock_gachatest_3",
               "type": "message",
               "speaker": "",
-              "text": "（3凸以上）灯火が持続的な癒しに変わる！"
+              "text": "灯火が持続的な癒しに変わる！"
             },
             {
               "id": "skillblock_gachatest_4",
@@ -18443,7 +18443,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
               "id": "skillblock_gachatest_9",
               "type": "message",
               "speaker": "",
-              "text": "（3凸以上）鋭い一撃が相手の動きを止める！"
+              "text": "鋭い一撃が相手の動きを止める！"
             },
             {
               "id": "skillblock_gachatest_10",
@@ -18469,7 +18469,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
               "id": "skillblock_gachatest_12",
               "type": "message",
               "speaker": "",
-              "text": "（5凸）舞は止まらない――全体への追撃！"
+              "text": "舞は止まらない――全体への追撃！"
             },
             {
               "id": "skillblock_gachatest_13",
@@ -19373,7 +19373,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                   "id": "skillblock_beasttest_3",
                   "type": "message",
                   "speaker": "",
-                  "text": "（3凸以上）雷鳴が相手の動きを止める！"
+                  "text": "雷鳴が相手の動きを止める！"
                 },
                 {
                   "id": "skillblock_beasttest_4",

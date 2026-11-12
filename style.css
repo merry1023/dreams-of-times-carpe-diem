@@ -8335,8 +8335,15 @@ rt {
     flex-wrap: wrap;
     gap: 4px;
     justify-content: center;
-    margin: 0 0 8px;
+    /* ★要望対応：一覧を下へスクロールしても、種別タブが見切れないよう上に貼り付ける */
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #0d0710;
+    margin: -10px -10px 8px;
+    padding: 10px 10px 6px;
 }
+.monster-codex-row, .progress-panel-chapter-row { scroll-margin-top: 44px; scroll-margin-bottom: 8px; }   /* カーソル行が貼り付いたタブの下に隠れないように */
 
 .codex-tab {
     background: #222;
@@ -9362,3 +9369,13 @@ rt {
 .fishing-record-row-unknown { opacity: 0.55; }
 .fishing-record-name { color: #7fd4ff; }
 .fishing-record-info { white-space: nowrap; }
+
+/* ★魔力結晶の受け取り通知（確認ボタンで閉じる） */
+.crystal-claim-overlay { position: fixed; inset: 0; z-index: 100000; background: rgba(0, 0, 0, 0.72); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.crystal-claim-box { width: min(360px, 100%); background: #14101c; border: 3px solid #ffd23f; border-radius: 10px; padding: 16px; text-align: center; color: #fff; box-shadow: 0 0 24px rgba(255, 210, 63, 0.35); }
+.crystal-claim-title { font-size: 20px; font-weight: bold; color: #ffd23f; margin-bottom: 8px; }
+.crystal-claim-total { font-size: 16px; font-weight: bold; margin-bottom: 8px; }
+.crystal-claim-lines { list-style: none; margin: 0 0 14px; padding: 8px; background: #0b0810; border: 1px solid #3a3350; border-radius: 6px; font-size: 13px; text-align: left; }
+.crystal-claim-lines li { padding: 2px 0; }
+.crystal-claim-ok { background: #ffd23f; color: #111; border: 2px solid #fff; border-radius: 6px; padding: 8px 32px; font-size: 15px; font-weight: bold; cursor: pointer; }
+.crystal-claim-ok:focus { outline: 3px solid #fff; }
