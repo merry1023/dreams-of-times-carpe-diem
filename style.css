@@ -8468,6 +8468,22 @@ rt {
 }
 .td-unit-btn.td-selected { background: #ffd23f; color: #111; }
 .td-unit-btn.td-disabled { opacity: 0.62; }
+/* ★役割別のタブ（単体・範囲・遅延・サポート・スキル）と、手動スキルカードの欄 */
+.td-unit-btn[hidden] { display: none; }
+.td-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 4px; }
+.td-tabs:empty, .td-cardbar:empty { display: none; }
+.td-tab {
+  flex: 1 1 0; min-width: 52px;
+  background: #1b222c; color: #fff; border: 2px solid #fff; border-bottom-width: 4px;
+  padding: 4px 2px; font-size: 12px; font-weight: bold; cursor: pointer;
+}
+.td-tab.td-selected { background: #ffd23f; color: #111; border-color: #ffd23f; }
+.td-cardbar { margin-top: 6px; border: 2px solid #ffd23f; background: #141a22; padding: 4px; }
+.td-cardbar-head { font-size: 11px; font-weight: bold; color: #ffd23f; margin-bottom: 3px; }
+.td-cardrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 3px 0; border-top: 1px solid #333c48; }
+.td-cardrow:first-of-type { border-top: none; }
+.td-cardname { flex: 1 1 100%; font-size: 12px; font-weight: bold; }
+.td-cardrow .td-btn { flex: 1 1 45%; padding: 4px 2px; font-size: 12px; }
 .td-unit-name { font-weight: bold; }
 .td-unit-meta { font-size: 11px; }
 .td-controls { display: flex; gap: 6px; margin-top: 6px; }
@@ -8527,7 +8543,9 @@ rt {
   .td-side { display: contents; }
   .td-main { order: 1; }
   .td-info { order: 2; margin: 0; }
+  .td-tabs { order: 3; }
   .td-units, .td-hand { order: 3; }
+  .td-cardbar { order: 3; }
   .td-combo-hud { top: 24px; }   /* 上部のバナー文字と重ならないよう、少し下げる */
   .td-controls { order: 4; position: sticky; bottom: 0; background: #0b0f14; padding: 6px 0 2px; margin-top: 0; z-index: 2; }
 }
@@ -9317,6 +9335,13 @@ rt {
 .dm-bhead.dm-selected { background: #ffd23f; color: #111; }
 .dm-same { margin: 3px 0; }
 .dm-same summary { cursor: pointer; color: #ffd23f; font-size: 12px; }
+
+/* ★要望対応：統計タブの表（scenariostats.js） */
+.scenario-stats-wrap { overflow-x: auto; margin: 6px 0 12px; }
+.scenario-stats-table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+.scenario-stats-table th, .scenario-stats-table td { border: 1px solid rgba(255, 255, 255, 0.2); padding: 4px 8px; text-align: left; white-space: nowrap; }
+.scenario-stats-table th { background: rgba(255, 255, 255, 0.1); }
+.scenario-stats-table td.scenario-stats-num { text-align: right; }
 
 /* ★要望対応：釣りの記録画面（fishing.js の openFishingRecordScreen） */
 .fishing-record-overlay { position: fixed; inset: 0; z-index: 9000; background: rgba(0, 0, 0, 0.75); display: flex; align-items: center; justify-content: center; }

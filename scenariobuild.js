@@ -1615,6 +1615,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "endings", label: "エンディング一覧" },
   { view: "variables", label: "変数一覧" }, // ★要望対応：式の中で使えるシステム変数の名前が分かるよう、サブ画面に一覧を出す
   { view: "data", label: "データ管理" },
+  { view: "scenariostats", label: "統計" }, // ★要望対応：全話・各話の文字数／発言回数／ブロック数／演出数などの集計（scenariostats.js）
   { view: "tabmanager", label: "タブ管理" } // ★バグ修正：中身はプレイ画面タブ（メイン/インベントリ/スキル…）の管理に変更した
 ];
 
@@ -1711,7 +1712,7 @@ const SCENARIOBUILD_TAB_GROUPS = [
   { id: "guild", label: "冒険者協会", views: ["towerunits", "raidunits", "guildrewards"] },
   { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "notationcheck", "flags", "gamevars", "endings"] },
   { id: "world", label: "マップ・施設・BGM", views: ["maps", "facilities", "bgm"] },
-  { id: "system", label: "データ・システム", views: ["variables", "data", "tabmanager"] }
+  { id: "system", label: "データ・システム", views: ["variables", "data", "scenariostats", "tabmanager"] }
 ];
 let scenarioBuildTabGroupOpen = {};
 
@@ -1949,6 +1950,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "recipes") renderRecipeManager(bodyEl);
   else if (scenarioBuildSubView === "randomnames") renderRandomNameManager(bodyEl);
   else if (scenarioBuildSubView === "elements") renderElementManager(bodyEl);
+  else if (scenarioBuildSubView === "scenariostats") renderScenarioStatsManager(bodyEl); // ★要望対応：統計（scenariostats.js）
   else if (scenarioBuildSubView === "companions") renderCompanionManager(bodyEl);
   else if (scenarioBuildSubView === "classes") renderClassStatsManager(bodyEl);
   else if (scenarioBuildSubView === "bgm") renderEntityManager(bodyEl, getBgmManagerConfig());
@@ -5826,13 +5828,13 @@ function getGlossaryManagerConfig() {
     collapsible: true,
     groupField: "category", // ★要望対応：分類（この作品の用語・ゲーム用語・熟語…）ごとのカーテンに分けて表示する
     groupDefault: "その他",
-    groupOrder: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["この作品の用語", "ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]),
+    groupOrder: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["この作品の用語", "人物", "ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]),
     getEntitySummary: (entity) => "📚 " + (entity.term || "（未設定）") + (entity.reading ? "（" + entity.reading + "）" : "") + "／" + (entity.category || "その他"),
     getList: () => scenarioProject.glossary,
     fields: [
       { key: "term", label: "言葉", type: "text", placeholder: "例：真名" },
       { key: "reading", label: "読み（ルビ）", type: "text", placeholder: "例：まな（空欄ならルビなし）" },
-      { key: "category", label: "分類", type: "select", options: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["この作品の用語", "ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]).map(c => ({ value: c, label: c })) },
+      { key: "category", label: "分類", type: "select", options: (typeof GLOSSARY_CATEGORIES !== "undefined" ? GLOSSARY_CATEGORIES : ["この作品の用語", "人物", "ゲーム用語", "熟語", "慣用句・ことわざ", "一般語彙", "ネット・俗語"]).map(c => ({ value: c, label: c })) },
       { key: "meaning", label: "意味の解説", type: "textarea", placeholder: "言葉の意味・このゲームでの使われ方（改行OK）" },
       { key: "aliases", label: "言い換え（「、」区切り）", type: "text", placeholder: "例：月間魔法記事（空欄でOK）" },
       { key: "example", label: "用例（任意）", type: "textarea", placeholder: "例文など（空欄でOK）" }
@@ -13957,7 +13959,7 @@ function renderDataManager(container) {
   //   テロップ・演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }else{ … }」の形
   const textExportNote = document.createElement("p");
   textExportNote.className = "devmode-note";
-  textExportNote.textContent = "全ての話を、純粋なシナリオ文章だけのテキストファイルとして書き出します（読み物・校正用。ゲームへの取り込みには使えません）。会話は「話者名:｢ 文章｣」、地の文はそのまま、テロップや演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }else{ … }」の形になります。";
+  textExportNote.textContent = "全ての話を、純粋なシナリオ文章だけのテキストファイルとして書き出します（読み物・校正用。ゲームへの取り込みには使えません）。会話は「話者名:｢ 文章｣」、地の文はそのまま、テロップや演出は「〈種類名〉「文章」」、IF・選択肢は「if(条件){ … }elif(条件){ … }else{ … }」の形になります（選択肢が複数ある時は、2つ目以降を elif で繋げます）。各ブロックの行頭には話ごとの番号「[001]」が付き、ジャンプ系ブロックにはジャンプ先の番号「→[012]」も書かれます。";
   container.appendChild(textExportNote);
   
   ["txt", "md"].forEach(ext => {
