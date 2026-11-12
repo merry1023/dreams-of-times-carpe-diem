@@ -3600,7 +3600,7 @@ function createBlock(type) {
   if (type === "bossbattle") return { ...base, bossKey: "", escorts: [], winJumpBlockId: null, defeatJumpBlockId: null, defeatMessage: "" }; // bossKey: ボス設定タブのID／escorts: 一緒に出す雑魚（任意）
   if (type === "choice") return { ...base, prompt: "", options: [{ id: generateId("opt"), text: "", blocks: [], jumpBlockId: null, loops: false, isCorrect: false }] };
   if (type === "effect") return { ...base, effectType: "shake" }; // effectType: "shake" | "flash"
-  if (type === "background") return { ...base, path: "" }; // ★"#"で始まればsetBackgroundColor、それ以外はsetBackgroundImageとして扱う
+  if (type === "background") return { ...base, path: "", transition: "none", transitionDuration: 1, transitionWait: true }; // ★"#"で始まればsetBackgroundColor、それ以外はsetBackgroundImageとして扱う。transition：切り替えの演出（mainfunc.js BG_TRANSITION_TYPES。未設定は"none"）
   if (type === "classselect") return { ...base }; // ★第一話の職業選択〜初期化一式をまとめて行う特殊ブロック（フィールドなし）
   if (type === "setrank") return { ...base, nickname: "" };
   if (type === "gameover") return { ...base, message: "力尽きてしまった……", endingName: "", retryJumpBlockId: null }; // ★ゲームオーバーもバッドエンドの一種として扱う。retryJumpBlockIdを指定すると「リトライ」の戻り先を話の最初以外にできる
@@ -3707,7 +3707,10 @@ function blockPreviewText(block) {
     };
     return labels[block.effectType] || "カメラシェイク";
   }
-  if (block.type === "background") return block.path;
+  if (block.type === "background") {
+    const tr = (typeof BG_TRANSITION_TYPES !== "undefined" && block.transition && block.transition !== "none") ? BG_TRANSITION_TYPES.find(t => t[0] === block.transition) : null;
+    return tr ? `${block.path}（${tr[1].replace(/（.*$/, "")}）` : block.path;
+  }
   if (block.type === "classselect") return "職業選択";
   if (block.type === "setrank") return block.nickname;
   if (block.type === "gameover") return block.endingName ? `ゲームオーバー（${block.endingName}）` : "ゲームオーバー";
@@ -4247,6 +4250,50 @@ function buildBlockFormFields(chapter, block) {
     pathInput.value = block.path;
     pathInput.onchange = () => { block.path = pathInput.value.trim(); persist(); };
     wrap.appendChild(pathInput);
+
+    // ★切り替えの演出（トランジション）。未設定の古いブロックは「なし」として扱う
+    if (typeof BG_TRANSITION_TYPES !== "undefined") {
+      const trRow = document.createElement("div");
+      trRow.className = "scenariobuild-condition-row";
+      trRow.appendChild(labelSpan("切り替えの演出："));
+      const trSelect = document.createElement("select");
+      BG_TRANSITION_TYPES.forEach(([key, label]) => {
+        const opt = document.createElement("option");
+        opt.value = key; opt.textContent = label;
+        trSelect.appendChild(opt);
+      });
+      trSelect.value = BG_TRANSITION_TYPES.some(t => t[0] === block.transition) ? block.transition : "none";
+      trRow.appendChild(trSelect);
+
+      const detail = document.createElement("span");
+      detail.appendChild(labelSpan(" 秒数："));
+      const secInput = document.createElement("input");
+      secInput.type = "number"; secInput.min = "0.1"; secInput.max = "10"; secInput.step = "0.1";
+      secInput.style.width = "64px";
+      secInput.value = (typeof block.transitionDuration === "number" && block.transitionDuration > 0) ? block.transitionDuration : 1;
+      secInput.onchange = () => {
+        const v = parseFloat(secInput.value);
+        block.transitionDuration = (isFinite(v) && v > 0) ? Math.min(10, v) : 1;
+        secInput.value = block.transitionDuration;
+        persist();
+      };
+      detail.appendChild(secInput);
+      const waitLabel = document.createElement("label");
+      waitLabel.className = "scenariobuild-inline-checkbox";
+      const waitCheckbox = document.createElement("input");
+      waitCheckbox.type = "checkbox";
+      waitCheckbox.checked = block.transitionWait !== false;
+      waitCheckbox.onchange = () => { block.transitionWait = waitCheckbox.checked; persist(); };
+      waitLabel.appendChild(waitCheckbox);
+      waitLabel.appendChild(document.createTextNode("終わるまで待つ"));
+      detail.appendChild(waitLabel);
+      trRow.appendChild(detail);
+
+      const syncDetail = () => { detail.style.display = trSelect.value === "none" ? "none" : ""; };
+      trSelect.onchange = () => { block.transition = trSelect.value; syncDetail(); persist(); };
+      syncDetail();
+      wrap.appendChild(trRow);
+    }
     return wrap;
   }
   
@@ -14932,7 +14979,9 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
   }
   
   if (block.type === "background") {
-    if (block.path && block.path.trim().startsWith("#") && typeof setBackgroundColor === "function") {
+    if (block.path && block.path.trim() && block.transition && block.transition !== "none" && typeof changeBackgroundWithTransition === "function") {
+      await changeBackgroundWithTransition(block.path, block.transition, block.transitionDuration, block.transitionWait !== false); // mainfunc.js
+    } else if (block.path && block.path.trim().startsWith("#") && typeof setBackgroundColor === "function") {
       setBackgroundColor(block.path.trim()); // mainfunc.js
     } else if (block.path && typeof setBackgroundImage === "function") {
       setBackgroundImage(block.path); // mainfunc.js

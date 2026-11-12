@@ -9388,6 +9388,18 @@ rt {
 .crystal-claim-ok { background: #ffd23f; color: #111; border: 2px solid #fff; border-radius: 6px; padding: 8px 32px; font-size: 15px; font-weight: bold; cursor: pointer; }
 .crystal-claim-ok:focus { outline: 3px solid #fff; }
 
+/* ★背景変更ブロックのトランジション（mainfunc.js の changeBackgroundWithTransition）。
+   切り替え前の背景を写した層を、メイン画面の背景より手前・中身より奥に重ねる。層は枠線ぶん（3px）まで広げ、背景の位置・大きさがメイン画面と一致するようにしている */
+.main-screen.bg-transition-active { isolation: isolate; }
+.bg-transition-layer {
+  position: absolute;
+  inset: -3px;
+  border: 3px solid transparent;
+  box-sizing: border-box;
+  z-index: -1;
+  pointer-events: none;
+}
+
 
 /* ★要望対応：分量表示（原稿用紙・ページ・読了時間）と執筆ガイドタブ（writingguide.js） */
 .wg-summary { margin: 6px 0 10px; padding: 8px 10px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; background: rgba(255, 255, 255, 0.06); font-size: 13px; }
