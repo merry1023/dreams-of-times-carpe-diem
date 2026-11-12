@@ -7445,7 +7445,7 @@ function createSkillBlock(type) {
   if (type === "heal") return { ...base, target: "self", gauge: "hp", amount: "0" };
   if (type === "revive") return { ...base, target: "self", companionId: "", amount: "50", amountIsPercent: true };
   if (type === "adjustGauge") return { ...base, target: "self", gauge: "sp", amount: "0" }; // ★amountの式がマイナスなら減少、プラスなら回復として扱う（敵は対象にできない）
-  if (type === "adjustActions") return { ...base, amount: "1" }; // ★プラス＝行動可能数を回復／マイナス＝普通は1つ減るところをさらに減らす
+  if (type === "adjustActions") return { ...base, amount: "1", allowOverMax: false }; // ★プラス＝行動可能数を回復／マイナス＝普通は1つ減るところをさらに減らす
   if (type === "selfDamage") return { ...base, amount: "0" };
   if (type === "applyStatus") return { ...base, targetSide: "enemy", target: "single", statusId: "", duration: "3", power: "0", chance: "1" };
   if (type === "setVariable") return { ...base, varName: "", expression: "0" };
@@ -7468,7 +7468,7 @@ function skillBlockPreviewText(block) {
     return `${block.target === "all" ? "全員" : "自分"}の${gaugeLabel}を${block.amount}${block.amountIsPercent ? "%" : ""}回復`;
   }
   if (block.type === "adjustGauge") return `${block.target === "all" ? "全員" : "自分"}の${block.gauge === "sp" ? "SP" : block.gauge === "shouryoku" ? "焦力" : "HP"}を${block.amount}増減`;
-  if (block.type === "adjustActions") return `行動数を${block.amount}増減`;
+  if (block.type === "adjustActions") return `行動数を${block.amount}増減${block.allowOverMax === true ? "（上限超え可）" : ""}`;
   if (block.type === "selfDamage") return `自分に${block.amount}ダメージ`;
   if (block.type === "applyStatus") {
     const list = block.targetSide === "self" || block.targetSide === "allies" ? scenarioProject.statusBuffs : scenarioProject.statusAilments;
@@ -7917,6 +7917,15 @@ function buildSkillBlockFormFields(blocksArray, block, skill, persist) {
     row.appendChild(labelSpan("増減する行動数（式・マイナスでさらに減る）："));
     row.appendChild(buildSkillExpressionInput(block, "amount", "例：1（1回復）　／　-1（さらに1減る）", persist));
     wrap.appendChild(row);
+    const overLabel = document.createElement("label");
+    overLabel.className = "scenariobuild-inline-checkbox";
+    const overCheckbox = document.createElement("input");
+    overCheckbox.type = "checkbox";
+    overCheckbox.checked = block.allowOverMax === true;
+    overCheckbox.onchange = () => { block.allowOverMax = overCheckbox.checked; persist(); };
+    overLabel.appendChild(overCheckbox);
+    overLabel.append(" 回復する時、行動数の最大数（パーティ人数）を超えて増やせる（OFFなら最大数までしか回復しません。マイナスの時は関係ありません）");
+    wrap.appendChild(overLabel);
     
   } else if (block.type === "selfDamage") {
     const row = document.createElement("div");

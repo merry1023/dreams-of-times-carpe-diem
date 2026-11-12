@@ -615,11 +615,17 @@ function takePendingActionDelta() {
   return delta;
 }
 function clearPendingActionDelta() {
-  if (battleState) battleState.pendingActionDelta = 0;
+  if (battleState) { battleState.pendingActionDelta = 0; battleState.pendingActionOverMax = false; }
 }
+// ★上限を超えて回復できるブロック（allowOverMax）が使われた時だけ、行動可能数が最大数を超えられる。
+//   超えていない通常の回復は、今まで通り最大数までしか増えない（すでに超えている分は、通常の消費以外では削られない）
 function applyActionCountChange(actionsRemaining, maxActions) {
   const delta = takePendingActionDelta();
-  return Math.max(0, Math.min(maxActions, actionsRemaining - 1 + delta));
+  const overMax = !!(battleState && battleState.pendingActionOverMax);
+  if (battleState) battleState.pendingActionOverMax = false;
+  const result = actionsRemaining - 1 + delta;
+  const cap = overMax ? Infinity : Math.max(maxActions, actionsRemaining - 1);
+  return Math.max(0, Math.min(cap, result));
 }
 
 async function battleLoop() {
@@ -3465,7 +3471,8 @@ async function runSingleSkillBlock(block, skill, context, hitCountForBalance = 1
     const delta = Math.round(evaluateSkillExpression(block.amount, buildSkillExprContext(skill, context)));
     if (delta === 0) return null;
     battleState.pendingActionDelta = (Math.round(Number(battleState.pendingActionDelta) || 0)) + delta;
-    if (delta > 0) await displayMessage(`行動できる回数が${delta}回復する！`, { allowSubFocus: true });
+    if (delta > 0 && block.allowOverMax === true) battleState.pendingActionOverMax = true; // ★上限を超えて回復するタイプ
+    if (delta > 0) await displayMessage(`行動できる回数が${delta}回復する！${block.allowOverMax === true ? "（上限を超えられる）" : ""}`, { allowSubFocus: true });
     else await displayMessage(`この行動で、行動できる回数がさらに${Math.abs(delta)}減る……`, { allowSubFocus: true });
     return null;
   }
