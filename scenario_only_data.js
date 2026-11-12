@@ -4,7 +4,7 @@
 // <script src="scenario_only_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
-  "version": 1794418764284,
+  "version": 1794468813992,
   "chapters": [
     {
       "id": "builtin_chapter1",
@@ -3166,7 +3166,7 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1788360296336_23",
           "type": "dialogue",
           "speaker": "田中治郎",
-          "text": "いやだってダメでしょ。いくら同じパーティといえど漢とおｎ..."
+          "text": "いやだってダメでしょ。いくら同じパーティといえど漢とおn..."
         },
         {
           "id": "block_1788360338406_24",
@@ -7873,6 +7873,10 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
       "enabled": true,
       "blocks": [
         {
+          "id": "block_1794467818964_14",
+          "type": "bgmstop"
+        },
+        {
           "id": "block_1790003608030_3",
           "type": "background",
           "path": "img/神々の在る所.jpg"
@@ -7983,30 +7987,35 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1791728356924_5",
           "type": "dialogue",
           "speaker": "跪く男",
-          "text": "実は...\n先の循環の過程で、面白い{/能力}={\\ちから}が発現した人間がおりまして..."
+          "text": "実は...\n先の循環の過程で、面-い--が--した人--お-まして..."
         },
         {
           "id": "block_1791728297118_3",
           "type": "dialogue",
           "speaker": "玉座の男",
-          "text": "...ほう？\nどんな{/能力}={\\ちから}だ？"
+          "text": "...-う？\nど-な--だ？"
         },
         {
           "id": "block_1791728729613_6",
           "type": "dialogue",
           "speaker": "跪く男",
-          "text": "それがですね...."
+          "text": "-れ---ね...."
         },
         {
           "id": "block_1791728759088_7",
           "type": "dialogue",
           "speaker": "跪く男",
-          "text": "彼の{/能力}={\\ちから}はーーーーー"
+          "text": "彼の--はーーーーー"
         },
         {
           "id": "block_1790005697489_19",
           "type": "effect",
           "effectType": "blackoutOn"
+        },
+        {
+          "id": "block_1794467842297_15",
+          "type": "bgm",
+          "track": "town"
         },
         {
           "id": "block_1790005707800_20",
@@ -8309,6 +8318,11 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
               "text": "オークションを見に行く。",
               "blocks": [
                 {
+                  "id": "block_1794467678506_6",
+                  "type": "background",
+                  "path": "img/会場.jpg"
+                },
+                {
                   "id": "block_1791734054097_1",
                   "type": "narration",
                   "text": "人の流れについていくと、石造りの大きな建物の前に着いた。壁に「スペル=マ・ギアズオークション」と書かれた看板が掛かっている。"
@@ -8359,6 +8373,11 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "effectType": "blackoutOn"
                 },
                 {
+                  "id": "block_1794467683970_7",
+                  "type": "background",
+                  "path": "img/城下町.jpg"
+                },
+                {
                   "id": "block_1791734966508_33",
                   "type": "effect",
                   "effectType": "blackoutOff"
@@ -8378,9 +8397,24 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "text": "あの巨大な城を目指して、大通りをまっすぐ歩く。歩いても歩いても、城は一向に近づいてこない。"
                 },
                 {
+                  "id": "block_1794467533761_1",
+                  "type": "effect",
+                  "effectType": "blackoutOn"
+                },
+                {
+                  "id": "block_1794467542729_2",
+                  "type": "background",
+                  "path": "img/城門.png"
+                },
+                {
+                  "id": "block_1794467562292_3",
+                  "type": "effect",
+                  "effectType": "blackoutOff"
+                },
+                {
                   "id": "block_1791734320768_11",
                   "type": "narration",
-                  "text": "ようやく城門に着いた時には、首が痛くなるほど見上げていた。門の両脇では、槍を持った{/衛兵}={\\えいへい}が二人、無言でこちらを見下ろしている。"
+                  "text": "ようやく城門に着いた時には、おそらく前世で働いていた職場とほぼ同じくらいの大きさの門がそびえ立っていた。門の両脇では、槍を持った{/衛兵}={\\えいへい}が二人、無言でこちらを睨みつけている。"
                 },
                 {
                   "id": "block_1791734350346_13",
@@ -8479,6 +8513,11 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
                   "id": "block_1791734921431_30",
                   "type": "effect",
                   "effectType": "blackoutOn"
+                },
+                {
+                  "id": "block_1794467579993_5",
+                  "type": "background",
+                  "path": "img/城下町.jpg"
                 },
                 {
                   "id": "block_1791734932849_31",
@@ -8616,6 +8655,21 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "text": "(こいつ...以前よりもだいぶ{/奔放}={\\ほんぽう}になってきたな...)"
         },
         {
+          "id": "block_1794467747450_9",
+          "type": "effect",
+          "effectType": "blackoutOn"
+        },
+        {
+          "id": "block_1794467708751_8",
+          "type": "background",
+          "path": "img/小道.png"
+        },
+        {
+          "id": "block_1794467753094_10",
+          "type": "effect",
+          "effectType": "blackoutOff"
+        },
+        {
           "id": "block_1794155820774_1",
           "type": "narration",
           "text": "大通りから少し離れてもなお人であふれかえる小道を、糸を縫うように進んでゆく。"
@@ -8677,6 +8731,10 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "effectType": "vignetteOn"
         },
         {
+          "id": "block_1794467863918_16",
+          "type": "bgmstop"
+        },
+        {
           "id": "block_1794156678626_9",
           "type": "dialogue",
           "speaker": "男",
@@ -8708,6 +8766,11 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "type": "dialogue",
           "speaker": "ケツァナ",
           "text": "....何ぼーっとしてんのよ。\nここから抜けたいんでしょ？早く行くわよ。"
+        },
+        {
+          "id": "block_1794467878271_17",
+          "type": "bgm",
+          "track": "town"
         },
         {
           "id": "block_1794157397815_17",
@@ -8782,6 +8845,21 @@ window.SCENARIOBUILD_IMPORTED_SCENARIO_DATA = {
           "id": "block_1794158355519_29",
           "type": "narration",
           "text": "そんなことを言いながら、とりあえずある程度落ち着けそうな場所を探し、聞き込みをすることにした。"
+        },
+        {
+          "id": "block_1794467787808_12",
+          "type": "effect",
+          "effectType": "blackoutOn"
+        },
+        {
+          "id": "block_1794467773380_11",
+          "type": "background",
+          "path": "img/噴水広場2.png"
+        },
+        {
+          "id": "block_1794467795069_13",
+          "type": "effect",
+          "effectType": "blackoutOff"
         },
         {
           "id": "block_1794158551631_31",
