@@ -189,6 +189,7 @@ function tdCustomUnitTemplates() {
       slowRate: 1 - tdClamp(u.slowPercent, 1, 95, 50) / 100, slowSec: tdClamp(u.slowSec, 0.2, 10, 1.5),
       supportRate: tdClamp(u.supportPercent, 1, 300, 25) / 100,
       imagePath: u.imagePath || "",
+      effectMixId: u.effectMixId || "",   // ★エフェクトミックス（effectmix.js）。空なら標準の線・輪
       // ★スキルカード用（role === "skill" の時だけ使う）
       cardMode: u.cardMode === "placed" ? "placed" : "manual",
       cardEffect: TD_CARD_EFFECT_LABELS[u.cardEffect] ? u.cardEffect : "damage",
@@ -507,13 +508,20 @@ function tdCastCard(st, tpl, level, origin) {
   const inRange = (x, y) => Math.hypot(x - from.x, y - from.y) <= range;
   const foes = st.enemies.filter(e => e.hp > 0 && inRange(e.x, e.y));
   if (!origin) st.popups.push({ x: TD_WORLD_W / 2, y: TD_BASE_TOP - 24, text: tpl.label, color, weak: false, t: 1.1 });
+  // ★エフェクトミックス：付いていれば、標準の線・輪の代わりに出す（敵に向かう効果は敵ごと、味方への効果は味方の位置に出す）
+  const mixed = !!tpl.effectMixId && typeof efxFindMix === "function" && !!efxFindMix(tpl.effectMixId);
+  const mixAt = (to) => mixed && efxSpawn(st.fx, tpl.effectMixId, from, to, color);
+  if (mixed && ["heal", "shield", "buff"].includes(tpl.cardEffect)) {
+    mixAt(from);
+    st.units.forEach(u => { const sp = tdSlotPos(u.slot); if (inRange(sp.x, sp.y)) mixAt(sp); });
+  }
   if (tpl.cardEffect === "damage") {
     const base = tpl.dmgRatio * st.refHp * TD_DAMAGE_SCALE * lv;
     foes.forEach(e => {
       tdDealDamage(st, e, base, tpl.element, color);
-      st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.25 });
+      if (!mixAt(e)) st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.25 });
     });
-    st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color, t: 0.3 });
+    if (!mixed) st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color, t: 0.3 });
     if (foes.length > 0) tdRecordCombo(st, { tpl }, from);   // ★属性コンボの履歴にも積む
   } else if (tpl.cardEffect === "heal") {
     const baseHeal = Math.round(st.baseMaxHp * tpl.healRate * lv);
@@ -529,9 +537,9 @@ function tdCastCard(st, tpl, level, origin) {
     foes.forEach(e => {
       e.slowUntil = st.time + tpl.slowSec * lv;
       e.slowRate = tpl.slowRate;
-      st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.2 });
+      if (!mixAt(e)) st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.2 });
     });
-    st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color, t: 0.3 });
+    if (!mixed) st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color, t: 0.3 });
   } else if (tpl.cardEffect === "shield") {
     if (!origin) {   // 手動の時だけ、拠点にもシールドを張る
       const a = Math.round(st.baseMaxHp * tpl.shieldRate * lv);
@@ -545,7 +553,7 @@ function tdCastCard(st, tpl, level, origin) {
       u.shield = Math.min(u.maxHp, (u.shield || 0) + a);
       st.popups.push({ x: sp.x, y: sp.y - 26, text: `盾+${a}`, color: "#4aa8ff", weak: false, t: 0.9 });
     });
-    st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color: "#4aa8ff", t: 0.3 });
+    if (!mixed) st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color: "#4aa8ff", t: 0.3 });
   } else if (tpl.cardEffect === "buff") {
     st.units.forEach(u => {
       if (u.tpl.role === "skill" || u.tpl.role === "support") return;
@@ -554,7 +562,7 @@ function tdCastCard(st, tpl, level, origin) {
       u.cardBuff = { until: st.time + tpl.buffSec * lv, rate: tpl.buffRate * lv };
       st.popups.push({ x: sp.x, y: sp.y - 26, text: `攻撃+${Math.round(tpl.buffRate * lv * 100)}%`, color: "#ffd23f", weak: false, t: 0.9 });
     });
-    st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color: "#ffd23f", t: 0.3 });
+    if (!mixed) st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color: "#ffd23f", t: 0.3 });
   }
 }
 // 設置したスキルカード：クールタイムごとに、射程内へ自動で発動する
@@ -809,12 +817,13 @@ function tdFire(st, unit, targets, from) {
   const tpl = unit.tpl;
   const base = tdUnitDamage(st, unit);
   const color = (typeof getElementColor === "function") ? getElementColor(tpl.element) : "#ffffff";
+  const mixed = !!tpl.effectMixId && typeof efxFindMix === "function" && !!efxFindMix(tpl.effectMixId);   // ★エフェクトミックスが付いている時は、標準の線・輪の代わりにそれを出す
   targets.forEach(e => {
     tdDealDamage(st, e, base, tpl.element, color);
     if (tpl.role === "slow") { e.slowUntil = st.time + tpl.slowSec; e.slowRate = tpl.slowRate; }
-    st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.12 });
+    if (!mixed || !efxSpawn(st.fx, tpl.effectMixId, from, e, color)) st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.12 });
   });
-  if (tpl.targeting === "all") st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: tpl.range, color, t: 0.18 });
+  if (tpl.targeting === "all" && !mixed) st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: tpl.range, color, t: 0.18 });
   tdRecordCombo(st, unit, from);
 }
 
@@ -868,6 +877,7 @@ function tdExecuteCombo(st, combo, unit, from) {
       const label = tdApplyStatus(st, e, effect);
       if (label) st.popups.push({ x: e.x, y: e.y - 30, text: label, color: "#ffd23f", weak: false, t: 0.9 });
     });
+    if (typeof efxSpawn === "function" && combo.effectMixId && efxSpawn(st.fx, combo.effectMixId, from, e, color)) return;   // ★エフェクトミックス
     st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.3 });
     st.fx.push({ kind: "ring", x1: e.x, y1: e.y, r: 26, color, t: 0.3 });
   });
@@ -1383,6 +1393,7 @@ function runTowerDefenseBattle(pool, opts) {
       
       // 撃った演出
       st.fx.forEach(f => {
+        if (typeof efxIsMix === "function" && efxIsMix(f)) { efxDraw(ctx, f); return; }   // ★エフェクトミックス
         ctx.globalAlpha = Math.min(1, f.t / 0.12);
         ctx.strokeStyle = f.color; ctx.lineWidth = 3;
         if (f.kind === "line") { ctx.beginPath(); ctx.moveTo(f.x1, f.y1); ctx.lineTo(f.x2, f.y2); ctx.stroke(); }
