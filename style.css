@@ -9387,3 +9387,15 @@ rt {
 .crystal-claim-lines li { padding: 2px 0; }
 .crystal-claim-ok { background: #ffd23f; color: #111; border: 2px solid #fff; border-radius: 6px; padding: 8px 32px; font-size: 15px; font-weight: bold; cursor: pointer; }
 .crystal-claim-ok:focus { outline: 3px solid #fff; }
+
+/* ★背景変更ブロックのトランジション（mainfunc.js の changeBackgroundWithTransition）。
+   切り替え前の背景を写した層を、メイン画面の背景より手前・中身より奥に重ねる。層は枠線ぶん（3px）まで広げ、背景の位置・大きさがメイン画面と一致するようにしている */
+.main-screen.bg-transition-active { isolation: isolate; }
+.bg-transition-layer {
+  position: absolute;
+  inset: -3px;
+  border: 3px solid transparent;
+  box-sizing: border-box;
+  z-index: -1;
+  pointer-events: none;
+}

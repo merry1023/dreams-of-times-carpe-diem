@@ -196,7 +196,10 @@ function scTxtRenderBlock(ctx, block) {
       lines.push(tag(SCENARIO_TEXT_EFFECT_LABELS[block.effectType] || block.effectType || "演出"));
       break;
     case "background":
-      lines.push(tag("背景変更", block.path || ""));
+      {
+        const tr = (typeof BG_TRANSITION_TYPES !== "undefined" && block.transition && block.transition !== "none") ? BG_TRANSITION_TYPES.find(x => x[0] === block.transition) : null;
+        lines.push(tag("背景変更", (block.path || "") + (tr ? `／${tr[1].replace(/（.*$/, "")} ${block.transitionDuration || 1}秒` : "")));
+      }
       break;
     case "bgm":
       lines.push(tag("BGM切り替え", block.track || ""));
