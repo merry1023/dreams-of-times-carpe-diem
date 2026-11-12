@@ -1075,8 +1075,8 @@ function runTowerDefenseBattle(pool, opts) {
         <div class="td-header">
           <span class="td-title">掃討作戦（迎撃） STAGE ${st.stage}</span>
           <span class="td-wave"></span>
-          <span class="td-funds"></span>
         </div>
+        <div class="td-res td-res-big"><span class="td-res-chip td-res-funds"><span class="td-res-ico">💰</span><span class="td-res-label">資金</span><b>0</b></span></div>
         <div class="td-basehp"><div class="td-basehp-fill"></div><span class="td-basehp-text"></span></div>
         <div class="td-body">
           <div class="td-side">
@@ -1106,7 +1106,7 @@ function runTowerDefenseBattle(pool, opts) {
     const ctx = canvas.getContext("2d");
     ctx.scale(2, 2);
     const waveEl = overlay.querySelector(".td-wave");
-    const fundsEl = overlay.querySelector(".td-funds");
+    const fundsEl = overlay.querySelector(".td-res-funds b");
     const baseFillEl = overlay.querySelector(".td-basehp-fill");
     const baseTextEl = overlay.querySelector(".td-basehp-text");
     const infoEl = overlay.querySelector(".td-info");
@@ -1182,7 +1182,7 @@ function runTowerDefenseBattle(pool, opts) {
     
     function refreshUI() {
       waveEl.textContent = `WAVE ${st.wave}/${st.wavesTotal}` + (tdIsBossWave(st, st.wave) && st.bossPool.length > 0 ? " ★BOSS" : "");
-      fundsEl.textContent = `資金 ${st.funds}`;
+      fundsEl.textContent = String(Math.floor(st.funds));
       const ratio = Math.max(0, st.baseHp) / st.baseMaxHp;
       baseFillEl.style.width = `${Math.round(ratio * 100)}%`;
       baseTextEl.textContent = `拠点HP ${Math.max(0, Math.round(st.baseHp))}/${st.baseMaxHp}`;
@@ -1541,7 +1541,8 @@ function showTowerDefenseModeMenu() {
   const g = tdGuildState();
   const options = [
     { label: "迎撃モード（守る）", action: () => showTowerDefenseWaveMenu() },
-    { label: `迎撃の候補ユニット編成（${tdLoadoutCount()}/${TD_LOADOUT_MAX}）`, action: () => showTowerDefenseLoadoutMenu() },
+    { label: `迎撃の編成（手札から場へ・${tdLoadoutCount()}/${TD_LOADOUT_MAX}）`, action: () => showTowerDefenseLoadoutMenu() },
+    { label: `出撃の編成（手札から場へ・${typeof trRaidFormationCount === "function" ? trRaidFormationCount() : "-"}）`, action: () => { if (typeof trEditRaidFormation === "function") trEditRaidFormation(); } },
     { label: "出撃モード（攻める）", action: async () => {
         if (typeof startTowerRaid === "function") { startTowerRaid(1); return; }   // tower_raid.js
         hideLocationMenu();
@@ -1555,34 +1556,115 @@ function showTowerDefenseModeMenu() {
   showLocationMenu(options, `掃討作戦（${tdGachaStoneName()} ${tdGetGachaStones()}）`);
 }
 
-// 迎撃の候補ユニット編成：押すたびに「候補に出す／出さない」を切り替える
+// 迎撃の候補ユニット編成：手札（持っているカード）から、場（候補枠）に出す形式
 function tdLoadoutCount() {
   const all = tdBuildUnitTemplates();
   const ids = tdGetLoadoutIds();
   return ids ? tdFilterByLoadout(all).length : all.length;
 }
-function showTowerDefenseLoadoutMenu() {
+async function showTowerDefenseLoadoutMenu() {
+  hideLocationMenu();
   const all = tdBuildUnitTemplates();
   const g = tdGuildState();
-  const current = tdFilterByLoadout(all).map(t => t.id);   // 未編成なら全部
-  const picked = new Set(current);
-  const options = all.map(t => {
-    const on = picked.has(t.id);
-    return { label: `${on ? "☑" : "☐"} ${t.label}（${tdUnitSummary(t)}・${t.cost}）`, action: async () => {
-        if (!on && picked.size >= TD_LOADOUT_MAX) {
-          hideLocationMenu(); changeSpeaker("");
-          await displayMessage(`候補に出せるのは${TD_LOADOUT_MAX}種類までだ。`);
-          showTowerDefenseLoadoutMenu();
-          return;
-        }
-        if (on) picked.delete(t.id); else picked.add(t.id);
-        g.defLoadout = all.map(x => x.id).filter(id => picked.has(id));
-        showTowerDefenseLoadoutMenu();
-      } };
+  const picked = tdGetLoadoutIds() ? tdFilterByLoadout(all).map(t => t.id) : [];   // 未編成＝場は空（空のまま決定すると、全部が候補になる）
+  const res = await tdOpenFormation({
+    title: "迎撃の編成",
+    note: "手札のカードをタップすると場に出ます。場のカードをタップすると手札に戻ります。場が空のまま決定すると、全部のカードが候補になります。",
+    groups: [{
+      key: "units", title: "迎撃の候補", fieldTitle: "場（候補）", max: TD_LOADOUT_MAX, min: 0,
+      items: all.map(t => ({ id: t.id, name: t.label, meta: tdUnitSummary(t), cost: String(t.cost), element: t.element, role: t.role })),
+      initial: picked
+    }]
   });
-  options.push({ label: "すべて候補にする（編成をやめる）", action: () => { delete g.defLoadout; showTowerDefenseLoadoutMenu(); } });
-  options.push({ label: "戻る", action: () => showTowerDefenseModeMenu() });
-  showLocationMenu(options, `迎撃の候補ユニット編成（${picked.size}/${TD_LOADOUT_MAX}）`);
+  if (res) {
+    if (res.units.length === 0) delete g.defLoadout;
+    else g.defLoadout = all.map(x => x.id).filter(id => res.units.includes(id));
+  }
+  showTowerDefenseModeMenu();
+}
+
+// ===== 編成画面（手札から場に出す形式。迎撃・出撃の両方で使う） =====
+// opts: { title, note, groups: [{ key, title, fieldTitle, max, min, items: [{ id, name, meta, cost, element, role }], initial: [id...] }] }
+// 決定すると { [groupKey]: [id...]（場に出した順） } を返す。やめたら null
+function tdOpenFormation(opts) {
+  return new Promise(resolve => {
+    const groups = opts.groups.map(gr => ({
+      key: gr.key, title: gr.title, fieldTitle: gr.fieldTitle || "場", max: gr.max, min: gr.min || 0, items: gr.items,
+      field: (gr.initial || []).filter(id => gr.items.some(i => i.id === id)).slice(0, gr.max)
+    }));
+    const overlay = document.createElement("div");
+    overlay.className = "td-overlay";
+    overlay.innerHTML = `
+      <div class="td-panel fm-panel">
+        <div class="td-header"><span class="td-title">${opts.title}</span></div>
+        <div class="td-info"></div>
+        <div class="fm-body"></div>
+        <div class="td-controls">
+          <button type="button" class="td-btn td-btn-start">決定</button>
+          <button type="button" class="td-btn fm-clear">場を空にする</button>
+          <button type="button" class="td-btn td-btn-quit">やめる</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const infoEl = overlay.querySelector(".td-info");
+    const bodyEl = overlay.querySelector(".fm-body");
+    const okBtn = overlay.querySelector(".td-btn-start");
+    const hint = `<span class="td-keyhint">　キー：矢印＝移動／Space・Z＝決定／X＝やめる</span>`;
+    const setInfo = (t) => { infoEl.innerHTML = (t || opts.note || "") + hint; };
+    setInfo();
+
+    const cardBtn = (gr, item, where) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "fm-card"; b.dataset.key = `fm:${gr.key}:${item.id}`; b.dataset.where = where;
+      b.style.borderColor = tdElementColor(item.element);
+      b.innerHTML = `<span class="fm-card-name">${item.name}</span><span class="fm-card-meta">${item.meta || ""}</span><span class="fm-card-cost">${item.cost || ""}</span>`;
+      b.onclick = () => {
+        if (where === "hand") {
+          if (gr.field.length >= gr.max) { setInfo(`場に出せるのは${gr.max}枚までです。`); return; }
+          gr.field.push(item.id);
+        } else {
+          gr.field = gr.field.filter(id => id !== item.id);
+        }
+        setInfo(); render();
+      };
+      return b;
+    };
+    function render() {
+      bodyEl.innerHTML = "";
+      groups.forEach(gr => {
+        const sec = document.createElement("section");
+        sec.className = "fm-section";
+        const fieldHead = document.createElement("div");
+        fieldHead.className = "fm-head";
+        fieldHead.innerHTML = `<span>${gr.fieldTitle}</span><b>${gr.field.length}/${gr.max}</b>`;
+        const slots = document.createElement("div");
+        slots.className = "fm-slots";
+        for (let i = 0; i < gr.max; i++) {
+          const id = gr.field[i];
+          const item = id ? gr.items.find(x => x.id === id) : null;
+          if (item) { const wrap = document.createElement("div"); wrap.className = "fm-slot fm-slot-on"; wrap.appendChild(cardBtn(gr, item, "field")); slots.appendChild(wrap); }
+          else { const empty = document.createElement("div"); empty.className = "fm-slot"; empty.textContent = i + 1; slots.appendChild(empty); }
+        }
+        const handHead = document.createElement("div");
+        handHead.className = "fm-head fm-head-hand";
+        const rest = gr.items.filter(i => !gr.field.includes(i.id));
+        handHead.innerHTML = `<span>手札（${gr.title}）</span><b>${rest.length}枚</b>`;
+        const hand = document.createElement("div");
+        hand.className = "fm-hand";
+        if (rest.length === 0) { const e = document.createElement("div"); e.className = "fm-hand-empty"; e.textContent = "手札は全部、場に出しています"; hand.appendChild(e); }
+        rest.forEach(item => hand.appendChild(cardBtn(gr, item, "hand")));
+        sec.appendChild(fieldHead); sec.appendChild(slots); sec.appendChild(handHead); sec.appendChild(hand);
+        bodyEl.appendChild(sec);
+      });
+      okBtn.disabled = groups.some(gr => gr.field.length < gr.min);
+    }
+    render();
+    const kb = tdAttachKeyboard(overlay, { initial: ".fm-card", onCancel: () => overlay.querySelector(".td-btn-quit").click() });
+    const close = (v) => { kb.detach(); overlay.remove(); resolve(v); };
+    okBtn.onclick = () => { const out = {}; groups.forEach(gr => { out[gr.key] = gr.field.slice(); }); close(out); };
+    overlay.querySelector(".fm-clear").onclick = () => { groups.forEach(gr => { gr.field = []; }); setInfo(); render(); };
+    overlay.querySelector(".td-btn-quit").onclick = () => close(null);
+  });
 }
 
 // 迎撃のウェーブ数の選択

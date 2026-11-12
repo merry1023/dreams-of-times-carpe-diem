@@ -14,6 +14,7 @@
 
 // ----- 調整用の数値 -----
 const TR_WAVES = 10;                // ウェーブ数（10ウェーブ目＝最後。敵の拠点とボスが現れる）
+const TR_CARD_SLOTS = 4;            // 持ち込めるスキルカードの枚数
 const TR_PARTY_MAX = 8;             // 手札の枚数（出撃に連れていける編成数）
 // ----- フィールド（縦に長い世界。下＝味方の出撃地点、上＝敵の拠点）。窓の大きさ・スマホの判定・カメラの速さは迎撃モードと同じ -----
 const TR_WORLD_W = 720;
@@ -33,11 +34,11 @@ const TR_BASE_INTERVAL = 2;         // 敵の拠点の攻撃間隔（秒）
 const TR_BASE_DMG_RATE = 0.12;      // 敵の拠点の1発＝味方の平均HP×この値
 // ----- リソース（戦闘中に時間や撃破で貯まる。使い道はカードの出撃コストとレベルアップ） -----
 const TR_RESOURCES = [
-  { key: "funds", label: "出撃資金" },
-  { key: "food",  label: "食料" },
-  { key: "exp",   label: "出撃経験値" },
-  { key: "stone", label: "魔力石" },
-  { key: "drink", label: "赤まむしドリンク♂" }
+  { key: "funds", label: "出撃資金", icon: "💰" },
+  { key: "food",  label: "食料", icon: "🍖" },
+  { key: "exp",   label: "出撃経験値", icon: "⭐" },
+  { key: "stone", label: "魔力石", icon: "💎" },
+  { key: "drink", label: "赤まむしドリンク♂", icon: "🍹" }
 ];
 const TR_START_RES = { funds: 200, food: 4, exp: 0, stone: 2, drink: 1 };   // 出撃前に持っている量
 const TR_FUNDS_PER_SEC = 4;         // 進軍中、時間でたまる出撃資金（1秒あたり）
@@ -96,7 +97,7 @@ function trAutoPartyDefs() {
     const role = TR_AUTO_ROLES[i % TR_AUTO_ROLES.length];
     const el = elements[i % elements.length];
     return {
-      key: "a" + i, name: m.name, element: el.id, hp: m.hp, atk: m.atk, range: role.range, interval: role.interval, speed: 45,
+      key: "a" + i, id: "a" + i, name: m.name, element: el.id, hp: m.hp, atk: m.atk, range: role.range, interval: role.interval, speed: 45,
       skillKind: role.skillKind, skillName: role.skillName, skillElement: el.id, skillPower: role.skillPower, skillCooldown: role.skillCooldown,
       cost: Object.assign({}, role.cost), imagePath: ""
     };
@@ -130,7 +131,7 @@ function trNormalizeCost(cost) {
 function trGetRosterDefs() {
   const list = (typeof scenarioProject !== "undefined" && scenarioProject && Array.isArray(scenarioProject.raidUnits)) ? scenarioProject.raidUnits : [];
   const custom = list.filter(u => u && u.enabled !== false).slice(0, 30).map((u, i) => ({
-    key: "r" + i, name: u.name || "名無しのキャラ", element: u.element || "無",
+    key: "r" + i, id: u.id || ("r" + i), name: u.name || "名無しのキャラ", element: u.element || "無",
     hp: trClamp(u.hp, 1, 99999, 50), atk: trClamp(u.atk, 0, 99999, 12),
     range: trClamp(u.range, 70, 400, 80), interval: trClamp(u.interval, 0.2, 10, 1), speed: trClamp(u.speed, 5, 200, 45),
     skillKind: ["single", "all", "heal"].includes(u.skillKind) ? u.skillKind : "single",
@@ -190,6 +191,12 @@ function trCameraTarget(st, view) {
 
 // ===== ゲームの状態 =====
 // phase：prep＝準備中（出撃・強化ができる）／play＝進軍・戦闘中／won／lost
+// 出撃に持っていくスキルカード。編成で選んでいればその順、していなければ登録されている全部
+function trPickCardTemplates(cardIds) {
+  const all = tdBuildUnitTemplates().filter(t => t.role === "skill");
+  if (!Array.isArray(cardIds)) return all;
+  return cardIds.map(id => all.find(t => t.id === id)).filter(Boolean);
+}
 function trCreateState(rosterDefs, opts) {
   opts = opts || {};
   const pool = tdGetEnemyPool();
@@ -213,7 +220,7 @@ function trCreateState(rosterDefs, opts) {
     pool, bossPool: tdGetBossPool(refHp, refAtk), refHp, refAtk, refExp, partyAvgHp, wavesTotal: TR_WAVES,
     combos: tdGetUsableCombos(), history: [], comboLockUntil: 0, comboCount: 0,
     cards: [],                                                  // ★購入したスキルカード { tpl, level, cool }
-    cardTemplates: tdBuildUnitTemplates().filter(t => t.role === "skill"),   // ★エディタで登録したスキルカード（出撃モードでは設置も手動と同じ扱い）
+    cardTemplates: trPickCardTemplates(opts.cardIds),   // ★エディタで登録したスキルカード（出撃モードでは設置も手動と同じ扱い）
     fx: [], popups: [], banners: []
   };
   // 回復コンボは、味方を回復させる
@@ -623,52 +630,60 @@ function trStep(st, dt) {
 // ===== ここから下は画面（オーバーレイ・描画・操作）と施設メニューからの流れ =====
 // ===================================================================
 
-// 出撃するキャラを選ぶ（登録が8体より多い時だけ使う）。選んだ定義の配列を返す。やめたら null
-function trSelectParty(roster) {
-  return new Promise(resolve => {
-    const chosen = new Set(roster.slice(0, TR_PARTY_MAX).map(d => d.key));
-    const overlay = document.createElement("div");
-    overlay.className = "td-overlay";
-    overlay.innerHTML = `
-      <div class="td-panel">
-        <div class="td-header"><span class="td-title">手札にするキャラを選ぶ</span><span class="td-wave"></span></div>
-        <div class="td-info"></div>
-        <div class="td-units"></div>
-        <div class="td-controls">
-          <button type="button" class="td-btn td-btn-start">出撃！</button>
-          <button type="button" class="td-btn td-btn-quit">やめる</button>
-        </div>
-      </div>`;
-    document.body.appendChild(overlay);
-    const countEl = overlay.querySelector(".td-wave");
-    const infoEl = overlay.querySelector(".td-info");
-    const gridEl = overlay.querySelector(".td-units");
-    const goBtn = overlay.querySelector(".td-btn-start");
-    function refresh() {
-      countEl.textContent = `${chosen.size}/${TR_PARTY_MAX}`;
-      goBtn.disabled = chosen.size === 0;
-      gridEl.querySelectorAll(".td-unit-btn").forEach(btn => btn.classList.toggle("td-selected", chosen.has(btn.dataset.key)));
-    }
-    infoEl.innerHTML = `最大${TR_PARTY_MAX}枚まで選べます（出撃の手札）。タップで選ぶ／外す。<span class="td-keyhint">　キー：矢印＝移動／Space・Z＝決定／X＝やめる</span>`;
-    roster.forEach(d => {
-      const btn = document.createElement("button");
-      btn.type = "button"; btn.className = "td-unit-btn"; btn.dataset.key = d.key;
-      btn.style.borderColor = tdElementColor(d.element);
-      btn.innerHTML = `<span class="td-unit-name">${d.name}</span><span class="td-unit-meta">HP${d.hp} 攻${d.atk}・${trCostText(d.cost)}</span>`;
-      btn.onclick = () => {
-        if (chosen.has(d.key)) chosen.delete(d.key);
-        else if (chosen.size < TR_PARTY_MAX) chosen.add(d.key);
-        else infoEl.textContent = `手札は最大${TR_PARTY_MAX}枚までです。`;
-        refresh();
-      };
-      gridEl.appendChild(btn);
+// ===== 出撃の編成（手札から場に出す形式） =====
+// 保存先：player.adventurerGuild.raidLoadout = { units: [キャラid...], cards: [スキルカードid...] }
+function trGetRaidLoadout() {
+  const g = tdGuildState();
+  return (g.raidLoadout && typeof g.raidLoadout === "object" && Array.isArray(g.raidLoadout.units)) ? g.raidLoadout : null;
+}
+// 編成から、出撃するキャラ（場に出した順）。編成が無い／全部消えていれば null
+function trLoadoutParty(roster) {
+  const lo = trGetRaidLoadout();
+  if (!lo) return null;
+  const picked = lo.units.map(id => roster.find(d => d.id === id)).filter(Boolean).slice(0, TR_PARTY_MAX);
+  return picked.length > 0 ? picked : null;
+}
+function trRaidFormationCount() {
+  const roster = trGetRosterDefs();
+  const party = trLoadoutParty(roster) || roster.slice(0, TR_PARTY_MAX);
+  const lo = trGetRaidLoadout();
+  const cardsAll = tdBuildUnitTemplates().filter(t => t.role === "skill");
+  const cards = (lo && Array.isArray(lo.cards)) ? trPickCardTemplates(lo.cards) : cardsAll;
+  return `キャラ${party.length}/${TR_PARTY_MAX}・スキル${cards.length}/${TR_CARD_SLOTS}`;
+}
+// 編成画面を開く。決定したら保存して true、やめたら false
+async function trOpenRaidFormation() {
+  const roster = trGetRosterDefs();
+  const lo = trGetRaidLoadout();
+  const cardsAll = tdBuildUnitTemplates().filter(t => t.role === "skill");
+  const groups = [{
+    key: "units", title: "キャラ", fieldTitle: "場（出撃キャラ）", max: TR_PARTY_MAX, min: 1,
+    items: roster.map(d => ({ id: d.id, name: d.name, meta: `HP${d.hp} 攻${d.atk}`, cost: trCostText(d.cost), element: d.element })),
+    initial: (trLoadoutParty(roster) || roster.slice(0, TR_PARTY_MAX)).map(d => d.id)
+  }];
+  if (cardsAll.length > 0) {
+    groups.push({
+      key: "cards", title: "スキルカード", fieldTitle: "場（持ち込むスキルカード）", max: TR_CARD_SLOTS, min: 0,
+      items: cardsAll.map(t => ({ id: t.id, name: t.label, meta: tdUnitSummary(t), cost: `資金${t.cost}`, element: t.element })),
+      initial: (lo && Array.isArray(lo.cards)) ? lo.cards : cardsAll.slice(0, TR_CARD_SLOTS).map(t => t.id)
     });
-    // ★キーボード操作（矢印＝移動／Space・Z＝決定／X＝やめる）
-    const kb = tdAttachKeyboard(overlay, { initial: ".td-unit-btn", onCancel: () => overlay.querySelector(".td-btn-quit").click() });
-    goBtn.onclick = () => { kb.detach(); overlay.remove(); resolve(roster.filter(d => chosen.has(d.key))); };
-    overlay.querySelector(".td-btn-quit").onclick = () => { kb.detach(); overlay.remove(); resolve(null); };
-    refresh();
+  }
+  const res = await tdOpenFormation({
+    title: "出撃の編成",
+    note: `手札のカードをタップすると場に出ます。場のカードをタップすると手札に戻ります。スキルカードは出撃資金で購入し、戦闘画面の下から発動します（数字キー9・0）。`,
+    groups
   });
+  if (!res) return false;
+  const g = tdGuildState();
+  g.raidLoadout = { units: res.units.slice(), cards: Array.isArray(res.cards) ? res.cards.slice() : (lo && Array.isArray(lo.cards) ? lo.cards.slice() : undefined) };
+  if (g.raidLoadout.cards === undefined) delete g.raidLoadout.cards;
+  return true;
+}
+// 協会メニューの「出撃の編成」から
+async function trEditRaidFormation() {
+  hideLocationMenu();
+  await trOpenRaidFormation();
+  showTowerDefenseModeMenu();
 }
 
 // ミニゲーム本体。終わったら { result: "win" | "lose" | "quit", kills, bossKills, stage } を返す
@@ -690,7 +705,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
           <span class="td-wave"></span>
           <span class="td-funds"></span>
         </div>
-        <div class="td-res"></div>
+        <div class="td-res td-res-big"></div>
         <div class="td-basehp"><div class="td-basehp-fill td-party-fill"></div><span class="td-basehp-text"></span></div>
         <div class="td-body">
           <div class="td-side">
@@ -734,7 +749,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
     const resChips = TR_RESOURCES.map(r => {
       const chip = document.createElement("span");
       chip.className = "td-res-chip";
-      chip.innerHTML = `${r.label} <b>0</b>`;
+      chip.innerHTML = `<span class="td-res-ico">${r.icon || ""}</span><span class="td-res-label">${r.label}</span><b>0</b>`;
       resEl.appendChild(chip);
       return chip.querySelector("b");
     });
@@ -1082,13 +1097,14 @@ async function startTowerRaid(stage) {
     return;
   }
   const roster = trGetRosterDefs();
-  let party = roster;
-  if (roster.length > TR_PARTY_MAX) {
-    party = await trSelectParty(roster);
-    if (!party) { showTowerDefenseModeMenu(); return; }
+  // ★編成が無く、キャラが8体より多い時は、最初に編成画面で手札から場に出して決める
+  if (!trGetRaidLoadout() && roster.length > TR_PARTY_MAX) {
+    if (!(await trOpenRaidFormation())) { showTowerDefenseModeMenu(); return; }
   }
+  const party = trLoadoutParty(roster) || roster.slice(0, TR_PARTY_MAX);
+  const lo = trGetRaidLoadout();
   const g = tdGuildState();
-  const outcome = await runTowerRaidBattle(party, { stage, upgrades: Object.assign({}, g.upgrades) });   // party＝手札になるキャラ（最大8枚）
+  const outcome = await runTowerRaidBattle(party, { stage, upgrades: Object.assign({}, g.upgrades), cardIds: (lo && Array.isArray(lo.cards)) ? lo.cards.slice() : null });   // party＝手札になるキャラ（最大8枚）
   changeSpeaker("");
   if (outcome.result === "win") {
     // ★報酬（陳・協会ポイント・ガチャ石・アイテム）は tower_rewards.js の共通の仕組みで計算して渡す
