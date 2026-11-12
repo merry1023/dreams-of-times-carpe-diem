@@ -306,15 +306,5 @@ function wazaAppRenderDetail(panel) {
   card.appendChild(useRow);
   panel.appendChild(card);
 
-  // 段階ごとの強化（いまの段階までは ✔）
-  const breakCard = guildAppEl("div", "element-combo-item waza-detail-card");
-  breakCard.appendChild(guildAppEl("div", "element-combo-name", `${cfg.breakLabel}ごとの強化`));
-  for (let i = 0; i < GACHA_MAX_BREAK; i++) {
-    const row = guildAppEl("div", "waza-detail-row" + (i < breakCount ? " waza-detail-done" : ""));
-    row.appendChild(guildAppEl("span", "waza-detail-key", `${i < breakCount ? "✔ " : ""}${i + 1}${cfg.breakLabel}`));
-    row.appendChild(guildAppEl("span", "waza-detail-value", wazaAppBreakText(entry, i)));
-    breakCard.appendChild(row);
-  }
-  panel.appendChild(breakCard);
   wazaAppBackButton(panel);
 }

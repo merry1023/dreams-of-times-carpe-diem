@@ -74,7 +74,7 @@ async function checkAchievements() {
     grantAchievementReward(achievement);
   }
   if (anyNewAchievement && typeof updateUnreadBadges === "function") updateUnreadBadges(); // convenience.js
-  if (typeof checkCrystalRewards === "function") checkCrystalRewards(); // ★魔力結晶のボーナス（話クリア10・実績3・図鑑1・ビンゴ10。tower_rewards.js）
+  if (typeof updateUnreadBadges === "function") updateUnreadBadges(); // ★魔力結晶のボーナス（話クリア・実績・図鑑・ビンゴ）が受け取れる状態になったら、アイコンに「!」を出す（受け取りは、そのアプリを開いた時。tower_rewards.js）
   if (typeof checkTutorialUnlocks === "function") checkTutorialUnlocks(); // ★チュートリアルの解放条件も同じタイミング（戦闘勝利後・話クリア後など）で確認する（convenience.js）
 }
 
@@ -168,6 +168,7 @@ function openAchievementsPanel() {
   renderAchievementsPanel();
   window.removeEventListener("keydown", handleAchievementsKeyDown); // 二重登録防止
   window.addEventListener("keydown", handleAchievementsKeyDown);
+  setTimeout(() => { if (typeof crystalClaimOnOpen === "function") crystalClaimOnOpen("achievements"); }, 0);   // ★たまっていた魔力結晶を、ここで一括で受け取る
 }
 
 function closeAchievementsPanel() {
@@ -225,7 +226,7 @@ function renderAchievementsList(container) {
     };
     
     container.appendChild(row);
-    if (index === achievementsCursorIndex) row.scrollIntoView({ block: "nearest" });
+    if (index === achievementsCursorIndex) requestAnimationFrame(() => row.scrollIntoView({ block: "nearest" }));   // ★バグ修正：一覧に挿入し終わった後でスクロールする（以前は挿入前に呼んでいて、何も起きていなかった）
   });
 }
 

@@ -255,7 +255,6 @@ function beastAppRenderDetail(panel) {
     const raw = b0 + g0 * (level - 1);
     const breakPct = pctBreak[s.key] || 0, affPct = (pctAll[s.key] || 0) - breakPct;
     beastAppDetailRow(stat, s.label, `${now[s.key]}`, "waza-detail-total");
-    beastAppDetailRow(stat, "　内訳", `基本${b0}＋成長${g0}×${level - 1}＝${Math.round(raw * 10) / 10}　×${cfg.breakLabel}の倍率${mult}％　${cfg.breakLabel}の強化${beastAppSigned(breakPct)}　相性${beastAppSigned(affPct)}`);
   });
   panel.appendChild(stat);
 
@@ -276,22 +275,8 @@ function beastAppRenderDetail(panel) {
     table.appendChild(tr);
   });
   lvCard.appendChild(table);
-  if (brk < GACHA_MAX_BREAK) {
-    const maxSt = beastStatsAt(entry, level, GACHA_MAX_BREAK, true);
-    beastAppDetailRow(lvCard, `最大${cfg.breakLabel}時`, `Lv${level}で ${beastStatsText(maxSt)}`);
-  }
   panel.appendChild(lvCard);
 
-  // --- 段階ごとの倍率と強化 ---
-  const breakCard = guildAppEl("div", "element-combo-item waza-detail-card");
-  breakCard.appendChild(guildAppEl("div", "element-combo-name", `${cfg.breakLabel}ごとの強化`));
-  const limitBreaks = Array.isArray(entry.limitBreaks) ? entry.limitBreaks : [];
-  const mults = beastBreakMultipliers();
-  for (let i = 0; i <= GACHA_MAX_BREAK; i++) {
-    const text = i === 0 ? "" : beastBonusText(limitBreaks[i - 1]);
-    beastAppDetailRow(breakCard, `${i <= brk ? "✔ " : ""}${i}${cfg.breakLabel}`, `能力値の倍率${mults[i]}％${text ? "／" + text : ""}`, i <= brk ? "waza-detail-done" : "");
-  }
-  panel.appendChild(breakCard);
 
   // --- 相性 ---
   const affinities = beastAffinityList(entry);
@@ -328,7 +313,7 @@ function beastAppRenderDetail(panel) {
       const who = l.userKind === "player" ? "主人公" : (l.userKind === "companion" ? beastTargetName(l.userCompanion) : "誰でも");
       const cd = Math.max(0, Math.round(Number(l.cooldown) || 0));
       beastAppDetailRow(linkCard, `${unlocked ? "✔ " : "🔒 "}${l.name || "連動"}`,
-        `きっかけ：${kindLabel}が「${valueLabel}」／使った人：${who}／クールタイム${cd}ターン` + (unlocked ? "" : `（${l.unlockBreak}${cfg.breakLabel}で解放）`),
+        `きっかけ：${kindLabel}が「${valueLabel}」／使った人：${who}／クールタイム${cd}ターン` + (unlocked ? "" : "（まだ使えません）"),
         unlocked ? "waza-detail-done" : "");
     });
     const limit = Math.max(1, Math.round(Number(entry.linkMaxPerTurn) || 1));
