@@ -7924,7 +7924,7 @@ function buildSkillBlockFormFields(blocksArray, block, skill, persist) {
     overCheckbox.checked = block.allowOverMax === true;
     overCheckbox.onchange = () => { block.allowOverMax = overCheckbox.checked; persist(); };
     overLabel.appendChild(overCheckbox);
-    overLabel.append(" 回復する時、行動数の最大数（パーティ人数）を超えて増やせる（OFFなら最大数までしか回復しません。マイナスの時は関係ありません）");
+    overLabel.append(" 回復する時、行動数の最大数（パーティ人数）を超えて増やせる（最大12。4つ超えは色が変わる）（OFFなら最大数までしか回復しません。マイナスの時は関係ありません）");
     wrap.appendChild(overLabel);
     
   } else if (block.type === "selfDamage") {

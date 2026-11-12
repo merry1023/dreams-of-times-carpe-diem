@@ -624,7 +624,7 @@ function applyActionCountChange(actionsRemaining, maxActions) {
   const overMax = !!(battleState && battleState.pendingActionOverMax);
   if (battleState) battleState.pendingActionOverMax = false;
   const result = actionsRemaining - 1 + delta;
-  const cap = overMax ? Infinity : Math.max(maxActions, actionsRemaining - 1);
+  const cap = overMax ? ACTION_POINT_HARD_CAP : Math.max(maxActions, actionsRemaining - 1);
   return Math.max(0, Math.min(cap, result));
 }
 
@@ -4396,6 +4396,7 @@ function showBattleHud() {
 
 // ★要望対応：メイン画面上に、味方の「行動可能数」を最大4つの横並びのアイコンで表示する。
 //   行動すると1つ減る（パスしても減らない）。使い切った分は薄い枠だけを残して、最大数が分かるようにしておく
+const ACTION_POINT_HARD_CAP = 12; // ★行動可能数の最大（4つ×3段階）
 function updateBattleActionPoints(remaining, max) {
   const el = document.getElementById("battle-action-points");
   if (!el) return;
@@ -4404,14 +4405,17 @@ function updateBattleActionPoints(remaining, max) {
     el.innerHTML = "";
     return;
   }
-  const slots = Math.min(4, max);
-  const lit = Math.max(0, Math.min(slots, remaining));
+  const slots = Math.min(4, Math.max(max, remaining)); // ★最大数を超えて回復した場合も、アイコンは4つのまま
+  // ★要望対応：4つを超えた分は、同じアイコンの色が変わって段階で表す（1段階目＝金、2段階目＝エメラルド、3段階目＝ダイヤモンド。最大12）
+  const shown = Math.min(remaining, ACTION_POINT_HARD_CAP);
   el.classList.toggle("battle-action-points-boss", !!battleState.isBoss); // ボス戦は上部中央に細いHPゲージが出るので、その下にずらす
   el.title = `行動可能数：${Math.max(0, remaining)}`;
   el.innerHTML = "";
   for (let i = 0; i < slots; i++) {
     const icon = document.createElement("span");
-    icon.className = "battle-action-point" + (i < lit ? "" : " spent");
+    let tier = 0; // このアイコンが何段階目まで点灯しているか（0＝消費済み）
+    for (let t = 0; t < 3; t++) { if (shown > t * 4 + i) tier = t + 1; }
+    icon.className = "battle-action-point" + (tier === 0 ? " spent" : tier >= 2 ? ` tier-${tier}` : "");
     el.appendChild(icon);
   }
   el.classList.remove("hidden");
