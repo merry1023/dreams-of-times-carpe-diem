@@ -9387,3 +9387,34 @@ rt {
 .crystal-claim-lines li { padding: 2px 0; }
 .crystal-claim-ok { background: #ffd23f; color: #111; border: 2px solid #fff; border-radius: 6px; padding: 8px 32px; font-size: 15px; font-weight: bold; cursor: pointer; }
 .crystal-claim-ok:focus { outline: 3px solid #fff; }
+
+
+/* ★要望対応：分量表示（原稿用紙・ページ・読了時間）と執筆ガイドタブ（writingguide.js） */
+.wg-summary { margin: 6px 0 10px; padding: 8px 10px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; background: rgba(255, 255, 255, 0.06); font-size: 13px; }
+.wg-summary-compact { margin: 4px 0; padding: 2px 0; border: none; background: none; font-size: 12px; opacity: 0.85; }
+.wg-summary-title { font-weight: bold; margin-bottom: 4px; }
+.wg-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.wg-chip { padding: 3px 8px; border-radius: 12px; background: rgba(255, 210, 63, 0.14); border: 1px solid rgba(255, 210, 63, 0.4); white-space: nowrap; }
+.wg-chip b { margin-right: 6px; font-weight: normal; opacity: 0.75; font-size: 11px; }
+.wg-summary-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-top: 6px; font-size: 11px; opacity: 0.8; }
+.wg-open-btn { font-size: 11px; padding: 2px 8px; }
+.wg-seg { display: flex; gap: 6px; margin-bottom: 8px; }
+.wg-seg-btn { flex: 1; }
+.wg-seg-btn-active { background: #ffd23f; color: #111; }
+.wg-field-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0; }
+.wg-field-label { min-width: 9em; font-size: 13px; }
+.wg-field-hint { font-size: 11px; opacity: 0.7; }
+.wg-number-input { width: 6em; }
+.wg-counter-area { min-height: 90px; width: 100%; }
+.wg-total-row td { font-weight: bold; background: rgba(255, 255, 255, 0.08); }
+.wg-dict-controls { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.wg-dict-search { flex: 1 1 14em; min-width: 0; }
+.wg-dict-list { display: flex; flex-direction: column; gap: 6px; }
+.wg-dict-entry { padding: 6px 8px; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 6px; background: rgba(255, 255, 255, 0.05); }
+.wg-dict-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.wg-dict-term { font-size: 15px; }
+.wg-dict-reading { font-size: 12px; opacity: 0.75; }
+.wg-dict-cat { font-size: 11px; padding: 1px 6px; border-radius: 10px; background: rgba(255, 255, 255, 0.14); }
+.wg-dict-copy { margin-left: auto; font-size: 11px; padding: 1px 8px; }
+.wg-dict-meaning { margin-top: 3px; font-size: 13px; }
+.wg-dict-note { margin-top: 2px; font-size: 12px; opacity: 0.75; }
