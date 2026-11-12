@@ -22,7 +22,8 @@ const TD_EDITOR_CARD_EFFECT_OPTIONS = [
   { value: "damage", label: "敵にダメージ" },
   { value: "heal",   label: "拠点と味方を回復" },
   { value: "slow",   label: "敵の足を遅くする" },
-  { value: "buff",   label: "味方の攻撃力アップ" }
+  { value: "buff",   label: "味方の攻撃力アップ" },
+  { value: "shield", label: "シールドを付与（HPとは別枠の体力。壊れるまで残る）" }
 ];
 const TD_EDITOR_TARGETING_OPTIONS = [
   { value: "near", label: "射程内で一番近い敵" },
@@ -38,7 +39,7 @@ function createNewTowerUnit() {
     power: 22, range: 140, interval: 0.8, cost: 50,
     slowPercent: 50, slowSec: 1.5,   // 遅延：足の速さを何%下げるか／何秒続けるか
     supportPercent: 25,              // サポート／スキルカード（攻撃力アップ）：味方の攻撃力を何%上げるか
-    cardMode: "manual", cardEffect: "damage", cooldown: 15, healPercent: 25, buffSec: 6,   // スキルカード用（role === "skill" の時だけ使う）
+    cardMode: "manual", cardEffect: "damage", cooldown: 15, healPercent: 25, buffSec: 6, shieldPercent: 30,   // スキルカード用（role === "skill" の時だけ使う）
     imagePath: ""
   };
 }
@@ -193,6 +194,7 @@ function buildTowerUnitRow(unit, index) {
     if (effect === "heal") numberField(re, "healPercent", "回復量（拠点と味方の最大HPの%）", 1, 100, 1);
     if (effect === "slow") { numberField(re, "slowPercent", "足の速さを下げる（%）", 1, 95, 1); numberField(re, "slowSec", "続く時間（秒）", 0.2, 10, 0.1); }
     if (effect === "buff") { numberField(re, "supportPercent", "味方の攻撃力を上げる（%）", 1, 300, 1); numberField(re, "buffSec", "続く時間（秒）", 0.5, 60, 0.5); }
+    if (effect === "shield") numberField(re, "shieldPercent", "シールド量（最大HPの%）", 1, 300, 1);
     const rc = addRow();
     numberField(rc, "cooldown", placed ? "発動の間隔（秒）" : "クールタイム（秒）", 1, 300, 1);
     if (placed) numberField(rc, "range", "射程", 20, 400, 5);
@@ -202,7 +204,7 @@ function buildTowerUnitRow(unit, index) {
     noteEl.textContent = (placed
       ? "陣地のマスに置きます（ユニットと同じく敵に攻撃され、ウェーブ後に復活します）。回復は射程に関係なく、拠点と味方全員が対象です。"
       : "購入するとカード欄に入り、ウェーブ中に発動できます。対象は敵・味方の全体です。")
-      + "レベルを上げると、効果量と続く時間が伸びます。属性は、ダメージの属性相性とコンボの履歴に使われます。";
+      + "出撃モード（攻める側）では「設置」も手動と同じ扱いで、出撃資金で購入して使います。レベルを上げると、効果量と続く時間が伸びます。属性は、ダメージの属性相性とコンボの履歴に使われます。";
     rc.appendChild(noteEl);
   } else {
   if (unit.role !== "support") {

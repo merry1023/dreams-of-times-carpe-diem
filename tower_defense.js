@@ -161,7 +161,15 @@ const TD_ROLE_INFO = {
   skill:   { roleLabel: "スキル",   roleChar: "技" }    // ★スキルカード（手動で発動／陣地に置いて自動発動）
 };
 // ★スキルカードの効果の種類（エディタの cardEffect）
-const TD_CARD_EFFECT_LABELS = { damage: "敵にダメージ", heal: "拠点と味方を回復", slow: "敵の足を遅くする", buff: "味方の攻撃力アップ" };
+const TD_CARD_EFFECT_LABELS = { damage: "敵にダメージ", heal: "拠点と味方を回復", slow: "敵の足を遅くする", buff: "味方の攻撃力アップ", shield: "シールドを付与" };
+// ★シールド＝HPとは別枠の体力。ダメージを先にシールドが受け止め、壊れるまで残る（最大HPまで）。holder.shield（拠点は st.baseShield）に入る
+function tdAbsorbShield(holder, dmg, key) {
+  key = key || "shield";
+  if (!holder || !(holder[key] > 0)) return dmg;
+  const a = Math.min(holder[key], dmg);
+  holder[key] -= a;
+  return dmg - a;
+}
 const TD_TAB_ORDER = ["single", "area", "slow", "support", "skill"];   // タブの並び（役割別）
 function tdClamp(v, min, max, fallback) {
   const n = Number(v);
@@ -187,7 +195,8 @@ function tdCustomUnitTemplates() {
       cooldown: tdClamp(u.cooldown, 1, 300, 15),
       healRate: tdClamp(u.healPercent, 1, 100, 25) / 100,
       buffRate: tdClamp(u.supportPercent, 1, 300, 25) / 100,
-      buffSec: tdClamp(u.buffSec, 0.5, 60, 6)
+      buffSec: tdClamp(u.buffSec, 0.5, 60, 6),
+      shieldRate: tdClamp(u.shieldPercent, 1, 300, 30) / 100
     };
   });
 }
@@ -213,13 +222,15 @@ function tdBuildDefaultUnitData() {
   const elOf = i => (tdAutoUnitTemplates()[i % Math.max(1, tdAutoUnitTemplates().length)] || {}).element || firstElement;
   const card = (i, name, cardMode, cardEffect, extra) => Object.assign({
     id: idOf(list.length), name, enabled: true, element: elOf(i), role: "skill", targeting: "none", cardMode, cardEffect,
-    power: 20, range: 130, interval: 1, cooldown: 15, cost: 100, slowPercent: 50, slowSec: 3, supportPercent: 25, healPercent: 25, buffSec: 6, imagePath: ""
+    power: 20, range: 130, interval: 1, cooldown: 15, cost: 100, slowPercent: 50, slowSec: 3, supportPercent: 25, healPercent: 25, buffSec: 6, shieldPercent: 30, imagePath: ""
   }, extra);
   list.push(card(0, "烈火の号令", "manual", "damage", { power: 40, cooldown: 20, cost: 120 }));
   list.push(card(1, "癒しの祈り", "manual", "heal", { healPercent: 25, cooldown: 25, cost: 100 }));
   list.push(card(2, "凍てつく霧", "manual", "slow", { slowPercent: 60, slowSec: 4, cooldown: 18, cost: 90 }));
   list.push(card(3, "鼓舞の旗印", "placed", "buff", { supportPercent: 20, buffSec: 7, cooldown: 6, range: 160, cost: 110 }));
   list.push(card(4, "火の粉の罠", "placed", "damage", { power: 15, cooldown: 3, range: 120, cost: 80 }));
+  list.push(card(1, "守りの加護", "manual", "shield", { shieldPercent: 35, cooldown: 22, cost: 110 }));
+  list.push(card(2, "護りの結界", "placed", "shield", { shieldPercent: 20, cooldown: 8, range: 150, cost: 100 }));
   return list;
 }
 
@@ -468,6 +479,7 @@ function tdUseCard(st, card) {
 function tdCardHasUse(st, tpl, origin) {
   const range = origin ? tpl.range : Infinity;
   const near = (x, y) => !origin || Math.hypot(x - origin.x, y - origin.y) <= range;
+  if (tpl.cardEffect === "shield") return (!origin && (st.baseShield || 0) < st.baseMaxHp) || st.units.some(u => (u.shield || 0) < u.maxHp && near(tdSlotPos(u.slot).x, tdSlotPos(u.slot).y));
   if (tpl.cardEffect === "heal") return st.baseHp < st.baseMaxHp || st.units.some(u => u.hp < u.maxHp);
   if (tpl.cardEffect === "buff") return st.units.some(u => u.tpl.role !== "skill" && u.tpl.role !== "support" && near(tdSlotPos(u.slot).x, tdSlotPos(u.slot).y));
   return st.enemies.some(e => e.hp > 0 && near(e.x, e.y));
@@ -506,6 +518,20 @@ function tdCastCard(st, tpl, level, origin) {
       st.fx.push({ kind: "line", x1: from.x, y1: from.y, x2: e.x, y2: e.y, color, t: 0.2 });
     });
     st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color, t: 0.3 });
+  } else if (tpl.cardEffect === "shield") {
+    if (!origin) {   // 手動の時だけ、拠点にもシールドを張る
+      const a = Math.round(st.baseMaxHp * tpl.shieldRate * lv);
+      st.baseShield = Math.min(st.baseMaxHp, (st.baseShield || 0) + a);
+      st.popups.push({ x: TD_WORLD_W / 2, y: TD_BASE_TOP + 4, text: `盾+${a}`, color: "#4aa8ff", weak: false, t: 0.9 });
+    }
+    st.units.forEach(u => {
+      const sp = tdSlotPos(u.slot);
+      if (!inRange(sp.x, sp.y)) return;
+      const a = Math.round(u.maxHp * tpl.shieldRate * lv);
+      u.shield = Math.min(u.maxHp, (u.shield || 0) + a);
+      st.popups.push({ x: sp.x, y: sp.y - 26, text: `盾+${a}`, color: "#4aa8ff", weak: false, t: 0.9 });
+    });
+    st.fx.push({ kind: "ring", x1: from.x, y1: from.y, r: origin ? range : 260, color: "#4aa8ff", t: 0.3 });
   } else if (tpl.cardEffect === "buff") {
     st.units.forEach(u => {
       if (u.tpl.role === "skill" || u.tpl.role === "support") return;
@@ -533,7 +559,8 @@ function tdCardEffectText(tpl, level) {
     damage: `ダメージ${Math.round(tpl.dmgRatio * lv * 100)}%`,
     heal: `回復${Math.round(tpl.healRate * lv * 100)}%`,
     slow: `足−${Math.round((1 - tpl.slowRate) * 100)}%・${(tpl.slowSec * lv).toFixed(1)}秒`,
-    buff: `攻撃+${Math.round(tpl.buffRate * lv * 100)}%・${(tpl.buffSec * lv).toFixed(1)}秒`
+    buff: `攻撃+${Math.round(tpl.buffRate * lv * 100)}%・${(tpl.buffSec * lv).toFixed(1)}秒`,
+    shield: `シールド${Math.round(tpl.shieldRate * lv * 100)}%`
   }[tpl.cardEffect] || "";
   return eff + "　" + (tpl.cardMode === "placed" ? `設置・${tpl.cooldown}秒ごと・射程${tpl.range}` : `手動・CT${tpl.cooldown}秒`);
 }
@@ -673,7 +700,7 @@ function tdStep(st, dt) {
         const attackEl = (e.elements && e.elements.length > 0) ? e.elements[0] : "無";
         const mult = tdElementMultiplier(attackEl, { elements: [target.u.tpl.element] });
         const dmg = Math.max(1, Math.round(dmgBase * mult));
-        target.u.hp -= dmg;
+        target.u.hp -= tdAbsorbShield(target.u, dmg);
         e.cool = e.interval;
         st.popups.push({ x: target.sp.x, y: target.sp.y - 22, text: String(dmg), color: "#ff6b6b", weak: false, t: 0.5 });
       }
@@ -682,7 +709,7 @@ function tdStep(st, dt) {
     if (e.y >= TD_BASE_TOP - e.range * 0.6) {         // 拠点に着いた：拠点を攻撃する
       if (e.cool <= 0) {
         const dmg = Math.max(1, Math.round(dmgBase));
-        st.baseHp -= dmg;
+        st.baseHp -= tdAbsorbShield(st, dmg, "baseShield");
         e.cool = e.interval;
         st.popups.push({ x: Math.max(60, Math.min(TD_WORLD_W - 60, e.x)), y: TD_BASE_TOP + 20, text: `-${dmg}`, color: "#ff5a5a", weak: false, t: 0.8 });
       }
@@ -1287,6 +1314,10 @@ function runTowerDefenseBattle(pool, opts) {
       ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText(`拠点　HP ${Math.max(0, Math.round(st.baseHp))}/${st.baseMaxHp}`, TD_WORLD_W / 2, TD_BASE_TOP + 22);
       drawBar(TD_WORLD_W / 2 - 150, TD_BASE_TOP + 40, 300, st.baseHp / st.baseMaxHp, "#e5484d");
+      if (st.baseShield > 0) {
+        drawBar(TD_WORLD_W / 2 - 150, TD_BASE_TOP + 50, 300, Math.min(1, st.baseShield / st.baseMaxHp), "#4aa8ff");
+        ctx.fillStyle = "#9bd0ff"; ctx.font = "bold 11px sans-serif"; ctx.fillText(`シールド ${Math.round(st.baseShield)}`, TD_WORLD_W / 2, TD_BASE_TOP + 66);
+      }
       
       // 選択中ユニットの射程
       if (selectedSlot !== null) {
@@ -1329,6 +1360,7 @@ function runTowerDefenseBattle(pool, opts) {
           ctx.fillText(u.tpl.roleChar, sp.x, sp.y + 1);
         }
         drawBar(sp.x - 20, sp.y + 24, 40, u.hp / u.maxHp, "#59e07a");
+        if (u.shield > 0) drawBar(sp.x - 20, sp.y + 32, 40, Math.min(1, u.shield / u.maxHp), "#4aa8ff");   // ★シールド（別枠のHP）
         if (u.level > 1) {
           ctx.fillStyle = "#000"; ctx.fillRect(sp.x + 8, sp.y - 30, 24, 13);
           ctx.fillStyle = "#ffd23f"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(`Lv${u.level}`, sp.x + 20, sp.y - 23);
