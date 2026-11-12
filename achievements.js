@@ -74,6 +74,7 @@ async function checkAchievements() {
     grantAchievementReward(achievement);
   }
   if (anyNewAchievement && typeof updateUnreadBadges === "function") updateUnreadBadges(); // convenience.js
+  if (typeof checkCrystalRewards === "function") checkCrystalRewards(); // ★魔力結晶のボーナス（話クリア10・実績3・図鑑1・ビンゴ10。tower_rewards.js）
   if (typeof checkTutorialUnlocks === "function") checkTutorialUnlocks(); // ★チュートリアルの解放条件も同じタイミング（戦闘勝利後・話クリア後など）で確認する（convenience.js）
 }
 

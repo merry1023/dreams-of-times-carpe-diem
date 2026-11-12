@@ -566,6 +566,7 @@ async function openMonsterCodex() {
   codexCursorIndex = 0;
   codexViewMode = "list";
   codexTab = "monster";
+  if (typeof checkCrystalRewards === "function") checkCrystalRewards(); // ★図鑑を開いた時にも、図鑑・ビンゴの魔力結晶ボーナスを確認する
   renderMonsterCodex();
   window.removeEventListener("keydown", handleMonsterCodexKeyDown); // 二重登録防止
   window.addEventListener("keydown", handleMonsterCodexKeyDown);
