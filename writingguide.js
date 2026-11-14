@@ -344,7 +344,7 @@ function writingGuideScheduleRefresh() {
 // ===================================================================
 // ===== 「執筆ガイド」タブ =====
 // ===================================================================
-let wgTabMode = "amount";      // "amount"（分量・目安）／"dict"（簡易辞書）
+let wgTabMode = "amount";      // "amount"（分量・目安）／"dict"（簡易辞書）／"online"（オンライン辞書。onlinedict.js）
 let wgDictQuery = "";
 let wgDictCategory = "";
 let wgTabTableRefresher = null; // 開いている「現在のシナリオの分量」表を最新にする関数
@@ -399,7 +399,7 @@ function renderWritingGuideManager(container) {
   };
 
   const seg = wgEl("div", "wg-seg");
-  [["amount", "📏 分量・目安"], ["dict", "📖 簡易辞書"]].forEach(([mode, label]) => {
+  [["amount", "📏 分量・目安"], ["dict", "📖 簡易辞書"], ["online", "🌐 オンライン辞書"]].forEach(([mode, label]) => {
     const btn = wgEl("button", "devmode-btn wg-seg-btn" + (wgTabMode === mode ? " wg-seg-btn-active" : ""), label);
     btn.type = "button";
     btn.onclick = (event) => {
@@ -412,7 +412,8 @@ function renderWritingGuideManager(container) {
   container.appendChild(seg);
 
   wgTabTableRefresher = null;
-  if (wgTabMode === "dict") renderWritingDictionaryPane(container);
+  if (wgTabMode === "dict") renderWritingDictionaryPane(container, rerender);
+  else if (wgTabMode === "online" && typeof renderOnlineDictionaryPane === "function") renderOnlineDictionaryPane(container); // ★APIで引く辞書（onlinedict.js）
   else renderWritingAmountPane(container, rerender);
 }
 
@@ -598,7 +599,7 @@ function wgCopyText(text, button) {
 
 const WG_DICT_MAX_SHOWN = 80;
 
-function renderWritingDictionaryPane(container) {
+function renderWritingDictionaryPane(container, rerender) {
   const entries = wgDictEntries();
   wgAddNote(container, "シナリオを書く時にすぐ引ける簡易辞書です（オノマトペ・感情表現・慣用句・誤用しやすい言葉・時間や天気の言い方・色の名前・敬語と呼称・戦闘用語・同音異義語の使い分け・表記ルール・物語の用語）。ひらがな／カタカナどちらでも検索でき、スペースで区切ると全部を含むものに絞れます。このゲーム専用の用語は「用語・語彙」タブで登録します。");
 
@@ -640,7 +641,17 @@ function renderWritingDictionaryPane(container) {
       : `${hits.length}件（全${entries.length}件）`;
     list.innerHTML = "";
     if (entries.length === 0) { list.appendChild(wgEl("p", "devmode-note", "辞書データ（writingdict_data.js）が読み込めていません。")); return; }
-    if (hits.length === 0) { list.appendChild(wgEl("p", "devmode-note", "見つかりませんでした。")); return; }
+    if (hits.length === 0) {
+      list.appendChild(wgEl("p", "devmode-note", "見つかりませんでした。"));
+      // ★簡易辞書にない言葉は、そのままオンライン辞書（API）で引けるようにする
+      if (words.length > 0 && typeof renderOnlineDictionaryPane === "function" && typeof rerender === "function") {
+        const onlineBtn = wgEl("button", "devmode-btn", `🌐 オンライン辞書で「${wgDictQuery.trim()}」を引く`);
+        onlineBtn.type = "button";
+        onlineBtn.onclick = (event) => { event.stopPropagation(); wgOnlineQuery = wgDictQuery.trim(); wgTabMode = "online"; rerender(); };
+        list.appendChild(onlineBtn);
+      }
+      return;
+    }
     hits.slice(0, WG_DICT_MAX_SHOWN).forEach(e => {
       const item = wgEl("div", "wg-dict-entry");
       const head = wgEl("div", "wg-dict-head");

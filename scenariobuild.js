@@ -1622,6 +1622,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "variables", label: "変数一覧" }, // ★要望対応：式の中で使えるシステム変数の名前が分かるよう、サブ画面に一覧を出す
   { view: "data", label: "データ管理" },
   { view: "scenariostats", label: "統計" }, // ★要望対応：全話・各話の文字数／発言回数／ブロック数／演出数などの集計（scenariostats.js）
+  { view: "layoutadjust", label: "レイアウト調整" }, // ★要望対応：左右の幅をつまみで変える（layoutadjust.js）。つまみはこのタブを開いている間だけ出る
   { view: "tabmanager", label: "タブ管理" } // ★バグ修正：中身はプレイ画面タブ（メイン/インベントリ/スキル…）の管理に変更した
 ];
 
@@ -1718,7 +1719,7 @@ const SCENARIOBUILD_TAB_GROUPS = [
   { id: "guild", label: "冒険者協会", views: ["towerunits", "raidunits", "guildrewards"] },
   { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "writingguide", "notationcheck", "flags", "gamevars", "endings"] },
   { id: "world", label: "マップ・施設・BGM", views: ["maps", "facilities", "bgm"] },
-  { id: "system", label: "データ・システム", views: ["variables", "data", "scenariostats", "tabmanager"] }
+  { id: "system", label: "データ・システム", views: ["variables", "data", "scenariostats", "layoutadjust", "tabmanager"] }
 ];
 let scenarioBuildTabGroupOpen = {};
 
@@ -1863,6 +1864,7 @@ function renderScenarioBuildSub() {
   const tabsEl = document.getElementById("scenariobuild-sub-tabs");
   const bodyEl = document.getElementById("scenariobuild-sub-content");
   if (!tabsEl || !bodyEl) return;
+  if (typeof laSyncAdjustMode === "function") laSyncAdjustMode(); // ★「レイアウト調整」タブを開いている間だけ、左右の境目につまみを出す
   const visibleTabs = SCENARIOBUILD_SUB_TABS; // ★エディタ自身のタブは常に全て表示する（非表示切替は廃止。「タブ管理」はプレイ画面タブの方を管理する）
   if (!visibleTabs.some(tab => tab.view === scenarioBuildSubView)) {
     scenarioBuildSubView = visibleTabs[0] ? visibleTabs[0].view : "characters";
@@ -1969,6 +1971,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "variables") renderSkillVariableReference(bodyEl); // ★要望対応
   else if (scenarioBuildSubView === "data") renderDataManager(bodyEl);
   else if (scenarioBuildSubView === "tabmanager") renderScenarioBuildTabManager(bodyEl);
+  else if (scenarioBuildSubView === "layoutadjust") renderLayoutAdjustPanel(bodyEl); // ★要望対応：レイアウト調整（layoutadjust.js）
 }
 
 // ===================================================================

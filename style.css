@@ -5698,6 +5698,64 @@ rt {
   background-color: #1c1c22;
 }
 
+/* ★要望対応：レイアウト調整（layoutadjust.js）。幅を決めた時だけ、左（メイン）を「全体の○%」に固定する。決めていない間は上の 6:4 のまま */
+.scenariobuild-split[data-layout-custom="1"] > .scenariobuild-main {
+  flex: 0 0 var(--sb-main-percent, 60%);
+}
+
+.scenariobuild-split[data-layout-custom="1"] > .scenariobuild-sub {
+  flex: 1 1 0;
+}
+
+/* つまみ：「レイアウト調整」タブを開いている間（.layout-adjusting）だけ表示する */
+.scenariobuild-resizer {
+  display: none;
+  flex: 0 0 12px;
+  width: 12px;
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  background-color: #2b4a7a;
+  border-left: 1px solid #5f8fd0;
+  border-right: 1px solid #5f8fd0;
+  z-index: 2;
+}
+
+.scenariobuild-resizer::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background-image: radial-gradient(circle, #dbe8ff 1.4px, transparent 1.6px);
+  background-size: 4px 8px;
+  background-repeat: repeat-y;
+}
+
+.scenariobuild-resizer:hover,
+.scenariobuild-resizer:focus-visible,
+.layout-dragging > .scenariobuild-resizer {
+  background-color: #3f6db5;
+  outline: none;
+}
+
+.scenariobuild-split.layout-adjusting > .scenariobuild-resizer {
+  display: block;
+}
+
+.scenariobuild-split.layout-dragging {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.la-panel { flex-direction: column; align-items: stretch; gap: 6px; }
+.la-label { font-size: 13px; }
+.la-slider { width: 100%; }
+
 .scenariobuild-sub-content {
   flex: 1;
   min-height: 0;
@@ -9430,6 +9488,12 @@ rt {
 .wg-dict-copy { margin-left: auto; font-size: 11px; padding: 1px 8px; }
 .wg-dict-meaning { margin-top: 3px; font-size: 13px; }
 .wg-dict-note { margin-top: 2px; font-size: 12px; opacity: 0.75; }
+.wg-online-source { font-size: 12px; cursor: pointer; }
+.wg-online-text { white-space: pre-wrap; word-break: break-word; }
+.wg-online-error { border-color: rgba(229, 115, 115, 0.7); color: #ffb4b4; font-size: 12px; }
+.wg-online-suggest, .wg-online-links { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
+.wg-online-chip { font-size: 12px; padding: 2px 10px; }
+.wg-online-link { font-size: 12px; padding: 2px 10px; text-decoration: none; }
 
 /* ===================================================================
    掃討作戦：リソース表示を大きく（迎撃＝資金／出撃＝5種類）と、編成画面（手札→場）
