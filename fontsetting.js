@@ -62,8 +62,8 @@ function applyGameFont() {
   if (!opt.family || gameFontLoadState[opt.id] === "ready" || gameFontLoadState[opt.id] === "loading") return;
   if (!document.fonts || typeof document.fonts.load !== "function") return;   // 古いブラウザは、使われた時に自動で読み込まれる
   gameFontLoadState[opt.id] = "loading";
-  // 「𰻞」を含む文字で読み込み、ファイルが壊れている／無い場合は error になる
-  document.fonts.load(`16px "${opt.family}"`, "𰻞あ漢").then(faces => {
+  // 「あ」で読み込み、ファイルが壊れている／無い場合は error になる
+  document.fonts.load(`16px "${opt.family}"`, "あ").then(faces => {
     gameFontLoadState[opt.id] = faces && faces.length > 0 ? "ready" : "error";
   }).catch(() => {
     gameFontLoadState[opt.id] = "error";
