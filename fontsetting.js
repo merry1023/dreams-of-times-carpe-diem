@@ -19,8 +19,11 @@ const GAME_FONT_OPTIONS = [
   { id: "sukima",   label: "スキマゴシック",       family: "GameFontSukima" },
   { id: "hangyaku", label: "叛逆明朝",     family: "GameFontHangyaku" },
   { id: "corporatemincho", label: "コーポレート明朝",       family: "GameFontCorporateMincho" },
-  { id: "haranyan",       label: "はらませにゃんこ",       family: "GameFontHaranyan" },
-  { id: "haranyanmarumi", label: "はらませにゃんこ まるみ", family: "GameFontHaranyanMarumi" },
+  { id: "keifont",        label: "けいふぉんと",           family: "GameFontKeifont" },
+  // ★はらませにゃんこは一旦使えないようにしてある（font/ のファイルと style.css の @font-face は残している）。
+  //   復活させたい時は、下の2行の「//」を外すだけでよい。保存済みの選択がここに無い時は自動で Noto Sans JP に戻る。
+  // { id: "haranyan",       label: "はらませにゃんこ",       family: "GameFontHaranyan" },
+  // { id: "haranyanmarumi", label: "はらませにゃんこ まるみ", family: "GameFontHaranyanMarumi" },
   { id: "system",   label: "端末の標準フォント",   family: null }
 ];
 

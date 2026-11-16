@@ -39,6 +39,13 @@
   size-adjust: 100%;
 }
 @font-face {
+  font-family: "GameFontKeifont";
+  src: url("font/keifont.ttf") format("truetype");
+  font-display: swap;
+  size-adjust: 100%;
+}
+/* ★はらませにゃんこは一旦使えないようにしている（fontsetting.js の選択肢から外してある）。ファイルは残してあるので復活も可能 */
+@font-face {
   font-family: "GameFontHaranyan";
   src: url("font/haranyan.ttf") format("truetype");
   font-display: swap;
