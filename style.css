@@ -27,6 +27,9 @@
   font-family: "GameFontHangyaku";
   src: url("font/Hangyaku-0vRGR.ttf") format("truetype");
   font-display: swap;
+  /* ★叛逆明朝は字面が小さい（細く縦長の字体）ので、このフォントの文字だけ大きく表示する。他のフォントの大きさは変わらない。
+     見た目の大きさを変えたい時は、この数字だけを変える（100%＝そのまま。Noto Sans JP と同じくらいに見えるのは140%前後） */
+  size-adjust: 140%;
 }
 :root {
   /* 設定の「フォント」で fontsetting.js が書き換える。読み込み前でも同じ並びで表示できるよう、既定値（Noto）を入れておく */
