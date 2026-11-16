@@ -522,12 +522,13 @@ function trStep(st, dt) {
     if (!u.alive) return;
     u.cool -= dt;
     if (u.skill.left > 0) u.skill.left = Math.max(0, u.skill.left - dt);
-    let target = null, sight = null;
+    let target = null, sight = null, nearestAny = null;
     st.defenders.forEach(e => {
       if (e.hp <= 0) return;
       const d = trDist(e, u.x, u.y);
       if (d <= u.range && (!target || d < target.d)) target = { e, d };
       if (d <= u.range + TR_SIGHT_BONUS && (!sight || d < sight.d)) sight = { e, d };
+      if (!nearestAny || d < nearestAny.d) nearestAny = { e, d };
     });
     if (target) {
       if (u.cool <= 0) {
@@ -539,8 +540,12 @@ function trStep(st, dt) {
       }
       return;                                     // 射程に敵がいる間は、止まって戦う
     }
-    if (sight) {                                  // 射程の外の敵に向かって歩く（素通りしない）
-      const pt = trApproachPoint(sight.e, u.x, u.y);
+    // ★バグ修正：ウェーブの敵が残っているのに、視界（射程＋SIGHT）の外にいる味方が、敵を素通りして上へ進み続け、
+    //   防衛塔・ボスなど動かない敵が残ったまま永遠に終わらないことがあった。
+    //   ウェーブ中（waveActive）で敵が残っていれば、視界の外でも、いちばん近い敵に向かう（上へ進むのは、敵がいない時だけ）
+    const goal = sight || (st.waveActive ? nearestAny : null);
+    if (goal) {                                   // 射程の外の敵に向かって歩く（素通りしない）
+      const pt = trApproachPoint(goal.e, u.x, u.y);
       const dx = pt.x - u.x, dy = pt.y - u.y, len = Math.hypot(dx, dy) || 1, step = Math.min(len, u.speed * dt);
       u.x += dx / len * step; u.y += dy / len * step;
     } else {
@@ -788,7 +793,16 @@ function runTowerRaidBattle(rosterDefs, opts) {
       el.style.borderColor = tdElementColor(card.def.element);
       el.onclick = () => { const r = trUseSkill(st, st.party.indexOf(card.unit)); if (!r.ok) note(r.reason); else refreshUI(); };
       skillBarEl.appendChild(el);
-      skillBtns.push({ el, keyChar: String(i + 1), label: () => (card.unit && card.unit.alive) ? card.unit.skill.name : null, left: () => card.unit.skill.left });
+      // ★要望対応：キーは「編成した並び（手札の順）」の番号に固定（編成の1枠目＝[1]、2枠目＝[2]…）。
+      //   まだ出撃していない・倒れている枠も、キーと技名を出したままにして、グレーアウトする（押しても発動しない）
+      const alive = () => !!(card.unit && card.unit.alive);
+      skillBtns.push({
+        el, keyChar: String(i + 1),
+        label: () => alive() ? card.unit.skill.name : (card.def.skillName || "（技なし）"),
+        left: () => alive() ? card.unit.skill.left : 0,
+        off: () => !alive(),
+        offReason: () => card.unit ? `${card.def.name}は倒れています` : `${card.def.name}はまだ出撃していません`
+      });
     });
     st.cardTemplates.forEach((tpl, j) => {
       const el = document.createElement("button");
@@ -830,7 +844,9 @@ function runTowerRaidBattle(rosterDefs, opts) {
       const hit = skillBtns.find(b => b.keyChar && b.keyChar === ev.key && !b.el.hidden);
       if (!hit) return;
       ev.preventDefault(); ev.stopImmediatePropagation();
-      if (!ev.repeat && !hit.el.disabled) hit.el.click();
+      if (ev.repeat) return;
+      if (hit.off && hit.off()) { if (st.phase === "play") note(hit.offReason()); return; }   // ★出撃していない／倒れている枠のキーは、理由だけ知らせる
+      if (!hit.el.disabled) hit.el.click();
     };
     window.addEventListener("keydown", onDigitKey, true);
 
@@ -876,9 +892,12 @@ function runTowerRaidBattle(rosterDefs, opts) {
         if (!label) return;
         const left = b.left();
         const ready = left <= 0;
-        const text = `${b.keyChar ? `[${b.keyChar}] ` : ""}${label}${ready ? "" : `　あと${Math.ceil(left)}秒`}`;
+        const off = !!(b.off && b.off());   // 出撃していない／倒れている（グレーアウト）
+        const text = `${b.keyChar ? `[${b.keyChar}] ` : ""}${label}${(ready || off) ? "" : `　あと${Math.ceil(left)}秒`}`;
         if (b.el.textContent !== text) b.el.textContent = text;
-        b.el.disabled = !ready || st.phase !== "play";
+        b.el.classList.toggle("td-skill-off", off);
+        b.el.title = off ? b.offReason() : "";
+        b.el.disabled = off || !ready || st.phase !== "play";
       });
       cardShopRows.forEach(r => {
         const owned = st.cards.find(c => c.tpl.key === r.tpl.key);
@@ -928,12 +947,12 @@ function runTowerRaidBattle(rosterDefs, opts) {
         const y = trEncounterY(w);
         ctx.strokeStyle = w < st.currentWave ? "rgba(89,224,122,0.35)" : "rgba(255,210,63,0.35)"; ctx.setLineDash([8, 6]); ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(TR_WORLD_W, y); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = w < st.currentWave ? "rgba(89,224,122,0.8)" : "rgba(255,210,63,0.8)"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+        ctx.fillStyle = w < st.currentWave ? "rgba(89,224,122,0.8)" : "rgba(255,210,63,0.8)"; ctx.font = `bold 12px ${gameCanvasFontFamily()}`; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
         ctx.fillText(w >= TR_WAVES ? "最後のウェーブ" : `WAVE ${w}`, 8, y - 3);
       }
       // 味方の出撃地点
       ctx.fillStyle = "rgba(89,224,122,0.18)"; ctx.fillRect(0, TR_START_Y - 40, TR_WORLD_W, TR_WORLD_H - TR_START_Y + 40);
-      ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = "#fff"; ctx.font = `bold 12px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText("▲ 出撃地点（ここから上へ進む） ▲", TR_WORLD_W / 2, TR_START_Y + 40);
       // 最後のウェーブの予告（敵の拠点は、最後のウェーブになってから現れる）
       if (!st.defenders.some(e => e.kind === "base")) {
@@ -949,7 +968,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
           g.addColorStop(0, "#5a2a3a"); g.addColorStop(1, "#2a1220");
           ctx.fillStyle = g; ctx.fillRect(e.x - e.w / 2, e.y - e.h / 2, e.w, e.h);
           ctx.lineWidth = 4; ctx.strokeStyle = "#ff3b3b"; ctx.strokeRect(e.x - e.w / 2, e.y - e.h / 2, e.w, e.h);
-          ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillStyle = "#fff"; ctx.font = `bold 14px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.fillText(`敵の拠点　HP ${Math.max(0, Math.round(e.hp))}/${e.maxHp}`, e.x, e.y - 10);
           drawBar(e.x - 150, e.y + 8, 300, e.hp / e.maxHp, "#e5484d");
           return;
@@ -957,7 +976,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
         if (e.kind === "tower") {
           ctx.fillStyle = "#1b222c"; ctx.fillRect(e.x - 16, e.y - 16, 32, 32);
           ctx.lineWidth = 3; ctx.strokeStyle = ringColor; ctx.strokeRect(e.x - 16, e.y - 16, 32, 32);
-          ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillStyle = "#fff"; ctx.font = `bold 14px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.fillText("塔", e.x, e.y + 1);
           drawBar(e.x - 17, e.y - 28, 34, e.hp / e.maxHp, "#e5484d");
           return;
@@ -967,13 +986,13 @@ function runTowerRaidBattle(rosterDefs, opts) {
         if (entry.ok) ctx.drawImage(entry.img, e.x - size / 2, e.y - size / 2, size, size);
         else {
           ctx.beginPath(); ctx.arc(e.x, e.y, size / 2 - 2, 0, Math.PI * 2); ctx.fillStyle = "#5b6b7a"; ctx.fill();
-          ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillStyle = "#fff"; ctx.font = `bold 14px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.fillText(String(e.name).charAt(0), e.x, e.y + 1);
         }
         ctx.beginPath(); ctx.arc(e.x, e.y, size / 2, 0, Math.PI * 2);
         ctx.strokeStyle = e.isBoss ? "#ff3b3b" : ringColor; ctx.lineWidth = e.isBoss ? 4 : 2.5; ctx.stroke();
         if (e.isBoss) {
-          ctx.fillStyle = "#ff3b3b"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillStyle = "#ff3b3b"; ctx.font = `bold 12px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText("BOSS " + e.name, e.x, e.y - size / 2 - 16); ctx.fillText("BOSS " + e.name, e.x, e.y - size / 2 - 16);
         }
         const marks = [];
@@ -982,7 +1001,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
         if (e.defDownUntil > st.time) marks.push("弱");
         if (e.atkDownUntil > st.time) marks.push("攻↓");
         if (marks.length > 0) {
-          ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.font = `bold 11px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText(marks.join(" "), e.x, e.y + size / 2 + 12);
           ctx.fillStyle = "#ffd23f"; ctx.fillText(marks.join(" "), e.x, e.y + size / 2 + 12);
         }
@@ -1001,7 +1020,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
           ctx.save(); ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.clip();
           ctx.drawImage(img.img, x - 14, y - 14, 28, 28); ctx.restore();
         } else {
-          ctx.fillStyle = "#111"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillStyle = "#111"; ctx.font = `bold 14px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.fillText(String(u.name).charAt(0), x, y + 1);
         }
         if (u.alive) drawBar(x - 14, y - 27, 28, u.hp / u.maxHp, "#59e07a");
@@ -1021,7 +1040,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
       st.popups.forEach(p => {
         const rise = (1 - Math.min(1, p.t / 0.8)) * 14;
         ctx.globalAlpha = Math.min(1, p.t / 0.3);
-        ctx.font = p.weak ? "bold 16px sans-serif" : "bold 13px sans-serif";
+        ctx.font = p.weak ? `bold 16px ${gameCanvasFontFamily()}` : `bold 13px ${gameCanvasFontFamily()}`;
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText(p.text, p.x, p.y - rise);
         ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y - rise);
@@ -1042,13 +1061,13 @@ function runTowerRaidBattle(rosterDefs, opts) {
         ctx.globalAlpha = Math.min(1, b.t / 0.4);
         ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0, view.h / 2 - 28, view.w, 56);
         ctx.fillStyle = "#ffd23f"; ctx.fillRect(0, view.h / 2 - 28, view.w, 4); ctx.fillRect(0, view.h / 2 + 24, view.w, 4);
-        ctx.fillStyle = "#fff"; ctx.font = "bold 26px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillStyle = "#fff"; ctx.font = `bold 26px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillText(b.text, view.w / 2, view.h / 2 + 1);
         ctx.globalAlpha = 1;
       });
       if (st.phase === "prep") {
         ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(0, 0, view.w, 34);
-        ctx.fillStyle = "#ffd23f"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillStyle = "#ffd23f"; ctx.font = `bold 16px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillText(`WAVE ${Math.min(st.currentWave, TR_WAVES)} の準備中：手札から出撃・レベルアップして「進軍開始」` + (st.currentWave >= TR_WAVES ? "（最後のウェーブ！）" : ""), view.w / 2, 17);
       }
     }
