@@ -11,3 +11,5 @@ wrangler.jsonc
 .wrangler/**
 worker
 worker/**
+# ★25MiBを超えるため、これがあると配信（Workers Builds）が失敗する。サブセット化して軽くするまでは配信しない
+font/BabelStoneHan.ttf
