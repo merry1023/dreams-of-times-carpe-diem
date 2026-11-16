@@ -1317,7 +1317,7 @@ function runTowerDefenseBattle(pool, opts) {
       for (let y = 40; y < TD_WORLD_H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(TD_WORLD_W, y); ctx.stroke(); }
       // 敵の出てくる口
       ctx.fillStyle = "rgba(229,72,77,0.35)"; ctx.fillRect(0, 0, TD_WORLD_W, 26);
-      ctx.fillStyle = "#fff"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = "#fff"; ctx.font = `bold 12px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText("▼ 敵の出現口 ▼", TD_WORLD_W / 2, 13);
       // 味方陣地のマス
       ctx.fillStyle = "rgba(255,255,255,0.05)"; ctx.fillRect(TD_GRID_X0, TD_GRID_Y0, TD_GRID_COLS * TD_CELL, TD_GRID_ROWS * TD_CELL);
@@ -1335,12 +1335,12 @@ function runTowerDefenseBattle(pool, opts) {
       bg.addColorStop(0, "#3a2f4a"); bg.addColorStop(1, "#1b1626");
       ctx.fillStyle = bg; ctx.fillRect(40, TD_BASE_TOP, TD_WORLD_W - 80, TD_WORLD_H - TD_BASE_TOP);
       ctx.lineWidth = 4; ctx.strokeStyle = "#ffd23f"; ctx.strokeRect(40, TD_BASE_TOP, TD_WORLD_W - 80, TD_WORLD_H - TD_BASE_TOP);
-      ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = "#fff"; ctx.font = `bold 14px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText(`拠点　HP ${Math.max(0, Math.round(st.baseHp))}/${st.baseMaxHp}`, TD_WORLD_W / 2, TD_BASE_TOP + 22);
       drawBar(TD_WORLD_W / 2 - 150, TD_BASE_TOP + 40, 300, st.baseHp / st.baseMaxHp, "#e5484d");
       if (st.baseShield > 0) {
         drawBar(TD_WORLD_W / 2 - 150, TD_BASE_TOP + 50, 300, Math.min(1, st.baseShield / st.baseMaxHp), "#4aa8ff");
-        ctx.fillStyle = "#9bd0ff"; ctx.font = "bold 11px sans-serif"; ctx.fillText(`シールド ${Math.round(st.baseShield)}`, TD_WORLD_W / 2, TD_BASE_TOP + 66);
+        ctx.fillStyle = "#9bd0ff"; ctx.font = `bold 11px ${gameCanvasFontFamily()}`; ctx.fillText(`シールド ${Math.round(st.baseShield)}`, TD_WORLD_W / 2, TD_BASE_TOP + 66);
       }
       
       // 選択中ユニットの射程
@@ -1362,7 +1362,7 @@ function runTowerDefenseBattle(pool, opts) {
         ctx.fillStyle = tdElementColor(u.tpl.element); ctx.fill();
         ctx.setLineDash([4, 3]); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke(); ctx.setLineDash([]);
         ctx.globalAlpha = 1;
-        ctx.fillStyle = "#fff"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillStyle = "#fff"; ctx.font = `bold 11px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillText("復活待ち", sp.x, sp.y + 1);
       });
       
@@ -1380,14 +1380,14 @@ function runTowerDefenseBattle(pool, opts) {
           ctx.drawImage(unitImg.img, sp.x - 20, sp.y - 20, 40, 40);
           ctx.restore();
         } else {
-          ctx.fillStyle = "#111"; ctx.font = "bold 18px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillStyle = "#111"; ctx.font = `bold 18px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.fillText(u.tpl.roleChar, sp.x, sp.y + 1);
         }
         drawBar(sp.x - 20, sp.y + 24, 40, u.hp / u.maxHp, "#59e07a");
         if (u.shield > 0) drawBar(sp.x - 20, sp.y + 32, 40, Math.min(1, u.shield / u.maxHp), "#4aa8ff");   // ★シールド（別枠のHP）
         if (u.level > 1) {
           ctx.fillStyle = "#000"; ctx.fillRect(sp.x + 8, sp.y - 30, 24, 13);
-          ctx.fillStyle = "#ffd23f"; ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(`Lv${u.level}`, sp.x + 20, sp.y - 23);
+          ctx.fillStyle = "#ffd23f"; ctx.font = `bold 10px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(`Lv${u.level}`, sp.x + 20, sp.y - 23);
         }
       });
       
@@ -1412,13 +1412,13 @@ function runTowerDefenseBattle(pool, opts) {
         } else {
           ctx.beginPath(); ctx.arc(e.x, e.y, size / 2 - 2, 0, Math.PI * 2);
           ctx.fillStyle = "#5b6b7a"; ctx.fill();
-          ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillStyle = "#fff"; ctx.font = `bold 14px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.fillText(String(e.name).charAt(0), e.x, e.y + 1);
         }
         ctx.beginPath(); ctx.arc(e.x, e.y, size / 2, 0, Math.PI * 2);
         ctx.strokeStyle = e.isBoss ? "#ff3b3b" : ringColor; ctx.lineWidth = e.isBoss ? 4 : 2.5; ctx.stroke();
         if (e.isBoss) {
-          ctx.fillStyle = "#ff3b3b"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillStyle = "#ff3b3b"; ctx.font = `bold 12px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText("BOSS " + e.name, e.x, e.y - size / 2 - 16); ctx.fillText("BOSS " + e.name, e.x, e.y - size / 2 - 16);
         }
         // 状態マーク（止＝足止め／継＝継続ダメージ／弱＝防御低下／攻↓＝攻撃低下／遅＝足が遅い）
@@ -1429,7 +1429,7 @@ function runTowerDefenseBattle(pool, opts) {
         if (e.atkDownUntil > st.time) marks.push("攻↓");
         if (e.slowUntil > st.time) marks.push("遅");
         if (marks.length > 0) {
-          ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.font = `bold 11px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText(marks.join(" "), e.x, e.y + size / 2 + 10);
           ctx.fillStyle = "#ffd23f"; ctx.fillText(marks.join(" "), e.x, e.y + size / 2 + 10);
         }
@@ -1440,7 +1440,7 @@ function runTowerDefenseBattle(pool, opts) {
       st.popups.forEach(p => {
         const rise = (1 - Math.min(1, p.t / 0.8)) * 14;
         ctx.globalAlpha = Math.min(1, p.t / 0.3);
-        ctx.font = p.weak ? "bold 16px sans-serif" : "bold 13px sans-serif";
+        ctx.font = p.weak ? `bold 16px ${gameCanvasFontFamily()}` : `bold 13px ${gameCanvasFontFamily()}`;
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText(p.text, p.x, p.y - rise);
         ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y - rise);
@@ -1467,15 +1467,15 @@ function runTowerDefenseBattle(pool, opts) {
         ctx.globalAlpha = Math.min(1, b.t / 0.4);
         ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0, view.h / 2 - 28, view.w, 56);
         ctx.fillStyle = "#ffd23f"; ctx.fillRect(0, view.h / 2 - 28, view.w, 4); ctx.fillRect(0, view.h / 2 + 24, view.w, 4);
-        ctx.fillStyle = "#ffd23f"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        ctx.fillStyle = "#ffd23f"; ctx.font = `bold 14px ${gameCanvasFontFamily()}`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
         ctx.fillText("COMBO", 24, view.h / 2);
-        ctx.fillStyle = "#fff"; ctx.font = "bold 26px sans-serif"; ctx.textAlign = "center";
+        ctx.fillStyle = "#fff"; ctx.font = `bold 26px ${gameCanvasFontFamily()}`; ctx.textAlign = "center";
         ctx.fillText(b.text, view.w / 2, view.h / 2 + 1);
         ctx.globalAlpha = 1;
       });
       if (st.phase === "prep") {
         ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(0, 0, view.w, 34);
-        ctx.fillStyle = "#ffd23f"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillStyle = "#ffd23f"; ctx.font = `bold 16px ${gameCanvasFontFamily()}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillText(`WAVE ${st.wave} の準備中：仲間を置いて「開始」` + (tdIsBossWave(st, st.wave) && st.bossPool.length > 0 ? "（中ボス出現！）" : ""), view.w / 2, 17);
       }
     }

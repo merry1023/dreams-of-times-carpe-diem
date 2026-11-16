@@ -11,13 +11,39 @@
 }
 
 /* 2. 定義した変数を var() を使って呼び出す */
+/* ★要望対応：ゲーム内フォント（fontsetting.js）。@font-face は「使われた時」だけダウンロードされる（選ばなかったフォントは読み込まれない） */
+@font-face {
+  font-family: "GameFontNoto";
+  src: url("font/NotoSansJP-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;   /* 可変フォント（太さを自由に変えられる） */
+  font-display: swap;
+}
+@font-face {
+  font-family: "GameFontSukima";
+  src: url("font/SukimaGothicSub-Regular ver11.41.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "GameFontHangyaku";
+  src: url("font/Hangyaku-0vRGR.ttf") format("truetype");
+  font-display: swap;
+}
+:root {
+  /* 設定の「フォント」で fontsetting.js が書き換える。読み込み前でも同じ並びで表示できるよう、既定値（Noto）を入れておく */
+  --game-font: "GameFontNoto", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+}
+/* ボタン・入力欄は、何もしないと端末標準のフォントになるので、選んだフォントを引き継がせる */
+button, input, select, textarea {
+  font-family: inherit;
+}
+
 html, body {
     margin: 0;
     padding: 0;
     height: 100%;
     background-color: var(--bg-color-dark); /* 変数を使用 */
     color: var(--text-color);               /* 変数を使用 */
-    font-family: sans-serif;
+    font-family: var(--game-font);
     overflow: hidden;
 }
 
@@ -2880,8 +2906,8 @@ rt {
   max-width: 80%;       /* 画面端までいかないように幅を制限 */
   white-space: pre-wrap; /* ★テキスト中の\nを改行として表示する（message-textと同じ扱いにする） */
   
-  /* 普段のメッセージウィンドウと同じSans-serifにするなど、フォントはお好みで */
-  font-family: sans-serif;
+  /* 普段のメッセージウィンドウと同じフォント（設定の「フォント」で選んだもの） */
+  font-family: var(--game-font);
 }
 
 
