@@ -5,7 +5,7 @@
 // <script src="game_settings_data.js"></script> として追加してください。
 // ★書き出し直すたびに中のversionが更新されるので、差し替えれば自動的に新しい内容が反映されます。
 window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
-  "version": 1794468811999,
+  "version": 1794606828032,
   "enemies": [
     {
       "id": "goblin",
@@ -12419,7 +12419,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "id": "tutorial_1794210168746_7",
       "category": "覚醒・魔獣",
       "title": "覚醒と魔獣召喚について",
-      "body": "便利タブの「冒険者協会」アプリで、「覚醒」と「魔獣召喚」を引けます。使うのは「魔力結晶」で、1回に「覚醒」は10個、「魔獣召喚」は15個必要です。魔力結晶は、世界冒険者協会支部の「掃討作戦」をクリアした報酬でもらえます。\n同じものがもう一度出ると「限破」（魔獣は「成上」）が上がり、最大5まで強くなります。最大のあとに同じものが出ると、魔力結晶と陳に変わります。\nレア度は「通常」「希少」「伝説」の3段階です。50回引いても「伝説」が出なければ、50回目で必ず「伝説」が出ます（あと何回かは画面に表示されます）。期間が決められている時は、期間外は引けません。",
+      "body": "便利タブの「冒険者協会」アプリで、「覚醒」と「魔獣召喚」を引けます。使うのは「魔力結晶」で、1回に「覚醒」は10個、「魔獣召喚」は15個必要です。魔力結晶は、世界冒険者協会支部の「掃討作戦」をクリアした報酬のほか、話をクリアした時（10個）、実績を解放した時（3個）、図鑑を1つ埋めた時（1個）、図鑑で隣り合う2行ぶん（4つ）をすべてそろえた時（10個）にもらえます。\n同じものがもう一度出ると「限破」（魔獣は「成上」）が上がり、最大5まで強くなります。最大のあとに同じものが出ると、魔力結晶と陳に変わります。\nレア度は「通常」「希少」「伝説」の3段階です。50回引いても「伝説」が出なければ、50回目で必ず「伝説」が出ます（あと何回かは画面に表示されます）。期間が決められている時は、期間外は引けません。",
       "requiredFacilityId": "facility_1792995274491_1"
     },
     {
@@ -16654,7 +16654,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "slowPercent": 50,
       "slowSec": 1.5,
       "supportPercent": 25,
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_1"
     },
     {
       "id": "towerunit_1794150739805_3",
@@ -16670,7 +16671,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "slowPercent": 50,
       "slowSec": 1.5,
       "supportPercent": 25,
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_2"
     },
     {
       "id": "towerunit_1794150739805_4",
@@ -16686,7 +16688,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "slowPercent": 50,
       "slowSec": 1.5,
       "supportPercent": 25,
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_3"
     },
     {
       "id": "towerunit_1794150739805_5",
@@ -16702,7 +16705,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "slowPercent": 50,
       "slowSec": 1.5,
       "supportPercent": 25,
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_4"
     },
     {
       "id": "towerunit_1794150739805_6",
@@ -16718,7 +16722,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "slowPercent": 50,
       "slowSec": 1.5,
       "supportPercent": 25,
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_5"
     },
     {
       "id": "towerunit_1794150739805_7",
@@ -16734,7 +16739,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "slowPercent": 50,
       "slowSec": 1.5,
       "supportPercent": 25,
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_6"
     },
     {
       "id": "towerunit_1794150739805_8",
@@ -16750,7 +16756,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "slowPercent": 50,
       "slowSec": 1.5,
       "supportPercent": 25,
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_7"
     },
     {
       "id": "towerunit_1794150739805_9",
@@ -16766,7 +16773,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "slowPercent": 50,
       "slowSec": 1.5,
       "supportPercent": 25,
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_8"
     },
     {
       "id": "towerunit_1794150739805_10",
@@ -16782,7 +16790,8 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "slowPercent": 50,
       "slowSec": 1.5,
       "supportPercent": 25,
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_9"
     },
     {
       "id": "towerunit_1794150739805_11",
@@ -16822,7 +16831,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "cost": {
         "funds": 0
       },
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_7",
+      "skillEffectMixId": "effectmix_1794600000000_7"
     },
     {
       "id": "raidunit_1794150910714_13",
@@ -16845,7 +16856,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "funds": 90,
         "food": 1
       },
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_1",
+      "skillEffectMixId": "effectmix_1794600000000_1"
     },
     {
       "id": "raidunit_1794150910714_14",
@@ -16867,7 +16880,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
       "cost": {
         "funds": 120
       },
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_2",
+      "skillEffectMixId": "effectmix_1794600000000_2"
     },
     {
       "id": "raidunit_1794150910714_15",
@@ -16890,7 +16905,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "funds": 80,
         "stone": 1
       },
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_3",
+      "skillEffectMixId": "effectmix_1794600000000_10"
     },
     {
       "id": "raidunit_1794150910714_16",
@@ -16913,7 +16930,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "funds": 100,
         "food": 2
       },
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_4",
+      "skillEffectMixId": "effectmix_1794600000000_4"
     },
     {
       "id": "raidunit_1794150910714_17",
@@ -16936,7 +16955,9 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
         "funds": 110,
         "stone": 1
       },
-      "imagePath": ""
+      "imagePath": "",
+      "effectMixId": "effectmix_1794600000000_5",
+      "skillEffectMixId": "effectmix_1794600000000_5"
     }
   ],
   "guildRewards": {
@@ -18183,7 +18204,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
               "id": "skillblock_gachatest_3",
               "type": "message",
               "speaker": "",
-              "text": "（3凸以上）灯火が持続的な癒しに変わる！"
+              "text": "灯火が持続的な癒しに変わる！"
             },
             {
               "id": "skillblock_gachatest_4",
@@ -18443,7 +18464,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
               "id": "skillblock_gachatest_9",
               "type": "message",
               "speaker": "",
-              "text": "（3凸以上）鋭い一撃が相手の動きを止める！"
+              "text": "鋭い一撃が相手の動きを止める！"
             },
             {
               "id": "skillblock_gachatest_10",
@@ -18469,7 +18490,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
               "id": "skillblock_gachatest_12",
               "type": "message",
               "speaker": "",
-              "text": "（5凸）舞は止まらない――全体への追撃！"
+              "text": "舞は止まらない――全体への追撃！"
             },
             {
               "id": "skillblock_gachatest_13",
@@ -19373,7 +19394,7 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
                   "id": "skillblock_beasttest_3",
                   "type": "message",
                   "speaker": "",
-                  "text": "（3凸以上）雷鳴が相手の動きを止める！"
+                  "text": "雷鳴が相手の動きを止める！"
                 },
                 {
                   "id": "skillblock_beasttest_4",
@@ -24561,5 +24582,425 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     "companions": [],
     "quests": [],
     "classes": []
-  }
+  },
+  "effectMixes": [
+    {
+      "id": "effectmix_1794600000000_1",
+      "name": "混沌の波動",
+      "enabled": true,
+      "layers": [
+        {
+          "base": "swirl",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#b04cff",
+          "size": 1.3,
+          "delay": 0,
+          "duration": 0.6,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "burst",
+          "anchor": "to",
+          "color": "element",
+          "customColor": "#ffffff",
+          "size": 1.1,
+          "delay": 0.25,
+          "duration": 0.4,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "ring",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#ff5ad1",
+          "size": 1.2,
+          "delay": 0.3,
+          "duration": 0.4,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        }
+      ]
+    },
+    {
+      "id": "effectmix_1794600000000_2",
+      "name": "闇の呪縛",
+      "enabled": true,
+      "layers": [
+        {
+          "base": "bolt",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#7a3cff",
+          "size": 1,
+          "delay": 0,
+          "duration": 0.28,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "swirl",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#5b2a99",
+          "size": 1,
+          "delay": 0.2,
+          "duration": 0.55,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "sparks",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#c9a2ff",
+          "size": 1,
+          "delay": 0.25,
+          "duration": 0.5,
+          "count": 8,
+          "alpha": 1,
+          "glow": true
+        }
+      ]
+    },
+    {
+      "id": "effectmix_1794600000000_3",
+      "name": "光の砲撃",
+      "enabled": true,
+      "layers": [
+        {
+          "base": "beam",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#fff6b0",
+          "size": 1.3,
+          "delay": 0,
+          "duration": 0.35,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "burst",
+          "anchor": "to",
+          "color": "element",
+          "customColor": "#ffffff",
+          "size": 1.2,
+          "delay": 0.12,
+          "duration": 0.4,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "pillar",
+          "anchor": "to",
+          "color": "element",
+          "customColor": "#ffffff",
+          "size": 1,
+          "delay": 0.12,
+          "duration": 0.5,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        }
+      ]
+    },
+    {
+      "id": "effectmix_1794600000000_4",
+      "name": "裂の矢",
+      "enabled": true,
+      "layers": [
+        {
+          "base": "bolt",
+          "anchor": "to",
+          "color": "element",
+          "customColor": "#ffffff",
+          "size": 0.8,
+          "delay": 0,
+          "duration": 0.2,
+          "count": 3,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "sparks",
+          "anchor": "to",
+          "color": "element",
+          "customColor": "#ffffff",
+          "size": 0.9,
+          "delay": 0.15,
+          "duration": 0.35,
+          "count": 8,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "ring",
+          "anchor": "to",
+          "color": "element",
+          "customColor": "#ffffff",
+          "size": 0.7,
+          "delay": 0.15,
+          "duration": 0.3,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        }
+      ]
+    },
+    {
+      "id": "effectmix_1794600000000_5",
+      "name": "桃色の誘惑",
+      "enabled": true,
+      "layers": [
+        {
+          "base": "burst",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#ff7ac8",
+          "size": 1.2,
+          "delay": 0,
+          "duration": 0.5,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "sparks",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#ffd1ec",
+          "size": 1,
+          "delay": 0.05,
+          "duration": 0.7,
+          "count": 14,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "ring",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#ff4fa8",
+          "size": 1.3,
+          "delay": 0.1,
+          "duration": 0.5,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        }
+      ]
+    },
+    {
+      "id": "effectmix_1794600000000_6",
+      "name": "無の衝撃",
+      "enabled": true,
+      "layers": [
+        {
+          "base": "ring",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#ffffff",
+          "size": 1.2,
+          "delay": 0,
+          "duration": 0.4,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "ring",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#cfd8e3",
+          "size": 0.8,
+          "delay": 0.12,
+          "duration": 0.4,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "burst",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#ffffff",
+          "size": 0.8,
+          "delay": 0.05,
+          "duration": 0.3,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        }
+      ]
+    },
+    {
+      "id": "effectmix_1794600000000_7",
+      "name": "物理の打撃",
+      "enabled": true,
+      "layers": [
+        {
+          "base": "burst",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#ffe9c2",
+          "size": 0.9,
+          "delay": 0,
+          "duration": 0.25,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "sparks",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#ffd27a",
+          "size": 1,
+          "delay": 0,
+          "duration": 0.35,
+          "count": 10,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "ring",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#ffffff",
+          "size": 0.7,
+          "delay": 0.05,
+          "duration": 0.25,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        }
+      ]
+    },
+    {
+      "id": "effectmix_1794600000000_8",
+      "name": "業火の矢",
+      "enabled": true,
+      "layers": [
+        {
+          "base": "bolt",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#ff8a2a",
+          "size": 1.1,
+          "delay": 0,
+          "duration": 0.25,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "burst",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#ff5a1f",
+          "size": 1.3,
+          "delay": 0.18,
+          "duration": 0.45,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "sparks",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#ffd23f",
+          "size": 1,
+          "delay": 0.18,
+          "duration": 0.5,
+          "count": 12,
+          "alpha": 1,
+          "glow": true
+        }
+      ]
+    },
+    {
+      "id": "effectmix_1794600000000_9",
+      "name": "雷鳴",
+      "enabled": true,
+      "layers": [
+        {
+          "base": "lightning",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#fff27a",
+          "size": 1.3,
+          "delay": 0,
+          "duration": 0.3,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "burst",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#ffffff",
+          "size": 0.9,
+          "delay": 0.08,
+          "duration": 0.3,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "pillar",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#fff27a",
+          "size": 0.9,
+          "delay": 0.08,
+          "duration": 0.35,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        }
+      ]
+    },
+    {
+      "id": "effectmix_1794600000000_10",
+      "name": "癒しの風",
+      "enabled": true,
+      "layers": [
+        {
+          "base": "swirl",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#59e07a",
+          "size": 1.1,
+          "delay": 0,
+          "duration": 0.6,
+          "count": 6,
+          "alpha": 1,
+          "glow": true
+        },
+        {
+          "base": "sparks",
+          "anchor": "to",
+          "color": "custom",
+          "customColor": "#c6ffd4",
+          "size": 1,
+          "delay": 0.1,
+          "duration": 0.6,
+          "count": 10,
+          "alpha": 1,
+          "glow": true
+        }
+      ]
+    }
+  ]
 };

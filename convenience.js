@@ -219,8 +219,7 @@ function renderConvenienceIcons() {
     glyph.className = "convenience-icon-glyph";
     glyph.textContent = app.icon;
     // ★実績・チュートリアルに未確認があれば、赤丸の「!」バッジを重ねる
-    if (app.id === "tutorial" && getUnreadTutorialIds().length > 0) glyph.appendChild(createUnreadBadgeElement("convenience-icon-unread"));
-    if (app.id === "achievements" && getUnreadAchievementIds().length > 0) glyph.appendChild(createUnreadBadgeElement("convenience-icon-unread"));
+    if (UNREAD_BADGE_APP_IDS.includes(app.id) && unreadCountForApp(app.id) > 0) glyph.appendChild(createUnreadBadgeElement("convenience-icon-unread"));   // ★魔力結晶の受け取りがある図鑑・進行度にも付く
     
     // ★進行度アイコンだけ、アイコンの上に「クリア済み話数／全話数」の小さなバッジを重ねて表示する
     if (app.id === "progress" && typeof getChapterProgressSummary === "function") {
@@ -569,6 +568,7 @@ async function openMonsterCodex() {
   renderMonsterCodex();
   window.removeEventListener("keydown", handleMonsterCodexKeyDown); // 二重登録防止
   window.addEventListener("keydown", handleMonsterCodexKeyDown);
+  setTimeout(() => { if (typeof crystalClaimOnOpen === "function") crystalClaimOnOpen("monsterCodex"); }, 0);   // ★図鑑・ビンゴでたまっていた魔力結晶を、ここで一括で受け取る
   subTabSwitchBlocked = true; // ★要望対応：図鑑を開いている間は、分類切り替え（Q/E）とサブ画面タブ切り替え（Q/E）が同時に起きないよう、タブ切り替えを止める
 }
 
@@ -985,19 +985,28 @@ function createUnreadBadgeElement(className) {
   return badge;
 }
 
+// ★アイコンに「!」を付けるアプリと、その未確認の数（実績・チュートリアルの未確認＋魔力結晶の受け取り待ち）
+const UNREAD_BADGE_APP_IDS = ["tutorial", "achievements", "monsterCodex", "progress"];
+function unreadCountForApp(appId) {
+  const crystal = (typeof crystalPendingCount === "function") ? crystalPendingCount(appId) : 0;
+  if (appId === "tutorial") return getUnreadTutorialIds().length;
+  if (appId === "achievements") return getUnreadAchievementIds().length + crystal;
+  return crystal;
+}
+
 // ★未確認があるかどうかに合わせて、便利タブのボタンのバッジを付け外しする。
 //   アイコン一覧側（実績・チュートリアルのアイコン）は、一覧を描画し直す時に付ける
 function updateUnreadBadges() {
   const tabBtn = document.querySelector('.tab-btn[onclick*="tab-convenience"]');
   if (!tabBtn) return;
-  const total = getUnreadTutorialIds().length + getUnreadAchievementIds().length;
+  const total = UNREAD_BADGE_APP_IDS.reduce((sum, id) => sum + unreadCountForApp(id), 0);
   const existing = tabBtn.querySelector(".unread-badge");
   if (total > 0 && !existing) tabBtn.appendChild(createUnreadBadgeElement("unread-badge"));
   else if (total === 0 && existing) existing.remove();
   // ★アイコン一覧が表示されている間に未確認の数が変わった時のために、アイコン側のバッジも合わせておく
   const iconGrid = document.getElementById("convenience-icon-grid");
   if (iconGrid) {
-    [["tutorial", getUnreadTutorialIds().length], ["achievements", getUnreadAchievementIds().length]].forEach(([appId, count]) => {
+    UNREAD_BADGE_APP_IDS.map(appId => [appId, unreadCountForApp(appId)]).forEach(([appId, count]) => {
       const glyph = iconGrid.querySelector(`.convenience-icon[data-app-id="${appId}"] .convenience-icon-glyph`);
       if (!glyph) return;
       const iconBadge = glyph.querySelector(".convenience-icon-unread");
@@ -1148,13 +1157,8 @@ function renderTutorialPanel() {
   
   // ★要望対応：カーソルに合わせて一覧をスクロールする（list／panelへの挿入が終わった後で計算する）
   if (tutorialCursorRowEl) {
-    const containerRect = list.getBoundingClientRect();
-    const rowRect = tutorialCursorRowEl.getBoundingClientRect();
-    if (rowRect.top < containerRect.top) {
-      list.scrollTop -= (containerRect.top - rowRect.top);
-    } else if (rowRect.bottom > containerRect.bottom) {
-      list.scrollTop += (rowRect.bottom - containerRect.bottom);
-    }
+    const cursorRowEl = tutorialCursorRowEl;
+    requestAnimationFrame(() => cursorRowEl.scrollIntoView({ block: "nearest" }));   // ★どの入れ物がスクロールしていても、カーソル行が見える所まで動かす
   }
   
   const backBtn = document.createElement("button");
@@ -1247,6 +1251,7 @@ let progressSelectedArcId = null;
 let progressGroupCursorIndex = 0;
 
 function openProgressPanel() {
+  setTimeout(() => { if (typeof crystalClaimOnOpen === "function") crystalClaimOnOpen("progress"); }, 0);   // ★話クリアでたまっていた魔力結晶を、ここで一括で受け取る
   const grid = document.getElementById("convenience-icon-grid");
   const saveloadPanel = document.getElementById("saveload-panel");
   const codexPanel = document.getElementById("monster-codex-panel");
@@ -1411,7 +1416,7 @@ function renderProgressGroupList(container) {
     };
     
     container.appendChild(row);
-    if (index === progressGroupCursorIndex) row.scrollIntoView({ block: "nearest" });
+    if (index === progressGroupCursorIndex) requestAnimationFrame(() => row.scrollIntoView({ block: "nearest" }));   // ★挿入し終わった後でスクロールする
   });
 }
 
@@ -1459,7 +1464,7 @@ function renderProgressChapterList(container) {
     };
     
     container.appendChild(row);
-    if (index === progressChapterCursorIndex) row.scrollIntoView({ block: "nearest" }); // ★カーソルに合わせて自動スクロール
+    if (index === progressChapterCursorIndex) requestAnimationFrame(() => row.scrollIntoView({ block: "nearest" })); // ★カーソルに合わせて自動スクロール（挿入し終わった後で）
   });
 }
 
@@ -1932,6 +1937,20 @@ function renderMonsterCodexDetail(panel) {
   panel.appendChild(backBtn);
 }
 
+// ★図鑑の一覧は2列のグリッド：左右キー＝横の隣へ、上下キー＝1行ぶん（2つ）上下へ
+function codexGridMove(index, key, length, cols) {
+  cols = cols || 2;
+  if (length <= 0) return 0;
+  let next = index;
+  if (key === "ArrowLeft") { if (index % cols > 0) next = index - 1; }
+  else if (key === "ArrowRight") { if (index % cols < cols - 1 && index + 1 < length) next = index + 1; }
+  else if (key === "ArrowUp") { if (index - cols >= 0) next = index - cols; }
+  else if (key === "ArrowDown") {
+    if (index + cols < length) next = index + cols;
+    else if (Math.floor(index / cols) < Math.floor((length - 1) / cols)) next = length - 1;   // 最後の行が欠けている時は、いちばん最後へ
+  }
+  return next;
+}
 function handleMonsterCodexKeyDown(event) {
   if (typeof isScenarioBuildOverlayOpen !== "undefined" && isScenarioBuildOverlayOpen) return; // ★要望対応：シナリオエディタ表示中は本編を操作させない
   if (controlFocus !== "sub") return;
@@ -1964,13 +1983,9 @@ function handleMonsterCodexKeyDown(event) {
   if (codexTab !== "monster") {
     if (codexViewMode === "detail") return;
     const entries = getCodexEntries(codexTab);
-    if (event.key === "ArrowDown") {
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {   // ★左右＝横、上下＝縦（2列グリッド）
       event.preventDefault();
-      codexCursorIndex = Math.min(Math.max(0, entries.length - 1), codexCursorIndex + 1);
-      renderMonsterCodex();
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      codexCursorIndex = Math.max(0, codexCursorIndex - 1);
+      codexCursorIndex = codexGridMove(codexCursorIndex, event.key, entries.length);
       renderMonsterCodex();
     } else if (KEY_CONFIG.decideKeys.includes(event.key)) {
       event.preventDefault();
@@ -1998,13 +2013,9 @@ function handleMonsterCodexKeyDown(event) {
     return; // ★詳細画面ではカーソル移動はしない
   }
   
-  if (event.key === "ArrowDown") {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {   // ★左右＝横、上下＝縦（2列グリッド）
     event.preventDefault();
-    codexCursorIndex = Math.min(codexKeys.length - 1, codexCursorIndex + 1);
-    renderMonsterCodex();
-  } else if (event.key === "ArrowUp") {
-    event.preventDefault();
-    codexCursorIndex = Math.max(0, codexCursorIndex - 1);
+    codexCursorIndex = codexGridMove(codexCursorIndex, event.key, codexKeys.length);
     renderMonsterCodex();
   } else if (KEY_CONFIG.decideKeys.includes(event.key)) {
     event.preventDefault();

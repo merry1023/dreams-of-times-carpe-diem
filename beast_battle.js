@@ -236,6 +236,26 @@ async function beastReceiveEnemyAttack(enemy, damage) {
 }
 
 // ===== 戦闘画面の表示（左上の小さなパネル：見た目・名前・HP） =====
+// ★おとも魔獣のパネルと連動ボタンの縦位置を決める。左上に主人公のステータス（mini-status-hud）が出ている間は、
+//   そのすぐ下に置いて重ならないようにする（出ていない時は、これまで通り上から20px）。ステージからはみ出さないよう下端も抑える
+function beastHudLayout() {
+  const el = document.getElementById("battle-beast");
+  const linkEl = document.getElementById("battle-beast-links");
+  if (!el) return;
+  const mini = document.getElementById("mini-status-hud");
+  let top = 20;
+  if (mini && !mini.classList.contains("hidden") && mini.offsetHeight > 0) {
+    top = Math.max(top, mini.offsetTop + mini.offsetHeight + 8);
+  }
+  const stage = el.offsetParent;
+  if (stage && el.offsetHeight > 0) {
+    top = Math.max(0, Math.min(top, stage.clientHeight - el.offsetHeight - 8));
+  }
+  el.style.top = `${top}px`;
+  if (linkEl) linkEl.style.top = `${top + (el.offsetHeight || 58) + 6}px`;
+}
+window.addEventListener("resize", () => { try { beastHudLayout(); } catch (e) {} });
+
 function updateBattleBeastHud() {
   const el = document.getElementById("battle-beast");
   if (!el) return;
@@ -262,6 +282,7 @@ function updateBattleBeastHud() {
   el.querySelector(".battle-beast-name").textContent = `${beast.displayName}${beast.alive ? "" : "（戦闘不能）"}`;
   el.querySelector(".battle-beast-fill").style.width = `${percent}%`;
   el.querySelector(".battle-beast-value").textContent = `${beast.gauges.hp.current} / ${beast.gauges.hp.max}`;
+  beastHudLayout();
 }
 
 function hideBattleBeastHud() {
@@ -335,6 +356,7 @@ function beastLinkRender() {
   el.innerHTML = "";
   if (!st || st.pending.length === 0) { el.classList.add("hidden"); return; }
   el.classList.remove("hidden");
+  beastHudLayout();
   st.pending.forEach((item, i) => {
     const b = document.createElement("button");
     b.type = "button";

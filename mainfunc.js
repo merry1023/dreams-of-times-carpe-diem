@@ -664,6 +664,7 @@ let currentBackground = { type: "color", value: "#000000" };
 
 // メイン画面の背景を画像にする（例: setBackgroundImage("img/村.jpeg")）
 function setBackgroundImage(url) {
+  cancelBackgroundTransition(); // ★途中のトランジションがあれば止める
   currentBackground = { type: "image", value: url };
   mainScreen.style.backgroundImage = `url('${url}')`;
   mainScreen.style.backgroundSize = "cover";
@@ -672,9 +673,121 @@ function setBackgroundImage(url) {
 
 // メイン画面の背景を単色にする（例: setBackgroundColor("#000000")）
 function setBackgroundColor(color) {
+  cancelBackgroundTransition(); // ★途中のトランジションがあれば止める
   currentBackground = { type: "color", value: color };
   mainScreen.style.backgroundImage = "none";
   mainScreen.style.backgroundColor = color;
+}
+
+// ===== 背景切り替えのトランジション（scenariobuild.js の「背景変更」ブロックから呼ばれる） =====
+// ★背景はメイン画面（.main-screen）自身の background なので、切り替え前の背景を写した層（.bg-transition-layer）を
+//   メイン画面の一番奥に重ね、新しい背景を先に適用したうえで、その層をアニメーションで消して「切り替わる」ように見せる。
+//   層は背景より手前・中身（メッセージ・立ち絵・敵など）より奥に置く（z-index:-1 と、切り替え中だけの isolation）
+const BG_TRANSITION_TYPES = [
+  ["none", "なし（すぐ切り替える）"],
+  ["fade", "フェード（クロスフェード）"],
+  ["blackout", "暗転（黒を挟む）"],
+  ["whiteout", "ホワイトアウト（白を挟む）"],
+  ["wipeRight", "ワイプ（左から右へ）"],
+  ["wipeLeft", "ワイプ（右から左へ）"],
+  ["wipeDown", "ワイプ（上から下へ）"],
+  ["wipeUp", "ワイプ（下から上へ）"],
+  ["slideLeft", "スライド（古い背景が左へ消える）"],
+  ["slideRight", "スライド（古い背景が右へ消える）"],
+  ["iris", "円形ワイプ（中央から広がる）"]
+];
+let bgTransitionRunId = 0;
+
+function cancelBackgroundTransition() {
+  bgTransitionRunId++;
+  if (typeof mainScreen === "undefined" || !mainScreen) return;
+  mainScreen.classList.remove("bg-transition-active");
+  mainScreen.querySelectorAll(":scope > .bg-transition-layer").forEach(el => el.remove());
+}
+
+function preloadBackgroundImage(url, timeoutMs = 2000) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const timer = setTimeout(resolve, timeoutMs);
+    img.onload = img.onerror = () => { clearTimeout(timer); resolve(); };
+    img.src = url;
+  });
+}
+
+// path：画像パスまたは「#」から始まる色コード／type：BG_TRANSITION_TYPES のキー／seconds：秒数／waitDone：終わるまで次のブロックへ進まない
+async function changeBackgroundWithTransition(path, type, seconds, waitDone = true) {
+  const target = String(path || "").trim();
+  if (!target) return;
+  const isColor = target.startsWith("#");
+  const apply = () => { if (isColor) setBackgroundColor(target); else setBackgroundImage(target); };
+  const known = BG_TRANSITION_TYPES.some(t => t[0] === type && t[0] !== "none");
+  const same = currentBackground && currentBackground.type === (isColor ? "color" : "image") && currentBackground.value === target;
+  if (!known || same || fastForwardMode || typeof mainScreen.animate !== "function") { apply(); return; }
+
+  const idBefore = bgTransitionRunId;
+  if (!isColor) await preloadBackgroundImage(target);
+  if (idBefore !== bgTransitionRunId) return; // 待っている間に、別の背景変更が入った
+  const cs = getComputedStyle(mainScreen);
+  const old = { image: cs.backgroundImage, color: cs.backgroundColor, size: cs.backgroundSize, pos: cs.backgroundPosition };
+  apply(); // 新しい背景を先に適用する（中で前のトランジションは止まる）
+  const myRun = bgTransitionRunId;
+
+  const makeLayer = () => { const d = document.createElement("div"); d.className = "bg-transition-layer"; return d; };
+  const oldLayer = makeLayer();
+  oldLayer.style.backgroundImage = old.image;
+  oldLayer.style.backgroundColor = old.color;
+  oldLayer.style.backgroundSize = old.size;
+  oldLayer.style.backgroundPosition = old.pos;
+  mainScreen.classList.add("bg-transition-active");
+  mainScreen.insertBefore(oldLayer, mainScreen.firstChild);
+
+  const ms = Math.max(100, (Number(seconds) > 0 ? Number(seconds) : 1) * 1000);
+  const opt = (d, extra) => Object.assign({ duration: d, easing: "ease-in-out", fill: "forwards" }, extra || {});
+  const run = async () => {
+    try {
+      if (type === "fade") {
+        await oldLayer.animate([{ opacity: 1 }, { opacity: 0 }], opt(ms)).finished;
+      } else if (type === "blackout" || type === "whiteout") {
+        const cover = makeLayer();
+        cover.style.backgroundColor = type === "blackout" ? "#000" : "#fff";
+        cover.style.opacity = "0";
+        mainScreen.insertBefore(cover, oldLayer.nextSibling);
+        await cover.animate([{ opacity: 0 }, { opacity: 1 }], opt(ms / 2)).finished;
+        if (myRun !== bgTransitionRunId) return;
+        oldLayer.remove(); // 画面が真っ黒（真っ白）の間に、背景は新しいものに替わっている
+        await cover.animate([{ opacity: 1 }, { opacity: 0 }], opt(ms / 2)).finished;
+      } else if (type.startsWith("wipe")) {
+        const to = { wipeRight: "inset(0 0 0 100%)", wipeLeft: "inset(0 100% 0 0)", wipeDown: "inset(100% 0 0 0)", wipeUp: "inset(0 0 100% 0)" }[type];
+        await oldLayer.animate([{ clipPath: "inset(0 0 0 0)" }, { clipPath: to }], opt(ms)).finished;
+      } else if (type === "slideLeft" || type === "slideRight") {
+        // 横にずらした層がメイン画面の外へはみ出さないよう、外側の層で切り取り、背景は内側の要素に移して動かす
+        const x = type === "slideLeft" ? "-100%" : "100%";
+        const inner = document.createElement("div");
+        inner.style.cssText = "position:absolute;inset:0;border:3px solid transparent;box-sizing:border-box;";
+        inner.style.backgroundImage = old.image;
+        inner.style.backgroundColor = old.color;
+        inner.style.backgroundSize = old.size;
+        inner.style.backgroundPosition = old.pos;
+        oldLayer.style.cssText = "border:0;overflow:hidden;";
+        oldLayer.style.backgroundImage = "none";
+        oldLayer.style.backgroundColor = "transparent";
+        oldLayer.appendChild(inner);
+        await inner.animate([{ transform: "translateX(0)" }, { transform: `translateX(${x})` }], opt(ms)).finished;
+      } else if (type === "iris") {
+        // 古い背景の上に、新しい背景を円形に広げて重ねる
+        const newLayer = makeLayer();
+        newLayer.style.backgroundImage = isColor ? "none" : `url('${target}')`;
+        newLayer.style.backgroundColor = isColor ? target : "transparent";
+        newLayer.style.backgroundSize = "cover";
+        newLayer.style.backgroundPosition = "center";
+        mainScreen.insertBefore(newLayer, oldLayer.nextSibling);
+        await newLayer.animate([{ clipPath: "circle(0% at 50% 50%)" }, { clipPath: "circle(75% at 50% 50%)" }], opt(ms)).finished;
+      }
+    } catch (e) { /* 途中で止められた場合などは、何もしない */ }
+    if (myRun === bgTransitionRunId) cancelBackgroundTransition(); // 後片付け（層を消す）
+  };
+  const p = run();
+  if (waitDone) await p;
 }
 
 // ===== 立ち絵（scenariobuild.jsの「立ち絵表示/非表示」「表情変更」「移動」「動き」ブロックから呼ばれる） =====

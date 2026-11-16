@@ -37,6 +37,7 @@ let scenarioProject = {
   upperSkills: [], // ★要望対応：上位スキル（ステータスパネルで習得する、職業技とは別枠の技）。[{ id, name, type, element, spCost, power, ... }, ...]
   guildRewards: {}, // ★冒険者協会（掃討作戦）のクリア報酬の設定。{ useMonsterDrops, gachaStoneName, defense:{...}, raid:{...} }（tower_defense_editor.js / tower_rewards.js）
   raidUnits: [], // ★冒険者協会（掃討作戦・出撃モード）で送り込むキャラ。[{ id, name, element, hp, atk, range, interval, speed, skillKind, ... }]（tower_defense_editor.js）
+  effectMixes: [], // ★エフェクトミックス：ベースエフェクトを重ねて作る技の演出。[{ id, name, enabled, layers:[{ base, anchor, color, size, delay, duration, count, alpha, glow }] }]（effectmix.js／effectmix_editor.js）
   towerUnits: [], // ★冒険者協会（掃討作戦・迎撃モード）で購入・配置するユニット。[{ id, name, element, role, targeting, power, range, interval, cost, ... }]（tower_defense_editor.js）
   comboSkills: [], // ★要望対応：コンボスキル（属性の順番で発動する追加効果）。[{ id, name, elements:[属性id...], requiredSkillNames:[...], requiredChapterId... }, ...]
   skills: [],     // [{ id, className, skillId, name, description, type, element, spCost, unlockLevel, power, target, hitCount, statusEffectKind... }, ...]
@@ -255,6 +256,7 @@ function applyImportedSettingsFileIfUpdated(force) {
   if (Array.isArray(data.randomNamePool)) scenarioProject.randomNamePool = data.randomNamePool; // ★要望対応：ランダム名前管理タブ
   if (Array.isArray(data.elementDefs)) scenarioProject.elementDefs = data.elementDefs; // ★要望対応：属性管理タブ
   if (Array.isArray(data.comboSkills)) scenarioProject.comboSkills = data.comboSkills; // ★要望対応：コンボスキル
+  if (Array.isArray(data.effectMixes)) scenarioProject.effectMixes = data.effectMixes; // ★エフェクトミックス
   if (Array.isArray(data.towerUnits)) scenarioProject.towerUnits = data.towerUnits; // ★冒険者協会：タワーユニット
   if (Array.isArray(data.raidUnits)) scenarioProject.raidUnits = data.raidUnits; // ★冒険者協会：出撃キャラ
   if (data.guildRewards && typeof data.guildRewards === "object" && !Array.isArray(data.guildRewards)) scenarioProject.guildRewards = data.guildRewards; // ★冒険者協会：クリア報酬の設定
@@ -363,6 +365,7 @@ let scenarioBuildHasUnsavedChanges = false;
 function markScenarioBuildDirty() {
   scenarioBuildHasUnsavedChanges = true;
   updateScenarioBuildSaveButton();
+  if (typeof writingGuideScheduleRefresh === "function") writingGuideScheduleRefresh(); // ★分量表示（原稿用紙・ページ・読了時間）を最新にする
 }
 
 function updateScenarioBuildSaveButton() {
@@ -483,6 +486,7 @@ function normalizeScenarioProject() {
   //   未設定は通常扱い）
   if (!Array.isArray(scenarioProject.elementDefs)) scenarioProject.elementDefs = []; // [{ id, name }, ...]
   if (!Array.isArray(scenarioProject.comboSkills)) scenarioProject.comboSkills = []; // ★要望対応：コンボスキル
+  if (!Array.isArray(scenarioProject.effectMixes)) scenarioProject.effectMixes = []; // ★エフェクトミックス
   if (!Array.isArray(scenarioProject.towerUnits)) scenarioProject.towerUnits = []; // ★冒険者協会：タワーユニット
   if (!Array.isArray(scenarioProject.raidUnits)) scenarioProject.raidUnits = []; // ★冒険者協会：出撃キャラ
   if (!scenarioProject.guildRewards || typeof scenarioProject.guildRewards !== "object" || Array.isArray(scenarioProject.guildRewards)) scenarioProject.guildRewards = {}; // ★冒険者協会：クリア報酬の設定
@@ -1588,11 +1592,13 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "achievements", label: "実績管理" }, // ★要望対応：便利タブの「実績」アイコンから見られる実績の作成・編集
   { view: "tutorials", label: "チュートリアル管理" },
   { view: "notationcheck", label: "表記ゆれチェック" }, // ★要望対応：話者名・カタカナ語などの表記ゆれを探して一括置換（notationcheck.js）
+  { view: "writingguide", label: "執筆ガイド" }, // ★要望対応：分量（原稿用紙・ページ・読了時間）の設定／文字数カウンタ／簡易辞書（writingguide.js）
   { view: "glossary", label: "用語・語彙" }, // ★便利タブの「用語・語彙」アプリの言葉（ルビ・意味の解説）。メッセージ中の言葉をタップすると解説が開く
   { view: "skills", label: "スキル管理" },
   { view: "upperskills", label: "上位スキル" }, // ★要望対応：ステータスパネルで習得する、職業技とは別枠の技
   { view: "gachaskills", label: "技ガチャ" }, // ★技ガチャ：ガチャ専用の技と、確率・期間などの設定
   { view: "beasts", label: "おとも魔獣" }, // ★おとも魔獣：魔獣召喚の設定と、魔獣のデータ（beast_editor.js）
+  { view: "effectmixes", label: "エフェクトミックス" }, // ★ベースエフェクトを重ねて作る、技の演出（effectmix_editor.js）
   { view: "combos", label: "コンボスキル" }, // ★要望対応：属性の順番で発動する追加効果の技
   { view: "towerunits", label: "タワーユニット" }, // ★冒険者協会：掃討作戦（迎撃モード）のユニット登録
   { view: "raidunits", label: "出撃キャラ" }, // ★冒険者協会：掃討作戦（出撃モード）で送り込むキャラの登録
@@ -1616,6 +1622,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "variables", label: "変数一覧" }, // ★要望対応：式の中で使えるシステム変数の名前が分かるよう、サブ画面に一覧を出す
   { view: "data", label: "データ管理" },
   { view: "scenariostats", label: "統計" }, // ★要望対応：全話・各話の文字数／発言回数／ブロック数／演出数などの集計（scenariostats.js）
+  { view: "layoutadjust", label: "レイアウト調整" }, // ★要望対応：左右の幅をつまみで変える（layoutadjust.js）。つまみはこのタブを開いている間だけ出る
   { view: "tabmanager", label: "タブ管理" } // ★バグ修正：中身はプレイ画面タブ（メイン/インベントリ/スキル…）の管理に変更した
 ];
 
@@ -1708,11 +1715,11 @@ function renderScenarioBuildMain() {
 const SCENARIOBUILD_TAB_GROUPS = [
   { id: "chara", label: "キャラ・敵", views: ["characters", "enemies", "bosses", "companions", "classes", "portraits", "companionchat"] },
   { id: "item", label: "アイテム・経済", views: ["items", "furniture", "fishmgmt", "recipes", "loginbonus", "randomnames"] },
-  { id: "skill", label: "スキル・戦闘", views: ["skills", "upperskills", "gachaskills", "beasts", "combos", "statuspanels", "statuses", "elements"] },
+  { id: "skill", label: "スキル・戦闘", views: ["skills", "upperskills", "gachaskills", "beasts", "combos", "effectmixes", "statuspanels", "statuses", "elements"] },
   { id: "guild", label: "冒険者協会", views: ["towerunits", "raidunits", "guildrewards"] },
-  { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "notationcheck", "flags", "gamevars", "endings"] },
+  { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "writingguide", "notationcheck", "flags", "gamevars", "endings"] },
   { id: "world", label: "マップ・施設・BGM", views: ["maps", "facilities", "bgm"] },
-  { id: "system", label: "データ・システム", views: ["variables", "data", "scenariostats", "tabmanager"] }
+  { id: "system", label: "データ・システム", views: ["variables", "data", "scenariostats", "layoutadjust", "tabmanager"] }
 ];
 let scenarioBuildTabGroupOpen = {};
 
@@ -1857,6 +1864,7 @@ function renderScenarioBuildSub() {
   const tabsEl = document.getElementById("scenariobuild-sub-tabs");
   const bodyEl = document.getElementById("scenariobuild-sub-content");
   if (!tabsEl || !bodyEl) return;
+  if (typeof laSyncAdjustMode === "function") laSyncAdjustMode(); // ★「レイアウト調整」タブを開いている間だけ、左右の境目につまみを出す
   const visibleTabs = SCENARIOBUILD_SUB_TABS; // ★エディタ自身のタブは常に全て表示する（非表示切替は廃止。「タブ管理」はプレイ画面タブの方を管理する）
   if (!visibleTabs.some(tab => tab.view === scenarioBuildSubView)) {
     scenarioBuildSubView = visibleTabs[0] ? visibleTabs[0].view : "characters";
@@ -1934,9 +1942,11 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "achievements") renderEntityManager(bodyEl, getAchievementManagerConfig());
   else if (scenarioBuildSubView === "tutorials") renderEntityManager(bodyEl, getTutorialManagerConfig());
   else if (scenarioBuildSubView === "glossary") renderEntityManager(bodyEl, getGlossaryManagerConfig());
+  else if (scenarioBuildSubView === "writingguide") renderWritingGuideManager(bodyEl); // ★要望対応：執筆ガイド（writingguide.js）
   else if (scenarioBuildSubView === "notationcheck") renderNotationCheckManager(bodyEl); // ★要望対応：表記ゆれチェック（notationcheck.js）
   else if (scenarioBuildSubView === "skills") renderSkillManager(bodyEl);
   else if (scenarioBuildSubView === "combos") renderComboSkillManager(bodyEl); // ★要望対応：コンボスキル
+  else if (scenarioBuildSubView === "effectmixes") renderEffectMixManager(bodyEl); // ★エフェクトミックス（effectmix_editor.js）
   else if (scenarioBuildSubView === "towerunits") renderTowerUnitManager(bodyEl); // ★冒険者協会：タワーユニット（tower_defense_editor.js）
   else if (scenarioBuildSubView === "raidunits") renderRaidUnitManager(bodyEl); // ★冒険者協会：出撃キャラ（tower_defense_editor.js）
   else if (scenarioBuildSubView === "guildrewards") renderGuildRewardManager(bodyEl); // ★冒険者協会：掃討作戦の報酬（tower_defense_editor.js）
@@ -1961,6 +1971,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "variables") renderSkillVariableReference(bodyEl); // ★要望対応
   else if (scenarioBuildSubView === "data") renderDataManager(bodyEl);
   else if (scenarioBuildSubView === "tabmanager") renderScenarioBuildTabManager(bodyEl);
+  else if (scenarioBuildSubView === "layoutadjust") renderLayoutAdjustPanel(bodyEl); // ★要望対応：レイアウト調整（layoutadjust.js）
 }
 
 // ===================================================================
@@ -2220,6 +2231,7 @@ function buildScenarioArcTabsBar() {
 function renderScenarioBuildList(container) {
   const introEl = document.createElement("p");
   container.appendChild(introEl);
+  if (typeof buildWritingGuideSummary === "function") container.appendChild(buildWritingGuideSummary("all", { title: "全話の分量" })); // ★要望対応：全話の合計
   
   container.appendChild(buildScenarioArcTabsBar());
   
@@ -2593,6 +2605,7 @@ function buildScenarioChapterRow(chapter, index) {
   }
   
   infoEl.appendChild(titleInput);
+  if (typeof buildWritingGuideSummary === "function") infoEl.appendChild(buildWritingGuideSummary(chapter.id, { compact: true })); // ★要望対応：その話の分量（1行）
   
   // ★要望対応：この話がどの章に属するかを、ここで直接切り替えられるようにする
   const arcRow = document.createElement("div");
@@ -3069,6 +3082,7 @@ function renderScenarioBlockEditor(container) {
   const titleEl = document.createElement("h3");
   titleEl.textContent = `「${chapter.title}」のブロック`;
   container.appendChild(titleEl);
+  if (typeof buildWritingGuideSummary === "function") container.appendChild(buildWritingGuideSummary(chapter.id, { title: "この話の分量" })); // ★要望対応：原稿用紙・ページ・読了時間
   
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
@@ -3594,7 +3608,7 @@ function createBlock(type) {
   if (type === "bossbattle") return { ...base, bossKey: "", escorts: [], winJumpBlockId: null, defeatJumpBlockId: null, defeatMessage: "" }; // bossKey: ボス設定タブのID／escorts: 一緒に出す雑魚（任意）
   if (type === "choice") return { ...base, prompt: "", options: [{ id: generateId("opt"), text: "", blocks: [], jumpBlockId: null, loops: false, isCorrect: false }] };
   if (type === "effect") return { ...base, effectType: "shake" }; // effectType: "shake" | "flash"
-  if (type === "background") return { ...base, path: "" }; // ★"#"で始まればsetBackgroundColor、それ以外はsetBackgroundImageとして扱う
+  if (type === "background") return { ...base, path: "", transition: "none", transitionDuration: 1, transitionWait: true }; // ★"#"で始まればsetBackgroundColor、それ以外はsetBackgroundImageとして扱う。transition：切り替えの演出（mainfunc.js BG_TRANSITION_TYPES。未設定は"none"）
   if (type === "classselect") return { ...base }; // ★第一話の職業選択〜初期化一式をまとめて行う特殊ブロック（フィールドなし）
   if (type === "setrank") return { ...base, nickname: "" };
   if (type === "gameover") return { ...base, message: "力尽きてしまった……", endingName: "", retryJumpBlockId: null }; // ★ゲームオーバーもバッドエンドの一種として扱う。retryJumpBlockIdを指定すると「リトライ」の戻り先を話の最初以外にできる
@@ -3701,7 +3715,10 @@ function blockPreviewText(block) {
     };
     return labels[block.effectType] || "カメラシェイク";
   }
-  if (block.type === "background") return block.path;
+  if (block.type === "background") {
+    const tr = (typeof BG_TRANSITION_TYPES !== "undefined" && block.transition && block.transition !== "none") ? BG_TRANSITION_TYPES.find(t => t[0] === block.transition) : null;
+    return tr ? `${block.path}（${tr[1].replace(/（.*$/, "")}）` : block.path;
+  }
   if (block.type === "classselect") return "職業選択";
   if (block.type === "setrank") return block.nickname;
   if (block.type === "gameover") return block.endingName ? `ゲームオーバー（${block.endingName}）` : "ゲームオーバー";
@@ -4241,6 +4258,50 @@ function buildBlockFormFields(chapter, block) {
     pathInput.value = block.path;
     pathInput.onchange = () => { block.path = pathInput.value.trim(); persist(); };
     wrap.appendChild(pathInput);
+
+    // ★切り替えの演出（トランジション）。未設定の古いブロックは「なし」として扱う
+    if (typeof BG_TRANSITION_TYPES !== "undefined") {
+      const trRow = document.createElement("div");
+      trRow.className = "scenariobuild-condition-row";
+      trRow.appendChild(labelSpan("切り替えの演出："));
+      const trSelect = document.createElement("select");
+      BG_TRANSITION_TYPES.forEach(([key, label]) => {
+        const opt = document.createElement("option");
+        opt.value = key; opt.textContent = label;
+        trSelect.appendChild(opt);
+      });
+      trSelect.value = BG_TRANSITION_TYPES.some(t => t[0] === block.transition) ? block.transition : "none";
+      trRow.appendChild(trSelect);
+
+      const detail = document.createElement("span");
+      detail.appendChild(labelSpan(" 秒数："));
+      const secInput = document.createElement("input");
+      secInput.type = "number"; secInput.min = "0.1"; secInput.max = "10"; secInput.step = "0.1";
+      secInput.style.width = "64px";
+      secInput.value = (typeof block.transitionDuration === "number" && block.transitionDuration > 0) ? block.transitionDuration : 1;
+      secInput.onchange = () => {
+        const v = parseFloat(secInput.value);
+        block.transitionDuration = (isFinite(v) && v > 0) ? Math.min(10, v) : 1;
+        secInput.value = block.transitionDuration;
+        persist();
+      };
+      detail.appendChild(secInput);
+      const waitLabel = document.createElement("label");
+      waitLabel.className = "scenariobuild-inline-checkbox";
+      const waitCheckbox = document.createElement("input");
+      waitCheckbox.type = "checkbox";
+      waitCheckbox.checked = block.transitionWait !== false;
+      waitCheckbox.onchange = () => { block.transitionWait = waitCheckbox.checked; persist(); };
+      waitLabel.appendChild(waitCheckbox);
+      waitLabel.appendChild(document.createTextNode("終わるまで待つ"));
+      detail.appendChild(waitLabel);
+      trRow.appendChild(detail);
+
+      const syncDetail = () => { detail.style.display = trSelect.value === "none" ? "none" : ""; };
+      trSelect.onchange = () => { block.transition = trSelect.value; syncDetail(); persist(); };
+      syncDetail();
+      wrap.appendChild(trRow);
+    }
     return wrap;
   }
   
@@ -7422,7 +7483,8 @@ const SKILL_BLOCK_TYPES = {
   damage: "ダメージを与える",
   heal: "HP/SPを回復する",
   revive: "戦闘不能から蘇生させる", // ★要望対応：HP/SP回復ブロックとは別に、蘇生専用のブロックを追加
-  adjustGauge: "HP/SPを増減する（マイナス指定で消費・減少にも使える）",
+  adjustGauge: "HP/SP/焦力を増減する（マイナス指定で消費・減少にも使える）",
+  adjustActions: "行動数を増減する（プラスで回復／マイナスでさらに減らす）",
   selfDamage: "自分にダメージ（代償）",
   applyStatus: "状態異常/強化を付与",
   setVariable: "専用変数を書き換える",
@@ -7444,6 +7506,7 @@ function createSkillBlock(type) {
   if (type === "heal") return { ...base, target: "self", gauge: "hp", amount: "0" };
   if (type === "revive") return { ...base, target: "self", companionId: "", amount: "50", amountIsPercent: true };
   if (type === "adjustGauge") return { ...base, target: "self", gauge: "sp", amount: "0" }; // ★amountの式がマイナスなら減少、プラスなら回復として扱う（敵は対象にできない）
+  if (type === "adjustActions") return { ...base, amount: "1", allowOverMax: false }; // ★プラス＝行動可能数を回復／マイナス＝普通は1つ減るところをさらに減らす
   if (type === "selfDamage") return { ...base, amount: "0" };
   if (type === "applyStatus") return { ...base, targetSide: "enemy", target: "single", statusId: "", duration: "3", power: "0", chance: "1" };
   if (type === "setVariable") return { ...base, varName: "", expression: "0" };
@@ -7465,7 +7528,8 @@ function skillBlockPreviewText(block) {
     const gaugeLabel = block.gauge === "sp" ? "SP" : block.gauge === "fatigue" ? "疲労度" : block.gauge === "sleepiness" ? "眠気" : "HP";
     return `${block.target === "all" ? "全員" : "自分"}の${gaugeLabel}を${block.amount}${block.amountIsPercent ? "%" : ""}回復`;
   }
-  if (block.type === "adjustGauge") return `${block.target === "all" ? "全員" : "自分"}の${block.gauge === "sp" ? "SP" : "HP"}を${block.amount}増減`;
+  if (block.type === "adjustGauge") return `${block.target === "all" ? "全員" : "自分"}の${block.gauge === "sp" ? "SP" : block.gauge === "shouryoku" ? "焦力" : "HP"}を${block.amount}増減`;
+  if (block.type === "adjustActions") return `行動数を${block.amount}増減${block.allowOverMax === true ? "（上限超え可）" : ""}`;
   if (block.type === "selfDamage") return `自分に${block.amount}ダメージ`;
   if (block.type === "applyStatus") {
     const list = block.targetSide === "self" || block.targetSide === "allies" ? scenarioProject.statusBuffs : scenarioProject.statusAilments;
@@ -7891,7 +7955,7 @@ function buildSkillBlockFormFields(blocksArray, block, skill, persist) {
     row.appendChild(targetSelect);
     const gaugeSelect = document.createElement("select");
     gaugeSelect.className = "scenariobuild-jump-select";
-    [["hp", "HP"], ["sp", "SP"]].forEach(([v, l]) => {
+    [["hp", "HP"], ["sp", "SP"], ["shouryoku", "焦力（0〜100）"]].forEach(([v, l]) => {
       const opt = document.createElement("option"); opt.value = v; opt.textContent = l; gaugeSelect.appendChild(opt);
     });
     gaugeSelect.value = block.gauge || "sp";
@@ -7903,6 +7967,26 @@ function buildSkillBlockFormFields(blocksArray, block, skill, persist) {
     amountRow.appendChild(labelSpan("増減量（式・マイナスで減少）："));
     amountRow.appendChild(buildSkillExpressionInput(block, "amount", "例：-10（SPを10消費）", persist));
     wrap.appendChild(amountRow);
+    
+  } else if (block.type === "adjustActions") {
+    const noteEl = document.createElement("p");
+    noteEl.className = "devmode-note";
+    noteEl.textContent = "戦闘中の「行動できる回数」（メイン画面のアイコン）を増減します。プラスの値で回復（最大数までしか増えません）、マイナスの値で、普通は1つ減るところをさらに減らします（例：-1なら、この技で合計2つ減る。残りが0になると敵のターンへ進みます）。技を使った行動の消費と合わせて、技が終わった後に反映されます。主人公・仲間の技でだけ効果があります。";
+    wrap.appendChild(noteEl);
+    const row = document.createElement("div");
+    row.className = "scenariobuild-condition-row";
+    row.appendChild(labelSpan("増減する行動数（式・マイナスでさらに減る）："));
+    row.appendChild(buildSkillExpressionInput(block, "amount", "例：1（1回復）　／　-1（さらに1減る）", persist));
+    wrap.appendChild(row);
+    const overLabel = document.createElement("label");
+    overLabel.className = "scenariobuild-inline-checkbox";
+    const overCheckbox = document.createElement("input");
+    overCheckbox.type = "checkbox";
+    overCheckbox.checked = block.allowOverMax === true;
+    overCheckbox.onchange = () => { block.allowOverMax = overCheckbox.checked; persist(); };
+    overLabel.appendChild(overCheckbox);
+    overLabel.append(" 回復する時、行動数の最大数（パーティ人数）を超えて増やせる（最大12。4つ超えは色が変わる）（OFFなら最大数までしか回復しません。マイナスの時は関係ありません）");
+    wrap.appendChild(overLabel);
     
   } else if (block.type === "selfDamage") {
     const row = document.createElement("div");
@@ -8788,6 +8872,17 @@ function buildComboSkillRow(combo, index) {
   cutRow.className = "scenariobuild-condition-row";
   buildSkillTextInput(combo, "cutInText", "カットインの文字（空なら技名）", cutRow);
   infoEl.appendChild(cutRow);
+  // ★エフェクトミックス：迎撃モード／出撃モードでコンボが発動した時の演出（本編の戦闘にはまだ使わない）
+  const efxRow = document.createElement("div");
+  efxRow.className = "scenariobuild-condition-row";
+  efxRow.appendChild(labelSpan("掃討作戦でのエフェクト："));
+  const efxSelect = document.createElement("select");
+  efxSelect.className = "scenariobuild-title-input";
+  efxEditorMixOptions().forEach(opt => { const o = document.createElement("option"); o.value = opt.value; o.textContent = opt.label; efxSelect.appendChild(o); });
+  efxSelect.value = combo.effectMixId || "";
+  efxSelect.onchange = () => { combo.effectMixId = efxSelect.value; persist(); };
+  efxRow.appendChild(efxSelect);
+  infoEl.appendChild(efxRow);
 
   const enabledRow = document.createElement("label");
   enabledRow.className = "scenariobuild-condition-row";
@@ -14061,6 +14156,7 @@ function buildGameSettingsExportData() {
     elementDefs: scenarioProject.elementDefs, // ★要望対応：属性管理タブ
     elementMatchups: scenarioProject.elementMatchups,
     comboSkills: scenarioProject.comboSkills, // ★要望対応：コンボスキル
+    effectMixes: scenarioProject.effectMixes, // ★エフェクトミックス
     towerUnits: scenarioProject.towerUnits, // ★冒険者協会：タワーユニット
     raidUnits: scenarioProject.raidUnits, // ★冒険者協会：出撃キャラ
     guildRewards: scenarioProject.guildRewards, // ★冒険者協会：クリア報酬の設定
@@ -14903,7 +14999,9 @@ async function runSingleScenarioBlock(chapter, block, nextDefaultId, choiceStack
   }
   
   if (block.type === "background") {
-    if (block.path && block.path.trim().startsWith("#") && typeof setBackgroundColor === "function") {
+    if (block.path && block.path.trim() && block.transition && block.transition !== "none" && typeof changeBackgroundWithTransition === "function") {
+      await changeBackgroundWithTransition(block.path, block.transition, block.transitionDuration, block.transitionWait !== false); // mainfunc.js
+    } else if (block.path && block.path.trim().startsWith("#") && typeof setBackgroundColor === "function") {
       setBackgroundColor(block.path.trim()); // mainfunc.js
     } else if (block.path && typeof setBackgroundImage === "function") {
       setBackgroundImage(block.path); // mainfunc.js

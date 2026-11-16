@@ -606,6 +606,28 @@ async function runHeroActionPhase() {
   return heroBlocked ? "blocked" : "acted";
 }
 
+// ★要望対応：技のブロック（行動数を増減する）で変わった行動可能数を、行動1回分の消費と合わせて反映する。
+//   正の値＝行動数を回復（最大値までしか増えない）／負の値＝普通は1つ減るところをさらに減らす（0未満にはならない）
+function takePendingActionDelta() {
+  if (!battleState) return 0;
+  const delta = Math.round(Number(battleState.pendingActionDelta) || 0);
+  battleState.pendingActionDelta = 0;
+  return delta;
+}
+function clearPendingActionDelta() {
+  if (battleState) { battleState.pendingActionDelta = 0; battleState.pendingActionOverMax = false; }
+}
+// ★上限を超えて回復できるブロック（allowOverMax）が使われた時だけ、行動可能数が最大数を超えられる。
+//   超えていない通常の回復は、今まで通り最大数までしか増えない（すでに超えている分は、通常の消費以外では削られない）
+function applyActionCountChange(actionsRemaining, maxActions) {
+  const delta = takePendingActionDelta();
+  const overMax = !!(battleState && battleState.pendingActionOverMax);
+  if (battleState) battleState.pendingActionOverMax = false;
+  const result = actionsRemaining - 1 + delta;
+  const cap = overMax ? ACTION_POINT_HARD_CAP : Math.max(maxActions, actionsRemaining - 1);
+  return Math.max(0, Math.min(cap, result));
+}
+
 async function battleLoop() {
   while (battleState) {
     // ★要望対応：1ラウンドあたりの主人公側（主人公＋仲間）の行動可能数は、パーティ人数（主人公＋生存中の仲間）と同じ。
@@ -649,15 +671,15 @@ async function battleLoop() {
         if (heroBlockedThisRound) { cursor++; continue; } // ★動けない主人公は2周目以降は黙って飛ばす（パスとしては数えない）
         const heroResult = await runHeroActionPhase();
         if (heroResult === "ended") return;
-        if (heroResult === "cancelled") continue; // ★サブメニューから「戻る」で抜けただけ：回数を消費せずもう一度主人公の選択へ
-        if (heroResult === "passed") { if (typeof beastLinkAfterAction === "function") beastLinkAfterAction(); consecutivePasses++; cursor++; continue; } // ★パス：行動可能数は減らない
+        if (heroResult === "cancelled") { clearPendingActionDelta(); continue; } // ★サブメニューから「戻る」で抜けただけ：回数を消費せずもう一度主人公の選択へ
+        if (heroResult === "passed") { clearPendingActionDelta(); if (typeof beastLinkAfterAction === "function") beastLinkAfterAction(); consecutivePasses++; cursor++; continue; } // ★パス：行動可能数は減らない
         // ★主人公の行動（このターンのダメージ・状態異常等）で前の形態のHPが0になっていたら、
         //   仲間や敵のターンを待たず、ここですぐ形態移行の演出・メッセージを出す
         if (typeof announcePendingBossFormChanges === "function") await announcePendingBossFormChanges();
         if (!battleState) return;
         if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
         if (typeof beastLinkAfterAction === "function") beastLinkAfterAction(); // ★おとも魔獣の連動ボタンの更新（beast_battle.js）
-        actionsRemaining--; // heroResult === "acted" または "blocked"
+        actionsRemaining = applyActionCountChange(actionsRemaining, maxActions); // heroResult === "acted" または "blocked"（★技のブロックで行動数が増減した分もここで反映する）
         if (heroResult === "blocked") { heroBlockedThisRound = true; } else { consecutivePasses = 0; } // ★動けなかった場合はパス回数に数えない（回数自体は消費する）
         cursor++;
         updateBattleActionPoints(actionsRemaining, maxActions);
@@ -670,7 +692,7 @@ async function battleLoop() {
         if (!battleState) return;
         if (getAliveEnemies().length === 0) { await resolveBattleVictory(); return; }
         if (typeof beastLinkAfterAction === "function") beastLinkAfterAction(); // ★おとも魔獣の連動ボタンの更新
-        if (acted === false) { consecutivePasses++; } else { actionsRemaining--; consecutivePasses = 0; } // ★パス（false）だけ減らない。力尽きて行動を打ち切られた場合（undefined）をパス扱いにしない
+        if (acted === false) { consecutivePasses++; clearPendingActionDelta(); } else { actionsRemaining = applyActionCountChange(actionsRemaining, maxActions); consecutivePasses = 0; } // ★パス（false）だけ減らない。力尽きて行動を打ち切られた場合（undefined）をパス扱いにしない
         cursor++;
         updateBattleActionPoints(actionsRemaining, maxActions);
       }
@@ -3412,6 +3434,20 @@ async function runSingleSkillBlock(block, skill, context, hitCountForBalance = 1
   
   if (block.type === "adjustGauge") {
     const delta = Math.round(evaluateSkillExpression(block.amount, buildSkillExprContext(skill, context)));
+    // ★要望対応：焦力（0〜100）も増減できる。マイナスで減少、プラスで増加
+    if (block.gauge === "shouryoku") {
+      const shouryokuUnits = block.target === "all" ? [player, ...(player.companions || []).filter(c => c.alive)] : [context.caster || player];
+      for (const unit of shouryokuUnits) {
+        const before = getShouryoku(unit);
+        addShouryoku(unit, delta);
+        const changed = getShouryoku(unit) - before;
+        if (changed !== 0) {
+          const who = unit === player ? "自分" : (getHealTargetDisplayName ? getHealTargetDisplayName(unit) : "仲間"); // player.js
+          await displayMessage(`${who}の焦力が${Math.abs(changed)}${changed > 0 ? "増えた" : "減った"}！`, { allowSubFocus: true });
+        }
+      }
+      return null;
+    }
     const gauge = block.gauge === "sp" ? "sp" : "hp";
     const units = block.target === "all" ? [player, ...(player.companions || []).filter(c => c.alive)] : [context.caster || player];
     for (const unit of units) {
@@ -3422,6 +3458,22 @@ async function runSingleSkillBlock(block, skill, context, hitCountForBalance = 1
         await displayMessage(`${who}の${gauge === "sp" ? "SP" : "HP"}が${Math.abs(changed)}${verb}！`, { allowSubFocus: true });
       }
     }
+    return null;
+  }
+  
+  // ★要望対応：行動可能数（メイン画面のアイコン）を増減するブロック。
+  //   プラス＝行動数を回復（この行動の消費と合わせて反映。最大数は超えない）／マイナス＝普通は1つ減るところをさらに減らす
+  //   （例：-1なら、この行動で合計2つ減る）。主人公側（主人公・仲間）の技だけが対象で、敵の技では何も起きない
+  if (block.type === "adjustActions") {
+    const caster = context.caster || player;
+    const isPartySide = caster === player || (player.companions || []).includes(caster);
+    if (!isPartySide || !battleState) return null;
+    const delta = Math.round(evaluateSkillExpression(block.amount, buildSkillExprContext(skill, context)));
+    if (delta === 0) return null;
+    battleState.pendingActionDelta = (Math.round(Number(battleState.pendingActionDelta) || 0)) + delta;
+    if (delta > 0 && block.allowOverMax === true) battleState.pendingActionOverMax = true; // ★上限を超えて回復するタイプ
+    if (delta > 0) await displayMessage(`行動できる回数が${delta}回復する！${block.allowOverMax === true ? "（上限を超えられる）" : ""}`, { allowSubFocus: true });
+    else await displayMessage(`この行動で、行動できる回数がさらに${Math.abs(delta)}減る……`, { allowSubFocus: true });
     return null;
   }
   
@@ -4344,6 +4396,7 @@ function showBattleHud() {
 
 // ★要望対応：メイン画面上に、味方の「行動可能数」を最大4つの横並びのアイコンで表示する。
 //   行動すると1つ減る（パスしても減らない）。使い切った分は薄い枠だけを残して、最大数が分かるようにしておく
+const ACTION_POINT_HARD_CAP = 12; // ★行動可能数の最大（4つ×3段階）
 function updateBattleActionPoints(remaining, max) {
   const el = document.getElementById("battle-action-points");
   if (!el) return;
@@ -4352,14 +4405,17 @@ function updateBattleActionPoints(remaining, max) {
     el.innerHTML = "";
     return;
   }
-  const slots = Math.min(4, max);
-  const lit = Math.max(0, Math.min(slots, remaining));
+  const slots = Math.min(4, Math.max(max, remaining)); // ★最大数を超えて回復した場合も、アイコンは4つのまま
+  // ★要望対応：4つを超えた分は、同じアイコンの色が変わって段階で表す（1段階目＝金、2段階目＝エメラルド、3段階目＝ダイヤモンド。最大12）
+  const shown = Math.min(remaining, ACTION_POINT_HARD_CAP);
   el.classList.toggle("battle-action-points-boss", !!battleState.isBoss); // ボス戦は上部中央に細いHPゲージが出るので、その下にずらす
   el.title = `行動可能数：${Math.max(0, remaining)}`;
   el.innerHTML = "";
   for (let i = 0; i < slots; i++) {
     const icon = document.createElement("span");
-    icon.className = "battle-action-point" + (i < lit ? "" : " spent");
+    let tier = 0; // このアイコンが何段階目まで点灯しているか（0＝消費済み）
+    for (let t = 0; t < 3; t++) { if (shown > t * 4 + i) tier = t + 1; }
+    icon.className = "battle-action-point" + (tier === 0 ? " spent" : tier >= 2 ? ` tier-${tier}` : "");
     el.appendChild(icon);
   }
   el.classList.remove("hidden");
