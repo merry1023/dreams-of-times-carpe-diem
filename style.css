@@ -31,6 +31,25 @@
      見た目の大きさを変えたい時は、この数字だけを変える（100%＝そのまま。Noto Sans JP と同じくらいに見えるのは140%前後） */
   size-adjust: 140%;
 }
+@font-face {
+  font-family: "GameFontCorporateMincho";
+  src: url("font/Corporate-Mincho-ver3.otf") format("opentype");
+  font-display: swap;
+  /* 字の大きさがNoto Sans JPと違って見える時は、この数字だけを変える（100%＝そのまま） */
+  size-adjust: 100%;
+}
+@font-face {
+  font-family: "GameFontHaranyan";
+  src: url("font/haranyan.ttf") format("truetype");
+  font-display: swap;
+  size-adjust: 100%;
+}
+@font-face {
+  font-family: "GameFontHaranyanMarumi";
+  src: url("font/haranyan_marumi.ttf") format("truetype");
+  font-display: swap;
+  size-adjust: 100%;
+}
 :root {
   /* 設定の「フォント」で fontsetting.js が書き換える。読み込み前でも同じ並びで表示できるよう、既定値（Noto）を入れておく */
   --game-font: "GameFontNoto", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;

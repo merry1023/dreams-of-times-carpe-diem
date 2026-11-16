@@ -18,6 +18,9 @@ const GAME_FONT_OPTIONS = [
   { id: "noto",     label: "Noto Sans JP（標準）", family: "GameFontNoto" },
   { id: "sukima",   label: "スキマゴシック",       family: "GameFontSukima" },
   { id: "hangyaku", label: "叛逆明朝",     family: "GameFontHangyaku" },
+  { id: "corporatemincho", label: "コーポレート明朝",       family: "GameFontCorporateMincho" },
+  { id: "haranyan",       label: "はらませにゃんこ",       family: "GameFontHaranyan" },
+  { id: "haranyanmarumi", label: "はらませにゃんこ まるみ", family: "GameFontHaranyanMarumi" },
   { id: "system",   label: "端末の標準フォント",   family: null }
 ];
 
