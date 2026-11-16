@@ -1123,7 +1123,7 @@ function runTowerDefenseBattle(pool, opts) {
     st.templates.forEach(tpl => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "td-unit-btn";
+      btn.className = "td-unit-btn" + (tpl.role === "skill" ? " td-unit-skill" : "");   // ★スキルカードは紫、キャラユニットは薄橙（style.css）
       btn.dataset.key = tpl.key;
       btn.style.borderColor = tdElementColor(tpl.element);
       btn.innerHTML = `<span class="td-unit-name">${tpl.label}</span><span class="td-unit-meta">${tdUnitSummary(tpl)}</span><span class="td-unit-cost">${tpl.cost}</span>`;
