@@ -52,6 +52,7 @@ const TR_WAVE_CLEAR_STONE = 1;      // 同・魔力石
 const TR_DRINK_EVERY = 3;           // このウェーブ数を突破するごとに、赤まむしドリンク♂が1つ増える
 const TR_WAVE_HEAL_RATE = 0.25;    // ウェーブを突破するごとに、味方全員が最大HPのこの割合だけ回復する（戦闘不能のキャラは、この割合のHPで復活する）
 const TR_LEVEL_MAX = 5;             // キャラのレベルの上限
+const TR_SKILL_MIN_LEVEL = 3;       // ★キャラが技を使えるようになるレベル（これ未満のキャラは、技のボタンを押しても発動しない）
 const TR_LEVEL_EXP_BASE = 60;       // レベルアップに使う出撃経験値＝この値×現在のレベル
 const TR_LEVEL_STAT_RATE = 0.15;    // レベルが1上がるごとに、HPと攻撃力が＋15%
 const TR_MONSTER_SPEED = 38;        // 迎撃モンスターの移動速度
@@ -385,6 +386,7 @@ function trSpawnWave(st, wave) {
 function trUseSkill(st, index) {
   const u = st.party[index];
   if (!u || !u.alive || st.phase !== "play") return { ok: false, reason: "使えない" };
+  if (u.card && u.card.level < TR_SKILL_MIN_LEVEL) return { ok: false, reason: `${u.name}はLv${TR_SKILL_MIN_LEVEL}から技が使える（今はLv${u.card.level}）` };
   if (u.skill.left > 0) return { ok: false, reason: "まだ使えない" };
   const sk = u.skill;
   const color = (typeof getElementColor === "function") ? getElementColor(sk.element) : "#ffffff";
@@ -798,10 +800,10 @@ function runTowerRaidBattle(rosterDefs, opts) {
       const alive = () => !!(card.unit && card.unit.alive);
       skillBtns.push({
         el, keyChar: String(i + 1),
-        label: () => alive() ? card.unit.skill.name : (card.def.skillName || "（技なし）"),
+        label: () => (alive() ? card.unit.skill.name : (card.def.skillName || "（技なし）")) + (card.level < TR_SKILL_MIN_LEVEL ? `（Lv${TR_SKILL_MIN_LEVEL}から）` : ""),
         left: () => alive() ? card.unit.skill.left : 0,
-        off: () => !alive(),
-        offReason: () => card.unit ? `${card.def.name}は倒れています` : `${card.def.name}はまだ出撃していません`
+        off: () => !alive() || card.level < TR_SKILL_MIN_LEVEL,   // ★Lv3未満の間も、グレーアウト（押しても発動しない）
+        offReason: () => card.unit ? (card.unit.alive ? `${card.def.name}はLv${TR_SKILL_MIN_LEVEL}から技が使える（今はLv${card.level}）` : `${card.def.name}は倒れています`) : `${card.def.name}はまだ出撃していません`
       });
     });
     st.cardTemplates.forEach((tpl, j) => {
@@ -909,7 +911,7 @@ function runTowerRaidBattle(rosterDefs, opts) {
       });
       
       if (infoNote && performance.now() < infoNoteUntil) infoEl.textContent = infoNote;
-      else if (st.phase === "prep") infoEl.innerHTML = `準備中：手札から「出撃」「Lv↑」を選んで「進軍開始」。<span class="td-keyhint">　キー：矢印＝移動／Space・Z＝決定／数字キー＝スキル（進軍中）／X＝やめる</span>`;
+      else if (st.phase === "prep") infoEl.innerHTML = `準備中：手札から「出撃」「Lv↑」を選んで「進軍開始」（技はLv${TR_SKILL_MIN_LEVEL}から使えます）。<span class="td-keyhint">　キー：矢印＝移動／Space・Z＝決定／数字キー＝スキル（進軍中）／X＝やめる</span>`;
       else if (st.phase === "play") infoEl.textContent = "進軍中：自動で進みます。スキルは画面下のボタン（数字キー）で発動。ウェーブを突破すると準備中に戻ります。";
       else infoEl.textContent = "";
       
