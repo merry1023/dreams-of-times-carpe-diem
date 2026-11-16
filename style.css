@@ -31,6 +31,25 @@
      見た目の大きさを変えたい時は、この数字だけを変える（100%＝そのまま。Noto Sans JP と同じくらいに見えるのは140%前後） */
   size-adjust: 140%;
 }
+@font-face {
+  font-family: "GameFontCorporateMincho";
+  src: url("font/Corporate-Mincho-ver3.otf") format("opentype");
+  font-display: swap;
+  /* 字の大きさがNoto Sans JPと違って見える時は、この数字だけを変える（100%＝そのまま） */
+  size-adjust: 100%;
+}
+@font-face {
+  font-family: "GameFontHaranyan";
+  src: url("font/haranyan.ttf") format("truetype");
+  font-display: swap;
+  size-adjust: 100%;
+}
+@font-face {
+  font-family: "GameFontHaranyanMarumi";
+  src: url("font/haranyan_marumi.ttf") format("truetype");
+  font-display: swap;
+  size-adjust: 100%;
+}
 :root {
   /* 設定の「フォント」で fontsetting.js が書き換える。読み込み前でも同じ並びで表示できるよう、既定値（Noto）を入れておく */
   --game-font: "GameFontNoto", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
@@ -9569,3 +9588,52 @@ rt {
 .fm-card-cost { margin-top: auto; font-weight: bold; }
 .fm-card[data-where="hand"] .fm-card-cost { color: #ffd23f; }
 .fm-card.td-kcursor { outline: 3px solid #00e5ff; outline-offset: 2px; position: relative; z-index: 1; }
+
+/* ===================================================================
+   掃討作戦（迎撃・出撃 共通）：見やすさの改善（コントラスト重視）
+   ・キャラユニットのカード＝薄橙（暗い茶色の文字）／スキルカード＝紫（白い文字）
+   ・土台は黒一色をやめて、少し明るい紺色にして、枠や文字がはっきり見えるようにした
+   =================================================================== */
+.td-panel { background: #151c2e; }
+.td-info { background: #26324d; color: #fff; font-size: 14px; }
+.td-res-chip { background: #1d2740; color: #fff; border-color: #ffd23f; }
+.td-res-chip b { color: #ffe27a; }
+.td-chip { background: #26324d; border-color: #cfd8ee; }
+.td-tab { background: #2a3654; color: #fff; border-color: #9fb2e0; }
+.td-tab.td-selected { background: #ffd23f; color: #111; border-color: #ffd23f; }
+.td-btn { background: #1d2740; color: #ffe27a; }
+.td-btn-start { background: #ffd23f; color: #111; }
+.td-btn-quit { color: #fff; border-color: #fff; }
+.td-controls { background-color: transparent; }
+.td-btn:disabled { opacity: 0.5; }
+
+/* キャラユニットのカード（迎撃のユニットボタン／出撃の手札／出撃の技ボタン）＝薄橙 */
+.td-unit-btn, .td-card, .td-skill-btn { background: #ffe6cc; color: #3b1f0a; }
+.td-unit-btn .td-unit-meta { color: #5a3a1e; }
+.td-unit-cost { background: #7a3b00; color: #fff; }
+.td-unit-btn.td-selected { background: #ff9d3c; color: #2a1200; box-shadow: inset 0 0 0 3px #7a3b00; }
+.td-unit-btn.td-selected .td-unit-cost { background: #2a1200; color: #ffd9a8; }
+.td-unit-btn.td-disabled { opacity: 0.85; background: #dcc9b4; color: #5f4e3f; }
+.td-unit-btn.td-disabled .td-unit-cost { background: #b3261e; color: #fff; }
+.td-card-cost { color: #7a3b00; }
+.td-short { color: #c4140a; }
+.td-card-out { background: #ffcf99; }
+.td-card-dead { background: #d8c8bb; color: #6b3b3b; opacity: 0.85; }
+.td-card .td-btn { background: #7a3b00; color: #fff; border-color: #7a3b00; }
+.td-skill-btn { color: #3b1f0a; }
+.td-skill-btn.td-skill-off { opacity: 0.6; }
+
+/* スキルカード（迎撃の「スキル」タブ・購入済みの欄／出撃のスキルカード購入欄・発動ボタン）＝紫 */
+.td-unit-btn.td-unit-skill { background: #e3d6ff; color: #2a1566; }
+.td-unit-btn.td-unit-skill .td-unit-meta { color: #4a3590; }
+.td-unit-btn.td-unit-skill .td-unit-cost { background: #4b2fa8; color: #fff; }
+.td-unit-btn.td-unit-skill.td-selected { background: #b69bff; color: #1d0b57; box-shadow: inset 0 0 0 3px #4b2fa8; }
+.td-cardbar { background: #2b2152; border-color: #b794ff; }
+.td-cardbar-head { color: #eadfff; font-size: 12px; }
+.td-cardrow { border-top-color: #6a58aa; }
+.td-cardname { color: #fff; }
+.td-cardbar .td-btn { background: #8a63ff; color: #fff; border-color: #d6c4ff; }
+.td-skill-btn.td-skill-card { background: #6a45e0; color: #fff; }
+
+/* キーボード操作のカーソル：明るい背景でも見えるよう、黒い縁取りを足す */
+.td-overlay .td-kcursor { box-shadow: 0 0 0 2px #000; }
