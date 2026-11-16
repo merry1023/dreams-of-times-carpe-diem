@@ -522,12 +522,13 @@ function trStep(st, dt) {
     if (!u.alive) return;
     u.cool -= dt;
     if (u.skill.left > 0) u.skill.left = Math.max(0, u.skill.left - dt);
-    let target = null, sight = null;
+    let target = null, sight = null, nearestAny = null;
     st.defenders.forEach(e => {
       if (e.hp <= 0) return;
       const d = trDist(e, u.x, u.y);
       if (d <= u.range && (!target || d < target.d)) target = { e, d };
       if (d <= u.range + TR_SIGHT_BONUS && (!sight || d < sight.d)) sight = { e, d };
+      if (!nearestAny || d < nearestAny.d) nearestAny = { e, d };
     });
     if (target) {
       if (u.cool <= 0) {
@@ -539,8 +540,12 @@ function trStep(st, dt) {
       }
       return;                                     // 射程に敵がいる間は、止まって戦う
     }
-    if (sight) {                                  // 射程の外の敵に向かって歩く（素通りしない）
-      const pt = trApproachPoint(sight.e, u.x, u.y);
+    // ★バグ修正：ウェーブの敵が残っているのに、視界（射程＋SIGHT）の外にいる味方が、敵を素通りして上へ進み続け、
+    //   防衛塔・ボスなど動かない敵が残ったまま永遠に終わらないことがあった。
+    //   ウェーブ中（waveActive）で敵が残っていれば、視界の外でも、いちばん近い敵に向かう（上へ進むのは、敵がいない時だけ）
+    const goal = sight || (st.waveActive ? nearestAny : null);
+    if (goal) {                                   // 射程の外の敵に向かって歩く（素通りしない）
+      const pt = trApproachPoint(goal.e, u.x, u.y);
       const dx = pt.x - u.x, dy = pt.y - u.y, len = Math.hypot(dx, dy) || 1, step = Math.min(len, u.speed * dt);
       u.x += dx / len * step; u.y += dy / len * step;
     } else {
