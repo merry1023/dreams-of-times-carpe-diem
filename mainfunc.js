@@ -3882,14 +3882,15 @@ async function typeText(element, text, myToken = activeSessionToken) {
     
     // ◆ 普通の文字の場合：1文字ずつ流す
     const full = item.full;
-    for (let i = 0; i < full.length; i++) {
+    const fullChars = Array.from(full); // ★「𰻞」のような2つ分の文字コードで1文字になる文字を、途中で割らないために1文字ずつの配列にする
+    for (let i = 0; i < fullChars.length; i++) {
       if (activeSessionToken !== myToken) throw new Error("stale session: aborting orphaned scenario chain");
       if (skipTypingRequested || fastForwardMode) {
         item.node.nodeValue = full; // 残り全部を一気に流し込む
         flush();
         break;
       }
-      item.node.nodeValue = full.slice(0, i + 1);
+      item.node.nodeValue = fullChars.slice(0, i + 1).join("");
       flush();
       await wait(textSpead);
     }

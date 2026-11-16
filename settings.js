@@ -45,6 +45,7 @@ let gameSettings = {
   autoSaveEnabled: false,
   textSpeedId: "normal",
   logMaxCount: 100,
+  fontId: "noto", // ★要望対応：ゲーム内フォント（fontsetting.js の GAME_FONT_OPTIONS の id。既定は Noto Sans JP）
   bgmVolumeLevel: 20, // ★要望対応：BGM音量（0〜20の20段階。既定値20＝これまで通りの音量）
   showCorrectChoice: false, // ★ONにすると、選択肢のうち「正解」（話が進む方）に印を付けて表示する
   developerModeUnlocked: false, // ★開発者モード（devmode.js）のロック状態
@@ -118,6 +119,7 @@ function applySettings() {
   }
   gameSettings.bgmVolumeLevel = Math.max(0, Math.min(20, Math.round(gameSettings.bgmVolumeLevel)));
   if (typeof applyBgmVolumeSettingToCurrentAudio === "function") applyBgmVolumeSettingToCurrentAudio(); // bgm.js（既に何か鳴っていれば音量を反映）
+  if (typeof applyGameFont === "function") applyGameFont(); // fontsetting.js（ゲーム内フォント）
 }
 
 // ===== オートセーブ本体（3スロット：5分ごと／話直前／終了時） =====
@@ -194,9 +196,9 @@ window.addEventListener("beforeunload", () => autoSaveToSlot("onclose"));
 // ===== 設定タブの描画・操作 =====
 
 let settingsCursorIndex = 0;
-const SETTINGS_ROW_COUNT = 13; // 0:文字送り速度 1:ログ記憶数 2:BGM音量 3:オートセーブON/OFF 4:オートセーブから再開する
-                               // 5:正解の選択肢を表示 6:Aキーでメインタブに戻す 7:メインタブのパラメータ表示 8:天候演出
-                               // 9:全画面表示 10:開発者ボタン 11:Googleアカウント（auth.js） 12:メインメニューに戻る
+const SETTINGS_ROW_COUNT = 14; // 0:文字送り速度 1:ログ記憶数 2:BGM音量 3:フォント（fontsetting.js） 4:オートセーブON/OFF 5:オートセーブから再開する
+                               // 6:正解の選択肢を表示 7:Aキーでメインタブに戻す 8:メインタブのパラメータ表示 9:天候演出
+                               // 10:全画面表示 11:開発者ボタン 12:Googleアカウント（auth.js） 13:メインメニューに戻る
 
 // ★要望対応：BGM音量を「┃」を20本並べたバーで表示する。現在の音量までを塗り、それ以降は薄い色のままにする
 function renderVolumeBarSegments(container, level, max) {
@@ -237,6 +239,7 @@ function renderSettingsTab() {
     { label: "文字送り速度", value: textSpeedLevel.label, hint: "◀／▶で変更" },
     { label: "ログの記憶件数", value: `直近${gameSettings.logMaxCount}件`, hint: "◀／▶で変更" },
     { label: "BGM音量", renderBar: true, hint: "◀／▶で変更（20段階）" },
+    { label: "フォント", value: (typeof gameFontSettingValueText === "function") ? gameFontSettingValueText() : "", hint: "◀／▶で変更（選んだフォントで画面全体の文字が変わります）　表示例：𰻞𰻞（びゃんびゃん）／漢字・ひらがな・カタカナ" },
     { label: "オートセーブ", value: gameSettings.autoSaveEnabled ? "ON" : "OFF", hint: "◀／▶／決定で切替" },
     { label: "オートセーブ一覧", value: "", hint: "決定で「5分ごと／話直前／終了時／話をやり直す」から選ぶ" },
     { label: "正解の選択肢を表示", value: gameSettings.showCorrectChoice ? "ON" : "OFF", hint: "◀／▶／決定で切替（選択肢のうち話が進む方に★が付く）" },
@@ -254,7 +257,7 @@ function renderSettingsTab() {
   //   ・◀／▶キー相当のタップ用ボタンを、左右キーで値を変える行にだけ追加する。
   //   ・行本体（ラベル／値の部分）をタップした時は、カーソルをその行に合わせつつ、
   //     決定キーを押した時と同じ動作（ON/OFF切替や各種実行）もその場で行う。
-  const ADJUSTABLE_ROW_INDEXES = [0, 1, 2]; // ◀▶ボタンで段階的に変える行（文字送り速度・ログ件数・BGM音量）
+  const ADJUSTABLE_ROW_INDEXES = [0, 1, 2, 3]; // ◀▶ボタンで段階的に変える行（文字送り速度・ログ件数・BGM音量・フォント）
   
   rows.forEach((row, i) => {
     const rowEl = document.createElement("div");
@@ -356,31 +359,35 @@ function adjustCurrentSetting(direction) {
     renderSettingsTab();
     
   } else if (settingsCursorIndex === 3) {
+    // ★要望対応：フォント（fontsetting.js）
+    changeGameFont(direction);
+    
+  } else if (settingsCursorIndex === 4) {
     // オートセーブON/OFF（左右どちらでもトグルする）
     gameSettings.autoSaveEnabled = !gameSettings.autoSaveEnabled;
     saveSettings();
     renderSettingsTab();
     
-  } else if (settingsCursorIndex === 5) {
+  } else if (settingsCursorIndex === 6) {
     // 正解の選択肢を表示 ON/OFF（左右どちらでもトグルする）
     gameSettings.showCorrectChoice = !gameSettings.showCorrectChoice;
     saveSettings();
     renderSettingsTab();
     
-  } else if (settingsCursorIndex === 6) {
+  } else if (settingsCursorIndex === 7) {
     // メイン画面に移行する時、メインタブに切り替える ON/OFF（左右どちらでもトグルする）
     gameSettings.focusMainSwitchesToMainTab = !gameSettings.focusMainSwitchesToMainTab;
     saveSettings();
     renderSettingsTab();
     
-  } else if (settingsCursorIndex === 7) {
+  } else if (settingsCursorIndex === 8) {
     // メインタブのパラメータ表示 ON/OFF（左右どちらでもトグルする）
     gameSettings.showMainTabParams = !gameSettings.showMainTabParams;
     saveSettings();
     if (typeof applyMainTabParamsDisplayMode === "function") applyMainTabParamsDisplayMode(); // mainfunc.js
     renderSettingsTab();
     
-  } else if (settingsCursorIndex === 8) {
+  } else if (settingsCursorIndex === 9) {
     // 天候演出 ON/OFF（左右どちらでもトグルする）
     gameSettings.weatherEffectEnabled = !gameSettings.weatherEffectEnabled;
     saveSettings();
@@ -431,24 +438,26 @@ window.addEventListener("keydown", (event) => {
 // ★決定キー操作／行タップ操作の共通処理（スマホでのタップ操作対応のため関数化）
 function executeSettingsDecideAction(index) {
   if (index === 3) {
-    adjustCurrentSetting(1); // ★オートセーブ行は決定でもトグルできるようにする
+    changeGameFont(1, true); // ★フォント行は決定／タップでも次のフォントへ切り替える（最後まで行ったら先頭に戻す）
   } else if (index === 4) {
-    openAutoSavePanel(); // convenience.js
+    adjustCurrentSetting(1); // ★オートセーブ行は決定でもトグルできるようにする
   } else if (index === 5) {
-    adjustCurrentSetting(1); // ★正解の選択肢を表示 行も決定でトグルできるようにする
+    openAutoSavePanel(); // convenience.js
   } else if (index === 6) {
-    adjustCurrentSetting(1); // ★メイン画面に移行する時、メインタブに切り替える 行も決定でトグルできるようにする
+    adjustCurrentSetting(1); // ★正解の選択肢を表示 行も決定でトグルできるようにする
   } else if (index === 7) {
-    adjustCurrentSetting(1); // ★メインタブのパラメータ表示 行も決定でトグルできるようにする
+    adjustCurrentSetting(1); // ★メイン画面に移行する時、メインタブに切り替える 行も決定でトグルできるようにする
   } else if (index === 8) {
-    adjustCurrentSetting(1); // ★天候演出 行も決定でトグルできるようにする
+    adjustCurrentSetting(1); // ★メインタブのパラメータ表示 行も決定でトグルできるようにする
   } else if (index === 9) {
-    toggleFullscreen().then(() => renderSettingsTab()); // mainfunc.js（要望対応：設定から全画面表示）
+    adjustCurrentSetting(1); // ★天候演出 行も決定でトグルできるようにする
   } else if (index === 10) {
-    handleDevModeButtonDecide(); // ★未解除ならパスワード入力を開く。解除済みなら特に何もしない（左端タブから操作する）
+    toggleFullscreen().then(() => renderSettingsTab()); // mainfunc.js（要望対応：設定から全画面表示）
   } else if (index === 11) {
-    if (typeof handleGoogleAccountSettingsDecide === "function") handleGoogleAccountSettingsDecide(); // auth.js（要望対応：Googleアカウントログイン/ログアウト）
+    handleDevModeButtonDecide(); // ★未解除ならパスワード入力を開く。解除済みなら特に何もしない（左端タブから操作する）
   } else if (index === 12) {
+    if (typeof handleGoogleAccountSettingsDecide === "function") handleGoogleAccountSettingsDecide(); // auth.js（要望対応：Googleアカウントログイン/ログアウト）
+  } else if (index === 13) {
     handleReturnToMainMenuFromSettings();
   }
 }
