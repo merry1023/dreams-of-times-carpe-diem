@@ -8588,6 +8588,8 @@ rt {
 .td-skillbar:empty { display: none; }
 .td-skill-btn { flex: 1 1 110px; border-width: 3px; padding: 6px 4px; font-size: 12px; font-weight: bold; }
 .td-skill-btn[hidden] { display: none; }
+/* ★要望対応：出撃していない／倒れているキャラの技は、キーと技名を出したままグレーアウトする */
+.td-skill-btn.td-skill-off { opacity: 0.45; filter: grayscale(1); border-color: #666 !important; }
 .td-skill-card { background: #1b222c; }
 @media (orientation: landscape) and (min-width: 640px) {
   .td-has-skillbar .td-main { flex-direction: column; }

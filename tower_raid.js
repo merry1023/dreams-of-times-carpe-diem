@@ -788,7 +788,16 @@ function runTowerRaidBattle(rosterDefs, opts) {
       el.style.borderColor = tdElementColor(card.def.element);
       el.onclick = () => { const r = trUseSkill(st, st.party.indexOf(card.unit)); if (!r.ok) note(r.reason); else refreshUI(); };
       skillBarEl.appendChild(el);
-      skillBtns.push({ el, keyChar: String(i + 1), label: () => (card.unit && card.unit.alive) ? card.unit.skill.name : null, left: () => card.unit.skill.left });
+      // ★要望対応：キーは「編成した並び（手札の順）」の番号に固定（編成の1枠目＝[1]、2枠目＝[2]…）。
+      //   まだ出撃していない・倒れている枠も、キーと技名を出したままにして、グレーアウトする（押しても発動しない）
+      const alive = () => !!(card.unit && card.unit.alive);
+      skillBtns.push({
+        el, keyChar: String(i + 1),
+        label: () => alive() ? card.unit.skill.name : (card.def.skillName || "（技なし）"),
+        left: () => alive() ? card.unit.skill.left : 0,
+        off: () => !alive(),
+        offReason: () => card.unit ? `${card.def.name}は倒れています` : `${card.def.name}はまだ出撃していません`
+      });
     });
     st.cardTemplates.forEach((tpl, j) => {
       const el = document.createElement("button");
@@ -830,7 +839,9 @@ function runTowerRaidBattle(rosterDefs, opts) {
       const hit = skillBtns.find(b => b.keyChar && b.keyChar === ev.key && !b.el.hidden);
       if (!hit) return;
       ev.preventDefault(); ev.stopImmediatePropagation();
-      if (!ev.repeat && !hit.el.disabled) hit.el.click();
+      if (ev.repeat) return;
+      if (hit.off && hit.off()) { if (st.phase === "play") note(hit.offReason()); return; }   // ★出撃していない／倒れている枠のキーは、理由だけ知らせる
+      if (!hit.el.disabled) hit.el.click();
     };
     window.addEventListener("keydown", onDigitKey, true);
 
@@ -876,9 +887,12 @@ function runTowerRaidBattle(rosterDefs, opts) {
         if (!label) return;
         const left = b.left();
         const ready = left <= 0;
-        const text = `${b.keyChar ? `[${b.keyChar}] ` : ""}${label}${ready ? "" : `　あと${Math.ceil(left)}秒`}`;
+        const off = !!(b.off && b.off());   // 出撃していない／倒れている（グレーアウト）
+        const text = `${b.keyChar ? `[${b.keyChar}] ` : ""}${label}${(ready || off) ? "" : `　あと${Math.ceil(left)}秒`}`;
         if (b.el.textContent !== text) b.el.textContent = text;
-        b.el.disabled = !ready || st.phase !== "play";
+        b.el.classList.toggle("td-skill-off", off);
+        b.el.title = off ? b.offReason() : "";
+        b.el.disabled = off || !ready || st.phase !== "play";
       });
       cardShopRows.forEach(r => {
         const owned = st.cards.find(c => c.tpl.key === r.tpl.key);
