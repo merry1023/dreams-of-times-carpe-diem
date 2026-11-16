@@ -17,7 +17,7 @@ const GAME_FONT_DEFAULT_ID = "noto";
 const GAME_FONT_OPTIONS = [
   { id: "noto",     label: "Noto Sans JP（標準）", family: "GameFontNoto" },
   { id: "sukima",   label: "スキマゴシック",       family: "GameFontSukima" },
-  { id: "hangyaku", label: "反逆（Hangyaku）",     family: "GameFontHangyaku" },
+  { id: "hangyaku", label: "叛逆明朝",     family: "GameFontHangyaku" },
   { id: "system",   label: "端末の標準フォント",   family: null }
 ];
 
