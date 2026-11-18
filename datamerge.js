@@ -13,14 +13,15 @@ const DM_ID_ARRAYS = [
   "enemies", "bosses", "items", "furniture", "fishItems", "skills", "statusAilments", "statusBuffs",
   "companions", "quests", "achievements", "tutorials", "glossary", "facilities", "portraitCharacters", "recipes",
   "elementDefs", "comboSkills", "effectMixes", "towerUnits", "raidUnits", "upperSkills", "gachaSkills", "beasts", "bgmTracks", "mapAreas",
-  "chapters", "chapterArcs", "characters", "flagDefs", "variableDefs"
+  "chapters", "chapterArcs", "characters", "flagDefs", "variableDefs", "writingNotes", "timelineEvents"
 ];
 const DM_DICTS = [
   "classStats", "elementMatchups", "statusPanels", "trialGuardianOverrides", "fameThresholds",
-  "companionChatSettings", "scenarioBuildTabVisibility", "guildRewards", "gachaConfig", "summonConfig", "deletedBuiltinIds"
+  "companionChatSettings", "plotNotes", "scenarioBuildTabVisibility", "guildRewards", "gachaConfig", "summonConfig", "deletedBuiltinIds"
 ];
 const DM_WHOLES = ["randomNamePool", "mapEdges", "loginBonusDays", "creditsText", "introText"];
-const DM_SCENARIO_KEYS = ["chapters", "chapterArcs", "characters", "flagDefs", "variableDefs"];
+// ★設定資料（writingNotes／timelineEvents／plotNotes）は、クラウド同期・コミット履歴の対象。JS書き出し・プレイヤー公開には含まれない（ファイル側に無いキーはマージで自分の内容が維持される）
+const DM_SCENARIO_KEYS = ["chapters", "chapterArcs", "characters", "flagDefs", "variableDefs", "writingNotes", "timelineEvents", "plotNotes"];
 const DM_SCENARIO_DELETED_SUBS = ["chapters", "characters"]; // deletedBuiltinIds のうちシナリオ側のサブキー
 const DM_ALL_KEYS = DM_ID_ARRAYS.concat(DM_DICTS, DM_WHOLES);
 
@@ -30,7 +31,7 @@ const DM_LABELS = {
   tutorials: "チュートリアル", glossary: "用語・語彙", facilities: "施設", portraitCharacters: "立ち絵キャラ", recipes: "レシピ",
   elementDefs: "属性", comboSkills: "コンボ", effectMixes: "エフェクト", towerUnits: "タワーユニット", raidUnits: "出撃キャラ", upperSkills: "上位スキル",
   gachaSkills: "ガチャ技", beasts: "おとも魔獣", bgmTracks: "BGM", mapAreas: "マップ", chapters: "話", chapterArcs: "章", characters: "キャラ",
-  flagDefs: "フラグ", variableDefs: "変数", classStats: "職業ステータス", elementMatchups: "属性相性", statusPanels: "ステータスパネル",
+  flagDefs: "フラグ", variableDefs: "変数", writingNotes: "世界観メモ", timelineEvents: "年表の出来事", plotNotes: "プロット", classStats: "職業ステータス", elementMatchups: "属性相性", statusPanels: "ステータスパネル",
   trialGuardianOverrides: "試練の守護者", fameThresholds: "名声しきい値", companionChatSettings: "会話AI設定",
   scenarioBuildTabVisibility: "タブ表示設定", guildRewards: "協会報酬", gachaConfig: "ガチャ設定", summonConfig: "魔獣召喚設定", deletedBuiltinIds: "削除済み組み込み",
   randomNamePool: "ランダム名前", mapEdges: "マップ接続", loginBonusDays: "ログインボーナス", creditsText: "クレジット文面", introText: "注意書き文面"
