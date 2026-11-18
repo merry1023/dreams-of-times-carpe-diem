@@ -9648,3 +9648,23 @@ rt {
 
 /* キーボード操作のカーソル：明るい背景でも見えるよう、黒い縁取りを足す */
 .td-overlay .td-kcursor { box-shadow: 0 0 0 2px #000; }
+
+/* ★要望対応：設定資料タブ（writingnotes.js） */
+.wn-nav, .wn-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+.wn-search { flex: 1 1 160px; min-width: 120px; width: auto; }
+.wn-card { margin: 6px 0; padding: 6px 8px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; background: rgba(255, 255, 255, 0.04); }
+.wn-card-inner { background: rgba(255, 255, 255, 0.03); }
+.wn-card-summary { cursor: pointer; font-weight: bold; }
+.wn-field { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0; }
+.wn-field-label { min-width: 5.5em; font-size: 12px; opacity: 0.8; }
+.wn-field > input, .wn-field > select { flex: 1 1 160px; min-width: 0; }
+.wn-textarea { width: 100%; box-sizing: border-box; margin: 4px 0; }
+.wn-card-buttons { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; }
+.wn-event { margin: 6px 0; padding: 6px 8px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; background: rgba(255, 255, 255, 0.04); }
+.wn-event-head { display: flex; gap: 6px; align-items: center; }
+.wn-event-date { flex: 0 1 11em; min-width: 6em; width: auto; }
+.wn-event-title { flex: 1 1 auto; min-width: 0; width: auto; }
+.wn-handle { cursor: grab; padding: 2px 6px; user-select: none; }
+.wn-handle-disabled { cursor: default; opacity: 0.3; }
+.wn-drop-target { outline: 2px dashed #ffd23f; }
+.wn-panel { margin: 8px 0; }

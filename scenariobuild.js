@@ -55,6 +55,9 @@ let scenarioProject = {
   mapAreas: [],   // [{ id, name, type, x, y, bgTrack, bgImage, bossId, enemyIds, items, examineMessages(配列。「調べる」で毎回ランダムに1つ選ぶ), battleVariations, builtin, locationKey }, ...]
   mapEdges: [],   // [[fromNodeId, toNodeId], ...] ★マップ画面でのエリア同士のつながり（村="village"、組み込みは"cave"等、自作エリアは"custom_"+id）
   loginBonusDays: [], // ★要望対応：ログインボーナス。7日分の配列 [{ gold, exp, items:[{itemId, qty}, ...] }, ...]（1日目〜7日目）
+  writingNotes: [],    // ★設定資料：世界観メモ [{ id, title, category, tags, body }, ...]（writingnotes.js。プレイヤー向けの公開・JS書き出しには含めない）
+  timelineEvents: [],  // ★設定資料：時系列の出来事 [{ id, date, title, chapterId, characters, note }, ...]（配列の順＝年表の順）
+  plotNotes: {},       // ★設定資料：プロット { overall, "arc:章id", "chapter:話id": { status, text } }
   companionChatSettings: { // ★要望対応：仲間との会話（Gemini API連携）の「会話AI設定」タブで編集する情報
     partyName: "",              // パーティ名
     protagonistEpithet: "",     // 主人公の二つ名
@@ -471,6 +474,7 @@ function normalizeScenarioProject() {
   if (!Array.isArray(scenarioProject.statusAilments)) scenarioProject.statusAilments = [];
   if (!Array.isArray(scenarioProject.statusBuffs)) scenarioProject.statusBuffs = [];
   if (!Array.isArray(scenarioProject.flagDefs)) scenarioProject.flagDefs = []; // [{ name, description }, ...]（フラグ管理タブ）
+  if (typeof wnEnsure === "function") wnEnsure(); // ★要望対応：設定資料（世界観メモ・年表の出来事・プロット）。writingnotes.js
   if (!Array.isArray(scenarioProject.variableDefs)) scenarioProject.variableDefs = []; // [{ name, description }, ...]（ゲーム変数管理タブ。値自体はscenarioVariablesに保存される）
   if (!Array.isArray(scenarioProject.recipes)) scenarioProject.recipes = []; // [{ id, name, shopType, mode, materials, baseItemId, resultItemId, resultCount, cost, description }, ...]（レシピ管理タブ）
   // ★要望対応：オークションNPC等で使うランダム名前プール（ランダム名前管理タブ）。未設定時は既定の名前一覧を入れておく
@@ -1593,6 +1597,7 @@ const SCENARIOBUILD_SUB_TABS = [
   { view: "tutorials", label: "チュートリアル管理" },
   { view: "notationcheck", label: "表記ゆれチェック" }, // ★要望対応：話者名・カタカナ語などの表記ゆれを探して一括置換（notationcheck.js）
   { view: "writingguide", label: "執筆ガイド" }, // ★要望対応：分量（原稿用紙・ページ・読了時間）の設定／文字数カウンタ／簡易辞書（writingguide.js）
+  { view: "writingnotes", label: "設定資料" }, // ★要望対応：世界観メモ／プロット／時系列（年表・話ごと）の執筆用メモ帳（writingnotes.js）。プレイヤー向けの公開データには含めない
   { view: "glossary", label: "用語・語彙" }, // ★便利タブの「用語・語彙」アプリの言葉（ルビ・意味の解説）。メッセージ中の言葉をタップすると解説が開く
   { view: "skills", label: "スキル管理" },
   { view: "upperskills", label: "上位スキル" }, // ★要望対応：ステータスパネルで習得する、職業技とは別枠の技
@@ -1717,7 +1722,7 @@ const SCENARIOBUILD_TAB_GROUPS = [
   { id: "item", label: "アイテム・経済", views: ["items", "furniture", "fishmgmt", "recipes", "loginbonus", "randomnames"] },
   { id: "skill", label: "スキル・戦闘", views: ["skills", "upperskills", "gachaskills", "beasts", "combos", "effectmixes", "statuspanels", "statuses", "elements"] },
   { id: "guild", label: "冒険者協会", views: ["towerunits", "raidunits", "guildrewards"] },
-  { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "writingguide", "notationcheck", "flags", "gamevars", "endings"] },
+  { id: "story", label: "進行・シナリオ", views: ["quests", "achievements", "tutorials", "glossary", "writingguide", "writingnotes", "notationcheck", "flags", "gamevars", "endings"] },
   { id: "world", label: "マップ・施設・BGM", views: ["maps", "facilities", "bgm"] },
   { id: "system", label: "データ・システム", views: ["variables", "data", "scenariostats", "layoutadjust", "tabmanager"] }
 ];
@@ -1960,6 +1965,7 @@ function renderScenarioBuildSub() {
   else if (scenarioBuildSubView === "recipes") renderRecipeManager(bodyEl);
   else if (scenarioBuildSubView === "randomnames") renderRandomNameManager(bodyEl);
   else if (scenarioBuildSubView === "elements") renderElementManager(bodyEl);
+  else if (scenarioBuildSubView === "writingnotes") renderWritingNotesManager(bodyEl); // ★要望対応：設定資料（writingnotes.js）
   else if (scenarioBuildSubView === "scenariostats") renderScenarioStatsManager(bodyEl); // ★要望対応：統計（scenariostats.js）
   else if (scenarioBuildSubView === "companions") renderCompanionManager(bodyEl);
   else if (scenarioBuildSubView === "classes") renderClassStatsManager(bodyEl);
@@ -3083,6 +3089,7 @@ function renderScenarioBlockEditor(container) {
   titleEl.textContent = `「${chapter.title}」のブロック`;
   container.appendChild(titleEl);
   if (typeof buildWritingGuideSummary === "function") container.appendChild(buildWritingGuideSummary(chapter.id, { title: "この話の分量" })); // ★要望対応：原稿用紙・ページ・読了時間
+  if (typeof buildWritingPlotPanel === "function") container.appendChild(buildWritingPlotPanel(chapter)); // ★要望対応：この話の執筆メモ（プロット・関連する出来事。writingnotes.js）
   
   const introEl = document.createElement("p");
   introEl.className = "devmode-note";
