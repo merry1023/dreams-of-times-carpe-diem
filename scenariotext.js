@@ -173,7 +173,7 @@ function scTxtChangeParam(block) {
 }
 
 function scTxtEndingTypeLabel(type) {
-  return type === "bad" ? "バッド" : type === "happy" ? "ハッピー" : "トゥルー";
+  return type === "bad" ? "バッド" : type === "happy" ? "ハッピー" : "アナザー";
 }
 
 // ★ブロック1件 → 行の配列。入れ子（if・選択肢の中身）は再帰で書き出す

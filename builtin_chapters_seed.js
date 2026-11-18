@@ -1725,7 +1725,7 @@ function buildChapter2SeedBlocks() {
     "id": "block_1786183133329_328",
     "type": "ending",
     "endingType": "true",
-    "title": "トゥルーエンド1：「そして伝説()へ...」",
+    "title": "アナザーエンド1：「そして伝説()へ...」",
     "endroll": "",
     "endrollEnabled": true
   },

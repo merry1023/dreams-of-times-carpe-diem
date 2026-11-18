@@ -149,6 +149,7 @@ function loadCustomScenarioData() {
   runScenarioBuildStepSafely("normalizeScenarioProject", normalizeScenarioProject);
   runScenarioBuildStepSafely("applyImportedScenarioFileIfUpdated", applyImportedScenarioFileIfUpdated);
   runScenarioBuildStepSafely("applyImportedSettingsFileIfUpdated", applyImportedSettingsFileIfUpdated);
+  runScenarioBuildStepSafely("migrateRenamedEndingLabels", migrateRenamedEndingLabels); // ★名称変更「トゥルーエンディング」→「アナザーエンディング」を、保存済み・公開済みのデータにも反映する
   runScenarioBuildStepSafely("ensureCustomMonstersRegistered", ensureCustomMonstersRegistered);
   runScenarioBuildStepSafely("ensureCustomBgmRegistered", ensureCustomBgmRegistered);
   runScenarioBuildStepSafely("ensureCustomItemsRegistered", ensureCustomItemsRegistered); // ★アイテム設定で追加・編集したアイテムを念のため最新の状態にしてから使う
@@ -169,6 +170,29 @@ function loadCustomScenarioData() {
   if (typeof applyBuiltinMapAreaOverrides === "function") runScenarioBuildStepSafely("applyBuiltinMapAreaOverrides", applyBuiltinMapAreaOverrides); // adventure.js（マップ設定タブでの編集内容を反映）
   runScenarioBuildStepSafely("loadScenarioFlags", loadScenarioFlags);
   runScenarioBuildStepSafely("loadScenarioVariables", loadScenarioVariables);
+}
+
+// ★名称変更：エンディングの種類「トゥルーエンディング」を「アナザーエンディング」に改名した。
+//   内部の値（endingType: "true"）は保存データとの互換性のためそのままにして、表示名だけを変えている。
+//   すでにブラウザへ保存済み／クラウドで公開済みのデータには、エンディングブロックのタイトル（「トゥルーエンディング1：…」など）と
+//   用語集の「トゥルーエンディング」が旧名のまま残っているので、読み込みのたびに新しい名前へ置き換える（何度実行しても同じ結果になる）
+function migrateRenamedEndingLabels() {
+  const renameLabel = (text) => (typeof text === "string" ? text.replace(/^トゥルー(エンディング|エンド)/, "アナザー$1") : text);
+  const walk = (node) => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+    if (node.type === "ending") {
+      node.title = renameLabel(node.title);
+      node.endingName = renameLabel(node.endingName);
+    }
+    Object.keys(node).forEach(key => walk(node[key]));
+  };
+  (scenarioProject.chapters || []).forEach(chapter => walk(chapter && chapter.blocks));
+  (scenarioProject.glossary || []).forEach(entry => {
+    if (!entry || entry.term !== "トゥルーエンディング") return;
+    entry.term = "アナザーエンディング";
+    if (entry.meaning === "複数あるエンディングの中の「本当の結末」。") entry.meaning = "複数あるエンディングの中の、もうひとつの結末。";
+  });
 }
 
 // ★loadCustomScenarioDataの各ステップを1つずつ安全に実行する。失敗しても他のステップやこの関数の
@@ -5306,7 +5330,7 @@ function buildBlockFormFields(chapter, block) {
     typeRow.appendChild(labelSpan("種類："));
     const typeSelect = document.createElement("select");
     typeSelect.className = "scenariobuild-jump-select";
-    [["bad", "バッドエンディング"], ["true", "トゥルーエンディング"], ["happy", "ハッピーエンディング"]].forEach(([value, label]) => {
+    [["bad", "バッドエンディング"], ["true", "アナザーエンディング"], ["happy", "ハッピーエンディング"]].forEach(([value, label]) => {
       const option = document.createElement("option");
       option.value = value;
       option.textContent = label;
@@ -13617,7 +13641,7 @@ function buildEndingListCard(entry) {
   
   const numberEl = document.createElement("span");
   numberEl.className = "scenariobuild-chapter-number";
-  numberEl.textContent = block.type === "gameover" ? "ゲームオーバー" : { bad: "バッドエンド", true: "トゥルーエンド", happy: "ハッピーエンド" }[block.endingType] || "エンディング";
+  numberEl.textContent = block.type === "gameover" ? "ゲームオーバー" : { bad: "バッドエンド", true: "アナザーエンド", happy: "ハッピーエンド" }[block.endingType] || "エンディング";
   
   const infoEl = document.createElement("div");
   infoEl.className = "scenariobuild-chapter-info";
