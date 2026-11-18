@@ -12752,10 +12752,10 @@ window.SCENARIOBUILD_IMPORTED_SETTINGS_DATA = {
     },
     {
       "id": "glossary_seed_36",
-      "term": "トゥルーエンディング",
+      "term": "アナザーエンディング",
       "reading": "",
       "category": "ネット・俗語",
-      "meaning": "複数あるエンディングの中の「本当の結末」。",
+      "meaning": "複数あるエンディングの中の、もうひとつの結末。",
       "aliases": "",
       "example": ""
     },

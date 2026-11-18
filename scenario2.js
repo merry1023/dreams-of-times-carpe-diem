@@ -597,7 +597,7 @@ async function scene2_Aftermath() {
   }
 }
 
-// A: 断る →「トゥルーエンド」（一人旅を貫くルート。ゲームとしては引き続きプレイできる）
+// A: 断る →「アナザーエンド」（一人旅を貫くルート。ゲームとしては引き続きプレイできる）
 async function scene2_SoloEnding() {
   changeSpeaker("竜殺し");
   await displayMessage("「ああ、約束するわ。お互いの力で強くなる。ギブ アンド テイクよ。さあ、酒場にパーティー申請しに行きましょ。」");
@@ -621,7 +621,7 @@ async function scene2_SoloEnding() {
   
   player.chapter2Ending = "solo"; // ★どちらのルートを選んだかの記録（今のところ演出以外には使っていない）
   markChapter2Cleared(); // ★第一話と同じく、この手書きの第二話でもクリア記録が抜けていたため追加
-  await showSpecialScene("『完』\nトゥルーエンド「そして伝説()へ...」");
+  await showSpecialScene("『完』\nアナザーエンド「そして伝説()へ...」");
   
   changeSpeaker("");
   await displayMessage("……とはいえ、この村での暮らしはまだまだ続く。田中治郎は今日もひとり、冒険者としての日々を歩んでいく。");
